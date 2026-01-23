@@ -3,6 +3,7 @@ const path = require('path')
 
 const { startServer } = require('./backend/server.js')
 const { AUTO_LOGIN_USUARIO } = require('./backend/services/users');
+const { connectDB } = require('../db/mongo.js')
 
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({
@@ -18,7 +19,6 @@ function createWindow(AutoLogin = false) {
             nodeIntegration: false,
             additionalArguments: [`--start=${AutoLogin}`] // argumentos iniciales para el preload
         },
-
     })
 
     winMain.maximize();      // maximiza la ventana
@@ -28,7 +28,8 @@ function createWindow(AutoLogin = false) {
 
 // Ejecuta cuando Electron está listo
 app.whenReady().then(async () => {
-    startServer() // iniciar servidor express
+    await startServer() // iniciar servidor express
+    await connectDB()
     const AutoLogin = await AUTO_LOGIN_USUARIO();//true, false
     await createWindow(AutoLogin); // crear ventana
 })

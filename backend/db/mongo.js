@@ -1,36 +1,79 @@
-const { MongoClient, ServerApiVersion } = require('mongodb')
-require('dotenv').config();
-// URL de conexión (Atlas)
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+import dotenv from "dotenv";
+
+dotenv.config();
+
 const uri = process.env.URI_MONGODB;
 
-module.exports = { connectDB, getDB, closeDB }
+const UserSchema = new mongoose.Schema({
+    apodo: {
+        type: String,
+        required: true,
+        minlength: 3,
+        maxlength: 30,
+        trim: true
+    },
+    correo: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    },
+    contraseña: {
+        type: String,
+        required: true,
+        minlength: 8
+    },
+    token: {
+        type: String
+    },
+    createdAt: { type: Date, default: Date.now }
+});
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-    serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-    }
-})
-let db;
+const User = mongoose.model("User", UserSchema);
+
 async function connectDB() {
-    try {
-        await client.connect()
-        db = client.db() // usa la DB de tu URI o pon .db('nombreDB')
-        console.log('-Conectado a MongoDB')
-        return db
-    } catch (err) {
-        console.error('-Error conectando a MongoDB:', err)
-        throw err
-    }
-}
-function getDB() {
-    if (!db) throw new Error('-DB no conectada todavía')
-    return db
+    await mongoose.connect(uri);
+    console.log("-Conectado a MongoDB");
 }
 
-// Opcional: cerrar al salir de la app
-async function closeDB() {
-    if (client) await client.close()
+async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, token = "" }) {//la contraseña ya biene hasheada
+
+    if (!contraseña || !correo) throw new Error("Faltan datos para insertar usuario");
+
+    await User.create({
+        apodo: apodo,
+        correo: correo,
+        contraseña: contraseña,
+        token
+    });
+
+    console.log("Usuario insertado correctamente");
 }
+
+async function LoginConCredenciales({ correo = null, contraseña = null, token = "" }) {
+    if (token != "" && !correo) {//validar por token + correo
+        const usuario = await User.findOne({ token });
+        if (!usuario) throw new Error("Sesión expirada");
+        if (!(usuario.correo === correo)) throw new Error("Credenciales incorrectas");
+        return { apodo: usuario.apodo, correo: usuario.email };
+    }
+
+    if (!correo || !contraseña) throw new Error("Faltan datos para iniciar sesión");
+    //validar por credenciales correo + contraseña
+    const usuario = await User.findOne({ email: correo });
+    if (!usuario) throw new Error("Credenciales incorrectas");
+
+    const ok = await bcrypt.compare(contraseña, usuario.contraseña);
+    if (!ok) throw new Error("Credenciales incorrectas");
+
+    return { apodo: usuario.apodo, correo: usuario.email };
+}
+
+async function closeDB() {
+    await mongoose.disconnect();
+}
+
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales }
