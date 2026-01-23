@@ -30,9 +30,25 @@ const UserSchema = new mongoose.Schema({
         type: String
     },
     createdAt: { type: Date, default: Date.now }
-});
+})
+const ValidationCodeSchema = new mongoose.Schema({
+    code: {
+        type: String,
+        required: true,
+        minlength: 8
+    },
+    correo: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    },
+    expira: { type: Date, default: new Date(Date.now() + 10 * 60 * 1000) }
+})
 
 export const User = mongoose.model("User", UserSchema);
+export const ValidationCode = mongoose.model("ValidationCode", ValidationCodeSchema);
 
 async function connectDB() {
     await mongoose.connect(uri);
@@ -52,7 +68,16 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, token =
 
     console.log("Usuario insertado correctamente");
 }
+async function InsertarValidationCode({ correo = null, code = null }) {
+    if (!contraseña || !code) throw new Error("Faltan datos para insertar codigo");
 
+    await User.create({
+        code: code,
+        correo: correo
+    });
+
+    console.log("Usuario insertado correctamente");
+}
 async function LoginConCredenciales({ correo = null, contraseña = null, token = "" }) {
     if (token != "" && !correo) {//validar por token + correo
         const usuario = await User.findOne({ token });
@@ -71,6 +96,7 @@ async function LoginConCredenciales({ correo = null, contraseña = null, token =
 
     return { apodo: usuario.apodo, correo: usuario.email };
 }
+
 async function LimpiarJWTUsuario(correo) {
     await User.updateOne(
         { correo },
@@ -81,4 +107,4 @@ async function closeDB() {
     await mongoose.disconnect();
 }
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode }

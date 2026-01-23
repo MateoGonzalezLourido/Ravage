@@ -2,7 +2,7 @@
 const { InsertarUsuario, LoginConCredenciales, User, LimpiarJWTUsuario } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSession, readSession, clearSession, generateToken, validateToken } = require('./controladorArchivosSesion.js')
-
+const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
 
 async function AUTO_LOGIN_USUARIO() {
     //leer fichero con datos de sesion anterior
@@ -17,6 +17,7 @@ async function AUTO_LOGIN_USUARIO() {
     const token_valido = validateToken(session.token);
     if (!token_valido) {
         clearSession(); // token inválido → limpiar sesión
+        LimpiarJWTUsuario(data.username)//borrar jwt de DB
         console.log("Token inválido o expirado")
         return { success: false };
     }
@@ -41,7 +42,16 @@ async function registerUsuario(apodo = "Usuario", correo = null, password = null
 
     const hashed = await bcrypt.hash(password, 10);//contraseña hasheada
 
-    //TODO: crear verificacion por codigo de correo
+    //crear verificacion por codigo de correo
+    const ValidationCode = generarCodigo()
+    const asunto = "Verificación de correo"
+    const htmlContenido = `<span style="text-decoration:underline">Hola, ${apodo}</span>
+    <span style="font-size:20px">Codigo de verificacion de correo:</br><font style="color:green">${ValidationCode}</font></span>
+    <span>Si no has sido tú puedes decírnoslo por este correo.</span>
+    <span style="font-style= italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
+    <span>Mateo's Stage</span>`
+    InsertarValidationCode({ correo: correo, code: ValidationCode })
+    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
 
 
     const nuevoUsuario = await InsertarUsuario({ apodo: apodo, contraseña: hashed, correo: correo })//crear usuario en DB
@@ -58,7 +68,16 @@ async function loginUsuario(username, contraseña) {
     const { apodo, correo } = LoginConCredenciales({ correo: data.username, contraseña: contraseña })
     if (!apodo || !correo) return { success: false, message: 'Usuario no encontrado' }
 
-    //TODO: crear verificacion por codigo de correo
+    //crear verificacion por codigo de correo
+    const ValidationCode = generarCodigo()
+    const asunto = "Verificación de cuenta"
+    const htmlContenido = `<span style="text-decoration:underline">Hola, ${apodo}</span>
+    <span style="font-size:20px">Codigo de verificacion de cuenta:</br><font style="color:green">${ValidationCode}</font></span>
+    <span>Si no has sido tú puedes decírnoslo por este correo.</span>
+    <span style="font-style= italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
+    <span>Mateo's Stage</span>`
+    InsertarValidationCode({ correo: correo, code: ValidationCode })
+    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
 
     //JWT 
     const token = generateToken(username);
@@ -73,6 +92,7 @@ async function cerrarSesionUsuario(correo) {
 
     console.log("*Sesion cerrada")
 }
+
 function comprobaciones_Correo(correo) {
     let success = true;
     let message = "Username válido";
@@ -84,4 +104,5 @@ function comprobaciones_Correo(correo) {
     //resultado
     return { success: success, message: message }
 }
+
 module.exports = { registerUsuario, loginUsuario, AUTO_LOGIN_USUARIO, cerrarSesionUsuario }
