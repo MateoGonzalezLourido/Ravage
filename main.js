@@ -3,7 +3,7 @@ const path = require('path')
 
 const { startServer } = require('./backend/server.js')
 const { AUTO_LOGIN_USUARIO } = require('./backend/services/users');
-const { connectDB } = require('../db/mongo.js')
+const { connectDB } = require("./backend/db/mongo.js")
 
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({

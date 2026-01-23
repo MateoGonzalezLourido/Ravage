@@ -47,8 +47,8 @@ const ValidationCodeSchema = new mongoose.Schema({
     expira: { type: Date, default: new Date(Date.now() + 10 * 60 * 1000) }
 })
 
-export const User = mongoose.model("User", UserSchema);
-export const ValidationCode = mongoose.model("ValidationCode", ValidationCodeSchema);
+const User = mongoose.model("User", UserSchema);
+const ValidationCode = mongoose.model("ValidationCode", ValidationCodeSchema);
 
 async function connectDB() {
     await mongoose.connect(uri);
@@ -109,4 +109,4 @@ async function closeDB() {
     await mongoose.disconnect();
 }
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode, BorrarValidationCodes }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode, BorrarValidationCodes, User, ValidationCode }

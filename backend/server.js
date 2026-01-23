@@ -1,6 +1,6 @@
 
 const express = require('express');
-const { connectDB, getDB } = require('./db/mongo.js');
+const { connectDB } = require('./db/mongo.js');
 const { login, register } = require('./services/users.js');
 
 let appServer; // para poder cerrar el server si quieres
@@ -11,8 +11,7 @@ async function startServer() {
     console.log('-Iniciando servidor...');
 
     await connectDB(); // conecta Mongo
-    const db = getDB();
-    console.log('*DB lista para usar:', db.databaseName);
+    console.log('*DB lista para usar:');
 
     const app = express(); // <--- aquí defines app
     app.use(express.json());
