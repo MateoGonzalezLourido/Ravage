@@ -1,6 +1,6 @@
 
-import fetch from "node-fetch"; // o axios
-import dotenv from "dotenv";
+const fetch = require("node-fetch") // o axios
+const dotenv = require("dotenv");
 dotenv.config()
 
 async function generarCodigo() {//expira en 10min
@@ -53,4 +53,4 @@ async function enviarEmail({ correoDestino = null, asunto = "Sin asunto", htmlCo
     // return await res.json(); // contiene messageId
 }
 
-module.exports = { enviarEmail, generarCodigo }
+module.exports = { enviarEmail, generarCodigo, validarCodigo }

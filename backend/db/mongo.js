@@ -96,7 +96,9 @@ async function LoginConCredenciales({ correo = null, contraseña = null, token =
 
     return { apodo: usuario.apodo, correo: usuario.email };
 }
-
+async function BorrarValidationCodes(correo) {
+    await Verification.deleteMany({ correo: correo });
+}
 async function LimpiarJWTUsuario(correo) {
     await User.updateOne(
         { correo },
@@ -107,4 +109,4 @@ async function closeDB() {
     await mongoose.disconnect();
 }
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode, BorrarValidationCodes }

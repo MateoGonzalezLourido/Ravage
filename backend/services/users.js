@@ -1,5 +1,5 @@
 // backend/services/users.js
-const { InsertarUsuario, LoginConCredenciales, User, LimpiarJWTUsuario } = require('../db/mongo.js')
+const { InsertarUsuario, LoginConCredenciales, User, LimpiarJWTUsuario, BorrarValidationCodes } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSession, readSession, clearSession, generateToken, validateToken } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
@@ -44,19 +44,36 @@ async function registerUsuario(apodo = "Usuario", correo = null, password = null
 
     //crear verificacion por codigo de correo
     const ValidationCode = generarCodigo()
+    const hashedValidationCode = await bcrypt.hash(ValidationCode, 10)
     const asunto = "Verificación de correo"
     const htmlContenido = `<span style="text-decoration:underline">Hola, ${apodo}</span>
     <span style="font-size:20px">Codigo de verificacion de correo:</br><font style="color:green">${ValidationCode}</font></span>
     <span>Si no has sido tú puedes decírnoslo por este correo.</span>
     <span style="font-style= italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
     <span>Mateo's Stage</span>`
-    InsertarValidationCode({ correo: correo, code: ValidationCode })
+    InsertarValidationCode({ correo: correo, code: hashedValidationCode })
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+}
 
+async function ValidarCodeRegistroUsuarioi(correo, code) {
+    const code_db = await ValidationCode.find({ correo }).toArray();
+    if (!code_db) return { success: false, message: "Fallo al crear el usuario:datos no encontrados" };
+    const ok = false
+    for (let i = 0; i < code_db.length; i++) {
+        if (bcrypt.compare(code, code_db[i])) {
+            ok = true
+            break
+        }
+    }
+    if (!ok) {
+        BorrarValidationCodes(correo)
+        return { success: false, message: "Fallo al crear el usuario:codigo incorrecto" };
+    }
 
     const nuevoUsuario = await InsertarUsuario({ apodo: apodo, contraseña: hashed, correo: correo })//crear usuario en DB
     if (!nuevoUsuario) return { success: false, message: "Fallo al crear el usuario" };
-    saveSession({ username: correo, token: user.token })//guardar sesion en fichero local
+
+    BorrarValidationCodes(correo)//borrar codigos
 
     return { success: true, data: { apodo, correo } };
 }
@@ -78,10 +95,28 @@ async function loginUsuario(username, contraseña) {
     <span>Mateo's Stage</span>`
     InsertarValidationCode({ correo: correo, code: ValidationCode })
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+}
+
+async function ValidarCodeLogin(correo, code) {
+    const code_db = await ValidationCode.find({ correo }).toArray();
+    if (!code_db) return { success: false, message: "Fallo al crear el usuario:datos no encontrados" };
+    const ok = false
+    for (let i = 0; i < code_db.length; i++) {
+        if (bcrypt.compare(code, code_db[i])) {
+            ok = true
+            break
+        }
+    }
+    if (!ok) {
+        BorrarValidationCodes(correo)
+        return { success: false, message: "Fallo al crear el usuario:codigo incorrecto" };
+    }
 
     //JWT 
     const token = generateToken(username);
-    saveSession(username, token)// guardamos token en JSON
+    saveSession({ username: correo, token: token })//guardar sesion en fichero local
+
+    BorrarValidationCodes(correo)//borrar codigos
 
     return { success: true, data: { apodo, correo } }
 }
@@ -105,4 +140,4 @@ function comprobaciones_Correo(correo) {
     return { success: success, message: message }
 }
 
-module.exports = { registerUsuario, loginUsuario, AUTO_LOGIN_USUARIO, cerrarSesionUsuario }
+module.exports = { registerUsuario, loginUsuario, AUTO_LOGIN_USUARIO, cerrarSesionUsuario, ValidarCodeRegistroUsuarioi, ValidarCodeLogin }
