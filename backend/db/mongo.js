@@ -32,7 +32,7 @@ const UserSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-const User = mongoose.model("User", UserSchema);
+export const User = mongoose.model("User", UserSchema);
 
 async function connectDB() {
     await mongoose.connect(uri);
@@ -71,9 +71,14 @@ async function LoginConCredenciales({ correo = null, contraseña = null, token =
 
     return { apodo: usuario.apodo, correo: usuario.email };
 }
-
+async function LimpiarJWTUsuario(correo) {
+    await User.updateOne(
+        { correo },
+        { $unset: { token: "" } }
+    );
+}
 async function closeDB() {
     await mongoose.disconnect();
 }
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario }

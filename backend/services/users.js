@@ -1,9 +1,8 @@
 // backend/services/users.js
-const { InsertarUsuario, LoginConCredenciales } = require('../db/mongo.js')
+const { InsertarUsuario, LoginConCredenciales, User, LimpiarJWTUsuario } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSession, readSession, clearSession, generateToken, validateToken } = require('./controladorArchivosSesion.js')
 
-const COLLECTION = 'users'
 
 async function AUTO_LOGIN_USUARIO() {
     //leer fichero con datos de sesion anterior
@@ -42,13 +41,38 @@ async function registerUsuario(apodo = "Usuario", correo = null, password = null
 
     const hashed = await bcrypt.hash(password, 10);//contraseña hasheada
 
+    //TODO: crear verificacion por codigo de correo
+
+
     const nuevoUsuario = await InsertarUsuario({ apodo: apodo, contraseña: hashed, correo: correo })//crear usuario en DB
     if (!nuevoUsuario) return { success: false, message: "Fallo al crear el usuario" };
     saveSession({ username: correo, token: user.token })//guardar sesion en fichero local
 
     return { success: true, data: { apodo, correo } };
 }
-//TODO:
+
+async function loginUsuario(username, contraseña) {
+    const resultado = comprobaciones_Correo(username)
+    if (!resultado.res) return { success: false, message: resultado.mes }
+
+    const { apodo, correo } = LoginConCredenciales({ correo: data.username, contraseña: contraseña })
+    if (!apodo || !correo) return { success: false, message: 'Usuario no encontrado' }
+
+    //TODO: crear verificacion por codigo de correo
+
+    //JWT 
+    const token = generateToken(username);
+    saveSession(username, token)// guardamos token en JSON
+
+    return { success: true, data: { apodo, correo } }
+}
+
+async function cerrarSesionUsuario(correo) {
+    clearSession()//limpiar autologin
+    LimpiarJWTUsuario(correo)//borrar jwt de DB
+
+    console.log("*Sesion cerrada")
+}
 function comprobaciones_Correo(correo) {
     let success = true;
     let message = "Username válido";
@@ -60,23 +84,4 @@ function comprobaciones_Correo(correo) {
     //resultado
     return { success: success, message: message }
 }
-//TODO:
-async function loginUsuario(username, password) {
-    const resultado = comprobaciones_Correo(data.username)
-    if (!resultado.res) return { success: false, message: resultado.mes }
-    const db = getDB();
-    const user = await db.collection(COLLECTION).findOne({ username });
-    if (!user) return { success: false, message: 'Usuario no encontrado' }
-
-    const valid = await bcrypt.compare(password, user.password);
-    //JWT 
-    const token = generateToken(username);
-    saveSession(username, token)// guardamos token en JSON
-    return { success: true }
-}
-
-async function cerrarSesionUsuario(username, password) {
-    clearSession()
-    console.log("Sesion cerrada")
-}
-module.exports = { registerUsuario, loginUsuario, AUTO_LOGIN_USUARIO }
+module.exports = { registerUsuario, loginUsuario, AUTO_LOGIN_USUARIO, cerrarSesionUsuario }
