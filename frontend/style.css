@@ -61,7 +61,7 @@ body {
 
 .ocultar-display {
     display: none !important;
-    
+
 }
 
 .flex-display {
@@ -87,4 +87,13 @@ body {
 .estrada-menu-registro-login-incorrecto:focus {
     border-color: brown;
     color: black;
+}
+
+#seccion-registro {
+    height: 315px !important;
+}
+
+.span-aviso {
+    font-style: italic;
+    color: darkgray;
 }

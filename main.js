@@ -40,12 +40,16 @@ app.on('window-all-closed', () => {
 })
 
 /*FUNCIONES DEL PRELOAD */
-const { registerUsuario, loginUsuario } = require('./backend/services/users');
+const { registerUsuario, loginUsuario, ValidarCodeRegistroUsuario } = require('./backend/services/users.js');
 
 ipcMain.handle('login-usuario', async (_, username, password) => {
-    return await loginUsuario(username, password);
+    return await loginUsuario({ username: username, contraseña: password });
 });
 
-ipcMain.handle('registrar-usuario', async (_, username, password) => {
-    return await registerUsuario(username, password);
+ipcMain.handle('registrar-usuario', async (_, apodo, username, password) => {
+    return await registerUsuario({ apodo: apodo, correo: username, password: password });
+    //(no se hizo el registro aun, queda verificar el correo) 
+});
+ipcMain.handle('validar-code-registrar-usuario', async (_, correo, code) => {
+    return await ValidarCodeRegistroUsuario({ correo: correo, code: code });
 });

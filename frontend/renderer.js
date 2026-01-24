@@ -1,9 +1,9 @@
 /*Mostrar o no el Login, al iniciar la app */
 if (window.boot.isLogged) {
-    document.querySelector("#seccion-login").classList.remove("flex-display")
+    document.querySelector("#seccion-registro-login").classList.remove("flex-display")
     document.querySelector("#seccion-registro-login").classList.add("ocultar-display")
 } else {
-    document.querySelector("#seccion-registro").classList.remove("ocultar-display")
+    document.querySelector("#seccion-registro-login").classList.remove("ocultar-display")
     document.querySelector("#seccion-registro-login").classList.add("flex-display")
 }
 
@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
     })
     document.querySelector("#form-registro").addEventListener('submit', async (e) => {
         e.preventDefault()
+        const apodo = document.querySelector('#registro-apodo').value
         const username = document.querySelector('#registro-user').value
         const password = document.querySelector('#registro-pass').value
         const password_confirm = document.querySelector('#registro-pass-confirm').value
@@ -51,7 +52,24 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelector("#span-repetir-contraseña").classList.remove("estrada-menu-registro-login-incorrecto")
 
         //TODO: backend
-        const result = await window.api.register(username, password)
-        alert(result.success ? `Usuario ${result.username} creado` : result.message)
+        let result = await window.sesion_usuario.REGISTRAR_USUARIO(apodo, username, password);
+        if (result) {//datos validos: validar codigo de correo
+            document.querySelector("#seccion-login").classList.remove("flex-display")
+            document.querySelector("#seccion-login").classList.add("ocultar-display")
+
+            document.querySelector("#seccion-registro").classList.remove("flex-display")
+            document.querySelector("#seccion-registro").classList.add("ocultar-display")
+
+            document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
+            document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
+            document.querySelector("#form-validation-correo").addEventListener("submit", async () => {
+                const codigo = document.querySelector("#bt-code-introducir").value
+                result = await window.sesion_usuario.VALIDAR_CODE_REGISTRAR_USUARIO(username, codigo);
+                if (result.success) {//codigo valido
+                    console.log("SE HA CREADO EL USUARIO CORRECTAMENTE")
+                }
+            })
+        }
+
     })
 })
