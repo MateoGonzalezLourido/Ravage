@@ -3,7 +3,9 @@ const path = require('path')
 
 const { startServer } = require('./backend/server.js')
 const { AUTO_LOGIN_USUARIO } = require('./backend/services/users');
-const { connectDB } = require("./backend/db/mongo.js")
+const { connectDB, BorrarUsuarioActivo } = require("./backend/db/mongo.js")
+const { registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/users.js');
+const state = require('./backend/STATE/Variables_sesion.js')
 
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({
@@ -35,12 +37,14 @@ app.whenReady().then(async () => {
 })
 
 /* Finalizar App cuando todas las ventanas estén cerradas */
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
+    const id = state.getIdSesion()
+    await BorrarUsuarioActivo(id)
     if (process.platform !== 'darwin') app.quit()
 })
 
 /*FUNCIONES DEL PRELOAD */
-const { registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/users.js');
+
 
 ipcMain.handle('login-usuario', async (_, username, password, mantener_sesion_iniciada) => {
     return await loginUsuario({ username: username, contraseña: password, mantener_sesion_iniciada: mantener_sesion_iniciada });

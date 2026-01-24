@@ -104,12 +104,12 @@ async function InsertarCuentaValidationCode({ correo = null, code = null }) {
 async function InsertarUsuarioActivo({ correo = null }) {
     if (!correo) { throw new Error("Faltan datos para insertar usuario activo"); }
 
-    await ActiveUser.create({
+    const nuevoUsuarioActivo = await ActiveUser.create({
         correo: correo
     });
 
     console.log("Usuario activo insertado correctamente");
-    return true
+    return nuevoUsuarioActivo
 }
 async function LoginConCredenciales({ correo = null, contraseña = null, token = null }) {
     if (token && correo) {//validar por token + correo
@@ -150,7 +150,7 @@ async function BorrarCuentaValidationCodes(correo) {
     await CuentaValidationCode.deleteMany({ correo: correo });
 }
 async function BorrarUsuarioActivo(correo) {
-    await ActiveUser.deleteMany({ correo: correo });
+    await ActiveUser.deleteMany({ _id: correo });
 }
 async function LimpiarJWTUsuario(correo, token = "") {
     await User.updateOne(

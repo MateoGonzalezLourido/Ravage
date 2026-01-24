@@ -3,6 +3,7 @@ const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTU
 const bcrypt = require('bcryptjs')
 const { saveSession, readSession, clearSession, generateToken, validateToken } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
+const state = require('../STATE/Variables_sesion.js')
 
 async function AUTO_LOGIN_USUARIO() {
     //leer fichero con datos de sesion anterior
@@ -25,9 +26,10 @@ async function AUTO_LOGIN_USUARIO() {
     // verificar si esa cuenta sigue existiendo en la base de datos
     const result = await LoginConCredenciales({ correo: data.username, token: data.token })
     //mostrar como usuario activo en mongodb
-    await InsertarUsuarioActivo({ correo: data.username });
-
     if (result.apodo && result.correo) {//tenemos todos los datos correctos
+        state.setCoreroSesion(result.correo)
+        const nuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: data.username });
+        state.setIdSesion(nuevoUsuarioActivo)
         return true;
     }
     else {
@@ -160,13 +162,15 @@ async function ValidarCodeLogin({ correo, code }) {
     };
     //mostrar como usuario activo en mongodb
     const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: correo });
-
     if (!NuevoUsuarioActivo) {
         BorrarCuentaValidationCodes(correo)//borrar codigos
         mantener_sesion_iniciada_usuario = null;
         return {
             success: false, message: "Fallo al iniciar sesion"
         }
+    }
+    else {
+        state.setIdSesion(NuevoUsuarioActivo)
     }
 
     //JWT , mantener sesion iniciada en cache
