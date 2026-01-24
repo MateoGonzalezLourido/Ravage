@@ -55,7 +55,7 @@ function generateToken(username) {
 
 function validateToken(token) {
     try {
-        const decoded = jwt.verify(token, SECRET_KEY);
+        const decoded = jwt.verify(token, SECRET_KEY_JWT);
         return decoded.username; // si válido, devuelve username
     } catch {
         return null; // token inválido o expirado

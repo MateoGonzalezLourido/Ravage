@@ -2,3 +2,7 @@
 Verificar que los codigos de verificacion expiren en 10minutos ellos solos
 
 meter token para no tener que usar verificacion de cuenta durante un tiempo despues de haberla hecho ya
+
+Hacer que puedas almacenar mas de un token por cuenta para que se pueda hacer autologin en varios dispositivos a la vez
+
+Cuando se cierre la app o la sesion hay que quitar ese usuario activo de la base de datos

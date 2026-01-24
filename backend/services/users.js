@@ -8,27 +8,33 @@ async function AUTO_LOGIN_USUARIO() {
     //leer fichero con datos de sesion anterior
     const data = readSession()
     //verificar si son legitimos los datos
-    if (!data || (!data.username || !session.token)) return false; //fichero vacio o faltan datos
+    if (!data || (!data.username || !data.token)) return false; //fichero vacio o faltan datos
+
     const resultado = comprobaciones_Correo(data.username)
-    if (!resultado.res) {
+    if (!resultado.success) {
         clearSession(); // datos corruptos → limpiar sesión
         return { success: false }
     }
-    const token_valido = validateToken(session.token);
+    const token_valido = validateToken(data.token);
     if (!token_valido) {
         clearSession(); // token inválido → limpiar sesión
         LimpiarJWTUsuario(data.username)//borrar jwt de DB
-        console.log("Token inválido o expirado")
+        console.log("Token invalido o expirado")
         return { success: false };
     }
     // verificar si esa cuenta sigue existiendo en la base de datos
-    const { apodo, correo } = LoginConCredenciales({ correo: data.username, token: session.token })
-    if (apodo && correo) {//tenemos todos los datos correctos
-        return { data: { apodo, correo } }
+    const result = await LoginConCredenciales({ correo: data.username, token: data.token })
+    //mostrar como usuario activo en mongodb
+    await InsertarUsuarioActivo({ correo: data.username });
+
+    if (result.apodo && result.correo) {//tenemos todos los datos correctos
+        return true;
     }
     else {
         clearSession(); // datos incorrectos → limpiar sesión
-        throw new Error("Error en auto login: datos recibidos incorrectos")
+        LimpiarJWTUsuario(result.correo)//limpiar token de mongodb
+        console.log("Error en auto login: datos recibidos incorrectos")
+        return false;
     }
 }
 
@@ -134,7 +140,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     enviarEmail({ correoDestino: username, asunto: asunto, htmlContenido: htmlContenido })
 
     intentos_codigo_validacion = n_intentos_codigo_validacion //intentos para poder poner el codigo correcto de verificacion
-    return { success: true }
+    return { success: true, data: { correo: username, apodo: data.apodo } }
 }
 //TODO:
 async function ValidarCodeLogin({ correo, code }) {
@@ -167,6 +173,7 @@ async function ValidarCodeLogin({ correo, code }) {
     if (mantener_sesion_iniciada_usuario) {
         const token = generateToken(correo);
         saveSession({ username: correo, token: token })//guardar sesion en fichero local
+        LimpiarJWTUsuario(correo, token)//guardar en mongodb
     }
 
     BorrarCuentaValidationCodes(correo)//borrar codigos

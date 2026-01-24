@@ -25,7 +25,8 @@ const UserSchema = new mongoose.Schema({
         minlength: 5
     },
     token: {
-        type: String
+        type: String,
+        default: ""
     },
     createdAt: { type: Date, default: Date.now }
 })
@@ -112,10 +113,22 @@ async function InsertarUsuarioActivo({ correo = null }) {
 }
 async function LoginConCredenciales({ correo = null, contraseña = null, token = null }) {
     if (token && correo) {//validar por token + correo
-        const usuario = await User.findOne({ token });
-        if (!usuario) throw new Error("Sesión expirada");
-        if (!(usuario.correo === correo)) throw new Error("Credenciales incorrectas");
-        return { apodo: usuario.apodo, correo: usuario.correo };
+        const usuario = await User.find({ correo }).limit(1);
+
+        if (!usuario) {
+            console.log("NO SE HAN ENCONTRADO DATOS")
+            return {}
+        }
+        if (token != usuario[0].token) {
+            console.log("SESION EXPIRADA: TOKEN")
+            return {}
+        }
+
+        if (!(usuario[0].correo === correo)) {
+            console.log("Correos incorrectos")
+            return {}
+        }
+        return { apodo: usuario[0].apodo, correo: usuario[0].correo };
     }
 
     if (!correo || !contraseña) throw new Error("Faltan datos para iniciar sesión");
@@ -139,14 +152,14 @@ async function BorrarCuentaValidationCodes(correo) {
 async function BorrarUsuarioActivo(correo) {
     await ActiveUser.deleteMany({ correo: correo });
 }
-async function LimpiarJWTUsuario(correo) {
+async function LimpiarJWTUsuario(correo, token = "") {
     await User.updateOne(
         { correo },
-        { $unset: { token: "" } }
+        { $set: { token: token } }
     );
 }
 async function closeDB() {
     await mongoose.disconnect();
 }
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode, BorrarValidationCodes, User, ValidationCode, CuentaValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, ActiveUser, InsertarUsuarioActivo, BorrarUsuarioActivo }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode, BorrarValidationCodes, User, ValidationCode, CuentaValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, ActiveUser, InsertarUsuarioActivo, BorrarUsuarioActivo, LimpiarJWTUsuario }
