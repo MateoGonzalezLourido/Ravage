@@ -40,10 +40,10 @@ app.on('window-all-closed', () => {
 })
 
 /*FUNCIONES DEL PRELOAD */
-const { registerUsuario, loginUsuario, ValidarCodeRegistroUsuario } = require('./backend/services/users.js');
+const { registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/users.js');
 
-ipcMain.handle('login-usuario', async (_, username, password) => {
-    return await loginUsuario({ username: username, contraseña: password });
+ipcMain.handle('login-usuario', async (_, username, password, mantener_sesion_iniciada) => {
+    return await loginUsuario({ username: username, contraseña: password, mantener_sesion_iniciada: mantener_sesion_iniciada });
 });
 
 ipcMain.handle('registrar-usuario', async (_, apodo, username, password) => {
@@ -52,6 +52,9 @@ ipcMain.handle('registrar-usuario', async (_, apodo, username, password) => {
 });
 ipcMain.handle('validar-code-registrar-usuario', async (_, correo, code) => {
     return await ValidarCodeRegistroUsuario({ correo: correo, code: code });
+});
+ipcMain.handle('validar-code-login-usuario', async (_, correo, password) => {
+    return await ValidarCodeLogin({ correo: correo, code: password });
 });
 ipcMain.handle('borrar-code-registrar-usuario', async (_, correo) => {
     return await BorrarValidationCodes(correo);

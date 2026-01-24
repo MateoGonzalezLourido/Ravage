@@ -16,13 +16,16 @@
                 <form id="form-login">
                     <label for="login-user">
                         <span>Correo electrónico</span>
-                        <input id="login-user" placeholder="Usuario" required autofocus autocomplete="on">
+                        <input id="login-user" placeholder="Usuario" required autofocus="on" autocomplete="on">
                     </label>
                     <label for="login-pass">
                         <span>Contraseña</span>
                         <input id="login-pass" type="password" placeholder="Contraseña" required autocomplete="on">
                     </label>
-
+                    <label for="login-guardar">
+                        <span>Mantener sesión iniciada</span>
+                        <input id="login-guardar" type="checkbox" checked>
+                    </label>
                     <button>Entrar</button>
                     <span class="bt-cambio-login-registro" id="bt-cambiar-registro">¿Crear cuenta?</span>
                 </form>
@@ -32,7 +35,7 @@
                 <form id="form-registro">
                     <label for="registro-apodo">
                         <span>Apodo (opcional)</span>
-                        <input id="registro-apodo" placeholder="Apodo" autofocus minlength="3" maxlength="30">
+                        <input id="registro-apodo" placeholder="Apodo" autofocus="on" minlength="3" maxlength="30">
                     </label>
                     <label for="registro-user">
                         <span>Correo electrónico</span>
@@ -49,7 +52,7 @@
                             minlength="5">
                     </label>
 
-                    <button>Entrar</button>
+                    <button>Registrar</button>
                     <span class="bt-cambio-login-registro" id="bt-cambiar-login">¿Tienes cuenta?</span>
                 </form>
             </div>
@@ -60,7 +63,7 @@
                 <span class="span-aviso">Aviso: debes poner el último código generado</span>
                 <form id="form-validation-correo">
                     <input id="bt-code-introducir" type="number" value="" placeholder="123456" required
-                        autocomplete="off" minlength="6" maxlength="6">
+                        autocomplete="off" minlength="6" maxlength="6" autofocus="on">
                     <button class="bt-validar-code">Validar</button>
                     <span class="bt-cambio-login-registro" id="bt-cambiar-login-validation-code">¿Quieres volver?</span>
                 </form>

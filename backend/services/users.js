@@ -1,5 +1,5 @@
 // backend/services/users.js
-const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode } = require('../db/mongo.js')
+const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSession, readSession, clearSession, generateToken, validateToken } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
@@ -34,7 +34,10 @@ async function AUTO_LOGIN_USUARIO() {
 
 let contraseña_hashed;
 let apodo_usuario;
-let intentos_codigo_validacion = 7;
+let mantener_sesion_iniciada_usuario;
+const n_intentos_codigo_validacion = 7;
+let intentos_codigo_validacion = n_intentos_codigo_validacion;
+
 async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
     if (!correo || !password) return { success: false, message: "Faltan datos para registrar el usuario" }
 
@@ -59,7 +62,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     <span>Mateo's Stage</span>`
     InsertarValidationCode({ correo: correo, code: hashed_ValidationCode })
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    intentos_codigo_validacion = 5 //intentos para poder poner el codigo correcto de verificacion
+    intentos_codigo_validacion = n_intentos_codigo_validacion //intentos para poder poner el codigo correcto de verificacion
     return { success: true }
 }
 
@@ -67,14 +70,14 @@ async function ValidarCodeRegistroUsuario({ correo, code }) {
     intentos_codigo_validacion--
     if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al crear el usuario:intentos acabados" } }
     //cojer el ultimo codigo generado
-    const code_db = await ValidationCode.findOne({ correo })
-        .sort({ expira: -1 });
+    const code_db = await ValidationCode.find({ correo })
+        .sort({ expira: -1 }).limit(1);
     if (!code_db) {
         contraseña_hashed = null;
         apodo_usuario = null;
         return { success: false, message: "Fallo al crear el usuario:datos no encontrados" };
     }
-    const ok = await bcrypt.compare(String(code), code_db.code);
+    const ok = await bcrypt.compare(String(code), code_db[0].code);
     if (!ok) {
         console.log(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
         return { success: false, message: "Fallo al crear el usuario:codigo incorrecto", intentos: intentos_codigo_validacion };
@@ -101,60 +104,86 @@ async function ValidarCodeRegistroUsuario({ correo, code }) {
 
     apodo_usuario = null;
 
-    return { success: true, data: { apodo_usuario, correo } };
+    return { success: true };
 }
 
-async function loginUsuario({ username, contraseña }) {
+async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {
     //limpiar cosas del registro
-    contraseña_hashed = null;
-    apodo_usuario = null;
-
+    if (apodo_usuario || apodo_usuario) {
+        contraseña_hashed = null;
+        apodo_usuario = null;
+    }
+    mantener_sesion_iniciada_usuario = mantener_sesion_iniciada
     const resultado = comprobaciones_Correo(username)
-    if (!resultado.res) return { success: false, message: resultado.mes }
+    if (!resultado.success) return { success: false, message: resultado.message }
 
-    const { apodo, correo } = LoginConCredenciales({ correo: username, contraseña: contraseña })
-    if (!apodo || !correo) return { success: false, message: 'Usuario no encontrado' }
+    const data = await LoginConCredenciales({ correo: username, contraseña: contraseña })
+    if (!data.apodo || !data.correo) return { success: false, message: 'Usuario no encontrado' }
 
     //crear verificacion por codigo de correo
-    const ValidationCode = generarCodigo()
+    const code_generado = String(generarCodigo())
+    const hashed_ValidationCode = await bcrypt.hash(code_generado, 10)
     const asunto = "Verificación de cuenta"
-    const htmlContenido = `<span style="text-decoration:underline">Hola, ${apodo}</span>
-    <span style="font-size:20px">Codigo de verificacion de cuenta:</br><font style="color:green">${ValidationCode}</font></span>
+    const htmlContenido = `<span style="text-decoration:underline">Hola, ${data.apodo}</span>
+    <span style="font-size:20px">Codigo de verificacion de cuenta:</br><font style="color:green">${code_generado}</font></span>
+    <span>Debes usar este código para poder iniciar sesión.</span>
     <span>Si no has sido tú puedes decírnoslo por este correo.</span>
     <span style="font-style: italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
     <span>Mateo's Stage</span>`
-    InsertarValidationCode({ correo: correo, code: ValidationCode })
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-}
+    InsertarCuentaValidationCode({ correo: username, code: hashed_ValidationCode })
+    enviarEmail({ correoDestino: username, asunto: asunto, htmlContenido: htmlContenido })
 
-async function ValidarCodeLogin(correo, code) {
-    const code_db = await ValidationCode.find({ correo }).toArray();
-    if (!code_db) return { success: false, message: "Fallo al crear el usuario:datos no encontrados" };
-    const ok = false
-    for (let i = 0; i < code_db.length; i++) {
-        if (bcrypt.compare(code, code_db[i])) {
-            ok = true
-            break
+    intentos_codigo_validacion = n_intentos_codigo_validacion //intentos para poder poner el codigo correcto de verificacion
+    return { success: true }
+}
+//TODO:
+async function ValidarCodeLogin({ correo, code }) {
+    intentos_codigo_validacion--
+    if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al iniciar sesion:intentos acabados" } }
+    //cojer el ultimo codigo generado
+    const code_db = await CuentaValidationCode.find({ correo })
+        .sort({ expira: -1 }).limit(1);
+    if (!code_db) {
+        mantener_sesion_iniciada_usuario = null
+        return { success: false, message: "Fallo al iniciar sesion:datos no encontrados" };
+    }
+    const ok = await bcrypt.compare(String(code), code_db[0].code);
+    if (!ok) {
+        console.log(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
+        return { success: false, message: "Fallo al iniciar sesion:codigo incorrecto", intentos: intentos_codigo_validacion };
+    };
+    //mostrar como usuario activo en mongodb
+    const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: correo });
+
+    if (!NuevoUsuarioActivo) {
+        BorrarCuentaValidationCodes(correo)//borrar codigos
+        mantener_sesion_iniciada_usuario = null;
+        return {
+            success: false, message: "Fallo al iniciar sesion"
         }
     }
-    if (!ok) {
-        BorrarValidationCodes(correo)
-        return { success: false, message: "Fallo al crear el usuario:codigo incorrecto" };
+
+    //JWT , mantener sesion iniciada en cache
+    if (mantener_sesion_iniciada_usuario) {
+        const token = generateToken(correo);
+        (async () => saveSession({ username: correo, token: token })//guardar sesion en fichero local
+        )
     }
 
-    //JWT 
-    const token = generateToken(username);
-    saveSession({ username: correo, token: token })//guardar sesion en fichero local
+    BorrarCuentaValidationCodes(correo)//borrar codigos
+    //mandar correo confirmando creacion de cuenta
+    const asunto = "Alerta de sesión"
+    const htmlContenido = `<span>Se ha iniciado sesión con tu cuenta</span>
+    <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
 
-    BorrarValidationCodes(correo)//borrar codigos
-
-    return { success: true, data: { apodo, correo } }
+    return { success: true, data: { correo: correo } };
 }
 
 async function cerrarSesionUsuario(correo) {
     clearSession()//limpiar autologin
     LimpiarJWTUsuario(correo)//borrar jwt de DB
-
+    BorrarUsuarioActivo()
     console.log("*Sesion cerrada")
 }
 

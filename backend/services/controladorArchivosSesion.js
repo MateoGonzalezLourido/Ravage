@@ -1,14 +1,16 @@
 // backend/services/sessionFile.js
-const fs = require('fs');
+const fs = require("fs");
 const path = require('path');
 const dotenv = require("dotenv");
 dotenv.config();
 
-const sessionFile = path.join(process.cwd(), 'APP_DATA', 'sesionfile.json') // conseguir la ruta absoluta del APP_DATA ...
+const sessionFile = path.join(process.cwd(), 'APP_DATA', 'sesionfile.json');// conseguir la ruta absoluta del APP_DATA ...
 
 function saveSession({ username, token }) {//guardar/ crear archivo
     const data = { username, token };
-    fs.writeFile(sessionFile, JSON.stringify(data, null)); // sobrescribe completamente con esos datos
+    fs.writeFile(sessionFile, JSON.stringify(data), (err) => {
+        if (err) console.error("Error al guardar sesión:", err);
+    });
 
 }
 
