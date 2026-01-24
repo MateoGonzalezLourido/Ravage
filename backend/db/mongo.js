@@ -24,10 +24,14 @@ const UserSchema = new mongoose.Schema({
         required: true,
         minlength: 5
     },
-    token: {
-        type: String,
-        default: ""
-    },
+    token: [{
+        type: [String],
+        default: []
+    }],
+    token_OVC: [{
+        type: [String],
+        default: []
+    }],
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({
@@ -61,6 +65,7 @@ const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCode", ValidationCodeSchema, "validationcodes");
 const CuentaValidationCode = mongoose.model("CuentaValidationCode", ValidationCodeSchema, "cuentavalidationcode");
 const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
+
 async function connectDB() {
     await mongoose.connect(uri);
     console.log("-Conectado a MongoDB");
@@ -113,13 +118,22 @@ async function InsertarUsuarioActivo({ correo = null }) {
 }
 async function LoginConCredenciales({ correo = null, contraseña = null, token = null }) {
     if (token && correo) {//validar por token + correo
+
         const usuario = await User.find({ correo }).limit(1);
 
         if (!usuario) {
             console.log("NO SE HAN ENCONTRADO DATOS")
             return {}
         }
-        if (token != usuario[0].token) {
+        //validar token
+        let validado = false
+        for (let i = 0; i < usuario[0].token.length; i++) {
+            if (token === usuario[0].token[i][0]) {
+                validado = true
+                break
+            }
+        }
+        if (!validado) {
             console.log("SESION EXPIRADA: TOKEN")
             return {}
         }
@@ -128,19 +142,19 @@ async function LoginConCredenciales({ correo = null, contraseña = null, token =
             console.log("Correos incorrectos")
             return {}
         }
-        return { apodo: usuario[0].apodo, correo: usuario[0].correo };
+        return usuario[0]
     }
 
     if (!correo || !contraseña) throw new Error("Faltan datos para iniciar sesión");
     //validar por credenciales correo + contraseña
-    const usuario = await User.findOne({ correo: correo });
+    const usuario = await User.find({ correo }).limit(1);
     if (!usuario) throw new Error("Credenciales incorrectas");
 
-    const ok = await bcrypt.compare(contraseña, usuario.contrasena);
+    const ok = await bcrypt.compare(contraseña, usuario[0].contrasena);
     if (!ok) throw new Error("Credenciales incorrectas");
 
-    console.log(`Sesion iniciada: ${usuario.apodo}`)
-    return { apodo: usuario.apodo, correo: usuario.correo };
+    console.log(`Sesion iniciada: ${usuario[0].apodo}`)
+    return usuario[0]
 }
 
 async function BorrarValidationCodes(correo) {
@@ -152,14 +166,33 @@ async function BorrarCuentaValidationCodes(correo) {
 async function BorrarUsuarioActivo(correo) {
     await ActiveUser.deleteMany({ _id: correo });
 }
+async function AñadirJWTUsuario(correo, token = "") {
+    await User.updateOne(
+        { correo },
+        { $push: { token: token } }
+    );
+}
+async function AñadirJWTUsuarioVerificacionCuenta(correo, token = "") {
+    await User.updateOne(
+        { correo },
+        { $push: { token_OVC: token } }
+    );
+}
 async function LimpiarJWTUsuario(correo, token = "") {
     await User.updateOne(
         { correo },
-        { $set: { token: token } }
+        { $pull: { tokens: token } }
+    );
+}
+async function LimpiarJWTUsuarioVerificacionCuenta(correo, token = "") {
+    console.log(token)
+    await User.updateOne(
+        { correo },
+        { $pull: { token_OVC: token } }
     );
 }
 async function closeDB() {
     await mongoose.disconnect();
 }
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode, BorrarValidationCodes, User, ValidationCode, CuentaValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, ActiveUser, InsertarUsuarioActivo, BorrarUsuarioActivo, LimpiarJWTUsuario }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode, BorrarValidationCodes, User, ValidationCode, CuentaValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, ActiveUser, InsertarUsuarioActivo, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta }
