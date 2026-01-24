@@ -1,2 +1,4 @@
 
 Verificar que los codigos de verificacion expiren en 10minutos ellos solos
+
+meter token para no tener que usar verificacion de cuenta durante un tiempo despues de haberla hecho ya

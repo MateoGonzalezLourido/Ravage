@@ -6,12 +6,12 @@ dotenv.config();
 
 const sessionFile = path.join(process.cwd(), 'APP_DATA', 'sesionfile.json');// conseguir la ruta absoluta del APP_DATA ...
 
-function saveSession({ username, token }) {//guardar/ crear archivo
+async function saveSession({ username, token = "" }) {//guardar/ crear archivo
     const data = { username, token };
     fs.writeFile(sessionFile, JSON.stringify(data), (err) => {
         if (err) console.error("Error al guardar sesión:", err);
     });
-
+    console.log("cache de sesion actualizada")
 }
 
 function readSession() {//leer archivo

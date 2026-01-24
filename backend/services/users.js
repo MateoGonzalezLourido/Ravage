@@ -166,8 +166,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //JWT , mantener sesion iniciada en cache
     if (mantener_sesion_iniciada_usuario) {
         const token = generateToken(correo);
-        (async () => saveSession({ username: correo, token: token })//guardar sesion en fichero local
-        )
+        saveSession({ username: correo, token: token })//guardar sesion en fichero local
     }
 
     BorrarCuentaValidationCodes(correo)//borrar codigos
