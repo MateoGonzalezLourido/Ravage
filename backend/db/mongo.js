@@ -68,6 +68,7 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, token =
     });
 
     console.log("Usuario insertado correctamente");
+    return true
 }
 async function InsertarValidationCode({ correo = null, code = null }) {
     if (!correo || !code) { throw new Error("Faltan datos para insertar codigo"); }
@@ -77,10 +78,10 @@ async function InsertarValidationCode({ correo = null, code = null }) {
         correo: correo
     });
 
-    console.log("Usuario insertado correctamente");
+    console.log("Codigo insertado correctamente");
 }
-async function LoginConCredenciales({ correo = null, contraseña = null, token =null }) {
-    if (token  && correo) {//validar por token + correo
+async function LoginConCredenciales({ correo = null, contraseña = null, token = null }) {
+    if (token && correo) {//validar por token + correo
         const usuario = await User.findOne({ token });
         if (!usuario) throw new Error("Sesión expirada");
         if (!(usuario.correo === correo)) throw new Error("Credenciales incorrectas");
@@ -97,9 +98,11 @@ async function LoginConCredenciales({ correo = null, contraseña = null, token =
 
     return { apodo: usuario.apodo, correo: usuario.correo };
 }
+
 async function BorrarValidationCodes(correo) {
     await ValidationCode.deleteMany({ correo: correo });
 }
+
 async function LimpiarJWTUsuario(correo) {
     await User.updateOne(
         { correo },

@@ -1,5 +1,5 @@
 // backend/services/users.js
-const { InsertarUsuario, LoginConCredenciales, User, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode } = require('../db/mongo.js')
+const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSession, readSession, clearSession, generateToken, validateToken } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
@@ -32,7 +32,7 @@ async function AUTO_LOGIN_USUARIO() {
     }
 }
 
-let hashed;
+let contraseña_hashed;
 let apodo_usuario;
 async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
     if (!correo || !password) return { success: false, message: "Faltan datos para registrar el usuario" }
@@ -43,7 +43,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     const existe = await User.findOne({ email: correo });
     if (existe) return { success: false, message: "Correo ya registrado" };
 
-    hashed = await bcrypt.hash(password, 10);//contraseña hasheada
+    contraseña_hashed = await bcrypt.hash(password, 10);//contraseña hasheada
     apodo_usuario = apodo
 
     //crear verificacion por codigo de correo
@@ -62,42 +62,49 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
 }
 
 async function ValidarCodeRegistroUsuario({ correo, code }) {
-    //TODO: ESTO DA ERROR-> code_db
-    const code_db = await ValidationCode.find({ correo }).toArray();
+    //cojer el ultimo codigo generado
+    const code_db = await ValidationCode.findOne({ correo })
+        .sort({ expira: -1 });
     if (!code_db) {
-        hashed = null;
+        contraseña_hashed = null;
         apodo_usuario = null;
         return { success: false, message: "Fallo al crear el usuario:datos no encontrados" };
     }
-    const ok = false
-    for (let i = 0; i < code_db.length; i++) {
-        if (bcrypt.compare(code, code_db[i])) {
-            ok = true
-            break
-        }
-    }
-    if (!ok) {
-        hashed = null;
+    if (!(code_db.code === code)) {
+        contraseña_hashed = null;
         apodo_usuario = null;
         BorrarValidationCodes(correo)
         return { success: false, message: "Fallo al crear el usuario:codigo incorrecto" };
     }
 
-    const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: hashed, correo: correo });//crear usuario en DB
+    const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correo });//crear usuario en DB
     if (!nuevoUsuario) {
-        hashed = null;
+        BorrarValidationCodes(correo)//borrar codigos
+        contraseña_hashed = null;
         apodo_usuario = null;
         return { success: false, message: "Fallo al crear el usuario" };
     }
 
+    //limpiar datos y enviar correo de confirmacion
+    contraseña_hashed = null;
     BorrarValidationCodes(correo)//borrar codigos
-    hashed = null;
+    //mandar correo confirmando creacion de cuenta
+    const asunto = "Confirmación de cuenta"
+    const htmlContenido = `<span>¡Bienvenido a RAVAGE, ${apodo_usuario}!</span>
+    <span style="text-decoration:underline">Se ha creado correctamente su cuenta</span>
+    <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+
     apodo_usuario = null;
 
     return { success: true, data: { apodo_usuario, correo } };
 }
 
 async function loginUsuario({ username, contraseña }) {
+    //limpiar cosas del registro
+    contraseña_hashed = null;
+    apodo_usuario = null;
+
     const resultado = comprobaciones_Correo(username)
     if (!resultado.res) return { success: false, message: resultado.mes }
 

@@ -8,6 +8,7 @@ function generarCodigo() {
 }
 
 async function enviarEmail({ correoDestino = null, asunto = "Sin asunto", htmlContenido = "" }) {
+    console.log("Correo enviado al usuario")
     if (!correoDestino) { throw new Error(`Brevo error: FALTA DESTINATARIO`) }
 
     const body = {

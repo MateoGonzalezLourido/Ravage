@@ -28,13 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const username = document.querySelector('#login-user').value
         const password = document.querySelector('#login-pass').value
 
-        //TODO: backend
-        const result = fetch('/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, password: password })
-        })
-        alert(result.success ? `Bienvenido ${result.username}` : result.message)
+        //TODO:conectar con backend
     })
     document.querySelector("#form-registro").addEventListener('submit', async (e) => {
         e.preventDefault()
@@ -62,13 +56,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
             document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
             document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
-            document.querySelector("#form-validation-correo").addEventListener("submit", async () => {
+            document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
+                e.preventDefault()
                 const codigo = document.querySelector("#bt-code-introducir").value
                 result = await window.sesion_usuario.VALIDAR_CODE_REGISTRAR_USUARIO(username, codigo);
+                console.log("xdata:", result)
                 if (result.success) {//codigo valido
                     console.log("SE HA CREADO EL USUARIO CORRECTAMENTE")
+
+                }
+                else {
+                    console.log("NO SE HA CREADO EL USUARIO CORRECTAMENTE")
+
                 }
             })
+        }
+        else {//TODO:mostrar errores en el html
+
         }
 
     })
