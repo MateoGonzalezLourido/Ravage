@@ -34,34 +34,38 @@ async function AUTO_LOGIN_USUARIO() {
 
 let contraseña_hashed;
 let apodo_usuario;
+let intentos_codigo_validacion = 7;
 async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
     if (!correo || !password) return { success: false, message: "Faltan datos para registrar el usuario" }
 
     const resultado = comprobaciones_Correo(correo)
     if (!resultado.success) return { success: false, message: resultado.message }
     //verificar si no existe un usuario igual
-    const existe = await User.findOne({ email: correo });
+    const existe = await User.findOne({ correo: correo });
     if (existe) return { success: false, message: "Correo ya registrado" };
 
     contraseña_hashed = await bcrypt.hash(password, 10);//contraseña hasheada
     apodo_usuario = apodo
 
     //crear verificacion por codigo de correo
-    const ValidationCode = String(generarCodigo())
+    const code_generado = String(generarCodigo())
+    const hashed_ValidationCode = await bcrypt.hash(code_generado, 10)
     //const hashedValidationCode = await bcrypt.hash(ValidationCode, 10)
     const asunto = "Verificación de correo"
     const htmlContenido = `<span style="text-decoration:underline">Hola, ${apodo}</span>
-    <span style="font-size:20px">Codigo de verificacion de correo:</br><font style="color:green">${ValidationCode}</font></span>
+    <span style="font-size:20px">Codigo de verificacion de correo:</br><font style="color:green">${code_generado}</font></span>
     <span>Si no has sido tú puedes decírnoslo por este correo.</span>
     <span style="font-style: italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
     <span>Mateo's Stage</span>`
-    InsertarValidationCode({ correo: correo, code: ValidationCode })
+    InsertarValidationCode({ correo: correo, code: hashed_ValidationCode })
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-
+    intentos_codigo_validacion = 5 //intentos para poder poner el codigo correcto de verificacion
     return { success: true }
 }
 
 async function ValidarCodeRegistroUsuario({ correo, code }) {
+    intentos_codigo_validacion--
+    if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al crear el usuario:intentos acabados" } }
     //cojer el ultimo codigo generado
     const code_db = await ValidationCode.findOne({ correo })
         .sort({ expira: -1 });
@@ -70,19 +74,19 @@ async function ValidarCodeRegistroUsuario({ correo, code }) {
         apodo_usuario = null;
         return { success: false, message: "Fallo al crear el usuario:datos no encontrados" };
     }
-    if (!(code_db.code === code)) {
-        contraseña_hashed = null;
-        apodo_usuario = null;
-        BorrarValidationCodes(correo)
-        return { success: false, message: "Fallo al crear el usuario:codigo incorrecto" };
-    }
-
+    const ok = await bcrypt.compare(String(code), code_db.code);
+    if (!ok) {
+        console.log(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
+        return { success: false, message: "Fallo al crear el usuario:codigo incorrecto", intentos: intentos_codigo_validacion };
+    };
     const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correo });//crear usuario en DB
     if (!nuevoUsuario) {
         BorrarValidationCodes(correo)//borrar codigos
         contraseña_hashed = null;
         apodo_usuario = null;
-        return { success: false, message: "Fallo al crear el usuario" };
+        return {
+            success: false, message: "Fallo al crear el usuario"
+        }
     }
 
     //limpiar datos y enviar correo de confirmacion
@@ -157,7 +161,6 @@ async function cerrarSesionUsuario(correo) {
 function comprobaciones_Correo(correo) {
     let success = true;
     let message = "Username válido";
-    const partes_correo = correo.split("@");
     //validaciones
     if (/[A-Z]/.test(correo)) { success = false; message = "El correo no puede contener mayúsculas"; }
     else if (correo.indexOf("@") == -1) { success = false; message = "No es un correo"; }

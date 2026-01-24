@@ -47,7 +47,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         //TODO: backend
         let result = await window.sesion_usuario.REGISTRAR_USUARIO(apodo, username, password);
-        if (result) {//datos validos: validar codigo de correo
+
+        if (result.success) {//datos validos: validar codigo de correo
             document.querySelector("#seccion-login").classList.remove("flex-display")
             document.querySelector("#seccion-login").classList.add("ocultar-display")
 
@@ -56,6 +57,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
             document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
+            document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", () => {
+                document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
+                document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
+
+                document.querySelector("#seccion-registro").classList.remove("ocultar-display")
+                document.querySelector("#seccion-registro").classList.add("flex-display")
+            })
             document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
                 e.preventDefault()
                 const codigo = document.querySelector("#bt-code-introducir").value
@@ -63,9 +71,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.log("xdata:", result)
                 if (result.success) {//codigo valido
                     console.log("SE HA CREADO EL USUARIO CORRECTAMENTE")
+                    //mostrar menu de confirmacion cuenta creada
+                    document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
+                    document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
 
+                    document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("ocultar-display")
+                    document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("flex-display")
+
+                    document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
+                        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("flex-display")
+                        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("ocultar-display")
+
+                        document.querySelector("#seccion-login").classList.remove("ocultar-display")
+                        document.querySelector("#seccion-login").classList.add("flex-display")
+                    })
                 }
-                else {
+                else {//TODO:mostrar errores en el html
                     console.log("NO SE HA CREADO EL USUARIO CORRECTAMENTE")
 
                 }

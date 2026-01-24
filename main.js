@@ -53,3 +53,6 @@ ipcMain.handle('registrar-usuario', async (_, apodo, username, password) => {
 ipcMain.handle('validar-code-registrar-usuario', async (_, correo, code) => {
     return await ValidarCodeRegistroUsuario({ correo: correo, code: code });
 });
+ipcMain.handle('borrar-code-registrar-usuario', async (_, correo) => {
+    return await BorrarValidationCodes(correo);
+});

@@ -1,1 +1,5 @@
 HACER QUE EL CODIGO DE VALIDACION SE MANDE A LA BASE DE DATOS HASHEADA
+
+Verificar que los codigos de verificacion expiren en 10minutos ellos solos
+
+Que la app se de cuetna en elregistro que ese correo ya esta en uso antes de enviar el codigo de verificacion y se queje mongodb

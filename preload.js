@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     },
     VALIDAR_CODE_REGISTRAR_USUARIO: (correo, code) => {
         return ipcRenderer.invoke('validar-code-registrar-usuario', correo, code)
+    },
+    BORRAR_CODES_VALIDACION_CORREO: (correo) => {
+        return ipcRenderer.invoke('borrar-code-registrar-usuario', correo)
     }
 })
 contextBridge.exposeInMainWorld('boot', {//funciones de inicio de la app
