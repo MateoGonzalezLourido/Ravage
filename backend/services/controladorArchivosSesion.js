@@ -2,10 +2,15 @@ const fs = require("fs")
 const path = require('path');
 const dotenv = require("dotenv");
 dotenv.config();
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { app } = require('electron')
+const { machineIdSync } = require('node-machine-id');
+const si = require('systeminformation');
+
 
 const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;//codigo para crear jwt (un valor definido por mi)
+
 //rutas
 const ruta_app_data = app.getPath('userData')
 const name_carpeta = '.APP_DATA'
@@ -64,13 +69,18 @@ async function clearFileSession(ruta) {//borrar archivo
 
 /*JWT */
 
-function generarteToken(username, duracion) {
+async function generarteToken(username, duracion) {
     const duraciones = {
         sesion: '7d',
         cuenta: '90m'
     }
+
+    // generar payload seguro para no replicar tokens en pcs distintos y evitar falsificacion
+    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+    const baseboard = await si.baseboard(); //placa base
+    const payload = await bcrypt.hash(username + deviceId + baseboard.serial, 10);
     return jwt.sign(
-        { username },           // payload
+        { payload },           // payload
         SECRET_KEY_JWT,             // clave secreta
         { expiresIn: duraciones[duracion] }    // duración del token
     );

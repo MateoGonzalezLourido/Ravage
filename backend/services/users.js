@@ -177,7 +177,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         //JWT , mantener sesion iniciada en cache
         (async () => {
             if (mantener_sesion_iniciada) {
-                const token = generarteToken(data.correo, 'sesion');
+                const token = await generarteToken(data.correo, 'sesion');
                 saveSessionFile({ username: data.correo, token: token })//guardar sesion en fichero local
                 AñadirJWTUsuario(data.correo, token)//guardar en mongodb
             }
@@ -229,7 +229,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //JWT , mantener sesion iniciada en cache
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
-            const token = generarteToken(correo, 'sesion');
+            const token = await generarteToken(correo, 'sesion');
             saveSessionFile({ username: correo, token: token })//guardar sesion en fichero local
             AñadirJWTUsuario(correo, token)//guardar en mongodb
         }
@@ -237,7 +237,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //guardar auto verificacion de cuenta en fichero local
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
-            const token = generarteToken(correo, 'cuenta');
+            const token = await generarteToken(correo, 'cuenta');
             saveOmitirVerificacionCuentaFile({ username: correo, token: token })
             AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
         }
