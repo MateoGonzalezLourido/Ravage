@@ -2,7 +2,7 @@
 const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSessionFile, clearFileSession, generarteToken, validateToken, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
-const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
+const { enviarEmail, generarCodigoVerificacion } = require('./Servicio_mensajeria_correo.js')
 const state = require('../STATE/Variables_sesion.js')
 
 async function AUTO_LOGIN_USUARIO() {
@@ -60,7 +60,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     apodo_usuario = apodo
 
     //crear verificacion por codigo de correo
-    const code_generado = String(generarCodigo())
+    const code_generado = String(generarCodigoVerificacion())
     const hashed_ValidationCode = await bcrypt.hash(code_generado, 10)
     //const hashedValidationCode = await bcrypt.hash(ValidationCode, 10)
     const asunto = "Verificación de correo"
@@ -176,7 +176,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     else {
         //crear verificacion por codigo de correo
-        const code_generado = String(generarCodigo())
+        const code_generado = String(generarCodigoVerificacion())
         const hashed_ValidationCode = await bcrypt.hash(code_generado, 10)
         const asunto = "Verificación de cuenta"
         const htmlContenido = `<span style="text-decoration:underline">Hola, ${data.apodo}</span>
