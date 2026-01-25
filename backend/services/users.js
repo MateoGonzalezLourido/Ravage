@@ -1,7 +1,7 @@
 // backend/services/users.js
-const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta, generateTokenCuentaValidation } = require('../db/mongo.js')
+const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
-const { saveSession, readSession, clearSession, generateToken, validateToken, saveOmitirVerificacionCuenta, readOmitirVerificacionCuenta, clearVerificacionCuenta } = require('./controladorArchivosSesion.js')
+const { saveSession, readSession, clearSession, generateToken, validateToken, saveOmitirVerificacionCuenta, readOmitirVerificacionCuenta, clearVerificacionCuenta, generateTokenCuentaValidation } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
 const state = require('../STATE/Variables_sesion.js')
 

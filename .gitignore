@@ -3,4 +3,5 @@ storage/
 .env
 dist/
 package-lock.json
-APP_DATA/*
+/APP_DATA/*
+!/APP_DATA/.gitkeep

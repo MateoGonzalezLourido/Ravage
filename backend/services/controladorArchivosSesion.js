@@ -1,17 +1,20 @@
 // backend/services/sessionFile.js
-const fs = require("fs");
+const fs = require("fs")
 const path = require('path');
 const dotenv = require("dotenv");
 dotenv.config();
 const jwt = require('jsonwebtoken');
-
+const { app } = require('electron')
 const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;
+const sessionDir = path.join(app.getPath('userData'), '.APP_DATA')
+const sessionFile = path.join(app.getPath('userData'), '.APP_DATA', 'sesionfile.json');// conseguir la ruta absoluta del APP_DATA ...
+const omitirVerificacionCuentaFile = path.join(app.getPath('userData'), '.APP_DATA', 'auto_login.json')
 
-const sessionFile = path.join(process.cwd(), 'APP_DATA', 'sesionfile.json');// conseguir la ruta absoluta del APP_DATA ...
-const omitirVerificacionCuentaFile = path.join(process.cwd(), 'APP_DATA', 'auto_login.json')
 async function saveSession({ username, token = "" }) {//guardar/ crear archivo
     const data = { username, token };
-    fs.writeFile(sessionFile, JSON.stringify(data), (err) => {
+    if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+
+    fs.writeFile(sessionFile, JSON.stringify(data), "utf8", (err) => {
         if (err) {
             clearSession()
             console.error("Error al guardar sesión:", err);
@@ -63,7 +66,8 @@ function validateToken(token) {
 /*CREAR GUARDADO DE OMITIR VERIFIACION DE CUENTA */
 async function saveOmitirVerificacionCuenta({ username, token = "" }) {//guardar/ crear archivo
     const data = { username, token };
-    fs.writeFile(omitirVerificacionCuentaFile, JSON.stringify(data), (err) => {
+    if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+    fs.writeFile(omitirVerificacionCuentaFile, JSON.stringify(data), "utf8", (err) => {
         if (err) {
             clearVerificacionCuenta()
             console.error("Error al guardar autoverifiacion de cuenta:", err);
