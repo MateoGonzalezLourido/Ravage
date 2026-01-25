@@ -12,3 +12,5 @@ verificar que el token de sesion expire
 Borrar tokens de la base de datos de mongo db cuando expiren
 
 Cuando el usuario salga de la verificacion de cuenta o correo que se borren los codigos
+
+LOS TOKENS DEBEN IR ASOCIADOS A LA MAC O ALGUN DATO QUE IDENTIFIQUE Y DISTINGUE AL DISPOSITIVO AL QUE SE LE DIO ESE TOKEN PARA QUE OTROS NO PUEDAN REPLICAR ESE TOKEN Y HACERSE PASAR POR EL
