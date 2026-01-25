@@ -1,5 +1,5 @@
 // backend/services/users.js
-const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta } = require('../db/mongo.js')
+const { InsertarUsuario, LoginUsuario, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSessionFile, clearFileSession, generarteToken, validateToken, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigoVerificacion } = require('./Servicio_mensajeria_correo.js')
@@ -24,7 +24,7 @@ async function AUTO_LOGIN_USUARIO() {
         return { success: false };
     }
     // verificar si esa cuenta sigue existiendo en la base de datos
-    const result = await LoginConCredenciales({ correo: data.username, token: data.token })
+    const result = await LoginUsuario({ correo: data.username, token: data.token })
     state.setApodoSesion(data.apodo)
     //mostrar como usuario activo en mongodb
     if (result.apodo && result.correo) {//tenemos todos los datos correctos
@@ -69,7 +69,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     <span>Si no has sido tú puedes decírnoslo por este correo.</span>
     <span style="font-style: italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
     <span>Mateo's Stage</span>`
-    InsertarValidationCode({ correo: correo, code: hashed_ValidationCode })
+    InsertarVC({ correo: correo, code: hashed_ValidationCode })
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
     intentos_codigo_validacion = n_intentos_codigo_validacion //intentos para poder poner el codigo correcto de verificacion
     return { success: true }
@@ -93,7 +93,7 @@ async function ValidarCodeRegistroUsuario({ correo, code }) {
     };
     const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correo });//crear usuario en DB
     if (!nuevoUsuario) {
-        BorrarValidationCodes(correo)//borrar codigos
+        BorrarVC(correo)//borrar codigos
         contraseña_hashed = null;
         apodo_usuario = null;
         return {
@@ -103,7 +103,7 @@ async function ValidarCodeRegistroUsuario({ correo, code }) {
 
     //limpiar datos y enviar correo de confirmacion
     contraseña_hashed = null;
-    BorrarValidationCodes(correo)//borrar codigos
+    BorrarVC(correo)//borrar codigos
     //mandar correo confirmando creacion de cuenta
     const asunto = "Confirmación de cuenta"
     const htmlContenido = `<span>¡Bienvenido a RAVAGE, ${apodo_usuario}!</span>
@@ -126,7 +126,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     const resultado = comprobaciones_Correo(username)
     if (!resultado.success) return { success: false, message: resultado.message }
 
-    const data = await LoginConCredenciales({ correo: username, contraseña: contraseña })
+    const data = await LoginUsuario({ correo: username, contraseña: contraseña })
     if (!data.apodo || !data.correo) return { success: false, message: 'Usuario no encontrado' }
     state.setApodoSesion(data.apodo)
 
@@ -140,7 +140,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
             console.log(data)
 
             for (let i = 0; i < data.token_OVC.length; i++) {
-                if (data_autoverificacion.token === data.token_OVC[i][0]) {
+                if (data_autoverificacion.token === data.token_OVC[i]) {
                     validado2 = true
                     break
                 }
@@ -154,7 +154,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         }
         else {//limpiar archivo y token
             clearFileSession('omitirVerificacionCuentaFile');
-            LimpiarJWTUsuarioVerificacionCuenta(username, data_autoverificacion.token)
+            LimpiarJWTUsuarioVC(username, data_autoverificacion.token)
         }
     }
     if (autoverificacion) {//se autovalida
@@ -185,7 +185,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         <span>Si no has sido tú puedes decírnoslo por este correo.</span>
         <span style="font-style: italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
         <span>Mateo's Stage</span>`
-        InsertarCuentaValidationCode({ correo: username, code: hashed_ValidationCode })
+        InsertarCuentaVC({ correo: username, code: hashed_ValidationCode })
         enviarEmail({ correoDestino: username, asunto: asunto, htmlContenido: htmlContenido })
 
         intentos_codigo_validacion = n_intentos_codigo_validacion //intentos para poder poner el codigo correcto de verificacion
@@ -230,11 +230,11 @@ async function ValidarCodeLogin({ correo, code }) {
         if (mantener_sesion_iniciada_usuario) {
             const token = generarteToken(correo,'cuenta');
             saveOmitirVerificacionCuentaFile({ username: correo, token: token })
-            AñadirJWTUsuarioVerificacionCuenta(correo, token)//guardar en mongodb
+            AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
         }
     })();
     state.setCorreoSesion(correo)
-    BorrarCuentaValidationCodes(correo)//borrar codigos
+    BorrarCuentaVC(correo)//borrar codigos
 
 
     //mandar correo confirmando creacion de cuenta

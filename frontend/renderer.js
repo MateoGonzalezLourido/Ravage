@@ -105,7 +105,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
                             e.preventDefault()
-                            mostrar_menu_log(false)
+                            mostrar_menu_cuenta_creada(false)
+                            mostrar_menu_log(true)
                         })
                     }
                     else {//TODO:mostrar errores en el html

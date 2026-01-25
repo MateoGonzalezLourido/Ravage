@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
-
 dotenv.config();
-const uri = process.env.URI_MONGODB;
+
+//esquemas de datos
 const UserSchema = new mongoose.Schema({
     apodo: {
         type: String,
@@ -24,14 +24,14 @@ const UserSchema = new mongoose.Schema({
         required: true,
         minlength: 5
     },
-    token: [{
+    token: {
         type: [String],
         default: []
-    }],
-    token_OVC: [{
+    },
+    token_OVC: {
         type: [String],
         default: []
-    }],
+    },
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({
@@ -60,33 +60,77 @@ const ActiveUserSchema = new mongoose.Schema({
         match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     }
 })
-
+//las tablas de datos de Ravage
 const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCode", ValidationCodeSchema, "validationcodes");
 const CuentaValidationCode = mongoose.model("CuentaValidationCode", ValidationCodeSchema, "cuentavalidationcode");
 const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
 
+//conectar db
 async function connectDB() {
-    await mongoose.connect(uri);
+    await mongoose.connect(process.env.URI_MONGODB);
     console.log("-Conectado a MongoDB");
 }
+//cerrar db
+async function closeDB() {
+    await mongoose.disconnect();
+    console.log("-Cerrado MongoDB");
+}
+//loging usuario
+async function LoginUsuario({ correo = null, contraseña = null, token = null }) {
+    if (token && correo) {//validar por token + correo
+        //obtener usuario+datos
+        const usuario_datos = (await User.find({ correo }).limit(1))[0]
+        if (!usuario_datos) {
+            console.log("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
+            return {}
+        }
+        //validar token
+        let validado = false
+        for (let i = 0; i < usuario_datos.token.length; i++) {
+            if (token === usuario_datos.token[i]) {
+                validado = true
+                break
+            }
+        }
+        if (!validado) {
+            console.log("LOG, SESION EXPIRADA: TOKEN")
+            return {}
+        }
 
-async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, token = "" }) {//la contraseña ya biene hasheada
-
+        if (!(usuario_datos.correo === correo)) {
+            console.log("LOG, CORREOS INCORRECTOS")
+            return {}
+        }
+        //sesion iniciada
+        return usuario_datos
+    }
+    //log por correo y contraseña
+    if (!correo || !contraseña) throw new Error("Faltan datos para iniciar sesión");
+    //validar por credenciales correo + contraseña
+    const usuario = (await User.find({ correo }).limit(1))[0];
+    console.log(usuario)
+    if (!usuario) throw new Error("Credenciales incorrectas");
+    //comparar contraseña del usuario con la de la base de datos
+    const ok = await bcrypt.compare(contraseña, usuario.contrasena);
+    if (!ok) throw new Error("Credenciales incorrectas");
+    //sesion iniciada
+    console.log(`Sesion iniciada: ${usuario.apodo}`)
+    return usuario
+}
+//instertar datos
+async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la contraseña ya biene hasheada
     if (!contraseña || !correo) throw new Error("Faltan datos para insertar usuario");
-
     await User.create({
         apodo: apodo,
         correo: correo,
-        contrasena: contraseña,
-        token
+        contrasena: contraseña
     });
-
     console.log("Usuario insertado correctamente");
     return true
 }
-async function InsertarValidationCode({ correo = null, code = null }) {
-    if (!correo || !code) { throw new Error("Faltan datos para insertar codigo"); }
+async function InsertarVC({ correo = null, code = null }) {
+    if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
     await ValidationCode.create({
         code: code,
@@ -96,8 +140,9 @@ async function InsertarValidationCode({ correo = null, code = null }) {
     console.log("Codigo insertado correctamente");
     return true
 }
-async function InsertarCuentaValidationCode({ correo = null, code = null }) {
-    if (!correo || !code) { throw new Error("Faltan datos para insertar codigo"); }
+async function InsertarCuentaVC({ correo = null, code = null }) {
+    if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
+
     await CuentaValidationCode.create({
         code: code,
         correo: correo
@@ -107,7 +152,7 @@ async function InsertarCuentaValidationCode({ correo = null, code = null }) {
     return true
 }
 async function InsertarUsuarioActivo({ correo = null }) {
-    if (!correo) { throw new Error("Faltan datos para insertar usuario activo"); }
+    if (!correo) throw new Error("Faltan datos para insertar usuario activo");
 
     const nuevoUsuarioActivo = await ActiveUser.create({
         correo: correo
@@ -116,83 +161,42 @@ async function InsertarUsuarioActivo({ correo = null }) {
     console.log("Usuario activo insertado correctamente");
     return nuevoUsuarioActivo
 }
-async function LoginConCredenciales({ correo = null, contraseña = null, token = null }) {
-    if (token && correo) {//validar por token + correo
-
-        const usuario = await User.find({ correo }).limit(1);
-
-        if (!usuario) {
-            console.log("NO SE HAN ENCONTRADO DATOS")
-            return {}
-        }
-        //validar token
-        let validado = false
-        for (let i = 0; i < usuario[0].token.length; i++) {
-            if (token === usuario[0].token[i][0]) {
-                validado = true
-                break
-            }
-        }
-        if (!validado) {
-            console.log("SESION EXPIRADA: TOKEN")
-            return {}
-        }
-
-        if (!(usuario[0].correo === correo)) {
-            console.log("Correos incorrectos")
-            return {}
-        }
-        return usuario[0]
-    }
-
-    if (!correo || !contraseña) throw new Error("Faltan datos para iniciar sesión");
-    //validar por credenciales correo + contraseña
-    const usuario = await User.find({ correo }).limit(1);
-    if (!usuario) throw new Error("Credenciales incorrectas");
-
-    const ok = await bcrypt.compare(contraseña, usuario[0].contrasena);
-    if (!ok) throw new Error("Credenciales incorrectas");
-
-    console.log(`Sesion iniciada: ${usuario[0].apodo}`)
-    return usuario[0]
-}
-
-async function BorrarValidationCodes(correo) {
+//borrar datos
+async function BorrarVC(correo) {
     await ValidationCode.deleteMany({ correo: correo });
 }
-async function BorrarCuentaValidationCodes(correo) {
+async function BorrarCuentaVC(correo) {
     await CuentaValidationCode.deleteMany({ correo: correo });
 }
 async function BorrarUsuarioActivo(correo) {
     await ActiveUser.deleteMany({ _id: correo });
 }
+//añadir tokens
 async function AñadirJWTUsuario(correo, token = "") {
     await User.updateOne(
         { correo },
         { $push: { token: token } }
     );
 }
-async function AñadirJWTUsuarioVerificacionCuenta(correo, token = "") {
+async function AñadirJWTUsuarioVC(correo, token = "") {
     await User.updateOne(
         { correo },
         { $push: { token_OVC: token } }
     );
 }
+//limpiar tokens
 async function LimpiarJWTUsuario(correo, token = "") {
     await User.updateOne(
         { correo },
         { $pull: { tokens: token } }
     );
 }
-async function LimpiarJWTUsuarioVerificacionCuenta(correo, token = "") {
-    console.log(token)
+async function LimpiarJWTUsuarioVC(correo, token = "") {
     await User.updateOne(
         { correo },
         { $pull: { token_OVC: token } }
     );
 }
-async function closeDB() {
-    await mongoose.disconnect();
-}
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginConCredenciales, LimpiarJWTUsuario, InsertarValidationCode, BorrarValidationCodes, User, ValidationCode, CuentaValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, ActiveUser, InsertarUsuarioActivo, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta }
+
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, InsertarUsuarioActivo, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC }
