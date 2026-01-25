@@ -52,7 +52,7 @@ function generateTokenCuentaValidation(username) {
     return jwt.sign(
         { username },           // payload
         SECRET_KEY_JWT,             // clave secreta
-        { expiresIn: '30m' }    // duración del token
+        { expiresIn: '1h30m' }    // duración del token
     );
 }
 function validateToken(token) {
