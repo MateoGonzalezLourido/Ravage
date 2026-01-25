@@ -1,29 +1,71 @@
-/*Mostrar o no el Login, al iniciar la app */
+//No mostrar el login si este ya tiene sesion iniciada con autolog
 if (window.boot.isLogged) {
-    document.querySelector("#seccion-registro-login").classList.remove("flex-display")
-    document.querySelector("#seccion-registro-login").classList.add("ocultar-display")
+    mostrar_menu_sesion(false)
 } else {
-    document.querySelector("#seccion-registro-login").classList.remove("ocultar-display")
-    document.querySelector("#seccion-registro-login").classList.add("flex-display")
+    mostrar_menu_sesion(true)
+}
+//animaciones
+function mostrar_menu_sesion(accion) {
+    if (!accion) {//0: esconder, 1: mostrar
+        document.querySelector("#seccion-registro-login").classList.remove("flex-display")
+        document.querySelector("#seccion-registro-login").classList.add("ocultar-display")
+    } else {
+        document.querySelector("#seccion-registro-login").classList.remove("ocultar-display")
+        document.querySelector("#seccion-registro-login").classList.add("flex-display")
+    }
+}
+function mostrar_menu_log(accion) {
+    if (!accion) {
+        document.querySelector("#seccion-login").classList.remove("flex-display")
+        document.querySelector("#seccion-login").classList.add("ocultar-display")
+    }
+    else {
+        document.querySelector("#seccion-login").classList.remove("ocultar-display")
+        document.querySelector("#seccion-login").classList.add("flex-display")
+    }
+}
+function mostrar_menu_reg(accion) {
+    if (!accion) {
+        document.querySelector("#seccion-registro").classList.remove("flex-display")
+        document.querySelector("#seccion-registro").classList.add("ocultar-display")
+    }
+    else {
+
+        document.querySelector("#seccion-registro").classList.remove("ocultar-display")
+        document.querySelector("#seccion-registro").classList.add("flex-display")
+    }
+}
+function mostrar_menu_validation_code(accion) {
+    if (!accion) {
+        document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
+        document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
+    }
+    else {
+        document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
+        document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
+    }
+}
+function mostrar_menu_cuenta_creada(accion) {
+    if (!accion) {
+        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("flex-display")
+        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("ocultar-display")
+    }
+    else {
+        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("ocultar-display")
+        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("flex-display")
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     //cambiar login a registro
     document.querySelector("#bt-cambiar-registro").addEventListener("click", () => {
-        document.querySelector("#seccion-login").classList.remove("flex-display")
-        document.querySelector("#seccion-login").classList.add("ocultar-display")
-
-        document.querySelector("#seccion-registro").classList.remove("ocultar-display")
-        document.querySelector("#seccion-registro").classList.add("flex-display")
-
+        mostrar_menu_log(false)
+        mostrar_menu_reg(true)
     })
-    //cmabiar registro a login
+    //cambiar registro a login
     document.querySelector("#bt-cambiar-login").addEventListener("click", () => {
-        document.querySelector("#seccion-registro").classList.remove("flex-display")
-        document.querySelector("#seccion-registro").classList.add("ocultar-display")
-
-        document.querySelector("#seccion-login").classList.remove("ocultar-display")
-        document.querySelector("#seccion-login").classList.add("flex-display")
+        mostrar_menu_reg(false)
+        mostrar_menu_log(true)
     })
     //login
     document.querySelector("#form-login").addEventListener("submit", async (e) => {
@@ -38,26 +80,17 @@ document.addEventListener("DOMContentLoaded", () => {
         if (result.success) {//sesion iniciada
             if (result.autoverificacion) {//sesion iniciada sin codigo de verificacion
                 console.log("SE HA INICIADO SESION CORRECTAMENTE")
-                document.querySelector("#seccion-registro-login").classList.remove("flex-display")
-                document.querySelector("#seccion-registro-login").classList.add("ocultar-display")
+                mostrar_menu_sesion(false)
             }
             else {
+                mostrar_menu_log(false)
+                mostrar_menu_reg(false)
+                mostrar_menu_validation_code(true)
 
-                document.querySelector("#seccion-login").classList.remove("flex-display")
-                document.querySelector("#seccion-login").classList.add("ocultar-display")
-
-                document.querySelector("#seccion-registro").classList.remove("flex-display")
-                document.querySelector("#seccion-registro").classList.add("ocultar-display")
-
-                document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
-                document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
                 document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", () => {
                     e.preventDefault()
-                    document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
-                    document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
-
-                    document.querySelector("#seccion-login").classList.remove("ocultar-display")
-                    document.querySelector("#seccion-login").classList.add("flex-display")
+                    mostrar_menu_validation_code(false)
+                    mostrar_menu_log(true)
                 })
                 document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
                     e.preventDefault()
@@ -67,16 +100,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (result.success) {//codigo valido
                         console.log("SE HA INICIADO SESION CORRECTAMENTE")
                         //mostrar menu de confirmacion cuenta creada
-                        document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
-                        document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
-
-                        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("ocultar-display")
-                        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("flex-display")
+                        mostrar_menu_validation_code(false)
+                        mostrar_menu_cuenta_creada(true)
 
                         document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
                             e.preventDefault()
-                            document.querySelector("#seccion-registro-login").classList.remove("flex-display")
-                            document.querySelector("#seccion-registro-login").classList.add("ocultar-display")
+                            mostrar_menu_log(false)
                         })
                     }
                     else {//TODO:mostrar errores en el html
@@ -98,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const password = document.querySelector('#registro-pass').value
         const password_confirm = document.querySelector('#registro-pass-confirm').value
 
-        if (!(password === password_confirm)) {//las dos contrtaseñas son diferentes
+        if (!(password === password_confirm)) {//las dos contraseñas son diferentes
             document.querySelector("#registro-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto")
             document.querySelector("#span-repetir-contraseña").classList.add("estrada-menu-registro-login-incorrecto")
             return;
@@ -110,21 +139,14 @@ document.addEventListener("DOMContentLoaded", () => {
         let result = await window.sesion_usuario.REGISTRAR_USUARIO(apodo, username, password);
 
         if (result.success) {//datos validos: validar codigo de correo
-            document.querySelector("#seccion-login").classList.remove("flex-display")
-            document.querySelector("#seccion-login").classList.add("ocultar-display")
+            mostrar_menu_log(false)
+            mostrar_menu_reg(false)
 
-            document.querySelector("#seccion-registro").classList.remove("flex-display")
-            document.querySelector("#seccion-registro").classList.add("ocultar-display")
-
-            document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
-            document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
+            mostrar_menu_validation_code(true)
             document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", () => {
                 e.preventDefault()
-                document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
-                document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
-
-                document.querySelector("#seccion-registro").classList.remove("ocultar-display")
-                document.querySelector("#seccion-registro").classList.add("flex-display")
+                mostrar_menu_validation_code(false)
+                mostrar_menu_reg(true)
             })
             document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
                 e.preventDefault()
@@ -134,19 +156,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (result.success) {//codigo valido
                     console.log("SE HA CREADO EL USUARIO CORRECTAMENTE")
                     //mostrar menu de confirmacion cuenta creada
-                    document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
-                    document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
-
-                    document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("ocultar-display")
-                    document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("flex-display")
+                    mostrar_menu_validation_code(false)
+                    mostrar_menu_cuenta_creada(true)
 
                     document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
                         e.preventDefault()
-                        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("flex-display")
-                        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("ocultar-display")
-
-                        document.querySelector("#seccion-login").classList.remove("ocultar-display")
-                        document.querySelector("#seccion-login").classList.add("flex-display")
+                        mostrar_menu_cuenta_creada(false)
+                        mostrar_menu_log(true)
                     })
                 }
                 else {//TODO:mostrar errores en el html
