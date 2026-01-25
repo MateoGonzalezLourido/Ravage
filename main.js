@@ -5,7 +5,7 @@ const { startServer } = require('./backend/server.js')
 const { AUTO_LOGIN_USUARIO } = require('./backend/services/users');
 const { connectDB, BorrarUsuarioActivo } = require("./backend/db/mongo.js")
 const { registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/users.js');
-const state = require('./backend/STATE/Variables_sesion.js')
+const state = require('./backend/STORAGE/Variables_sesion.js')
 
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({

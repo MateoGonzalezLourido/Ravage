@@ -3,7 +3,7 @@ const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTU
 const bcrypt = require('bcryptjs')
 const { saveSessionFile, clearFileSession, generarteToken, validateToken, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigoVerificacion } = require('./Servicio_mensajeria_correo.js')
-const state = require('../STATE/Variables_sesion.js')
+const state = require('../STORAGE/Variables_sesion.js')
 
 async function AUTO_LOGIN_USUARIO() {
     //leer fichero con datos de sesion anterior
