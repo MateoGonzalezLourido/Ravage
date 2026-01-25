@@ -1,35 +1,19 @@
-
 const express = require('express');
 const { connectDB } = require('./db/mongo.js');
-const { login, register } = require('./services/users.js');
 
 let appServer; // para poder cerrar el server si quieres
-
-module.exports = { startServer, stopServer };
 
 async function startServer() {
     console.log('-Iniciando servidor...');
 
     await connectDB(); // conecta Mongo
-    console.log('*DB lista para usar:');
+    console.log('*DB lito para usar:');
 
     const app = express(); // <--- aquí defines app
     app.use(express.json());
 
-    // Rutas
-    app.post('/login', async (req, res) => {
-        const { username, password } = req.body;
-        const result = await login(username, password);
-        res.json(result);
-    });
-
-    app.post('/register', async (req, res) => {
-        const { username, password } = req.body;
-        const result = await register(username, password);
-        res.json(result);
-    });
-
-    const PORT = 3000;
+    const PORT = 3000;//puerto de escucha del servidor
+    //levantar servidor localhost
     appServer = app.listen(PORT, () => console.log(`*Servidor Express en http://localhost:${PORT}`));
 }
 
@@ -37,3 +21,5 @@ async function startServer() {
 function stopServer() {
     if (appServer) appServer.close(() => console.log('*Servidor cerrado'));
 }
+
+module.exports = { startServer, stopServer };
