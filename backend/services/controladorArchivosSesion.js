@@ -39,9 +39,9 @@ function readFileSession(ruta) {
     return null;
 }
 
-async function clearSession() {//borrar archivo
-    if (fs.existsSync(RTDF.sessionFile)) {
-        fs.unlinkSync(RTDF.sessionFile);
+async function clearFileSession(ruta) {//borrar archivo
+    if (fs.existsSync(RTDF[ruta])) {
+        fs.unlinkSync(RTDF[ruta]);
     }
 }
 
@@ -58,11 +58,6 @@ async function saveOmitirVerificacionCuenta({ username, token = "" }) {//guardar
     console.log("cache de autoverifiacion de cuenta actualizada")
 }
 
-async function clearVerificacionCuenta() {//borrar archivo
-    if (fs.existsSync(RTDF.omitirVerificacionCuentaFile)) {
-        fs.unlinkSync(RTDF.omitirVerificacionCuentaFile);
-    }
-}
 /*JWT */
 
 function generateToken(username) {
@@ -90,11 +85,10 @@ function validateToken(token) {
 
 module.exports = {
     saveSession,
-    clearSession,
+    clearFileSession,
     readFileSession,
     generateToken,
     validateToken,
     saveOmitirVerificacionCuenta,
-    clearVerificacionCuenta,
     generateTokenCuentaValidation
 };

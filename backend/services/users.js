@@ -1,8 +1,8 @@
 // backend/services/users.js
 const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
-const { saveSession, clearSession, generateToken, validateToken, saveOmitirVerificacionCuenta, clearVerificacionCuenta, generateTokenCuentaValidation, readFileSession } = require('./controladorArchivosSesion.js')
-const { enviarEmail, generarCodigo  } = require('./Servicio_mensajeria_correo.js')
+const { saveSession, clearFileSession, generateToken, validateToken, saveOmitirVerificacionCuenta, generateTokenCuentaValidation, readFileSession } = require('./controladorArchivosSesion.js')
+const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
 const state = require('../STATE/Variables_sesion.js')
 
 async function AUTO_LOGIN_USUARIO() {
@@ -13,13 +13,13 @@ async function AUTO_LOGIN_USUARIO() {
 
     const resultado = comprobaciones_Correo(data.username)
     if (!resultado.success) {
-        clearSession(); // datos corruptos → limpiar sesión
+        clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
         return { success: false }
     }
     const token_valido = validateToken(data.token);
     if (!token_valido) {
         LimpiarJWTUsuario(result.correo, data.token)//limpiar token de mongodb
-        clearSession(); // datos incorrectos → limpiar sesión
+        clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
         console.log("Token invalido o expirado")
         return { success: false };
     }
@@ -35,7 +35,7 @@ async function AUTO_LOGIN_USUARIO() {
     }
     else {
         LimpiarJWTUsuario(result.correo, data.token)//limpiar token de mongodb
-        clearSession(); // datos incorrectos → limpiar sesión
+        clearFileSession('sessionFile'); // datos incorrectos → limpiar sesión
         console.log("Error en auto login: datos recibidos incorrectos")
         return false;
     }
@@ -149,11 +149,11 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
                 autoverificacion = true
             }
             else {
-                clearVerificacionCuenta()
+                clearFileSession('omitirVerificacionCuentaFile');
             }
         }
         else {//limpiar archivo y token
-            clearVerificacionCuenta()
+            clearFileSession('omitirVerificacionCuentaFile');
             LimpiarJWTUsuarioVerificacionCuenta(username, data_autoverificacion.token)
         }
     }
@@ -249,7 +249,7 @@ async function ValidarCodeLogin({ correo, code }) {
 async function cerrarSesionUsuario(correo) {
     ç
     const data = readFileSession('sessionFile')
-    clearSession()//limpiar autologin
+    clearFileSession('sessionFile');
     LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
     BorrarUsuarioActivo()
     console.log("*Sesion cerrada")
