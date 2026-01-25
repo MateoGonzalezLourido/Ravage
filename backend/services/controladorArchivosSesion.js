@@ -67,7 +67,7 @@ async function clearFileSession(ruta) {//borrar archivo
 function generarteToken(username, duracion) {
     const duraciones = {
         sesion: '7d',
-        cuenta: '1h30m'
+        cuenta: '90m'
     }
     return jwt.sign(
         { username },           // payload
