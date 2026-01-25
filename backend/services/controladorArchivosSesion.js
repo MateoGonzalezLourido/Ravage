@@ -15,12 +15,13 @@ const RTDF = {
     omitirVerificacionCuentaFile: path.join(ruta_app_data, name_carpeta, 'auto_login.json')
 }
 
-async function saveSession({ username, token = "" }) {//guardar/ crear archivo
+async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
     const data = { username, token };
+    //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
-
+    //sobrescribir/crear archivo con los datos
     fs.writeFile(RTDF.sessionFile, JSON.stringify(data), "utf8", (err) => {
-        if (err) {
+        if (err) {//si falla, limpiar si existe
             clearFileSession(username, 'sesion')
             console.error("Error al guardar sesión:", err);
         }
@@ -28,11 +29,13 @@ async function saveSession({ username, token = "" }) {//guardar/ crear archivo
     console.log("cache de sesion actualizada")
 }
 /*CREAR GUARDADO DE OMITIR VERIFIACION DE CUENTA */
-async function saveOmitirVerificacionCuenta({ username, token = "" }) {//guardar/ crear archivo
+async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//guardar/ crear archivo
     const data = { username, token };
+    //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
+    //sobrescribir/crear archivo con los datos
     fs.writeFile(RTDF.omitirVerificacionCuentaFile, JSON.stringify(data), "utf8", (err) => {
-        if (err) {
+        if (err) {//si falla, limpiar si existe
             clearFileSession(username, 'cuenta')
             console.error("Error al guardar autoverifiacion de cuenta:", err);
         }
@@ -41,10 +44,12 @@ async function saveOmitirVerificacionCuenta({ username, token = "" }) {//guardar
 }
 /*generales */
 function readFileSession(ruta) {
+    //si no existe el archivo?
     if (!fs.existsSync(RTDF[ruta])) return null;
+    //leer el archivo
     const raw = fs.readFileSync(RTDF[ruta], 'utf8');
-    if (!raw) return null;
-
+    if (!raw) return null;//no recupero nada
+    //pasarlo a json usable
     const data = JSON.parse(raw);
     // devuelves objeto {username, token} o null
     if (data.username && data.token) return data;
@@ -52,8 +57,8 @@ function readFileSession(ruta) {
 }
 
 async function clearFileSession(ruta) {//borrar archivo
-    if (fs.existsSync(RTDF[ruta])) {
-        fs.unlinkSync(RTDF[ruta]);
+    if (fs.existsSync(RTDF[ruta])) {//existe el archivo?
+        fs.unlinkSync(RTDF[ruta]);//borrar archivo
     }
 }
 
@@ -73,7 +78,7 @@ function generarteToken(username, duracion) {
 
 function validateToken(token) {
     try {
-        const decoded = jwt.verify(token, SECRET_KEY_JWT);
+        const decoded = jwt.verify(token, SECRET_KEY_JWT);//decodificador jwt
         return decoded.username; // si válido, devuelve username
     } catch {
         return null; // token inválido o expirado
@@ -81,10 +86,10 @@ function validateToken(token) {
 }
 
 module.exports = {
-    saveSession,
+    saveSessionFile,
     clearFileSession,
     readFileSession,
     generarteToken,
     validateToken,
-    saveOmitirVerificacionCuenta,
+    saveOmitirVerificacionCuentaFile,
 };

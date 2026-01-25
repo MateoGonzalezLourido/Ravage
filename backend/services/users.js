@@ -1,7 +1,7 @@
 // backend/services/users.js
 const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
-const { saveSession, clearFileSession, generarteToken, validateToken, saveOmitirVerificacionCuenta, readFileSession } = require('./controladorArchivosSesion.js')
+const { saveSessionFile, clearFileSession, generarteToken, validateToken, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
 const state = require('../STATE/Variables_sesion.js')
 
@@ -168,7 +168,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         (async () => {
             if (mantener_sesion_iniciada_usuario) {
                 const token = generarteToken(data.correo,'sesion');
-                saveSession({ username: data.correo, token: token })//guardar sesion en fichero local
+                saveSessionFile({ username: data.correo, token: token })//guardar sesion en fichero local
                 AñadirJWTUsuario(data.correo, token)//guardar en mongodb
             }
         })();
@@ -221,7 +221,7 @@ async function ValidarCodeLogin({ correo, code }) {
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
             const token = generarteToken(correo,'sesion');
-            saveSession({ username: correo, token: token })//guardar sesion en fichero local
+            saveSessionFile({ username: correo, token: token })//guardar sesion en fichero local
             AñadirJWTUsuario(correo, token)//guardar en mongodb
         }
     })();
@@ -229,7 +229,7 @@ async function ValidarCodeLogin({ correo, code }) {
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
             const token = generarteToken(correo,'cuenta');
-            saveOmitirVerificacionCuenta({ username: correo, token: token })
+            saveOmitirVerificacionCuentaFile({ username: correo, token: token })
             AñadirJWTUsuarioVerificacionCuenta(correo, token)//guardar en mongodb
         }
     })();
