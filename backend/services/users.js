@@ -1,98 +1,110 @@
-// backend/services/users.js
 const { InsertarUsuario, LoginUsuario, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSessionFile, clearFileSession, generarteToken, validateToken, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
-const { enviarEmail, generarCodigoVerificacion } = require('./Servicio_mensajeria_correo.js')
+const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
+const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
 const state = require('../STORAGE/Variables_sesion.js')
 
-async function AUTO_LOGIN_USUARIO() {
+async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior
     const data = readFileSession('sessionFile')
-    //verificar si son legitimos los datos
-    if (!data || (!data.username || !data.token)) return false; //fichero vacio o faltan datos
-
-    const resultado = comprobaciones_Correo(data.username)
-    if (!resultado.success) {
+    //verificar si estan todos los datos
+    if (!data || (!data.username || !data.token)) return { success: false }; //fichero vacio o faltan datos
+    //comprobacion inicial de si es un correo
+    const VCorreo = comprobaciones_Correo(data.username)
+    if (!VCorreo.success) {//no es valido
         clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
         return { success: false }
     }
+    //token de validacion de sesion
     const token_valido = validateToken(data.token);
-    if (!token_valido) {
-        LimpiarJWTUsuario(result.correo, data.token)//limpiar token de mongodb
+    if (!token_valido) {//token no valido
+        LimpiarJWTUsuario(data.correo, data.token)//limpiar token de mongodb
         clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
         console.log("Token invalido o expirado")
         return { success: false };
     }
     // verificar si esa cuenta sigue existiendo en la base de datos
-    const result = await LoginUsuario({ correo: data.username, token: data.token })
-    state.setApodoSesion(data.apodo)
+    const usuario_datos = await LoginUsuario({ correo: data.username, token: data.token })
     //mostrar como usuario activo en mongodb
-    if (result.apodo && result.correo) {//tenemos todos los datos correctos
-        state.setCorreoSesion(result.correo)
-        const nuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: data.username });
-        state.setIdSesion(nuevoUsuarioActivo)
-        return true;
+    if (usuario_datos.apodo && usuario_datos.correo) {
+        // se ha encontrado el usuario
+        //establecer variables globales
+        state.setApodoSesion(usuario_datos.apodo)
+        state.setCorreoSesion(usuario_datos.correo)
+            //añadir usuario activo
+            (async () => {
+                const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: correo });
+                if (NuevoUsuarioActivo) {
+                    //guardar id de sesion para borrar cuando deje de estarlo
+                    state.setIdSesion(NuevoUsuarioActivo)
+                }
+            })();
+        return { success: true };
     }
-    else {
-        LimpiarJWTUsuario(result.correo, data.token)//limpiar token de mongodb
+    else {//no se ha encontrado el usuario
+        LimpiarJWTUsuario(usuario_datos.correo, data.token)//limpiar token de mongodb
         clearFileSession('sessionFile'); // datos incorrectos → limpiar sesión
         console.log("Error en auto login: datos recibidos incorrectos")
-        return false;
+        return { success: false };
     }
 }
 
+//variables importantes para unir funciones log o reg con su validacion por correo
 let contraseña_hashed;
 let apodo_usuario;
 let mantener_sesion_iniciada_usuario;
-const n_intentos_codigo_validacion = 7;
+const n_intentos_codigo_validacion = 5;
 let intentos_codigo_validacion = n_intentos_codigo_validacion;
 
 async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
     if (!correo || !password) return { success: false, message: "Faltan datos para registrar el usuario" }
-
+    //comprobacion inicial de si es un correo
     const resultado = comprobaciones_Correo(correo)
     if (!resultado.success) return { success: false, message: resultado.message }
     //verificar si no existe un usuario igual
-    const existe = await User.findOne({ correo: correo });
+    const existe = await User.find({ correo: correo }).limit(1);
     if (existe) return { success: false, message: "Correo ya registrado" };
 
+    //guardar vairables para pasarlas a la validacion por correo
     contraseña_hashed = await bcrypt.hash(password, 10);//contraseña hasheada
     apodo_usuario = apodo
 
     //crear verificacion por codigo de correo
     const code_generado = String(generarCodigoVerificacion())
     const hashed_ValidationCode = await bcrypt.hash(code_generado, 10)
-    //const hashedValidationCode = await bcrypt.hash(ValidationCode, 10)
-    const asunto = "Verificación de correo"
-    const htmlContenido = `<span style="text-decoration:underline">Hola, ${apodo}</span>
-    <span style="font-size:20px">Codigo de verificacion de correo:</br><font style="color:green">${code_generado}</font></span>
-    <span>Si no has sido tú puedes decírnoslo por este correo.</span>
-    <span style="font-style: italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
-    <span>Mateo's Stage</span>`
+    //generar correo
+    const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodo, code_generado: code_generado })
+    //insertar codigo en mongodb
     InsertarVC({ correo: correo, code: hashed_ValidationCode })
+    //enviar correo
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    intentos_codigo_validacion = n_intentos_codigo_validacion //intentos para poder poner el codigo correcto de verificacion
+
+    //intentos para poder poner el codigo correcto de verificacion
+    intentos_codigo_validacion = n_intentos_codigo_validacion
     return { success: true }
 }
 
 async function ValidarCodeRegistroUsuario({ correo, code }) {
     intentos_codigo_validacion--
+    //verificar si ya habia cabado los intentos
     if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al crear el usuario:intentos acabados" } }
     //cojer el ultimo codigo generado
-    const code_db = await ValidationCode.find({ correo })
-        .sort({ expira: -1 }).limit(1);
-    if (!code_db) {
+    const code_db = await ValidationCode.find({ correo }).sort({ expira: -1 }).limit(1);
+    if (!code_db) {//no hay codes
         contraseña_hashed = null;
         apodo_usuario = null;
-        return { success: false, message: "Fallo al crear el usuario:datos no encontrados" };
+        return { success: false, message: "Fallo al crear el usuario: no hay codigos" };
     }
+    //comparar codigo de usuario con el de mongodb
     const ok = await bcrypt.compare(String(code), code_db[0].code);
-    if (!ok) {
+    if (!ok) {//no son iguales
         console.log(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
         return { success: false, message: "Fallo al crear el usuario:codigo incorrecto", intentos: intentos_codigo_validacion };
     };
-    const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correo });//crear usuario en DB
-    if (!nuevoUsuario) {
+    //crear nueva cuenta de usuario
+    const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correo });
+    if (!nuevoUsuario) {//error
         BorrarVC(correo)//borrar codigos
         contraseña_hashed = null;
         apodo_usuario = null;
@@ -101,31 +113,29 @@ async function ValidarCodeRegistroUsuario({ correo, code }) {
         }
     }
 
-    //limpiar datos y enviar correo de confirmacion
-    contraseña_hashed = null;
-    BorrarVC(correo)//borrar codigos
     //mandar correo confirmando creacion de cuenta
-    const asunto = "Confirmación de cuenta"
-    const htmlContenido = `<span>¡Bienvenido a RAVAGE, ${apodo_usuario}!</span>
-    <span style="text-decoration:underline">Se ha creado correctamente su cuenta</span>
-    <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura(apodo_usuario)
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-
+    //limpiar datos 
+    BorrarVC(correo)
     apodo_usuario = null;
+    contraseña_hashed = null;
 
     return { success: true };
 }
 
-async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {
-    //limpiar cosas del registro
+async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {//aqui se usa username en vez de correo, pero son lo mismo
+
+    //limpiar cosas del registro si hubiese
     if (apodo_usuario || apodo_usuario) {
         contraseña_hashed = null;
         apodo_usuario = null;
     }
-    mantener_sesion_iniciada_usuario = mantener_sesion_iniciada
+    //comprobacion inicial de si es un correo
     const resultado = comprobaciones_Correo(username)
     if (!resultado.success) return { success: false, message: resultado.message }
 
+    //iniciar sesion
     const data = await LoginUsuario({ correo: username, contraseña: contraseña })
     if (!data.apodo || !data.correo) return { success: false, message: 'Usuario no encontrado' }
     state.setApodoSesion(data.apodo)
@@ -166,8 +176,8 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         })();
         //JWT , mantener sesion iniciada en cache
         (async () => {
-            if (mantener_sesion_iniciada_usuario) {
-                const token = generarteToken(data.correo,'sesion');
+            if (mantener_sesion_iniciada) {
+                const token = generarteToken(data.correo, 'sesion');
                 saveSessionFile({ username: data.correo, token: token })//guardar sesion en fichero local
                 AñadirJWTUsuario(data.correo, token)//guardar en mongodb
             }
@@ -175,20 +185,17 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         state.setCorreoSesion(data.correo)
     }
     else {
+        mantener_sesion_iniciada_usuario = mantener_sesion_iniciada
         //crear verificacion por codigo de correo
         const code_generado = String(generarCodigoVerificacion())
         const hashed_ValidationCode = await bcrypt.hash(code_generado, 10)
-        const asunto = "Verificación de cuenta"
-        const htmlContenido = `<span style="text-decoration:underline">Hola, ${data.apodo}</span>
-        <span style="font-size:20px">Codigo de verificacion de cuenta:</br><font style="color:green">${code_generado}</font></span>
-        <span>Debes usar este código para poder iniciar sesión.</span>
-        <span>Si no has sido tú puedes decírnoslo por este correo.</span>
-        <span style="font-style: italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
-        <span>Mateo's Stage</span>`
+        const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: data.apodo, code: code_generado })
+        //insertar codigo en mongodb
         InsertarCuentaVC({ correo: username, code: hashed_ValidationCode })
+        //mandar correo
         enviarEmail({ correoDestino: username, asunto: asunto, htmlContenido: htmlContenido })
-
-        intentos_codigo_validacion = n_intentos_codigo_validacion //intentos para poder poner el codigo correcto de verificacion
+        //intentos para poder poner el codigo correcto de verificacion
+        intentos_codigo_validacion = n_intentos_codigo_validacion
     }
 
     return { success: true, autoverificacion: autoverificacion, data: { correo: username, apodo: data.apodo } }
@@ -196,23 +203,25 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
 
 async function ValidarCodeLogin({ correo, code }) {
     intentos_codigo_validacion--
+    //verificar si ya habia cabado los intentos
     if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al iniciar sesion:intentos acabados" } }
     //cojer el ultimo codigo generado
-    const code_db = await CuentaValidationCode.find({ correo })
-        .sort({ expira: -1 }).limit(1);
-    if (!code_db) {
+    const code_db = await CuentaValidationCode.find({ correo }).sort({ expira: -1 }).limit(1);
+    if (!code_db) {//no hay codigos
         mantener_sesion_iniciada_usuario = null
-        return { success: false, message: "Fallo al iniciar sesion:datos no encontrados" };
+        return { success: false, message: "Fallo al iniciar sesion: no hay codigos" };
     }
+    //comparar codigo de usuario con el de mongodb
     const ok = await bcrypt.compare(String(code), code_db[0].code);
-    if (!ok) {
+    if (!ok) {//los codigos no son iguales
         console.log(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
-        return { success: false, message: "Fallo al iniciar sesion:codigo incorrecto", intentos: intentos_codigo_validacion };
+        return { success: false, message: "Fallo al iniciar sesion: codigo incorrecto", intentos: intentos_codigo_validacion };
     };
     //mostrar como usuario activo en mongodb
     (async () => {
         const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: correo });
         if (NuevoUsuarioActivo) {
+            //guardar id de sesion para borrar cuando deje de estarlo
             state.setIdSesion(NuevoUsuarioActivo)
         }
     })();
@@ -220,7 +229,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //JWT , mantener sesion iniciada en cache
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
-            const token = generarteToken(correo,'sesion');
+            const token = generarteToken(correo, 'sesion');
             saveSessionFile({ username: correo, token: token })//guardar sesion en fichero local
             AñadirJWTUsuario(correo, token)//guardar en mongodb
         }
@@ -228,33 +237,37 @@ async function ValidarCodeLogin({ correo, code }) {
     //guardar auto verificacion de cuenta en fichero local
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
-            const token = generarteToken(correo,'cuenta');
+            const token = generarteToken(correo, 'cuenta');
             saveOmitirVerificacionCuentaFile({ username: correo, token: token })
             AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
         }
     })();
+    //guardar correo en variables globales
     state.setCorreoSesion(correo)
-    BorrarCuentaVC(correo)//borrar codigos
-
+    //borrar codigos
+    BorrarCuentaVC(correo)
 
     //mandar correo confirmando creacion de cuenta
-    const asunto = "Alerta de sesión"
-    const htmlContenido = `<span>Se ha iniciado sesión con tu cuenta</span>
-    <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    const { asunto, htmlContenido } = ConfirmacionInicioSesion()
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
 
     return { success: true, data: { correo: correo } };
 }
 
 async function cerrarSesionUsuario(correo) {
-    ç
+    //cojer datos del archivo de sesion para borrar el token
     const data = readFileSession('sessionFile')
+    //limpiar archivo de sesion
     clearFileSession('sessionFile');
-    LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
+    //si existe ese archivo limpiar token
+    if (data) LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
+    //borrar usuario activo
     BorrarUsuarioActivo()
+
     console.log("*Sesion cerrada")
 }
 
+//TODO: añadir mas verificaciones
 function comprobaciones_Correo(correo) {
     let success = true;
     let message = "Username válido";
@@ -266,4 +279,4 @@ function comprobaciones_Correo(correo) {
     return { success: success, message: message }
 }
 
-module.exports = { registerUsuario, loginUsuario, AUTO_LOGIN_USUARIO, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin }
+module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin }

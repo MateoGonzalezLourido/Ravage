@@ -2,9 +2,8 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 const { startServer } = require('./backend/server.js')
-const { AUTO_LOGIN_USUARIO } = require('./backend/services/users');
 const { connectDB, BorrarUsuarioActivo, closeDB } = require("./backend/db/mongo.js")
-const { registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/users.js');
+const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/users.js');
 const state = require('./backend/STORAGE/Variables_sesion.js')
 
 function createWindow(AutoLogin = false) {
@@ -32,8 +31,8 @@ function createWindow(AutoLogin = false) {
 app.whenReady().then(async () => {
     await startServer() // iniciar servidor express
     await connectDB()
-    const AutoLogin = await AUTO_LOGIN_USUARIO();//true, false
-    createWindow(AutoLogin); // crear ventana
+    const AutoLogin = await autoLoginUsuario();//true, false
+    createWindow(AutoLogin.success); // crear ventana
 })
 
 /* Finalizar App cuando todas las ventanas estén cerradas */

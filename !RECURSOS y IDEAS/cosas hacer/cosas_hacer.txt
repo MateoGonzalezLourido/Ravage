@@ -10,3 +10,5 @@ Cuando se cierre la app o la sesion hay que quitar ese usuario activo de la base
 verificar que el token de sesion expire
 
 Borrar tokens de la base de datos de mongo db cuando expiren
+
+Cuando el usuario salga de la verificacion de cuenta o correo que se borren los codigos
