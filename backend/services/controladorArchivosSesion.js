@@ -60,20 +60,18 @@ async function saveOmitirVerificacionCuenta({ username, token = "" }) {//guardar
 
 /*JWT */
 
-function generateToken(username) {
+function generarteToken(username, duracion) {
+    const duraciones = {
+        sesion: '7d',
+        cuenta: '1h30m'
+    }
     return jwt.sign(
         { username },           // payload
         SECRET_KEY_JWT,             // clave secreta
-        { expiresIn: '7d' }    // duración del token
+        { expiresIn: duraciones[duracion] }    // duración del token
     );
 }
-function generateTokenCuentaValidation(username) {
-    return jwt.sign(
-        { username },           // payload
-        SECRET_KEY_JWT,             // clave secreta
-        { expiresIn: '1h30m' }    // duración del token
-    );
-}
+
 function validateToken(token) {
     try {
         const decoded = jwt.verify(token, SECRET_KEY_JWT);
@@ -87,8 +85,7 @@ module.exports = {
     saveSession,
     clearFileSession,
     readFileSession,
-    generateToken,
+    generarteToken,
     validateToken,
     saveOmitirVerificacionCuenta,
-    generateTokenCuentaValidation
 };
