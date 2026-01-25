@@ -1,4 +1,3 @@
-// backend/services/sessionFile.js
 const fs = require("fs")
 const path = require('path');
 const dotenv = require("dotenv");
@@ -6,8 +5,8 @@ dotenv.config();
 const jwt = require('jsonwebtoken');
 const { app } = require('electron')
 
-const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;
-
+const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;//codigo para crear jwt (un valor definido por mi)
+//rutas
 const ruta_app_data = app.getPath('userData')
 const name_carpeta = '.APP_DATA'
 const RTDF = {
@@ -22,12 +21,25 @@ async function saveSession({ username, token = "" }) {//guardar/ crear archivo
 
     fs.writeFile(RTDF.sessionFile, JSON.stringify(data), "utf8", (err) => {
         if (err) {
-            clearFileSession(username,'sesion')
+            clearFileSession(username, 'sesion')
             console.error("Error al guardar sesión:", err);
         }
     });
     console.log("cache de sesion actualizada")
 }
+/*CREAR GUARDADO DE OMITIR VERIFIACION DE CUENTA */
+async function saveOmitirVerificacionCuenta({ username, token = "" }) {//guardar/ crear archivo
+    const data = { username, token };
+    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
+    fs.writeFile(RTDF.omitirVerificacionCuentaFile, JSON.stringify(data), "utf8", (err) => {
+        if (err) {
+            clearFileSession(username, 'cuenta')
+            console.error("Error al guardar autoverifiacion de cuenta:", err);
+        }
+    });
+    console.log("cache de autoverifiacion de cuenta actualizada")
+}
+/*generales */
 function readFileSession(ruta) {
     if (!fs.existsSync(RTDF[ruta])) return null;
     const raw = fs.readFileSync(RTDF[ruta], 'utf8');
@@ -43,19 +55,6 @@ async function clearFileSession(ruta) {//borrar archivo
     if (fs.existsSync(RTDF[ruta])) {
         fs.unlinkSync(RTDF[ruta]);
     }
-}
-
-/*CREAR GUARDADO DE OMITIR VERIFIACION DE CUENTA */
-async function saveOmitirVerificacionCuenta({ username, token = "" }) {//guardar/ crear archivo
-    const data = { username, token };
-    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
-    fs.writeFile(RTDF.omitirVerificacionCuentaFile, JSON.stringify(data), "utf8", (err) => {
-        if (err) {
-            clearFileSession(username, 'cuenta')
-            console.error("Error al guardar autoverifiacion de cuenta:", err);
-        }
-    });
-    console.log("cache de autoverifiacion de cuenta actualizada")
 }
 
 /*JWT */
