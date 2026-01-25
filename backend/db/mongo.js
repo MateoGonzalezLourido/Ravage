@@ -49,8 +49,12 @@ const ValidationCodeSchema = new mongoose.Schema({
     expira: {
         type: Date,
         default: () => new Date(Date.now() + 10 * 60 * 1000)
+    },
+    id: {
+        type: String,
+        required: true,
+        unique: true,
     }
-
 })
 const ActiveUserSchema = new mongoose.Schema({
     correo: {

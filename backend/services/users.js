@@ -4,6 +4,7 @@ const { saveSessionFile, clearFileSession, generarteToken, validateToken, saveOm
 const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
 const state = require('../STORAGE/Variables_sesion.js')
+const { machineIdSync } = require('node-machine-id');
 
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior
@@ -76,7 +77,8 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     //generar correo
     const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodo, code_generado: code_generado })
     //insertar codigo en mongodb
-    InsertarVC({ correo: correo, code: hashed_ValidationCode })
+    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+    InsertarVC({ correo: correo, code: hashed_ValidationCode, id: deviceId })
     //enviar correo
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
 
@@ -95,6 +97,12 @@ async function ValidarCodeRegistroUsuario({ correo, code }) {
         contraseña_hashed = null;
         apodo_usuario = null;
         return { success: false, message: "Fallo al crear el usuario: no hay codigos" };
+    }
+    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+    if (deviceId !== code_db.id) {//no son el mismo dispositivo
+        contraseña_hashed = null;
+        apodo_usuario = null;
+        return { success: false, message: "Fallo al crear el usuario: este codigo no pertenece a este dispositivo" };
     }
     //comparar codigo de usuario con el de mongodb
     const ok = await bcrypt.compare(String(code), code_db[0].code);
@@ -191,7 +199,8 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         const hashed_ValidationCode = await bcrypt.hash(code_generado, 10)
         const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: data.apodo, code: code_generado })
         //insertar codigo en mongodb
-        InsertarCuentaVC({ correo: username, code: hashed_ValidationCode })
+        const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+        InsertarCuentaVC({ correo: username, code: hashed_ValidationCode, id: deviceId })
         //mandar correo
         enviarEmail({ correoDestino: username, asunto: asunto, htmlContenido: htmlContenido })
         //intentos para poder poner el codigo correcto de verificacion
@@ -210,6 +219,12 @@ async function ValidarCodeLogin({ correo, code }) {
     if (!code_db) {//no hay codigos
         mantener_sesion_iniciada_usuario = null
         return { success: false, message: "Fallo al iniciar sesion: no hay codigos" };
+    }
+    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+    if (deviceId !== code_db.id) {//no son el mismo dispositivo
+        contraseña_hashed = null;
+        apodo_usuario = null;
+        return { success: false, message: "Fallo al iniciar sesion: este codigo no pertenece a este dispositivo" };
     }
     //comparar codigo de usuario con el de mongodb
     const ok = await bcrypt.compare(String(code), code_db[0].code);
