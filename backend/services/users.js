@@ -1,13 +1,13 @@
 // backend/services/users.js
 const { InsertarUsuario, LoginConCredenciales, User, ValidationCode, LimpiarJWTUsuario, BorrarValidationCodes, InsertarValidationCode, InsertarCuentaValidationCode, BorrarCuentaValidationCodes, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVerificacionCuenta, LimpiarJWTUsuarioVerificacionCuenta } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
-const { saveSession, readSession, clearSession, generateToken, validateToken, saveOmitirVerificacionCuenta, readOmitirVerificacionCuenta, clearVerificacionCuenta, generateTokenCuentaValidation } = require('./controladorArchivosSesion.js')
-const { enviarEmail, generarCodigo } = require('./Servicio_mensajeria_correo.js')
+const { saveSession, clearSession, generateToken, validateToken, saveOmitirVerificacionCuenta, clearVerificacionCuenta, generateTokenCuentaValidation, readFileSession } = require('./controladorArchivosSesion.js')
+const { enviarEmail, generarCodigo  } = require('./Servicio_mensajeria_correo.js')
 const state = require('../STATE/Variables_sesion.js')
 
 async function AUTO_LOGIN_USUARIO() {
     //leer fichero con datos de sesion anterior
-    const data = readSession()
+    const data = readFileSession('sessionFile')
     //verificar si son legitimos los datos
     if (!data || (!data.username || !data.token)) return false; //fichero vacio o faltan datos
 
@@ -131,7 +131,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     state.setApodoSesion(data.apodo)
 
     //autovalidacion del codigo de verificacion de cuenta
-    const data_autoverificacion = readOmitirVerificacionCuenta()
+    const data_autoverificacion = readFileSession("omitirVerificacionCuentaFile")
     let autoverificacion = false
     if (data_autoverificacion) {
         const valido = validateToken(data_autoverificacion.token)
@@ -248,7 +248,7 @@ async function ValidarCodeLogin({ correo, code }) {
 
 async function cerrarSesionUsuario(correo) {
     ç
-    const data = readSession()
+    const data = readFileSession('sessionFile')
     clearSession()//limpiar autologin
     LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
     BorrarUsuarioActivo()
