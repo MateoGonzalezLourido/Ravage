@@ -22,7 +22,7 @@ async function saveSession({ username, token = "" }) {//guardar/ crear archivo
 
     fs.writeFile(RTDF.sessionFile, JSON.stringify(data), "utf8", (err) => {
         if (err) {
-            clearSession()
+            clearFileSession(username,'sesion')
             console.error("Error al guardar sesión:", err);
         }
     });
@@ -51,7 +51,7 @@ async function saveOmitirVerificacionCuenta({ username, token = "" }) {//guardar
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     fs.writeFile(RTDF.omitirVerificacionCuentaFile, JSON.stringify(data), "utf8", (err) => {
         if (err) {
-            clearVerificacionCuenta()
+            clearFileSession(username, 'cuenta')
             console.error("Error al guardar autoverifiacion de cuenta:", err);
         }
     });
