@@ -87,14 +87,29 @@ const TokenVC = mongoose.model("TokenValidationAcount", TokenSchema, "tokenvalid
 
 //conectar db
 async function connectDB() {
-    await mongoose.connect(process.env.URI_MONGODB);
-    console.log("-Conectado a MongoDB");
+    //usar tls
+    await mongoose.connect(process.env.URI_MONGODB, {
+        tls: true,
+        tlsInsecure: false,                 // verifica certificados
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000
+    })
+        .then(() => console.log("✅ Conectado a MongoDB Atlas"))
+        .catch(err => console.error("❌ Error de conexión:", err));
 }
 //cerrar db
 async function closeDB() {
     await mongoose.disconnect();
     console.log("-Cerrado MongoDB");
 }
+//reconectar mongo si cae
+mongoose.connection.on('disconnected', () => {
+    console.warn('⚠️ MongoDB desconectado. Reconectando...');
+    connectDB()
+});
+mongoose.connection.on('error', err => {
+    console.error('MongoDB error:', err);
+});
 //loging usuario
 async function LoginUsuario({ correo = null, contraseña = null, token = null }) {
     if (token && correo) {//validar por token + correo
