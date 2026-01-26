@@ -15,7 +15,7 @@ async function startServer() {
 
 // Función opcional para cerrar el servidor
 function stopServer() {
-    if (appServer) appServer.close(() => console.log('*Servidor cerrado'));
+    if (appServer) appServer.close(() => console.warn('*Servidor cerrado'));
 }
 
 module.exports = { startServer, stopServer };

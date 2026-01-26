@@ -15,13 +15,13 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     const data = readFileSession('sessionFile')
     //verificar si estan todos los datos
     if (!data || (!data.username || !data.token)) {
-        console.log("*Autologin: datos de fichero no validos")
+        console.error("*Autologin: datos de fichero no validos")
         return { success: false }; //fichero vacio o faltan datos
     }
     //comprobacion inicial de si es un correo
     const VCorreo = comprobaciones_Correo(data.username)
     if (!VCorreo.success) {//no es valido
-        console.log("*Autologin: correo no valido")
+        console.error("*Autologin: correo no valido")
         clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
         return { success: false }
     }
@@ -30,14 +30,14 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     if (!token_valido) {//token no valido
         LimpiarJWTUsuario(data.correo, data.token)//limpiar token de mongodb
         clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
-        console.log("Token invalido o expirado")
+        console.error("Token invalido o expirado")
         return { success: false };
     }
     //verificar si mongodb tiene ese token
     const token_datos = (await TokenSession.find({ correo: data.username, token: data.token }))
     if (!token_datos) {
         clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
-        console.log("Token invalido o expirado")
+        console.error("Token invalido o expirado")
         return { success: false };
     }
     // verificar si esa cuenta sigue existiendo en la base de datos
@@ -62,7 +62,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     else {//no se ha encontrado el usuario
         LimpiarJWTUsuario(data.username, data.token)//limpiar token de mongodb
         clearFileSession('sessionFile'); // datos incorrectos → limpiar sesión
-        console.log("Error en auto login: no existe este usuario o los datos estan mal")
+        console.error("Error en auto login: no existe este usuario o los datos estan mal")
         return { success: false };
     }
 }
@@ -126,7 +126,7 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     //comparar codigo de usuario con el de mongodb
     const ok = await bcrypt.compare(String(code), code_db.code);
     if (!ok) {//no son iguales
-        console.log(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
+        console.error(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
         return { success: false, message: "Fallo al crear el usuario:codigo incorrecto", intentos: intentos_codigo_validacion };
     };
     //crear nueva cuenta de usuario
@@ -258,7 +258,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //comparar codigo de usuario con el de mongodb
     const ok = await bcrypt.compare(String(code), code_db[0].code);
     if (!ok) {//los codigos no son iguales
-        console.log(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
+        console.error(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
         return { success: false, message: "Fallo al iniciar sesion: codigo incorrecto", intentos: intentos_codigo_validacion };
     };
     //mostrar como usuario activo en mongodb
@@ -307,7 +307,7 @@ async function cerrarSesionUsuario(correo) {
     //borrar usuario activo
     BorrarUsuarioActivo()
 
-    console.log("*Sesion cerrada")
+    console.warn("*Sesion cerrada")
 }
 
 //TODO: añadir mas verificaciones

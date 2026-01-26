@@ -1,5 +1,6 @@
 Electron para app web de escritorio
 node + js
-html+classic
+html+css
 mongodb atlas (512mb-> usar para registros, usuarios, y todo lo que pese poco)
 aws gratuito (5gb 6meses como mucho-> archivos, si se mandan a la nube)
+brevo para poder mandar muchos correos sin que haya problemas, de forma gratuita
