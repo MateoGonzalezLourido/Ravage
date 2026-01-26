@@ -10,7 +10,8 @@ const UserSchema = new mongoose.Schema({
         required: true,
         minlength: 3,
         maxlength: 30,
-        trim: true
+        trim: true,
+        default: "Usuario"
     },
     correo: {
         type: String,
@@ -40,12 +41,12 @@ const ValidationCodeSchema = new mongoose.Schema({
     },
     expira: {
         type: Date,
-        default: () => new Date(Date.now() + 10 * 60 * 1000)
+        default: () => new Date()
     },
-    id: {
+    id_dp: {
         type: String,
         required: true,
-        unique: true,
+        default: ""
     }
 })
 const ActiveUserSchema = new mongoose.Schema({
@@ -60,7 +61,6 @@ const TokenSchema = new mongoose.Schema({
     correo: {
         type: String,
         required: true,
-        unique: true,
         lowercase: true,
         match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     },
@@ -71,15 +71,15 @@ const TokenSchema = new mongoose.Schema({
     },
     expira: {
         type: Date,
-        default: () => new Date(Date.now() + 30 * 60 * 1000)
+        default: () => new Date()
     }
 })
 //expiracion codigos y tokens
-TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 0 });
-ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 0 });
+TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 30 * 60 });
+ValidationCodeSchema.index({ expira:1 }, { expireAfterSeconds: 10 * 60 });
 //las tablas de datos de Ravage
 const User = mongoose.model("User", UserSchema, "usuarios");
-const ValidationCode = mongoose.model("ValidationCode", ValidationCodeSchema, "validationcodes");
+const ValidationCode = mongoose.model("ValidationCodes", ValidationCodeSchema, "validationcodes");
 const CuentaValidationCode = mongoose.model("CuentaValidationCode", ValidationCodeSchema, "cuentavalidationcode");
 const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
 const TokenSession = mongoose.model("TokenSession", TokenSchema, "tokensession");
@@ -116,7 +116,7 @@ async function LoginUsuario({ correo = null, contraseña = null, token = null })
             console.log("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
             return {}
         }
-        if (!token_datos) {
+        if (!token_datos || token_datos == [] || token_datos.length == 0) {
             console.log("LOG, NO SE HA ENCONTRADO EL TOKEN")
             return {}
         }
@@ -141,20 +141,23 @@ async function LoginUsuario({ correo = null, contraseña = null, token = null })
         return usuario_datos
     }
     //log por correo y contraseña
-    if (!correo || !contraseña) throw new Error("Faltan datos para iniciar sesión");
+    if (!correo || !contraseña) {
+        console.log("Faltan datos para iniciar sesión");
+        return;
+    }
     //validar por credenciales correo + contraseña
-    const usuario = (await User.find({ correo }).limit(1))[0];
-    console.log(usuario)
-    if (!usuario) throw new Error("Credenciales incorrectas");
+    const usuario_datos = (await User.find({ correo }).limit(1))[0];
+    if (!usuario_datos) throw new Error("Credenciales incorrectas");
     //comparar contraseña del usuario con la de la base de datos
-    const ok = await bcrypt.compare(contraseña, usuario.contrasena);
+    const ok = await bcrypt.compare(contraseña, usuario_datos.contrasena);
     if (!ok) throw new Error("Credenciales incorrectas");
     //sesion iniciada
-    console.log(`Sesion iniciada: ${usuario.apodo}`)
-    return usuario
+    console.log(`Sesion iniciada: ${usuario_datos.apodo}`)
+    return usuario_datos
 }
 //instertar datos
 async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la contraseña ya biene hasheada
+    if (apodo == "") apodo = "Usuario"
     if (!contraseña || !correo) throw new Error("Faltan datos para insertar usuario");
     await User.create({
         apodo: apodo,
@@ -164,23 +167,25 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la
     console.log("Usuario insertado correctamente");
     return true
 }
-async function InsertarVC({ correo = null, code = null }) {
+async function InsertarVC({ correo = null, code = null, id = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
     await ValidationCode.create({
         code: code,
-        correo: correo
+        correo: correo,
+        id_dp: id
     });
 
     console.log("Codigo insertado correctamente");
     return true
 }
-async function InsertarCuentaVC({ correo = null, code = null }) {
+async function InsertarCuentaVC({ correo = null, code = null, id = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
     await CuentaValidationCode.create({
         code: code,
-        correo: correo
+        correo: correo,
+        id_dp: id
     });
 
     console.log("Codigo insertado correctamente");

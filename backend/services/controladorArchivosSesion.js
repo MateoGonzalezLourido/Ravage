@@ -79,7 +79,7 @@ async function generarteToken(username, duracion) {
     // generar payload seguro para no replicar tokens en pcs distintos y evitar falsificacion
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     const baseboard = await si.baseboard(); //placa base
-    const payload = await bcrypt.hash(username + deviceId + baseboard.serial, 10);
+    const payload = await bcrypt.hash(username + deviceId + baseboard.serial, 9);
     return jwt.sign(
         { payload },           // payload
         SECRET_KEY_JWT,             // clave secreta
@@ -90,7 +90,7 @@ async function generarteToken(username, duracion) {
 function validateToken(token) {
     try {
         const decoded = jwt.verify(token, SECRET_KEY_JWT);//decodificador jwt
-        return decoded.username; // si válido, devuelve username
+        return decoded; // si válido, devuelve username
     } catch {
         return null; // token inválido o expirado
     }

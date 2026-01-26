@@ -95,8 +95,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
                     e.preventDefault()
                     const codigo = document.querySelector("#bt-code-introducir").value
-                    result = await window.sesion_usuario.VALIDAR_CODE_LOGIN_USUARIO(username, codigo);
-
+                    if (codigo.length <= 6) result = await window.sesion_usuario.VALIDAR_CODE_LOGIN_USUARIO(username, codigo);
+                    else result = { success: false, message: "Código muy largo" }
+                    console.log(result)
                     if (result.success) {//codigo valido
                         console.log("SE HA INICIADO SESION CORRECTAMENTE")
                         //mostrar menu de confirmacion cuenta creada
@@ -106,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
                             e.preventDefault()
                             mostrar_menu_cuenta_creada(false)
-                            mostrar_menu_log(true)
+                            mostrar_menu_log(false)
                         })
                     }
                     else {//TODO:mostrar errores en el html
@@ -123,11 +124,10 @@ document.addEventListener("DOMContentLoaded", () => {
     //registro
     document.querySelector("#form-registro").addEventListener('submit', async (e) => {
         e.preventDefault()
-        const apodo = document.querySelector('#registro-apodo').value.trim()
+        let apodo = document.querySelector('#registro-apodo').value.trim()
         const username = document.querySelector('#registro-user').value.trim()
         const password = document.querySelector('#registro-pass').value.trim()
         const password_confirm = document.querySelector('#registro-pass-confirm').value.trim()
-
         if (!(password === password_confirm)) {//las dos contraseñas son diferentes
             document.querySelector("#registro-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto")
             document.querySelector("#span-repetir-contraseña").classList.add("estrada-menu-registro-login-incorrecto")
@@ -152,7 +152,8 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
                 e.preventDefault()
                 const codigo = document.querySelector("#bt-code-introducir").value
-                result = await window.sesion_usuario.VALIDAR_CODE_REGISTRAR_USUARIO(username, codigo);
+                if (codigo.length <= 6) result = await window.sesion_usuario.VALIDAR_CODE_REGISTRAR_USUARIO(username, codigo);
+                else result = { success: false, message: "Código muy largo" }
 
                 if (result.success) {//codigo valido
                     console.log("SE HA CREADO EL USUARIO CORRECTAMENTE")

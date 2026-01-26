@@ -3,19 +3,25 @@ const bcrypt = require('bcryptjs')
 const { saveSessionFile, clearFileSession, generarteToken, validateToken, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
-const state = require('../STORAGE/Variables_sesion.js')
+const storage = require('../STORAGE/Variables_sesion.js')
 const { machineIdSync } = require('node-machine-id');
 const dotenv = require("dotenv");
 dotenv.config();
+const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
+const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior
     const data = readFileSession('sessionFile')
     //verificar si estan todos los datos
-    if (!data || (!data.username || !data.token)) return { success: false }; //fichero vacio o faltan datos
+    if (!data || (!data.username || !data.token)) {
+        console.log("*Autologin: datos de fichero no validos")
+        return { success: false }; //fichero vacio o faltan datos
+    }
     //comprobacion inicial de si es un correo
     const VCorreo = comprobaciones_Correo(data.username)
     if (!VCorreo.success) {//no es valido
+        console.log("*Autologin: correo no valido")
         clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
         return { success: false }
     }
@@ -37,19 +43,20 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     // verificar si esa cuenta sigue existiendo en la base de datos
     const usuario_datos = await LoginUsuario({ correo: data.username })
     //mostrar como usuario activo en mongodb
-    if (usuario_datos.apodo && usuario_datos.correo) {
+    if (usuario_datos && (usuario_datos.apodo && usuario_datos.correo)) {
         // se ha encontrado el usuario
         //establecer variables globales
-        state.setApodoSesion(usuario_datos.apodo)
-        state.setCorreoSesion(data.username)
+        storage.setApodoSesion(usuario_datos.apodo)
+        storage.setCorreoSesion(data.username)
             //añadir usuario activo
             (async () => {
                 const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: data.username });
                 if (NuevoUsuarioActivo) {
                     //guardar id de sesion para borrar cuando deje de estarlo
-                    state.setIdSesion(NuevoUsuarioActivo)
+                    storage.setIdSesion(NuevoUsuarioActivo)
                 }
             })();
+        console.log("*Autologin correcto")
         return { success: true };
     }
     else {//no se ha encontrado el usuario
@@ -74,15 +81,14 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     if (!resultado.success) return { success: false, message: resultado.message }
     //verificar si no existe un usuario igual
     const existe = await User.find({ correo: correo }).limit(1);
-    if (existe) return { success: false, message: "Correo ya registrado" };
-
+    if (existe.length == 1) return { success: false, message: "Correo ya registrado" };
     //guardar vairables para pasarlas a la validacion por correo
-    contraseña_hashed = await bcrypt.hash(password, process.env.SALTOS_ENCRIPTAR_CONTRASEÑA);//contraseña hasheada
+    contraseña_hashed = await bcrypt.hash(password, saltos_contraseña);//contraseña hasheada
     apodo_usuario = apodo
 
     //crear verificacion por codigo de correo
     const code_generado = String(generarCodigoVerificacion())
-    const hashed_ValidationCode = await bcrypt.hash(code_generado, process.env.SALTOS_ENCRIPTAR_CODE)
+    const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
     //generar correo
     const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodo, code_generado: code_generado })
     //insertar codigo en mongodb
@@ -96,25 +102,29 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     return { success: true }
 }
 
-async function ValidarCodeRegistroUsuario({ correo, code }) {
+async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     intentos_codigo_validacion--
     //verificar si ya habia cabado los intentos
     if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al crear el usuario:intentos acabados" } }
+    //mirar si es codigo valido
+    if (code.length > 6) return { success: false, message: "Código muy largo" }
+    if (isNaN(Number(code))) return { success: false, message: "Código no numérico" }
     //cojer el ultimo codigo generado
     const code_db = (await ValidationCode.find({ correo }).sort({ expira: -1 }).limit(1))[0];
-    if (!code_db) {//no hay codes
+    if (code_db == []) {//no hay codes
         contraseña_hashed = null;
         apodo_usuario = null;
         return { success: false, message: "Fallo al crear el usuario: no hay codigos" };
     }
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-    if (deviceId !== code_db.id) {//no son el mismo dispositivo
+
+    if (deviceId !== code_db.id_dp && (code_db.id_dp != "")) {//no son el mismo dispositivo
         contraseña_hashed = null;
         apodo_usuario = null;
         return { success: false, message: "Fallo al crear el usuario: este codigo no pertenece a este dispositivo" };
     }
     //comparar codigo de usuario con el de mongodb
-    const ok = await bcrypt.compare(String(code), code_db[0].code);
+    const ok = await bcrypt.compare(String(code), code_db.code);
     if (!ok) {//no son iguales
         console.log(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
         return { success: false, message: "Fallo al crear el usuario:codigo incorrecto", intentos: intentos_codigo_validacion };
@@ -131,7 +141,7 @@ async function ValidarCodeRegistroUsuario({ correo, code }) {
     }
 
     //mandar correo confirmando creacion de cuenta
-    const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura(apodo_usuario)
+    const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo_usuario })
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
     //limpiar datos 
     BorrarVC(correo)
@@ -154,29 +164,30 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     //iniciar sesion
     const usuario_data = await LoginUsuario({ correo: username, contraseña: contraseña })
     if (!usuario_data || !usuario_data.correo) return { success: false, message: 'Usuario no encontrado' }
-    state.setApodoSesion(usuario_data.apodo)
+    storage.setApodoSesion(usuario_data.apodo)
     //token
     //autovalidacion del codigo de verificacion de cuenta
     const data_autoverificacion = readFileSession("omitirVerificacionCuentaFile")
     let autoverificacion = false
-    if (data_autoverificacion) {
+    if (data_autoverificacion && (data_autoverificacion.token && data_autoverificacion.username)) {
         const valido = validateToken(data_autoverificacion.token)
         if (valido) {
             //validar token con mongodb
-            const token_datos = (await TokenSession.find({ correo: usuario_data.correo, token: data_autoverificacion.token_OVC }))
-            if (!token_datos) {
+            const token_datos = await TokenVC.find({ correo: usuario_data.correo, token: data_autoverificacion.token })
+            if (!token_datos || token_datos.length == 0) {
                 clearFileSession('omitirVerificacionCuentaFile');
                 return { success: false, message: 'Token no encontrado' }
             }
 
             let validado2 = false
-
-            for (let i = 0; i < token_datos.token.length; i++) {
+            console.log("token raro:", data.token_OVC[i])
+            for (let i = 0; i < token_datos.length; i++) {
                 if (data_autoverificacion.token === data.token_OVC[i]) {
                     validado2 = true
                     break
                 }
             }
+
             if (validado2) {
                 autoverificacion = true
             }
@@ -193,7 +204,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         (async () => {
             const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: usuario_data.correo });
             if (NuevoUsuarioActivo) {
-                state.setIdSesion(NuevoUsuarioActivo)
+                storage.setIdSesion(NuevoUsuarioActivo)
             }
         })();
         //JWT , mantener sesion iniciada en cache
@@ -204,13 +215,13 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
                 AñadirJWTUsuario(usuario_data.correo, token)//guardar en mongodb
             }
         })();
-        state.setCorreoSesion(usuario_data.correo)
+        storage.setCorreoSesion(usuario_data.correo)
     }
     else {
         mantener_sesion_iniciada_usuario = mantener_sesion_iniciada
         //crear verificacion por codigo de correo
         const code_generado = String(generarCodigoVerificacion())
-        const hashed_ValidationCode = await bcrypt.hash(code_generado, process.env.SALTOS_ENCRIPTAR_CODE)
+        const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
         const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.apodo, code: code_generado })
         //insertar codigo en mongodb
         const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
@@ -228,14 +239,18 @@ async function ValidarCodeLogin({ correo, code }) {
     intentos_codigo_validacion--
     //verificar si ya habia cabado los intentos
     if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al iniciar sesion:intentos acabados" } }
+    //mirar si es codigo valido
+    if (code.length > 6) return { success: false, message: "Código muy largo" }
+    if (isNaN(Number(code))) return { success: false, message: "Código no numérico" }
     //cojer el ultimo codigo generado
     const code_db = await CuentaValidationCode.find({ correo }).sort({ expira: -1 }).limit(1);
-    if (!code_db) {//no hay codigos
+    if (code_db == []) {//no hay codigos
         mantener_sesion_iniciada_usuario = null
         return { success: false, message: "Fallo al iniciar sesion: no hay codigos" };
     }
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-    if (deviceId !== code_db.id) {//no son el mismo dispositivo
+
+    if (deviceId !== code_db[0].id_dp && (code_db[0].id_dp != "")) {//no son el mismo dispositivo
         contraseña_hashed = null;
         apodo_usuario = null;
         return { success: false, message: "Fallo al iniciar sesion: este codigo no pertenece a este dispositivo" };
@@ -251,10 +266,9 @@ async function ValidarCodeLogin({ correo, code }) {
         const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: correo });
         if (NuevoUsuarioActivo) {
             //guardar id de sesion para borrar cuando deje de estarlo
-            state.setIdSesion(NuevoUsuarioActivo)
+            storage.setIdSesion(NuevoUsuarioActivo)
         }
     })();
-
     //JWT , mantener sesion iniciada en cache
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
@@ -272,7 +286,7 @@ async function ValidarCodeLogin({ correo, code }) {
         }
     })();
     //guardar correo en variables globales
-    state.setCorreoSesion(correo)
+    storage.setCorreoSesion(correo)
     //borrar codigos
     BorrarCuentaVC(correo)
 
