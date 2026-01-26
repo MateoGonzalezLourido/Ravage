@@ -74,9 +74,9 @@ const TokenSchema = new mongoose.Schema({
         default: () => new Date()
     }
 })
-//expiracion codigos y tokens
+//TODOexpiracion codigos y tokens
 TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 30 * 60 });
-ValidationCodeSchema.index({ expira:1 }, { expireAfterSeconds: 10 * 60 });
+ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });
 //las tablas de datos de Ravage
 const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCodes", ValidationCodeSchema, "validationcodes");
@@ -113,11 +113,11 @@ async function LoginUsuario({ correo = null, contraseña = null, token = null })
         const usuario_datos = (await User.find({ correo }).limit(1))[0]
         const token_datos = (await TokenSession.find({ correo }))
         if (!usuario_datos) {
-            console.log("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
+            console.error("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
             return {}
         }
         if (!token_datos || token_datos == [] || token_datos.length == 0) {
-            console.log("LOG, NO SE HA ENCONTRADO EL TOKEN")
+            console.error("LOG, NO SE HA ENCONTRADO EL TOKEN")
             return {}
         }
         //validar token
@@ -129,12 +129,12 @@ async function LoginUsuario({ correo = null, contraseña = null, token = null })
             }
         }
         if (!validado) {
-            console.log("LOG, SESION EXPIRADA: TOKEN")
+            console.error("LOG, SESION EXPIRADA: TOKEN")
             return {}
         }
 
         if (!(usuario_datos.correo === correo)) {
-            console.log("LOG, CORREOS INCORRECTOS")
+            console.error("LOG, CORREOS INCORRECTOS")
             return {}
         }
         //sesion iniciada
@@ -142,15 +142,21 @@ async function LoginUsuario({ correo = null, contraseña = null, token = null })
     }
     //log por correo y contraseña
     if (!correo || !contraseña) {
-        console.log("Faltan datos para iniciar sesión");
+        console.error("Faltan datos para iniciar sesión");
         return;
     }
     //validar por credenciales correo + contraseña
     const usuario_datos = (await User.find({ correo }).limit(1))[0];
-    if (!usuario_datos) throw new Error("Credenciales incorrectas");
+    if (!usuario_datos) {
+        console.error("Credenciales incorrectas");
+        return {}
+    }
     //comparar contraseña del usuario con la de la base de datos
     const ok = await bcrypt.compare(contraseña, usuario_datos.contrasena);
-    if (!ok) throw new Error("Credenciales incorrectas");
+    if (!ok) {
+        console.error("Credenciales incorrectas");
+        return {}
+    }
     //sesion iniciada
     console.log(`Sesion iniciada: ${usuario_datos.apodo}`)
     return usuario_datos

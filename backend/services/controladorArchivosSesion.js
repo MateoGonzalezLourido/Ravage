@@ -80,6 +80,7 @@ async function generarteToken(username, duracion) {
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     const baseboard = await si.baseboard(); //placa base
     const payload = await bcrypt.hash(username + deviceId + baseboard.serial, 9);
+    console.log("Token generado")
     return jwt.sign(
         { payload },           // payload
         SECRET_KEY_JWT,             // clave secreta
