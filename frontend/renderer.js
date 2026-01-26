@@ -70,8 +70,8 @@ document.addEventListener("DOMContentLoaded", () => {
     //login
     document.querySelector("#form-login").addEventListener("submit", async (e) => {
         e.preventDefault()
-        const username = document.querySelector('#login-user').value
-        const password = document.querySelector('#login-pass').value
+        const username = document.querySelector('#login-user').value.trim()
+        const password = document.querySelector('#login-pass').value.trim()
         const mantener_sesion_iniciada = document.querySelector("#login-guardar").checked
 
         //TODO:conectar con backend
@@ -123,10 +123,10 @@ document.addEventListener("DOMContentLoaded", () => {
     //registro
     document.querySelector("#form-registro").addEventListener('submit', async (e) => {
         e.preventDefault()
-        const apodo = document.querySelector('#registro-apodo').value
-        const username = document.querySelector('#registro-user').value
-        const password = document.querySelector('#registro-pass').value
-        const password_confirm = document.querySelector('#registro-pass-confirm').value
+        const apodo = document.querySelector('#registro-apodo').value.trim()
+        const username = document.querySelector('#registro-user').value.trim()
+        const password = document.querySelector('#registro-pass').value.trim()
+        const password_confirm = document.querySelector('#registro-pass-confirm').value.trim()
 
         if (!(password === password_confirm)) {//las dos contraseñas son diferentes
             document.querySelector("#registro-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto")
