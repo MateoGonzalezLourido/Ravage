@@ -24,14 +24,6 @@ const UserSchema = new mongoose.Schema({
         required: true,
         minlength: 5
     },
-    token: {
-        type: [String],
-        default: []
-    },
-    token_OVC: {
-        type: [String],
-        default: []
-    },
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({
@@ -64,11 +56,34 @@ const ActiveUserSchema = new mongoose.Schema({
         match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     }
 })
+const TokenSchema = new mongoose.Schema({
+    correo: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    },
+    token: {
+        type: String,
+        require: true,
+        default: ""
+    },
+    expira: {
+        type: Date,
+        default: () => new Date(Date.now() + 30 * 60 * 1000)
+    }
+})
+//expiracion codigos y tokens
+TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 0 });
+ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 0 });
 //las tablas de datos de Ravage
 const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCode", ValidationCodeSchema, "validationcodes");
 const CuentaValidationCode = mongoose.model("CuentaValidationCode", ValidationCodeSchema, "cuentavalidationcode");
 const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
+const TokenSession = mongoose.model("TokenSession", TokenSchema, "tokensession");
+const TokenVC = mongoose.model("TokenValidationAcount", TokenSchema, "tokenvalidationacount");
 
 //conectar db
 async function connectDB() {
@@ -85,14 +100,19 @@ async function LoginUsuario({ correo = null, contraseña = null, token = null })
     if (token && correo) {//validar por token + correo
         //obtener usuario+datos
         const usuario_datos = (await User.find({ correo }).limit(1))[0]
+        const token_datos = (await TokenSession.find({ correo }))
         if (!usuario_datos) {
             console.log("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
             return {}
         }
+        if (!token_datos) {
+            console.log("LOG, NO SE HA ENCONTRADO EL TOKEN")
+            return {}
+        }
         //validar token
         let validado = false
-        for (let i = 0; i < usuario_datos.token.length; i++) {
-            if (token === usuario_datos.token[i]) {
+        for (let i = 0; i < token_datos.length; i++) {
+            if (token === token_datos[i].token) {
                 validado = true
                 break
             }
@@ -177,30 +197,28 @@ async function BorrarUsuarioActivo(correo) {
 }
 //añadir tokens
 async function AñadirJWTUsuario(correo, token = "") {
-    await User.updateOne(
+    //exìra en 7dias
+    await TokenSession.updateOne(
         { correo },
-        { $push: { token: token } }
+        { token: token },
+        { expira: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
     );
 }
 async function AñadirJWTUsuarioVC(correo, token = "") {
-    await User.updateOne(
+    //exìra en 90min
+    await TokenVC.updateOne(
         { correo },
-        { $push: { token_OVC: token } }
+        { token: token },
+        { expira: new Date(Date.now() + 90 * 60 * 1000) }
     );
 }
 //limpiar tokens
 async function LimpiarJWTUsuario(correo, token = "") {
-    await User.updateOne(
-        { correo },
-        { $pull: { tokens: token } }
-    );
+    await TokenSession.deleteMany({ correo: correo, token: token });
 }
 async function LimpiarJWTUsuarioVC(correo, token = "") {
-    await User.updateOne(
-        { correo },
-        { $pull: { token_OVC: token } }
-    );
+    await TokenVC.deleteMany({ correo: correo, token: token });
 }
 
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, InsertarUsuarioActivo, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, InsertarUsuarioActivo, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC }
