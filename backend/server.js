@@ -1,5 +1,4 @@
 const express = require('express');
-const { connectDB } = require('./db/mongo.js');
 
 let appServer; // para poder cerrar el server si quieres
 
