@@ -102,14 +102,6 @@ async function closeDB() {
     await mongoose.disconnect();
     console.log("-Cerrado MongoDB");
 }
-//reconectar mongo si cae
-mongoose.connection.on('disconnected', () => {
-    console.warn('⚠️ MongoDB desconectado. Reconectando...');
-    connectDB()
-});
-mongoose.connection.on('error', err => {
-    console.error('MongoDB error:', err);
-});
 //loging usuario
 async function LoginUsuario({ correo = null, contraseña = null, token = null }) {
     if (token && correo) {//validar por token + correo
