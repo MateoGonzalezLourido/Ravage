@@ -31,10 +31,10 @@ const ValidarCuentaUsuario = ({ apodo, code }) => {
     <div class="flowbox" style="background-color: lightblue; margin: 1em 0px 1em 0em; padding: 0.5em; border-radius: 1.5rem 3rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
         <p style="text-align: center;">Debes usar este código para poder iniciar sesión.</p>
         <p style="text-align: center;">
-            <em> Este código caducará en 10 minutos. </em>
+            <em>- Este código caducará en 10 minutos -</em>
         </p>
         <span class="flowbox" style="text-align: center; display: flex; justify-content: center;">
-            <span id="warning_respond" class="flowbox" style="background-color: pink; margin: 0.3rem 0rem 0.3rem 0rem; padding: 0.5rem; border-radius: 1.5rem 3rem; width: 80%; box-sizing: border-box; text-align: center; display: block;"> Si no has sido tú puedes decírnoslo respondiendo a este correo. </span>
+            <span id="warning_respond" class="flowbox" style="background-color: pink; margin: 0.rem 0rem 0.3rem 0rem; padding: 0.8rem; border-radius: 1.5rem 3rem; width: 82%; box-sizing: border-box; text-align: center; display: block;"> Si no has sido tú puedes decírnoslo respondiendo a este correo. </span>
         </span>
     </div>
     <div class="flowbox" style="background-color: lightblue; margin: 1em 0px; padding: 0.5rem; border-radius: 1.5rem 3rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
@@ -42,7 +42,7 @@ const ValidarCuentaUsuario = ({ apodo, code }) => {
         
     </div>
     <div id="copyright" style="width:100%; justify-content:right; display:flex; ">
-    <span style="text-align: right; margin: 0.2rem 1.7rem 0rem 0px; font-size: 0.6rem; color: gray;">Diseño por Alberto</span>
+    <span style="text-align: right; margin: 0.2rem 1.7rem 0rem 0px; font-size: 0.7rem; color: gray;">Diseño por Alberto</span>
     </div>
 </div>`
     return { asunto: asunto, htmlContenido: htmlContenido }
