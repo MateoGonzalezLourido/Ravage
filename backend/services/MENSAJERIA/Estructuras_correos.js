@@ -24,9 +24,9 @@ const ValidarCuentaUsuario = ({ apodo, code }) => {
     <p>
         <span style="font-size: 1.3rem; font-family: Arial; padding: 1rem;"> Hola, ${apodo}. </span>
     </p>
-    <div class="flowbox" style="font-size: 2em; border-radius: 1.5rem 3.0rem; background-color: #e8e8e8; padding: 0.8em 0.4em; box-sizing: border-box; display: block; width: 100%; text-align: center; font-family: Arial; height: fit-content">Tu código de verificación de cuenta es: 
+    <div class="flowbox" style="font-size: 1.5em; border-radius: 1.5rem 3.0rem; background-color: #e8e8e8; padding: 0.8em 0.4em; box-sizing: border-box; display: block; width: 100%; text-align: center; font-family: Arial; height: fit-content">Tu código de verificación de cuenta es: 
         <br /><div style="display:flex; width:100%; justify-content:center;">
-        <span id="otp_code" style="color: darkblue; border-radius: 1.5rem 3rem; background-color: lightgreen; padding: 0.7em; box-sizing: border-box; display: block; width: 100%; text-align: center; margin: 0.7em 0px 0em 0px; font-size: 3rem; width:80%; min-width: fit-content;">${code}</span>
+        <span id="otp_code" style="color: darkblue; border-radius: 1.5rem 3rem; background-color: lightgreen; padding: 0.7em; box-sizing: border-box; display: block; width: 100%; text-align: center; margin: 0.55em 0px 0em 0px; font-size: 2.5rem; width:80%; min-width: fit-content;user-select: all;">${code}</span>
     </div></div>
     <div class="flowbox" style="background-color: lightblue; margin: 1em 0px 1em 0em; padding: 0.5em; border-radius: 1.5rem 3rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
         <p style="text-align: center;">Debes usar este código para poder iniciar sesión.</p>
