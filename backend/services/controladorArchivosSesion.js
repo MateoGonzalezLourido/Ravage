@@ -22,6 +22,7 @@ const RTDF = {
 
 async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
     const data = { username, token };
+    //semiencriptar username
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos

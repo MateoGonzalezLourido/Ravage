@@ -5,6 +5,8 @@ const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servici
 const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
 const state = require('../STORAGE/Variables_sesion.js')
 const { machineIdSync } = require('node-machine-id');
+const dotenv = require("dotenv");
+dotenv.config();
 
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior
@@ -68,7 +70,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     if (existe) return { success: false, message: "Correo ya registrado" };
 
     //guardar vairables para pasarlas a la validacion por correo
-    contraseña_hashed = await bcrypt.hash(password, 10);//contraseña hasheada
+    contraseña_hashed = await bcrypt.hash(password, process.env.SALTOS_ENCRIPTAR_CONTRASEÑA);//contraseña hasheada
     apodo_usuario = apodo
 
     //crear verificacion por codigo de correo
@@ -196,7 +198,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         mantener_sesion_iniciada_usuario = mantener_sesion_iniciada
         //crear verificacion por codigo de correo
         const code_generado = String(generarCodigoVerificacion())
-        const hashed_ValidationCode = await bcrypt.hash(code_generado, 10)
+        const hashed_ValidationCode = await bcrypt.hash(code_generado, process.env.SALTOS_ENCRIPTAR_CONTRASEÑA)
         const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: data.apodo, code: code_generado })
         //insertar codigo en mongodb
         const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
