@@ -13,7 +13,7 @@ body {
     width: 100%;
     height: 100%;
     z-index: 100 !important;
-    background-color: rgb(232, 237, 241);
+    background-color: rgb(230, 234, 236);
     backdrop-filter: blur(10px);
     justify-content: center;
     align-items: center;
@@ -23,16 +23,47 @@ body {
 
 
 .menu-registro-login {
-    background-color: antiquewhite;
+    background-color: rgba(249, 249, 249, 0.642);
+    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
     width: 325px;
     height: 300px;
     display: flex;
     flex-direction: column;
-    padding: 12px;
+    padding: 20px;
+    border-radius: 12px;
+    corner-shape: squircle;
+}
+
+.label-check {
+    flex-direction: row !important;
+    align-items: center !important;
+    cursor: pointer !important;
+}
+
+.label-check input {
+    height: 20px !important;
+    width: 20px !important;
+    margin: 0 !important;
+    margin-left: 8px !important;
+    margin-top: 3px !important;
+    padding: 0 !important;
 }
 
 #seccion-registro-login button {
+    margin: auto;
     cursor: pointer;
+    height: 29px;
+    width: 250px;
+    border-radius: 4px;
+    border: 1px solid rgba(113, 113, 113, 0.721);
+    margin-top: 8px;
+    font-size: 14.5px;
+    transition: 0.08s;
+}
+
+#seccion-registro-login button:hover {
+    transition: 0.15s;
+    font-size: 15.7px;
 }
 
 #seccion-registro-login h2 {
@@ -48,6 +79,16 @@ body {
     display: flex;
     flex-direction: column;
 }
+
+#seccion-registro-login form input {
+    height: 24px;
+    padding: 1px;
+    margin-top: 2.5px;
+    padding-left: 8px;
+    font-size: 14.2px;
+    font-style: monospace;
+}
+
 
 #seccion-registro-login form label {
     display: flex;
@@ -90,10 +131,59 @@ body {
 }
 
 #seccion-registro {
-    height: 315px !important;
+    height: 390px !important;
 }
 
 .span-aviso {
     font-style: italic;
-    color: darkgray;
+    color: rgba(148, 148, 148, 0.897);
+    text-align: left;
+}
+
+/* Chrome, Edge, Safari */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.menu-validacion-codigo {
+    background-color: rgba(249, 249, 249, 0.642);
+    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
+    width: 325px;
+    height: 280px;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 12px;
+    corner-shape: squircle;
+}
+
+.menu-validacion-codigo input {
+    margin-top: 18px !important;
+    margin-bottom: 12px !important;
+}
+
+.menu-validacion-codigo .ayuda-texto {
+    margin-bottom: 12px;
+}
+
+.menu-confirmacion-cuenta-creada {
+    background-color: rgba(249, 249, 249, 0.642);
+    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
+    width: 325px;
+    height: 150px;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    padding-left: 30px;
+    padding-right: 30px;
+    border-radius: 12px;
+    corner-shape: squircle;
+    display: flex;
+    text-align: center;
+    flex-direction: column;
+    justify-content: center !important;
 }
