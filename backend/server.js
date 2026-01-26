@@ -6,9 +6,6 @@ let appServer; // para poder cerrar el server si quieres
 async function startServer() {
     console.log('-Iniciando servidor...');
 
-    await connectDB(); // conecta Mongo
-    console.log('*DB lito para usar:');
-
     const app = express(); // <--- aquí defines app
     app.use(express.json());
 
