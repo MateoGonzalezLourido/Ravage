@@ -1,10 +1,44 @@
 const ValidarCorreoEstructura = ({ apodo = "Usuario", code_generado }) => {
     const asunto = "Verificación de correo"
-    const htmlContenido = `<span style="text-decoration:underline">Hola, ${apodo}</span>
-    <span style="font-size:20px">Codigo de verificacion de correo:</br><font style="color:green">${code_generado}</font></span>
-    <span>Si no has sido tú puedes decírnoslo por este correo.</span>
-    <span style="font-style: italic;color=gray">AVISO: Este código caducará en 10minutos, así que te recomendamos que hagas la verificación lo antes posible.</span>
-    <span>Mateo's Stage</span>`
+    const htmlContenido = `<!DOCTYPE html>
+<html>
+<style>
+.flowbox {
+	border-radius: 1.5rem 3.0rem; 
+    padding: 1rem;
+    display: block;
+}
+</style>
+<body>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<div class="flowbox" style="background-color: #cffff3; padding: 1rem; display: block; min-height: fit-content;">
+    <p>
+        <span style="font-size: 1.3rem; font-family: Arial; padding: 0.8rem;"> Hola, ${apodo}. (●'◡'●)</span>
+    </p>
+    <div class="flowbox" style="font-size: 1.45em; background-color: #e8e8e8; padding: 0.8em 0.4em; box-sizing: border-box; display: block; width: 100%; text-align: center; font-family: Arial; height: fit-content">Tu código de para iniciar sesión es: 
+        <br /><div style="display:flex; width:100%; justify-content:center;">
+        <span id="otp_code" class="flowbox" style="color: black; background-color: #c890ed; padding: 0.6em; box-sizing: border-box; display: block; width: 100%; text-align: center; margin: 0.55em 0px 0em 0px; font-size: 2.5rem; width:80%; min-width: fit-content;user-select: all;">${code}</span>
+    </div></div>
+    <div class="flowbox" style="background-color: lightblue; margin: 1em 0px 1em 0em; padding: 0.5em; border-radius: 1.5rem 3rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
+        <p style="text-align: center;">Debes usar este código para poder iniciar sesión.</p>
+        <p style="text-align: center;">
+            <em>- Este código caducará en 10 minutos -</em>
+        </p>
+        <span class="flowbox" style="text-align: center; display: flex; justify-content: center;">
+            <span id="warning_respond" class="flowbox" style="background-color: pink; margin: 0.rem 0rem 0.3rem 0rem; padding: 0.8rem; width: 82%; box-sizing: border-box; text-align: center; display: block;"> Si no has sido tú puedes decírnoslo respondiendo a este correo. </span>
+        </span>
+    </div>
+    <div class="flowbox" style="background-color: lightblue; margin: 1em 0px; padding: 0.5rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
+        <span style="text-align: center;"> Mateo's Stage</span>
+        
+    </div>
+    <div id="copyright" style="width:100%; justify-content:right; display:flex; ">
+    <span style="text-align: right; margin: 0.2rem 1.7rem 0rem 0px; font-size: 0.7rem; color: gray;">Diseño por Alberto</span>
+    </div>
+</div>
+</body>
+</html>
+`
 
     return { asunto: asunto, htmlContenido: htmlContenido }
 }
