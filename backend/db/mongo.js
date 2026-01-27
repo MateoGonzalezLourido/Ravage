@@ -74,8 +74,8 @@ const TokenSchema = new mongoose.Schema({
         default: () => new Date()
     }
 })
-//TODOexpiracion codigos y tokens
-TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 30 * 60 });
+//expiracion codigos y tokens
+TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });
 ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });
 //las tablas de datos de Ravage
 const User = mongoose.model("User", UserSchema, "usuarios");
@@ -219,11 +219,11 @@ async function BorrarUsuarioActivo(correo) {
 }
 //añadir tokens
 async function AñadirJWTUsuario(correo, token = "") {
-    //exìra en 7dias
+    //exìra en 7dias, expira= (7dias - 90min del expire de mongo)
     await TokenSession.updateOne(
         { correo },
         { token: token },
-        { expira: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+        { expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000))) }
     );
 }
 async function AñadirJWTUsuarioVC(correo, token = "") {
@@ -231,7 +231,7 @@ async function AñadirJWTUsuarioVC(correo, token = "") {
     await TokenVC.updateOne(
         { correo },
         { token: token },
-        { expira: new Date(Date.now() + 90 * 60 * 1000) }
+        { expira: new Date(Date.now()) }
     );
 }
 //limpiar tokens

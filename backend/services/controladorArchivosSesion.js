@@ -70,7 +70,7 @@ async function clearFileSession(ruta) {//borrar archivo
 
 /*JWT */
 
-async function generarteToken(username, duracion) {
+async function generarteToken(username = "j12bejkb1@gmail.com", duracion = "cuenta") {
     const duraciones = {
         sesion: '7d',
         cuenta: '90m'
@@ -78,8 +78,7 @@ async function generarteToken(username, duracion) {
 
     // generar payload seguro para no replicar tokens en pcs distintos y evitar falsificacion
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-    const baseboard = await si.baseboard(); //placa base
-    const payload = await bcrypt.hash(username + deviceId + baseboard.serial, 9);
+    const payload = await bcrypt.hash(username + deviceId, 9);
     console.log("Token generado")
     return jwt.sign(
         { payload },           // payload
