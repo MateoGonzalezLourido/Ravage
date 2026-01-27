@@ -90,7 +90,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     const code_generado = String(generarCodigoVerificacion())
     const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
     //generar correo
-    const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodo, code_generado: code_generado })
+    const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodo, code: code_generado })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     InsertarVC({ correo: correo, code: hashed_ValidationCode, id: deviceId })
