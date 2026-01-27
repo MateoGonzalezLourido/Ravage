@@ -1,5 +1,3 @@
-const { model } = require("mongoose");
-
 let Correo_Usuario_sesion;
 let Apodo_Usuario_sesion;
 let Id_Sesion_activa;
