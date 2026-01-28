@@ -90,7 +90,7 @@ async function generarteToken(username = "j12bejkb1@gmail.com", duracion = "cuen
 function validateToken(token) {
     try {
         const decoded = jwt.verify(token, SECRET_KEY_JWT);//decodificador jwt
-        return decoded; // si válido, devuelve username
+        return decoded.payload; // si válido, devuelve username
     } catch {
         return null; // token inválido o expirado
     }
