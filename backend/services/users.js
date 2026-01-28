@@ -74,13 +74,22 @@ let intentos_codigo_validacion = n_intentos_codigo_validacion;
 let bloquear_accion = false
 
 async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
-    if (!correo || !password) return { success: false, message: "Faltan datos para registrar el usuario" }
+    if (bloquear_accion) return { success: false, message: "bloqueador de acción temporal" }
+    bloquear_accion = true
+
+    if (!correo || !password) {
+        bloquear_accion = false
+        return { success: false, message: "Faltan datos para registrar el usuario" }
+    }
     //comprobacion inicial de si es un correo
     const resultado = comprobaciones_Correo(correo)
     if (!resultado.success) return { success: false, message: resultado.message }
     //verificar si no existe un usuario igual
     const existe = await User.find({ correo: correo }).limit(1);
-    if (existe.length == 1) return { success: false, message: "Correo ya registrado" };
+    if (existe.length == 1) {
+        bloquear_accion = false
+        return { success: false, message: "Correo ya registrado" };
+    }
     //guardar vairables para pasarlas a la validacion por correo
     contraseña_hashed = await bcrypt.hash(password, saltos_contraseña);//contraseña hasheada
     apodo_usuario = apodo
@@ -98,21 +107,35 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
 
     //intentos para poder poner el codigo correcto de verificacion
     intentos_codigo_validacion = n_intentos_codigo_validacion
+    bloquear_accion = false
     return { success: true }
 }
 
 async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
+    if (bloquear_accion) return { success: false, message: "bloqueador de acción temporal" }
+    bloquear_accion = true
+
     intentos_codigo_validacion--
     //verificar si ya habia cabado los intentos
-    if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al crear el usuario:intentos acabados" } }
+    if (intentos_codigo_validacion < 0) {
+        bloquear_accion = false
+        return { success: false, message: "Fallo al crear el usuario:intentos acabados" }
+    }
     //mirar si es codigo valido
-    if (code.length > 6) return { success: false, message: "Código muy largo" }
-    if (isNaN(Number(code))) return { success: false, message: "Código no numérico" }
+    if (code.length > 6) {
+        bloquear_accion = false
+        return { success: false, message: "Código muy largo" }
+    }
+    if (isNaN(Number(code))) {
+        bloquear_accion = false
+        return { success: false, message: "Código no numérico" }
+    }
     //cojer el ultimo codigo generado
     const code_db = (await ValidationCode.find({ correo }).sort({ expira: -1 }).limit(1))[0];
     if (code_db == []) {//no hay codes
         contraseña_hashed = null;
         apodo_usuario = null;
+        bloquear_accion = false
         return { success: false, message: "Fallo al crear el usuario: no hay codigos" };
     }
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
@@ -120,12 +143,14 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     if (deviceId !== code_db.id_dp && (code_db.id_dp != "")) {//no son el mismo dispositivo
         contraseña_hashed = null;
         apodo_usuario = null;
+        bloquear_accion = false
         return { success: false, message: "Fallo al crear el usuario: este codigo no pertenece a este dispositivo" };
     }
     //comparar codigo de usuario con el de mongodb
     const ok = await bcrypt.compare(String(code), code_db.code);
     if (!ok) {//no son iguales
         console.error(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
+        bloquear_accion = false
         return { success: false, message: "Fallo al crear el usuario:codigo incorrecto", intentos: intentos_codigo_validacion };
     };
     //crear nueva cuenta de usuario
@@ -134,9 +159,8 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         BorrarVC(correo)//borrar codigos
         contraseña_hashed = null;
         apodo_usuario = null;
-        return {
-            success: false, message: "Fallo al crear el usuario"
-        }
+        bloquear_accion = false
+        return { success: false, message: "Fallo al crear el usuario" }
     }
 
     //mandar correo confirmando creacion de cuenta
@@ -146,7 +170,7 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     BorrarVC(correo)
     apodo_usuario = null;
     contraseña_hashed = null;
-
+    bloquear_accion = false
     return { success: true };
 }
 
@@ -242,6 +266,9 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
 }
 
 async function ValidarCodeLogin({ correo, code }) {
+    if (bloquear_accion) return { success: false, message: "bloqueador de acción temporal" }
+    bloquear_accion = true
+
     intentos_codigo_validacion--
     //verificar si ya habia cabado los intentos
     if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al iniciar sesion:intentos acabados" } }
@@ -252,6 +279,7 @@ async function ValidarCodeLogin({ correo, code }) {
     const code_db = await CuentaValidationCode.find({ correo }).sort({ expira: -1 }).limit(1);
     if (code_db == [] || !code_db || code_db.length == 0) {//no hay codigos
         mantener_sesion_iniciada_usuario = null
+        bloquear_accion = false
         return { success: false, message: "Fallo al iniciar sesion: no hay codigos" };
     }
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
@@ -259,12 +287,14 @@ async function ValidarCodeLogin({ correo, code }) {
     if (deviceId !== code_db[0].id_dp && (code_db[0].id_dp != "")) {//no son el mismo dispositivo
         contraseña_hashed = null;
         apodo_usuario = null;
+        bloquear_accion = false
         return { success: false, message: "Fallo al iniciar sesion: este codigo no pertenece a este dispositivo" };
     }
     //comparar codigo de usuario con el de mongodb
     const ok = await bcrypt.compare(String(code), code_db[0].code);
     if (!ok) {//los codigos no son iguales
         console.error(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
+        bloquear_accion = false
         return { success: false, message: "Fallo al iniciar sesion: codigo incorrecto", intentos: intentos_codigo_validacion };
     };
     //mostrar como usuario activo en mongodb
@@ -295,7 +325,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //mandar correo confirmando creacion de cuenta
     const { asunto, htmlContenido } = ConfirmacionInicioSesion()
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-
+    bloquear_accion = false
     return { success: true };
 }
 
