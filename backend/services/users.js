@@ -74,7 +74,7 @@ let intentos_codigo_validacion = n_intentos_codigo_validacion;
 let bloquear_accion = false
 
 async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
-    if (bloquear_accion) return { success: false, message: "bloqueador de acción temporal" }
+    if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
 
     if (!correo || !password) {
@@ -112,7 +112,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
 }
 
 async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
-    if (bloquear_accion) return { success: false, message: "bloqueador de acción temporal" }
+    if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
 
     intentos_codigo_validacion--
@@ -175,7 +175,7 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
 }
 
 async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {//aqui se usa username en vez de correo, pero son lo mismo
-    if (bloquear_accion) return { success: false, message: "bloqueador de acción temporal" }
+    if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
 
     //limpiar cosas del registro si hubiese
@@ -266,7 +266,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
 }
 
 async function ValidarCodeLogin({ correo, code }) {
-    if (bloquear_accion) return { success: false, message: "bloqueador de acción temporal" }
+    if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
 
     intentos_codigo_validacion--
