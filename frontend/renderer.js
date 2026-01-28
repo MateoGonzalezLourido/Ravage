@@ -76,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         //TODO:conectar con backend
         let result = await window.sesion_usuario.LOGIN_USUARIO(username, password, mantener_sesion_iniciada)
-        console.log(result)
+
         if (result.success) {//sesion iniciada
             if (result.autoverificacion) {//sesion iniciada sin codigo de verificacion
                 console.log("SE HA INICIADO SESION CORRECTAMENTE")
@@ -97,7 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const codigo = document.querySelector("#bt-code-introducir").value
                     if (codigo.length <= 6) result = await window.sesion_usuario.VALIDAR_CODE_LOGIN_USUARIO(username, codigo);
                     else result = { success: false, message: "Código muy largo" }
-                    console.log(result)
+
                     if (result.success) {//codigo valido
                         console.log("SE HA INICIADO SESION CORRECTAMENTE")
                         //mostrar menu de confirmacion cuenta creada
