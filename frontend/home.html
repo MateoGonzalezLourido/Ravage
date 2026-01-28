@@ -4,9 +4,25 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Document</title>
+        <title>RAVAGE</title>
         <link rel="stylesheet" href="./style.css">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+        <!--seguridad-->
+        <meta http-equiv="Content-Security-Policy" content="
+                default-src 'self';
+                script-src 'self';
+                style-src 'self';
+                img-src 'self' data: blob:;
+                font-src 'self';
+                connect-src 'self' https://api.tuservidor.com;
+                object-src 'none';
+                frame-src 'none';
+                base-uri 'self';
+        ">
+        <meta http-equiv="X-Content-Type-Options" content="nosniff">
+        <meta http-equiv="X-Frame-Options" content="DENY">
+        <meta http-equiv="Referrer-Policy" content="no-referrer">
+        <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+
     </head>
 
     <body>
@@ -66,7 +82,8 @@
                 <form id="form-validation-correo">
                     <input id="bt-code-introducir" type="number" value="" placeholder="123456" required
                         autocomplete="off" minlength="6" maxlength="6" autofocus="on">
-                        <span class="text-error-form-causa ocultar-display" id="text-error-form-causa-codigo-validar"></span>
+                    <span class="text-error-form-causa ocultar-display"
+                        id="text-error-form-causa-codigo-validar"></span>
                     <button class="bt-validar-code">Validar</button>
                     <span class="bt-cambio-login-registro" id="bt-cambiar-login-validation-code">¿Quieres volver?</span>
                 </form>
@@ -78,7 +95,7 @@
             </div>
         </div>
         <!--MENU INICIO-->
-        
+
         <!--SCRIPTS-->
         <script defer src="./renderer.js"></script><!--CARGARLO AL FINAL DE TODO-->
     </body>
