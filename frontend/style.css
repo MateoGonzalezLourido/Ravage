@@ -187,3 +187,10 @@ input[type="number"]::-webkit-outer-spin-button {
     flex-direction: column;
     justify-content: center !important;
 }
+
+.text-error-form-causa {
+    color: rgb(216, 14, 14);
+    font-style: italic;
+    text-align: left;
+    font-size: 14px;
+}

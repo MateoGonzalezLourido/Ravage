@@ -111,14 +111,21 @@ document.addEventListener("DOMContentLoaded", () => {
                         })
                     }
                     else {//TODO:mostrar errores en el html
+                        if (result.bloqueador) return;
                         console.log("NO SE HA INICIADO SESION CORRECTAMENTE")
-
+                        document.querySelector("#text-error-form-causa-codigo-validar").innerHTML = "*" + result.message + "*"
+                        document.querySelector("#text-error-form-causa-codigo-validar").classList.remove("ocultar-display")
+                        document.querySelector("#text-error-form-causa-codigo-validar").classList.add("flex-display")
                     }
                 })
             }
         }
         else {//TODO: mostrar errores en el html
-
+            if (result.bloqueador) return;
+            console.log("FALLO AL INICIO DEL LOGIN")
+            document.querySelector("#text-error-form-causa-login").innerHTML = "*" + result.message + "*"
+            document.querySelector("#text-error-form-causa-login").classList.remove("ocultar-display")
+            document.querySelector("#text-error-form-causa-login").classList.add("flex-display")
         }
     })
     //registro
@@ -174,8 +181,11 @@ document.addEventListener("DOMContentLoaded", () => {
             })
         }
         else {//TODO:mostrar errores en el html
-
+            if (result.bloqueador) return;
+            console.log("ERROR AL REGISTRAR USUARIO")
+            document.querySelector("#text-error-form-causa-registro").innerHTML = "*" + result.message + "*"
+            document.querySelector("#text-error-form-causa-registro").classList.remove("ocultar-display")
+            document.querySelector("#text-error-form-causa-registro").classList.add("flex-display")
         }
-
     })
 })
