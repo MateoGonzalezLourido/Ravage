@@ -41,21 +41,19 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
         return { success: false };
     }
     // verificar si esa cuenta sigue existiendo en la base de datos
-    const usuario_datos = await LoginUsuario({ correo: data.username })
+    const usuario_datos = await LoginUsuario({ correo: data.username, token: data.token })
     //mostrar como usuario activo en mongodb
-    if (usuario_datos && (usuario_datos.apodo && usuario_datos.correo)) {
+    if (usuario_datos && data) {
         // se ha encontrado el usuario
         //establecer variables globales
-        storage.setApodoSesion(usuario_datos.apodo)
-        storage.setCorreoSesion(data.username)
-            //añadir usuario activo
-            (async () => {
-                const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: data.username });
-                if (NuevoUsuarioActivo) {
-                    //guardar id de sesion para borrar cuando deje de estarlo
-                    storage.setIdSesion(NuevoUsuarioActivo)
-                }
-            })();
+        //añadir usuario activo
+        (async () => {
+            storage.setApodoSesion(usuario_datos.apodo);
+            storage.setCorreoSesion(usuario_datos.correo);
+
+            const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: usuario_datos.correo });
+            if (NuevoUsuarioActivo) storage.setIdSesion(NuevoUsuarioActivo);
+        })();
         console.log("*Autologin correcto")
         return { success: true };
     }
@@ -73,6 +71,7 @@ let apodo_usuario;
 let mantener_sesion_iniciada_usuario;
 const n_intentos_codigo_validacion = 5;
 let intentos_codigo_validacion = n_intentos_codigo_validacion;
+let bloquear_accion = false
 
 async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
     if (!correo || !password) return { success: false, message: "Faltan datos para registrar el usuario" }
@@ -152,6 +151,9 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
 }
 
 async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {//aqui se usa username en vez de correo, pero son lo mismo
+    if (bloquear_accion) return { success: false, message: "bloqueador de acción temporal" }
+    bloquear_accion = true
+
     //limpiar cosas del registro si hubiese
     if (apodo_usuario || apodo_usuario) {
         contraseña_hashed = null;
@@ -159,14 +161,20 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     //comprobacion inicial de si es un correo
     const resultado = comprobaciones_Correo(username)
-    if (!resultado.success) return { success: false, message: resultado.message }
+    if (!resultado.success) {
+        bloquear_accion = false
+        return { success: false, message: resultado.message }
+    }
 
     //iniciar sesion
     const usuario_data = await LoginUsuario({ correo: username, contraseña: contraseña })
-    if (!usuario_data || (!usuario_data.correo || !usuario_data.apodo)) return { success: false, message: 'Usuario no encontrado' }
+    if (!usuario_data || (!usuario_data.correo || !usuario_data.apodo)) {
+        bloquear_accion = false
+        return { success: false, message: 'Usuario no encontrado' }
+    }
     storage.setApodoSesion(usuario_data.apodo)
 
-    //autovalidacion del codigo de verificacion de cuenta
+    //autovalidacion del codigo de verificacion de cuenta por token
     const data_autoverificacion = readFileSession("omitirVerificacionCuentaFile")
     let autoverificacion = false
     if (data_autoverificacion && (data_autoverificacion.token && data_autoverificacion.username)) {
@@ -176,22 +184,22 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
             const token_datos = await TokenVC.find({ correo: usuario_data.correo, token: data_autoverificacion.token })
             if (!token_datos || token_datos == [] || token_datos.length == 0) {
                 clearFileSession('omitirVerificacionCuentaFile');
-                return { success: false, message: 'Token no encontrado' }
-            }
-
-            let validado2 = false
-            for (let i = 0; i < token_datos.length; i++) {
-                if (data_autoverificacion.token == token_datos[i].token) {
-                    validado2 = true
-                    break
-                }
-            }
-
-            if (validado2) {
-                autoverificacion = true
             }
             else {
-                clearFileSession('omitirVerificacionCuentaFile');
+                let validado2 = false
+                for (let i = 0; i < token_datos.length; i++) {
+                    if (data_autoverificacion.token == token_datos[i].token) {
+                        validado2 = true
+                        break
+                    }
+                }
+
+                if (validado2) {
+                    autoverificacion = true
+                }
+                else {
+                    clearFileSession('omitirVerificacionCuentaFile');
+                }
             }
         }
         else {//limpiar archivo y token
@@ -210,10 +218,11 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
             if (mantener_sesion_iniciada) {
                 const token_sesion = await generarteToken(usuario_data.correo, 'sesion');
                 saveSessionFile({ username: usuario_data.correo, token: token_sesion })//guardar sesion en fichero local
-                AñadirJWTUsuario(usuario_data.correo, token_sesion)//guardar en mongodb
+                await AñadirJWTUsuario(usuario_data.correo, token_sesion)//guardar en mongodb
             }
         })();
         storage.setCorreoSesion(usuario_data.correo)
+        console.log("-Autoverificacion de cuenta")
     }
     else {
         mantener_sesion_iniciada_usuario = mantener_sesion_iniciada
@@ -229,8 +238,8 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         //intentos para poder poner el codigo correcto de verificacion
         intentos_codigo_validacion = n_intentos_codigo_validacion
     }
-
-    return { success: true, autoverificacion: autoverificacion, data: { correo: usuario_data.correo, apodo: usuario_data.apodo } }
+    bloquear_accion = false
+    return { success: true, autoverificacion: autoverificacion }
 }
 
 async function ValidarCodeLogin({ correo, code }) {
@@ -268,16 +277,16 @@ async function ValidarCodeLogin({ correo, code }) {
     //JWT , mantener sesion iniciada en cache
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
-            const token_sesion = await generarteToken(usuario_data.correo, 'sesion');
-            saveSessionFile({ username: usuario_data.correo, token: token_sesion })//guardar sesion en fichero local
-            AñadirJWTUsuario(usuario_data.correo, token_sesion)//guardar en mongodb
+            const token_sesion = await generarteToken(correo, 'sesion');
+            saveSessionFile({ username: correo, token: token_sesion })//guardar sesion en fichero local
+            await AñadirJWTUsuario(correo, token_sesion)//guardar en mongodb
         }
     })();
     //guardar auto verificacion de cuenta en fichero local
     (async () => {
         const token = await generarteToken(correo, 'cuenta');
         saveOmitirVerificacionCuentaFile({ username: correo, token: token })
-        AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
+        await AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
     })();
     //guardar correo en variables globales
     storage.setCorreoSesion(correo)
@@ -288,7 +297,7 @@ async function ValidarCodeLogin({ correo, code }) {
     const { asunto, htmlContenido } = ConfirmacionInicioSesion()
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
 
-    return { success: true, data: { correo: correo } };
+    return { success: true };
 }
 
 async function cerrarSesionUsuario(correo) {
