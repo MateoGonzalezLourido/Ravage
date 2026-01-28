@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 const { startServer } = require('./backend/server.js')
-const { connectDB, BorrarUsuarioActivo, closeDB } = require("./backend/db/mongo.js")
+const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/users.js');
 const storage = require('./backend/STORAGE/Variables_sesion.js')
 
@@ -61,5 +61,8 @@ ipcMain.handle('validar-code-login-usuario', async (_, correo, password) => {
     return await ValidarCodeLogin({ correo: correo, code: password });
 });
 ipcMain.handle('borrar-code-registrar-usuario', async (_, correo) => {
-    return await BorrarValidationCodes(correo);
+    return await BorrarVC(correo);
+});
+ipcMain.handle('borrar-code-login-usuario', async (_, correo) => {
+    return await BorrarCuentaVC(correo);
 });

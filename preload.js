@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     },
     BORRAR_CODES_VALIDACION_CORREO: (correo) => {
         return ipcRenderer.invoke('borrar-code-registrar-usuario', correo)
+    },
+    BORRAR_CODES_VALIDACION_CUENTA: (correo) => {
+        return ipcRenderer.invoke('borrar-code-login-usuario', correo)
     }
 })
 
