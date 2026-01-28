@@ -221,7 +221,7 @@ async function BorrarUsuarioActivo(correo) {
 async function AñadirJWTUsuario(correo, token = "") {
     //exìra en 7dias, expira= (7dias - 90min del expire de mongo)
     await TokenSession.updateOne(
-        { correo },
+        { correo:correo },
         { token: token },
         { expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000))) }
     );
