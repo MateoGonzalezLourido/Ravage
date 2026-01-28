@@ -76,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         //TODO:conectar con backend
         let result = await window.sesion_usuario.LOGIN_USUARIO(username, password, mantener_sesion_iniciada)
-
+        console.log(result)
         if (result.success) {//sesion iniciada
             if (result.autoverificacion) {//sesion iniciada sin codigo de verificacion
                 console.log("SE HA INICIADO SESION CORRECTAMENTE")

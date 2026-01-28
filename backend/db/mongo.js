@@ -66,7 +66,7 @@ const TokenSchema = new mongoose.Schema({
     },
     token: {
         type: String,
-        require: true,
+        required: true,
         default: ""
     },
     expira: {
@@ -82,8 +82,8 @@ const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCodes", ValidationCodeSchema, "validationcodes");
 const CuentaValidationCode = mongoose.model("CuentaValidationCode", ValidationCodeSchema, "cuentavalidationcode");
 const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
-const TokenSession = mongoose.model("TokenSession", TokenSchema, "tokensession");
-const TokenVC = mongoose.model("TokenValidationAcount", TokenSchema, "tokenvalidationacount");
+const TokenSession = mongoose.model("tksession", TokenSchema, "tksession");
+const TokenVC = mongoose.model("tokenvcv", TokenSchema, "tokenvcv");
 
 //conectar db
 async function connectDB() {
@@ -158,7 +158,7 @@ async function LoginUsuario({ correo = null, contraseña = null, token = null })
         return {}
     }
     //sesion iniciada
-    console.log(`Sesion iniciada: ${usuario_datos.apodo}`)
+    console.log(`Datos de usuario obtenidos: ${usuario_datos.apodo}`)
     return usuario_datos
 }
 //instertar datos
@@ -220,19 +220,19 @@ async function BorrarUsuarioActivo(correo) {
 //añadir tokens
 async function AñadirJWTUsuario(correo, token = "") {
     //exìra en 7dias, expira= (7dias - 90min del expire de mongo)
-    await TokenSession.updateOne(
-        { correo:correo },
-        { token: token },
-        { expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000))) }
-    );
+    await TokenSession.create({
+        correo,
+        token,
+        expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000)))
+    });
 }
 async function AñadirJWTUsuarioVC(correo, token = "") {
     //exìra en 90min
-    await TokenVC.updateOne(
-        { correo },
-        { token: token },
-        { expira: new Date(Date.now()) }
-    );
+    await TokenVC.create({
+        correo,
+        token,
+        expira: new Date(Date.now())
+    });
 }
 //limpiar tokens
 async function LimpiarJWTUsuario(correo, token = "") {
