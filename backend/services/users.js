@@ -165,7 +165,6 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         bloquear_accion = false
         return { success: false, message: resultado.message }
     }
-
     //iniciar sesion
     const usuario_data = await LoginUsuario({ correo: username, contraseña: contraseña })
     if (!usuario_data || (!usuario_data.correo || !usuario_data.apodo)) {
