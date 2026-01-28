@@ -108,6 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             e.preventDefault()
                             mostrar_menu_cuenta_creada(false)
                             mostrar_menu_log(false)
+                            window.sesion_usuario.BORRAR_CODES_VALIDACION_CORREO(username)
                         })
                     }
                     else {//TODO:mostrar errores en el html
@@ -155,6 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 e.preventDefault()
                 mostrar_menu_validation_code(false)
                 mostrar_menu_reg(true)
+                window.sesion_usuario.BORRAR_CODES_VALIDACION_CUENTA(username)
             })
             document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
                 e.preventDefault()
