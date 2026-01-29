@@ -51,8 +51,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
             storage.setApodoSesion(usuario_datos.apodo);
             storage.setCorreoSesion(usuario_datos.correo);
 
-            const NuevoUsuarioActivo = await ActualizarUsuarioActivo({ correo: usuario_datos.correo });
-            if (NuevoUsuarioActivo) storage.setIdSesion(NuevoUsuarioActivo);
+            await ActualizarUsuarioActivo({ correo: usuario_datos.correo });
         })();
         console.log("*Autologin correcto")
         return { success: true };
@@ -241,8 +240,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
 
     if (autoverificacion) {//se autovalida
         (async () => {
-            const NuevoUsuarioActivo = await ActualizarUsuarioActivo({ correo: usuario_data.correo });
-            if (NuevoUsuarioActivo) storage.setIdSesion(NuevoUsuarioActivo)
+            await ActualizarUsuarioActivo({ correo: usuario_data.correo });
         })();
         //JWT , mantener sesion iniciada en cache
         (async () => {
@@ -307,9 +305,7 @@ async function ValidarCodeLogin({ correo, code }) {
     };
     //mostrar como usuario activo en mongodb
     (async () => {
-        const NuevoUsuarioActivo = await ActualizarUsuarioActivo({ correo: correo });
-        //guardar id de sesion para borrar cuando deje de estarlo
-        if (NuevoUsuarioActivo) storage.setIdSesion(NuevoUsuarioActivo)
+        await ActualizarUsuarioActivo({ correo: correo });
     })();
     //JWT , mantener sesion iniciada en cache
     (async () => {

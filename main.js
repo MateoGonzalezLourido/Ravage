@@ -4,7 +4,6 @@ const path = require('path')
 const { startServer } = require('./backend/server.js')
 const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/sesion.js');
-const storage = require('./backend/STORAGE/Variables_sesion.js')
 
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({
@@ -37,17 +36,15 @@ app.whenReady().then(async () => {
 
 /* Finalizar App cuando todas las ventanas estén cerradas */
 app.on('before-quit', async (e) => {//se ejecuta antes de cerrar (cubre cualquier cierre)
-    const id = storage.getIdSesion();
     try {
-        await BorrarUsuarioActivo(id);
+        await BorrarUsuarioActivo();
         await closeDB()
     } catch (err) {
         console.error(err);
     }
 });
 app.on('window-all-closed', async () => {//solo cubre el cierre por ventana
-    const id = storage.getIdSesion()
-    await BorrarUsuarioActivo(id)
+    await BorrarUsuarioActivo()
     await closeDB()
     if (process.platform !== 'darwin') app.quit()
 })

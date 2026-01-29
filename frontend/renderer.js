@@ -190,4 +190,82 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#text-error-form-causa-registro").classList.add("flex-display")
         }
     })
+    //ajustes
+    document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", (e) => {
+        e.preventDefault()
+        //mostrar menu de ajustes
+        document.querySelector("#seccion-menu-cuenta-ajustes").classList.remove("ocultar-display")
+        document.querySelector("#seccion-menu-cuenta-ajustes").classList.add("block-display")
+        //cambios de seccion
+        function cerrar_cuerpos_ajustes(no_cerrar) {
+            if (no_cerrar == "cuenta") {
+                document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("ocultar-display")
+                document.querySelector("#cuerpo-ajustes-cuenta").classList.add("flex-display")
+            }
+            else {
+                document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("flex-display")
+                document.querySelector("#cuerpo-ajustes-cuenta").classList.add("ocultar-display")
+            }
+            if (no_cerrar == "general") {
+                document.querySelector("#cuerpo-ajustes-general").classList.remove("ocultar-display")
+                document.querySelector("#cuerpo-ajustes-general").classList.add("flex-display")
+            }
+            else {
+                document.querySelector("#cuerpo-ajustes-general").classList.remove("flex-display")
+                document.querySelector("#cuerpo-ajustes-general").classList.add("ocultar-display")
+            }
+            if (no_cerrar == "notificaciones") {
+                document.querySelector("#cuerpo-ajustes-noti").classList.remove("ocultar-display")
+                document.querySelector("#cuerpo-ajustes-noti").classList.add("flex-display")
+            }
+            else {
+                document.querySelector("#cuerpo-ajustes-noti").classList.remove("flex-display")
+                document.querySelector("#cuerpo-ajustes-noti").classList.add("ocultar-display")
+            }
+            if (no_cerrar == "soporte") {
+                document.querySelector("#cuerpo-ajustes-soporte").classList.remove("ocultar-display")
+                document.querySelector("#cuerpo-ajustes-soporte").classList.add("flex-display")
+            }
+            else {
+                document.querySelector("#cuerpo-ajustes-soporte").classList.remove("flex-display")
+                document.querySelector("#cuerpo-ajustes-soporte").classList.add("ocultar-display")
+            }
+            if (no_cerrar == "saber mas") {
+                document.querySelector("#cuerpo-ajustes-saber").classList.remove("ocultar-display")
+                document.querySelector("#cuerpo-ajustes-saber").classList.add("flex-display")
+            }
+            else {
+                document.querySelector("#cuerpo-ajustes-saber").classList.remove("flex-display")
+                document.querySelector("#cuerpo-ajustes-saber").classList.add("ocultar-display")
+            }
+            //mover al inicio de los ajustes
+        }
+        document.querySelector("#bt-menu-navegacion-ajustes-cuenta").addEventListener("click", (e) => {
+            e.preventDefault()
+            cerrar_cuerpos_ajustes("cuenta")
+        })
+        document.querySelector("#bt-menu-navegacion-ajustes-general").addEventListener("click", (e) => {
+            e.preventDefault()
+            cerrar_cuerpos_ajustes("general")
+        })
+        document.querySelector("#bt-menu-navegacion-ajustes-noti").addEventListener("click", (e) => {
+            e.preventDefault()
+            cerrar_cuerpos_ajustes("notificaciones")
+        })
+        document.querySelector("#bt-menu-navegacion-ajustes-soporte").addEventListener("click", (e) => {
+            e.preventDefault()
+            cerrar_cuerpos_ajustes("soporte")
+        })
+        document.querySelector("#bt-menu-navegacion-ajustes-saber").addEventListener("click", (e) => {
+            e.preventDefault()
+            cerrar_cuerpos_ajustes("saber mas")
+        })
+    })
+    //cerrar ajustes
+    document.querySelector("#bt-cerrar-menu-ajustes").addEventListener("click", (e) => {
+        e.preventDefault()
+        //mostrar menu de ajustes
+        document.querySelector("#seccion-menu-cuenta-ajustes").classList.remove("block-display")
+        document.querySelector("#seccion-menu-cuenta-ajustes").classList.add("ocultar-display")
+    })
 })
