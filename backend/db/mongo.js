@@ -11,19 +11,25 @@ const UserSchema = new mongoose.Schema({
         minlength: 3,
         maxlength: 30,
         trim: true,
-        default: "Usuario"
+        default: "Usuario",
+        match: /^[a-zA-Z0-9_-]+$/
     },
     correo: {
         type: String,
         required: true,
         unique: true,
         lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        trim: true,
+        minlength: 2,
+        maxlength: 255
     },
     contrasena: {
         type: String,
         required: true,
-        minlength: 5
+        minlength: 5,
+        maxlength: 20,
+        trim: true,
     },
     createdAt: { type: Date, default: Date.now }
 })
