@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
 dotenv.config();
+const { machineIdSync } = require('node-machine-id');
 
 //esquemas de datos
 const UserSchema = new mongoose.Schema({
@@ -61,6 +62,15 @@ const ActiveUserSchema = new mongoose.Schema({
         required: true,
         lowercase: true,
         match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    },
+    expira: {
+        type: Date,
+        default: () => new Date()
+    },
+    id_dp: {
+        type: String,
+        required: true,
+        default: "",
     }
 })
 const TokenSchema = new mongoose.Schema({
@@ -81,8 +91,9 @@ const TokenSchema = new mongoose.Schema({
     }
 })
 //expiracion codigos y tokens
-TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });
-ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });
+TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });//90minutos
+ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });//10minutos
+ActiveUserSchema.index({ expira: 1 }, { expireAfterSeconds: 5 * 60 });//5minutos
 //las tablas de datos de Ravage
 const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCodes", ValidationCodeSchema, "validationcodes");
@@ -203,16 +214,20 @@ async function InsertarCuentaVC({ correo = null, code = null, id = "" }) {
     console.log("Codigo insertado correctamente");
     return true
 }
-async function InsertarUsuarioActivo({ correo = null }) {
+async function ActualizarUsuarioActivo({ correo = null }) {
     if (!correo) throw new Error("Faltan datos para insertar usuario activo");
-
-    const nuevoUsuarioActivo = await ActiveUser.create({
-        correo: correo
-    });
+    const deviceId = String(machineIdSync());
+    //esto lo crea si no existe
+    const nuevoUsuarioActivo = await ActiveUser.updateOne(
+        { correo, id_dp: deviceId },
+        { $set: { expira: new Date() } },
+        { upsert: true } // crea si no existe
+    );
 
     console.log("Usuario activo insertado correctamente");
     return nuevoUsuarioActivo
 }
+
 //borrar datos
 async function BorrarVC(correo) {
     await ValidationCode.deleteMany({ correo: correo });
@@ -249,4 +264,4 @@ async function LimpiarJWTUsuarioVC(correo, token = "") {
 }
 
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, InsertarUsuarioActivo, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo }
