@@ -1,4 +1,4 @@
-const { InsertarUsuario, LoginUsuario, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, InsertarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession } = require('../db/mongo.js')
+const { InsertarUsuario, LoginUsuario, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, ActualizarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession } = require('../db/mongo.js')
 const bcrypt = require('bcryptjs')
 const { saveSessionFile, clearFileSession, generarteToken, validateToken, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
@@ -51,7 +51,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
             storage.setApodoSesion(usuario_datos.apodo);
             storage.setCorreoSesion(usuario_datos.correo);
 
-            const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: usuario_datos.correo });
+            const NuevoUsuarioActivo = await ActualizarUsuarioActivo({ correo: usuario_datos.correo });
             if (NuevoUsuarioActivo) storage.setIdSesion(NuevoUsuarioActivo);
         })();
         console.log("*Autologin correcto")
@@ -241,7 +241,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
 
     if (autoverificacion) {//se autovalida
         (async () => {
-            const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: usuario_data.correo });
+            const NuevoUsuarioActivo = await ActualizarUsuarioActivo({ correo: usuario_data.correo });
             if (NuevoUsuarioActivo) storage.setIdSesion(NuevoUsuarioActivo)
         })();
         //JWT , mantener sesion iniciada en cache
@@ -307,7 +307,7 @@ async function ValidarCodeLogin({ correo, code }) {
     };
     //mostrar como usuario activo en mongodb
     (async () => {
-        const NuevoUsuarioActivo = await InsertarUsuarioActivo({ correo: correo });
+        const NuevoUsuarioActivo = await ActualizarUsuarioActivo({ correo: correo });
         //guardar id de sesion para borrar cuando deje de estarlo
         if (NuevoUsuarioActivo) storage.setIdSesion(NuevoUsuarioActivo)
     })();

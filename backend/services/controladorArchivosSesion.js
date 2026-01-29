@@ -6,8 +6,6 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { app } = require('electron')
 const { machineIdSync } = require('node-machine-id');
-const si = require('systeminformation');
-
 
 const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;//codigo para crear jwt (un valor definido por mi)
 
