@@ -83,7 +83,10 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     }
     //comprobacion inicial de si es un correo
     const resultado = comprobaciones_Correo(correo)
-    if (!resultado.success) return { success: false, message: resultado.message }
+    if (!resultado.success) {
+        bloquear_accion = false
+        return { success: false, message: resultado.message }
+    }
     //verificar si no existe un usuario igual
     const existe = await User.find({ correo: correo }).limit(1);
     if (existe.length == 1) {
@@ -92,6 +95,11 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     }
     //guardar vairables para pasarlas a la validacion por correo
     contraseña_hashed = await bcrypt.hash(password, saltos_contraseña);//contraseña hasheada
+    const apodo_valido = comprobar_apodo(apodo)
+    if (!apodo_valido.success) {
+        bloquear_accion = false
+        return { success: false, message: apodo_valido.message }
+    }
     apodo_usuario = apodo
 
     //crear verificacion por codigo de correo
@@ -354,4 +362,14 @@ function comprobaciones_Correo(correo) {
     return { success: success, message: message }
 }
 
+function comprobar_apodo(apodo) {
+    let success = true;
+    let message = "Username válido";
+    //validaciones
+    // solo letras, números, guion y guion bajo
+    if (!(/^[a-zA-Z0-9_-]+$/.test(apodo))) { success = false; message = "Apodo: solo letras, números, guión y guión bajo"; }
+
+    //resultado
+    return { success: success, message: message }
+}
 module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin }
