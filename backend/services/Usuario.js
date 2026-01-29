@@ -38,6 +38,10 @@ async function permitirCambioContraseñaUsuario(contraseña) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
+    if (data_usuario.contrasena == contraseña) {
+        bloquear_accion = false
+        return { success: false, message: "La contraseña es la misma" }
+    }
     const apodo = getApodoSesion()
     //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
@@ -57,14 +61,14 @@ async function permitirCambioCorreoUsuario(correo) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
     //comprobar contraseña
-    let result = comprobaciones_Correo(contraseña)
+    let result = comprobaciones_Correo(correo)
     if (!result.success) {
         bloquear_accion = false
         return { success: false, message: result.message }
     }
     //tiempo de bloqueo expirado?
-    const correo = getCorreoSesion()
-    const data_usuario = await User.find({ correo: correo })
+    const correo_viejo = getCorreoSesion()
+    const data_usuario = await User.find({ correo: correo_viejo })
     if (!data_usuario) {
         bloquear_accion = false
         return { success: false, message: "Usuario no encontrado" }
@@ -73,6 +77,10 @@ async function permitirCambioCorreoUsuario(correo) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
+    if (data_usuario.correo == correo) {
+        bloquear_accion = false
+        return { success: false, message: "El correo es el mismo" }
+    }
     const apodo = getApodoSesion()
     //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
@@ -80,9 +88,9 @@ async function permitirCambioCorreoUsuario(correo) {
     const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, code: code_generado, tipo: "correo" })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-    InsertarDatosCuentaVC({ correo: correo, code: hashed_ValidationCode, id: deviceId, tipo: "correo" })
+    InsertarDatosCuentaVC({ correo: correo_viejo, code: hashed_ValidationCode, id: deviceId, tipo: "correo" })
     //mandar correo
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+    enviarEmail({ correoDestino: correo_viejo, asunto: asunto, htmlContenido: htmlContenido })
     //intentos para poder poner el codigo correcto de verificacion
     intentos_codigo_validacion = n_intentos_codigo_validacion
     bloquear_accion = false
@@ -108,11 +116,15 @@ async function permitirCambioApodoUsuario(apodo) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
-    const apodo = getApodoSesion()
+    if (data_usuario.apodo == apodo) {
+        bloquear_accion = false
+        return { success: false, message: "El apodo es el mismo" }
+    }
+    const apodo_viejo = getApodoSesion()
     //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
     const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
-    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, code: code_generado, tipo: "apodo" })
+    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo_viejo, code: code_generado, tipo: "apodo" })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     InsertarDatosCuentaVC({ correo: correo, code: hashed_ValidationCode, id: deviceId, tipo: "apodo" })
