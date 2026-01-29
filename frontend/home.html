@@ -18,7 +18,7 @@
                 base-uri 'self';
         ">
         <meta http-equiv="X-Content-Type-Options" content="nosniff">
-        <meta http-equiv="X-Frame-Options" content="DENY">
+        <!--<meta http-equiv="X-Frame-Options" content="DENY">-->
         <meta http-equiv="Referrer-Policy" content="no-referrer">
         <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
 
@@ -98,8 +98,34 @@
             <span>Usuario</span>
             <img src="./recursos/engranaje.png" alt="" draggable="false">
         </div>
-        <div id="seccion-menu-cuenta-ajustes">
+        <div class="ocultar-display" id="seccion-menu-cuenta-ajustes">
+            <div id="bt-cerrar-menu-ajustes">
+                <img src="./recursos/cruz.png" alt="cerrar" draggable="false">
+            </div>
+            <div class="menu-navegacion-ajustes">
+                <div id="bt-menu-navegacion-ajustes-cuenta">Cuenta</div>
+                <div id="bt-menu-navegacion-ajustes-general">General</div>
+                <div id="bt-menu-navegacion-ajustes-noti">Notificaciones</div>
+                <div id="bt-menu-navegacion-ajustes-soporte">Soporte</div>
+                <div id="bt-menu-navegacion-ajustes-saber">Saber más</div>
+            </div>
+            <div class="cuerpo-menu-ajustes">
+                <div class="flex-display" id="cuerpo-ajustes-cuenta">
 
+                </div>
+                <div class="ocultar-display" id="cuerpo-ajustes-general">
+
+                </div>
+                <div class="ocultar-display" id="cuerpo-ajustes-noti">
+                
+                </div>
+                <div class="ocultar-display" id="cuerpo-ajustes-soporte">
+                
+                </div>
+                <div class="ocultar-display" id="cuerpo-ajustes-saber">
+                
+                </div>
+            </div>
         </div>
         <!--SCRIPTS-->
         <script defer src="./renderer.js"></script><!--CARGARLO AL FINAL DE TODO-->

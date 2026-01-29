@@ -235,8 +235,9 @@ async function BorrarVC(correo) {
 async function BorrarCuentaVC(correo) {
     await CuentaValidationCode.deleteMany({ correo: correo });
 }
-async function BorrarUsuarioActivo(correo) {
-    await ActiveUser.deleteMany({ _id: correo });
+async function BorrarUsuarioActivo() {
+    const deviceId = String(machineIdSync());
+    await ActiveUser.deleteOne({ id_dp: deviceId });
 }
 //añadir tokens
 async function AñadirJWTUsuario(correo, token = "") {
