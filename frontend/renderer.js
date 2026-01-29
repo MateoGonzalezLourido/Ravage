@@ -243,22 +243,42 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelector("#bt-menu-navegacion-ajustes-cuenta").addEventListener("click", (e) => {
             e.preventDefault()
             cerrar_cuerpos_ajustes("cuenta")
+            document.querySelector("#cuerpo-ajustes-cuenta").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
         })
         document.querySelector("#bt-menu-navegacion-ajustes-general").addEventListener("click", (e) => {
             e.preventDefault()
             cerrar_cuerpos_ajustes("general")
+            document.querySelector("#cuerpo-ajustes-general").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
         })
         document.querySelector("#bt-menu-navegacion-ajustes-noti").addEventListener("click", (e) => {
             e.preventDefault()
             cerrar_cuerpos_ajustes("notificaciones")
+            document.querySelector("#cuerpo-ajustes-noti").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
         })
         document.querySelector("#bt-menu-navegacion-ajustes-soporte").addEventListener("click", (e) => {
             e.preventDefault()
             cerrar_cuerpos_ajustes("soporte")
+            document.querySelector("#cuerpo-ajustes-soporte").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
         })
         document.querySelector("#bt-menu-navegacion-ajustes-saber").addEventListener("click", (e) => {
             e.preventDefault()
             cerrar_cuerpos_ajustes("saber mas")
+            document.querySelector("#cuerpo-ajustes-saber").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
         })
     })
     //cerrar ajustes
