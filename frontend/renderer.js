@@ -342,7 +342,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.querySelector("#seccion-validacion-codigo-ajustes").classList.add("flexx-display")
 
                     document.querySelector("#form-validation-correo-ajustes").addEventListener("click", async () => {
-                        result = await windows.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, "contraseña")
+                        const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
+                        result = await windows.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
                         if (result) {//cambiar contraseña
                             bloquear_span_cambio_contraseña = true
                             //cerrar menu

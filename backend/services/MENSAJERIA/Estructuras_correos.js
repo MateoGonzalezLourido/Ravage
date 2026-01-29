@@ -87,9 +87,9 @@ const ConfirmacionInicioSesion = () => {
         <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
     return { asunto: asunto, htmlContenido: htmlContenido }
 }
-const CodigoCambiarContraseña = ({ apodo, codigo }) => {
-    const asunto = "Cambio de contraseña"
-    const htmlContenido = `<span>Hola, ${apodo}.</span><span>El codigo para cambiar de contraseña es ${codigo}</span>
+const CodigoCambiarDatosCuenta = ({ apodo, codigo, tipo }) => {
+    const asunto = "Cambio de Datos"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>El codigo para cambiar de ${tipo} es ${codigo}</span>
         <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
     return { asunto: asunto, htmlContenido: htmlContenido }
 }
@@ -116,7 +116,7 @@ module.exports = {
     ConfirmacionCuentaCreadaEstructura,
     ValidarCuentaUsuario,
     ConfirmacionInicioSesion,
-    CodigoCambiarContraseña,
+    CodigoCambiarDatosCuenta,
     ConfirmacionCambioContraseña,
     ConfirmacionCambioCorreo,
     ConfirmacionCambioApodo
