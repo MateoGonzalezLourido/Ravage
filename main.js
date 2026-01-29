@@ -77,8 +77,16 @@ ipcMain.handle('cerrar-sesion-usuario', async (_) => {
     const correo = getCorreoSesion()
     return await cerrarSesionUsuario(correo);
 });
-ipcMain.handle("permitir-cambio-contraseña-usuario", async (_, contraseña) => {
-    return await permitirCambioContraseñaUsuario(contraseña)
+ipcMain.handle("permitir-cambio-datos-cuenta", async (_, data, tipo) => {
+    if (tipo == "contraseña") {
+        return await permitirCambioContraseñaUsuario(data)
+    }
+    if (tipo == "correo") {
+
+    }
+    if (tipo == "apodo") {
+
+    }
 })
 ipcMain.handle("cambiar-contraseña-usuario", async (_, contraseña) => {
     return await cambiarContraseñaUsuario(contraseña)
