@@ -69,6 +69,33 @@ const ValidationCodeSchema = new mongoose.Schema({
         default: ""
     }
 })
+const DatosCuentaValidationCodeSchema = new mongoose.Schema({
+    code: {
+        type: String,
+        required: true,
+        minlength: 6
+    },
+    correo: {
+        type: String,
+        required: true,
+        lowercase: true,
+        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    },
+    tipo: {
+        type: String,
+        required: true,
+        lowercase: true
+    },
+    expira: {
+        type: Date,
+        default: () => new Date()
+    },
+    id_dp: {
+        type: String,
+        required: true,
+        default: ""
+    }
+})
 const ActiveUserSchema = new mongoose.Schema({
     correo: {
         type: String,
@@ -111,7 +138,7 @@ ActiveUserSchema.index({ expira: 1 }, { expireAfterSeconds: 5 * 60 });//5minutos
 const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCodes", ValidationCodeSchema, "validationcodes");
 const CuentaValidationCode = mongoose.model("CuentaValidationCode", ValidationCodeSchema, "cuentavalidationcode");
-const ContraseñaVC = mongoose.model("contraseñavc", ValidationCodeSchema, "contraseñavc");
+const DatosCuentaVC = mongoose.model("datoscuentavc", DatosCuentaValidationCodeSchema, "datoscuentavc");
 const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
 const TokenSession = mongoose.model("tksession", TokenSchema, "tksession");
 const TokenVC = mongoose.model("tokenvcv", TokenSchema, "tokenvcv");
@@ -261,8 +288,8 @@ async function BorrarVC(correo) {
 async function BorrarCuentaVC(correo) {
     await CuentaValidationCode.deleteMany({ correo: correo });
 }
-async function BorrarContraseñaVC(correo) {
-    await ContraseñaVC.deleteMany({ correo: correo });
+async function BorrarDatosCuentaVC(correo, code) {
+    await ContraseñaVC.deleteMany({ correo: correo, code: code });
 }
 async function BorrarUsuarioActivo() {
     const deviceId = String(machineIdSync());
@@ -334,4 +361,4 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
 
     return true
 }
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, ContraseñaVC, InsertarContraseñaVC, BorrarContraseñaVC }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarContraseñaVC, BorrarDatosCuentaVC }

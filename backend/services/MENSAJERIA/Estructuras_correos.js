@@ -95,7 +95,19 @@ const CodigoCambiarContraseña = ({ apodo, codigo }) => {
 }
 const ConfirmacionCambioContraseña = ({ apodo }) => {
     const asunto = "Cambio de contraseña"
-    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado la contraseña ${codigo}</span>
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado la contraseña</span>
+        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    return { asunto: asunto, htmlContenido: htmlContenido }
+}
+const ConfirmacionCambioCorreo = ({ apodo }) => {
+    const asunto = "Cambio de Correo"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado el correo</span>
+        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    return { asunto: asunto, htmlContenido: htmlContenido }
+}
+const ConfirmacionCambioApodo = ({ apodo }) => {
+    const asunto = "Cambio de Apodo"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado el apodo</span>
         <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
     return { asunto: asunto, htmlContenido: htmlContenido }
 }
@@ -105,5 +117,7 @@ module.exports = {
     ValidarCuentaUsuario,
     ConfirmacionInicioSesion,
     CodigoCambiarContraseña,
-    ConfirmacionCambioContraseña
+    ConfirmacionCambioContraseña,
+    ConfirmacionCambioCorreo,
+    ConfirmacionCambioApodo
 }

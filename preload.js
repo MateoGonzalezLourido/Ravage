@@ -32,11 +32,11 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     CERRAR_SESION: () => {
         return ipcRenderer.invoke('cerrar-sesion-usuario')
     },
-    PERMITIR_CAMBIO_CONTRASENA_USUARIO: () => {
-        return ipcRenderer.invoke("permitir-cambio-contraseña-usuario")
+    PERMITIR_CAMBIO_DATOS_CUENTA: (data, tipo) => {
+        return ipcRenderer.invoke("permitir-cambio-datos-cuenta", data, tipo)
     },
-    CAMBIAR_CONTRASEÑA_USUARIO: (contraseña) => {
-        return ipcRenderer.invoke("cambiar-contraseña-usuario", contraseña)
+    CAMBIAR_DATOS_CUENTA: (contraseña, tipo) => {
+        return ipcRenderer.invoke("cambiar-contraseña-usuario", contraseña, tipo)
     }
 })
 

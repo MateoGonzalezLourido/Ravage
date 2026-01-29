@@ -335,14 +335,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = "*No puedes usar espacios*"
             }
             if (valido) {//cambiar contraseña
-                let result = await window.sesion_usuario.PERMITIR_CAMBIO_CONTRASENA_USUARIO()
+                let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA(contraseña, "contraseña")
                 if (result.success) {
                     //TODO:mostrar menu para introducir codigo
                     document.querySelector("#seccion-validacion-codigo-ajustes").classList.remove("ocultar-display")
                     document.querySelector("#seccion-validacion-codigo-ajustes").classList.add("flexx-display")
 
                     document.querySelector("#form-validation-correo-ajustes").addEventListener("click", async () => {
-                        result = await windows.sesion_usuario.CAMBIAR_CONTRASEÑA_USUARIO(contraseña.trim())
+                        result = await windows.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, "contraseña")
                         if (result) {//cambiar contraseña
                             bloquear_span_cambio_contraseña = true
                             //cerrar menu
