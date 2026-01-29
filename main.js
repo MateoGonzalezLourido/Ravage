@@ -2,9 +2,10 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 const { startServer } = require('./backend/server.js')
-const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = require("./backend/db/mongo.js")
+const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, cambiarContraseñaUsuario } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } = require('./backend/services/sesion.js');
 const { getCorreoSesion } = require('./backend/STORAGE/Variables_sesion.js')
+const { permitirCambioContraseñaUsuario } = require('./backend/services/Usuario.js')
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({
         show: false, // evita parpadeo
@@ -76,3 +77,9 @@ ipcMain.handle('cerrar-sesion-usuario', async (_) => {
     const correo = getCorreoSesion()
     return await cerrarSesionUsuario(correo);
 });
+ipcMain.handle("permitir-cambio-contraseña-usuario", async (_, contraseña) => {
+    return await permitirCambioContraseñaUsuario(contraseña)
+})
+ipcMain.handle("cambiar-contraseña-usuario", async (_, contraseña) => {
+    return await cambiarContraseñaUsuario(contraseña)
+})

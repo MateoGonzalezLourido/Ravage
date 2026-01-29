@@ -98,6 +98,7 @@
             <span>Usuario</span>
             <img src="./recursos/engranaje.png" alt="" draggable="false">
         </div>
+
         <div class="ocultar-display" id="seccion-menu-cuenta-ajustes">
             <div id="bt-cerrar-menu-ajustes">
                 <img src="./recursos/cruz.png" alt="cerrar" draggable="false">
@@ -119,11 +120,11 @@
                         <span>Correo electrónico:</span>
                         <input type="email" id="" value="" placeholder="Correo">
                     </label>
-                    <label for="">
+                    <label for="bt-cambiar-contraseña">
                         <span>Contraseña:</span>
-                        <button>Cambiar contraseña</button>
+                        <button id="bt-cambiar-contraseña">Cambiar contraseña</button>
                     </label>
-                    <label for="">
+                    <label>
                         <button id="bt-cerrar-sesion">Cerrar Sesión</button>
                     </label>
                 </div>
@@ -165,7 +166,45 @@
 
                 </div>
             </div>
+            <div id="alineador-menu-cambiar-contraseña">
+                <div class="menu-cambiar-contraseña">
+                    <div id="bt-cerrar-menu-cambio-contraseña">
+                        <img src="./recursos/cruz.png" alt="cerrar" draggable="false">
+                    </div>
+                    <h2>Cambio de Contraseña</h2>
+                    <form id="form-cambio-contraseña">
+                        <label for="cambio-pass">
+                            <span>Contraseña</span>
+                            <input id="cambio-pass" type="password" placeholder="Contraseña" required minlength="5"
+                                autocomplete="on">
+                        </label>
+                        <label for="cambio-pass-confirm">
+                            <span id="span-repetir-contraseña-cambio">Repita la Contraseña</span>
+                            <input id="cambio-pass-confirm" type="password" placeholder="Contraseña" required
+                                minlength="5">
+                        </label>
+                        <span class="text-error-form-causa ocultar-display"
+                            id="text-error-form-causa-cambio-contraseña"></span>
+                        <button>Cambiar</button>
+                    </form>
+                </div>
+            </div>
+            <div class="menu-validacion-codigo ocultar-display" id="seccion-validacion-codigo-ajustes">
+                <h2>Cambiar Datos Cuenta</h2>
+                <span class="ayuda-texto">Introduzca el codigo que se ha enviado a su correo.</span>
+                <span class="span-aviso">Aviso: puede que se haya enviado a spam</span>
+                <span class="span-aviso">Aviso: debes poner el último código generado</span>
+                <form id="form-validation-correo-ajustes">
+                    <input id="bt-code-introducir" type="number" value="" placeholder="123456" required
+                        autocomplete="off" minlength="6" maxlength="6" autofocus="on">
+                    <span class="text-error-form-causa ocultar-display"
+                        id="text-error-form-causa-codigo-validar"></span>
+                    <button class="bt-validar-code">Validar</button>
+                    <span class="bt-cambio-login-registro" id="bt-cambiar-login-validation-code">¿Quieres volver?</span>
+                </form>
+            </div>
         </div>
+
         <!--SCRIPTS-->
         <script defer src="./renderer.js"></script><!--CARGARLO AL FINAL DE TODO-->
     </body>
