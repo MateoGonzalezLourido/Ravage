@@ -2,9 +2,8 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
 dotenv.config();
-const { machineIdSync } = require('node-machine-id');
 const storage = require('../STORAGE/Variables_sesion.js')
-
+const { machineIdSync } = require('node-machine-id');
 //esquemas de datos
 const UserSchema = new mongoose.Schema({
     apodo: {

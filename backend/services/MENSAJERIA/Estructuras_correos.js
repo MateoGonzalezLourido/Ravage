@@ -101,7 +101,7 @@ const ConfirmacionCambioContraseña = ({ apodo }) => {
 }
 const ConfirmacionCambioCorreo = ({ apodo }) => {
     const asunto = "Cambio de Correo"
-    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado el correo</span>
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado el correo.A partir de ahora recibiras todo en el nuevo correo.</span>
         <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
     return { asunto: asunto, htmlContenido: htmlContenido }
 }

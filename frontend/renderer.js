@@ -106,8 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
                             e.preventDefault()
-                            mostrar_menu_cuenta_creada(false)
-                            mostrar_menu_log(false)
+                            mostrar_menu_sesion(false)
                             window.sesion_usuario.BORRAR_CODES_VALIDACION_CORREO(username)
                         })
                     }
