@@ -134,6 +134,7 @@ const TokenSchema = new mongoose.Schema({
 TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });//90minutos
 ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });//10minutos
 ActiveUserSchema.index({ expira: 1 }, { expireAfterSeconds: 5 * 60 });//5minutos
+DatosCuentaValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });//10minutos
 //las tablas de datos de Ravage
 const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCodes", ValidationCodeSchema, "validationcodes");
@@ -255,13 +256,14 @@ async function InsertarCuentaVC({ correo = null, code = null, id = "" }) {
     console.log("Codigo insertado correctamente");
     return true
 }
-async function InsertarContraseñaVC({ correo = null, code = null, id = "" }) {
+async function InsertarDatosCuentaVC({ correo = null, code = null, id = "", tipo = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
-    await ContraseñaVC.create({
+    await DatosCuentaVC.create({
         code: code,
         correo: correo,
-        id_dp: id
+        id_dp: id,
+        tipo: tipo
     });
 
     console.log("Codigo insertado correctamente");
@@ -322,12 +324,13 @@ async function LimpiarJWTUsuarioVC(correo, token = "") {
 
 //cambiar datos usuario
 async function cambiarContraseñaUsuario(contraseña) {//48h para volver a cambiarla
+    const correo = storage.getCorreoSesion()
     await User.updateOne(
-        { correo: email },//filtro
+        { correo: correo },//filtro
         { $set: { contrasena: contraseña } },
         { $set: { exp_bloq_contrasena: new Date(Date.now() + (48 * 60 * 20 * 1000)) } },
         { upsert: false } // crea si no existe
-    );
+    )
 
     return true
 }
@@ -335,8 +338,8 @@ async function cambiarCorreoUsuario(correo) {//14dias para volver a cambiarlo
     const correo_viejo = storage.getCorreoSesion()
     //actualizar todas las tablas importantes
     await User.updateOne(
-        { correo: email },//filtro
-        { $set: { correo: email } },
+        { correo: correo_viejo },//filtro
+        { $set: { correo: correo } },
         { $set: { exp_bloq_correo: new Date(Date.now() + (14 * 24 * 60 * 20 * 1000)) } },
         { upsert: false } // crea si no existe
     );
@@ -351,8 +354,9 @@ async function cambiarCorreoUsuario(correo) {//14dias para volver a cambiarlo
     return true
 }
 async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
+    const correo = storage.getCorreoSesion()
     await User.updateOne(
-        { correo: email },//filtro
+        { correo: correo },//filtro
         { $set: { apodo: apodo } },
         { $set: { exp_bloq_apodo: new Date(Date.now() + (24 * 60 * 20 * 1000)) } },
         { upsert: false } // crea si no existe
@@ -361,4 +365,6 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
 
     return true
 }
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarContraseñaVC, BorrarDatosCuentaVC }
+
+
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC }

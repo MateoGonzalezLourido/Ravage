@@ -373,4 +373,4 @@ function comprobar_apodo(apodo) {
     //resultado
     return { success: success, message: message }
 }
-module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario }
+module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobaciones_Correo, comprobar_apodo }
