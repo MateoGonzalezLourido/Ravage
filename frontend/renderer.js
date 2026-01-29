@@ -280,6 +280,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 block: "start"
             });
         })
+        //cerrar sesion
+        document.querySelector("#bt-cerrar-sesion").addEventListener("click", async () => {
+            await window.sesion_usuario.CERRAR_SESION()
+            //mostrar log
+            mostrar_menu_sesion(true)
+            mostrar_menu_cuenta_creada(false)
+            mostrar_menu_validation_code(false)
+            mostrar_menu_reg(false)
+            mostrar_menu_log(true)
+
+        })
     })
     //cerrar ajustes
     document.querySelector("#bt-cerrar-menu-ajustes").addEventListener("click", (e) => {

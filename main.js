@@ -3,8 +3,8 @@ const path = require('path')
 
 const { startServer } = require('./backend/server.js')
 const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = require("./backend/db/mongo.js")
-const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/sesion.js');
-
+const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } = require('./backend/services/sesion.js');
+const { getCorreoSesion } = require('./backend/STORAGE/Variables_sesion.js')
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({
         show: false, // evita parpadeo
@@ -71,4 +71,8 @@ ipcMain.handle('borrar-code-registrar-usuario', async (_, correo) => {
 });
 ipcMain.handle('borrar-code-login-usuario', async (_, correo) => {
     return await BorrarCuentaVC(correo);
+});
+ipcMain.handle('cerrar-sesion-usuario', async (_) => {
+    const correo = getCorreoSesion()
+    return await cerrarSesionUsuario(correo);
 });
