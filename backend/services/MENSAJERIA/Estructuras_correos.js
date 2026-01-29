@@ -87,10 +87,23 @@ const ConfirmacionInicioSesion = () => {
         <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
     return { asunto: asunto, htmlContenido: htmlContenido }
 }
-
+const CodigoCambiarContraseña = ({ apodo, codigo }) => {
+    const asunto = "Cambio de contraseña"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>El codigo para cambiar de contraseña es ${codigo}</span>
+        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    return { asunto: asunto, htmlContenido: htmlContenido }
+}
+const ConfirmacionCambioContraseña = ({ apodo }) => {
+    const asunto = "Cambio de contraseña"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado la contraseña ${codigo}</span>
+        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    return { asunto: asunto, htmlContenido: htmlContenido }
+}
 module.exports = {
     ValidarCorreoEstructura,
     ConfirmacionCuentaCreadaEstructura,
     ValidarCuentaUsuario,
-    ConfirmacionInicioSesion
+    ConfirmacionInicioSesion,
+    CodigoCambiarContraseña,
+    ConfirmacionCambioContraseña
 }

@@ -291,12 +291,81 @@ document.addEventListener("DOMContentLoaded", () => {
             mostrar_menu_log(true)
 
         })
+        //mostrar menu cambiar contraseña
+        let bloquear_span_cambio_contraseña = false
+        document.querySelector("#bt-cambiar-contraseña").addEventListener("click", async () => {
+            if (bloquear_span_cambio_contraseña) {
+                //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+                return;
+            }
+            const result = await window.sesion_usuario.PERMITIR_CAMBIO_CONTRASEÑA()
+            if (result) {
+                document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.remove("ocultar-display")
+                document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.add("flex-display")
+            }
+            else {
+                //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+                bloquear_span_cambio_contraseña = true
+            }
+        })
+        //cerrar menu cambiar contraseña
+        document.querySelector("#bt-cerrar-menu-cambio-contraseña").addEventListener("click", () => {
+            document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
+            document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
+            //limpiar inputs
+            document.querySelector("#cambio-pass").value = ""
+            document.querySelector("#cambio-pass-confirm").value = ""
+        })
+        //cambiar contraseña
+        document.querySelector("#form-cambio-contraseña").addEventListener("submit", async () => {
+            const contraseña = document.querySelector("cambio-pass").value
+            const contraseña_confirmacion = document.querySelector("cambio-pass-confirm").value
+            let valido = true
+            if (!(contraseña === contraseña_confirmacion)) {
+                valido = false
+                document.querySelector("#cambio-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto")
+                document.querySelector("#span-repetir-contraseña-cambio").classList.add("estrada-menu-registro-login-incorrecto")
+            }
+            document.querySelector("#cambio-pass-confirm").classList.remove("estrada-menu-registro-login-incorrecto")
+            document.querySelector("#span-repetir-contraseña-cambio").classList.remove("estrada-menu-registro-login-incorrecto")
+            if (" ".test(contraseña)) {
+                valido = false
+                document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
+                document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flexx-display")
+                document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = "*No puedes usar espacios*"
+            }
+            if (valido) {//cambiar contraseña
+                let result = await window.sesion_usuario.PERMITIR_CAMBIO_CONTRASENA_USUARIO()
+                if (result.success) {
+                    //TODO:mostrar menu para introducir codigo
+                    document.querySelector("#seccion-validacion-codigo-ajustes").classList.remove("ocultar-display")
+                    document.querySelector("#seccion-validacion-codigo-ajustes").classList.add("flexx-display")
+
+                    document.querySelector("#form-validation-correo-ajustes").addEventListener("click", async () => {
+                        result = await windows.sesion_usuario.CAMBIAR_CONTRASEÑA_USUARIO(contraseña.trim())
+                        if (result) {//cambiar contraseña
+                            bloquear_span_cambio_contraseña = true
+                            //cerrar menu
+                            document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
+                            document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
+                        }
+                    })
+
+                }
+                else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+
+                }
+
+            }
+        })
     })
     //cerrar ajustes
     document.querySelector("#bt-cerrar-menu-ajustes").addEventListener("click", (e) => {
         e.preventDefault()
-        //mostrar menu de ajustes
+        //cerrar menu de ajustes
         document.querySelector("#seccion-menu-cuenta-ajustes").classList.remove("block-display")
         document.querySelector("#seccion-menu-cuenta-ajustes").classList.add("ocultar-display")
+        //reiniciar bloqueadores de span
+        bloquear_span_cambio_contraseña = true
     })
 })
