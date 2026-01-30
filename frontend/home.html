@@ -111,24 +111,25 @@
                 <div id="bt-menu-navegacion-ajustes-saber">Saber más</div>
             </div>
             <div class="cuerpo-menu-ajustes">
-                <div class="flex-display" id="cuerpo-ajustes-cuenta">
-                    <label for="">
-                        <span>Apodo:</span>
-                        <input type="text" id="" value="" placeholder="(Visible para todos)">
+                <div class="menu-ajustes-sub flex-display" id="cuerpo-ajustes-cuenta">
+                    <label>
+                        <span>Apodo: Usuario</span>
+                        <button id="bt-cambiar-apodo">Cambiar Apodo</button>
                     </label>
-                    <label for="">
-                        <span>Correo electrónico:</span>
-                        <input type="email" id="" value="" placeholder="Correo">
+                    <label>
+                        <span>Correo electrónico: usuario@gmail.com</span>
+                        <button id="bt-cambiar-correo">Cambiar Correo</button>
                     </label>
-                    <label for="bt-cambiar-contraseña">
-                        <span>Contraseña:</span>
-                        <button id="bt-cambiar-contraseña">Cambiar contraseña</button>
+                    <label>
+                        <span>Contraseña: *privada*</span>
+                        <button id="bt-cambiar-contraseña">Cambiar Contraseña</button>
                     </label>
                     <label>
                         <button id="bt-cerrar-sesion">Cerrar Sesión</button>
                     </label>
+                    <span id="text-cuenta-creada-fecha">*Cuenta creada el xx/xx/xx</span>
                 </div>
-                <div class="ocultar-display" id="cuerpo-ajustes-general">
+                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-general">
                     <div>
                         <span class="titulo-ajustes">Datos del dispotivo (actuales):</span>
                         <span id="">Ip publica: 0.0.0.0</span>
@@ -144,7 +145,7 @@
                         </label>
                     </div>
                 </div>
-                <div class="ocultar-display" id="cuerpo-ajustes-noti">
+                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-noti">
                     <span class="titulo-ajustes">Recibir avisos:</span>
                     <label for="">
                         <span>Cuando te mandan algo</span>
@@ -159,14 +160,14 @@
                         <input type="checkbox" id="" checked>
                     </label>
                 </div>
-                <div class="ocultar-display" id="cuerpo-ajustes-soporte">
+                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-soporte">
 
                 </div>
-                <div class="ocultar-display" id="cuerpo-ajustes-saber">
+                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-saber">
 
                 </div>
             </div>
-            <div id="alineador-menu-cambiar-contraseña">
+            <div class="ocultar-display" id="alineador-menu-cambiar-contraseña">
                 <div class="menu-cambiar-contraseña">
                     <div id="bt-cerrar-menu-cambio-contraseña">
                         <img src="./recursos/cruz.png" alt="cerrar" draggable="false">

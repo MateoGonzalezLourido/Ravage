@@ -241,7 +241,7 @@ input[type="number"]::-webkit-outer-spin-button {
     width: 100%;
     height: 100%;
     background-color: var(--background-fondo-claro);
-    display: flex;
+    flex-direction: row;
     z-index: 101 !important;
 }
 
@@ -259,15 +259,20 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 #seccion-menu-cuenta-ajustes .menu-navegacion-ajustes {
+    position: absolute;
+    left: 0;
+    top: 0;
     padding-top: 14px;
     display: flex;
     flex-direction: column;
     height: 100vh;
     width: 150px;
     box-shadow: 0.5px 0px 1.7px rgba(19, 19, 19, 0.419);
+    background-color: var(--background-fondo-claro);
     overflow-x: none;
     overflow-y: auto;
     user-select: none;
+    z-index: 2 !important;
 }
 
 #seccion-menu-cuenta-ajustes .menu-navegacion-ajustes div {
@@ -286,6 +291,76 @@ input[type="number"]::-webkit-outer-spin-button {
     transition: 0.2s;
 }
 
-#seccion-menu-cuenta-ajustes .cuerpo-menu-ajustes {
-    background-color: blue;
+.cuerpo-menu-ajustes {
+    width: calc(100% - 150px);
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    right: 0px;
+    z-index: 1 !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.menu-ajustes-sub {
+    width: calc(100% - 35px);
+    position: absolute;
+    right: 0;
+    padding-top: 35px;
+    top: 0px;
+    height: calc(100% - 35px);
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+}
+
+.menu-ajustes-sub label {
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 5px;
+    justify-content: left;
+    overflow-x: auto;
+    align-items: center;
+}
+
+.menu-ajustes-sub label span {
+    text-align: left;
+    display: flex;
+    font-size: 16.5px;
+    margin-right: 12px;
+}
+
+.menu-ajustes-sub label button {
+    user-select: none;
+    width: 150px;
+    height: 25px;
+    cursor: pointer;
+}
+
+.menu-ajustes-sub div {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 18px;
+}
+
+.menu-ajustes-sub .titulo-ajustes {
+    font-weight: 600;
+    font-size: 18px;
+    margin-bottom: 6px;
+}
+
+.menu-ajustes-sub input[type="checkbox"] {
+    height: 16px;
+    width: 16px;
+    margin: 0;
+    cursor: pointer;
+}
+
+#text-cuenta-creada-fecha{
+    margin-top: 12px;
+    font-style: italic;
+    color: rgb(112, 139, 130);
 }
