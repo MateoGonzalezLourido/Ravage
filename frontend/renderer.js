@@ -297,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
                 return;
             }
-            const result = await window.sesion_usuario.PERMITIR_CAMBIO_CONTRASEÑA()
+            const result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA("contraseña")
             if (result) {
                 document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.remove("ocultar-display")
                 document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.add("flex-display")
