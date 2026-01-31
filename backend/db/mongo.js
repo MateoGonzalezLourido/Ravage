@@ -153,7 +153,7 @@ async function connectDB() {
         socketTimeoutMS: 45000
     })
         .then(() => console.log("✅ Conectado a MongoDB Atlas"))
-        .catch(err => console.error("❌ Error de conexión:", err));
+        .catch(() => console.error("❌ Error de conexión"));
 }
 //cerrar db
 async function closeDB() {
