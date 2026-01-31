@@ -7,7 +7,7 @@ const { ActualizarUsuarioActivo, User, InsertarDatosCuentaVC, DatosCuentaVC, Bor
 const { getCorreoSesion, getApodoSesion } = require('../STORAGE/Variables_sesion.js')
 const { CodigoCambiarDatosCuenta, ConfirmacionCambioContraseña, ConfirmacionCambioCorreo, ConfirmacionCambioApodo } = require('./MENSAJERIA/Estructuras_correos.js')
 const { generarCodigoVerificacion, enviarEmail } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
-const { comprobaciones_Correo, comprobar_apodo } = require('./sesion.js')
+const { comprobaciones_Correo, comprobar_apodo, comprobarContraseñaValidaciones } = require('./sesion.js')
 //mantener sesion activa
 function comprobarActividadOnline() {
     setInterval(() => {
@@ -18,9 +18,23 @@ function comprobarActividadOnline() {
 const n_intentos_codigo_validacion = 5;
 let intentos_codigo_validacion = n_intentos_codigo_validacion;
 let bloquear_accion = false
-async function permitirCambioContraseñaUsuario(contraseña) {
+async function permitirCambioContraseñaUsuario(contraseña){
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
+
+    //sin data solo mandar si no hay bloqueador de tiempo
+    if (!contraseña) {
+        const correo = getCorreoSesion()
+        const data_usuario = await User.find({ correo: correo })
+        if (!data_usuario) {
+            bloquear_accion = false
+            return { success: false, message: "Usuario no encontrado" }
+        }
+        if (data_usuario.exp_bloq_contrasena >= new Date()) {
+            bloquear_accion = false
+            return { success: false, message: "Tiempo de bloqueo no cumplido" }
+        }
+    }
     //comprobar contraseña
     let result = comprobarContraseñaValidaciones(contraseña)
     if (!result.success) {
@@ -34,6 +48,7 @@ async function permitirCambioContraseñaUsuario(contraseña) {
         bloquear_accion = false
         return { success: false, message: "Usuario no encontrado" }
     }
+    //comprobacion de seguridad
     if (data_usuario.exp_bloq_contrasena >= new Date()) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
@@ -60,6 +75,20 @@ async function permitirCambioContraseñaUsuario(contraseña) {
 async function permitirCambioCorreoUsuario(correo) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
+
+    //sin data solo mandar si no hay bloqueador de tiempo
+    if (!correo) {
+        const correo_viejo = getCorreoSesion()
+        const data_usuario = await User.find({ correo: correo_viejo })
+        if (!data_usuario) {
+            bloquear_accion = false
+            return { success: false, message: "Usuario no encontrado" }
+        }
+        if (data_usuario.exp_bloq_correo >= new Date()) {
+            bloquear_accion = false
+            return { success: false, message: "Tiempo de bloqueo no cumplido" }
+        }
+    }
     //comprobar contraseña
     let result = comprobaciones_Correo(correo)
     if (!result.success) {
@@ -99,6 +128,21 @@ async function permitirCambioCorreoUsuario(correo) {
 async function permitirCambioApodoUsuario(apodo) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
+
+    //sin data solo mandar si no hay bloqueador de tiempo
+    if (!apodo) {
+        const correo = getCorreoSesion()
+        const data_usuario = await User.find({ correo: correo })
+        if (!data_usuario) {
+            bloquear_accion = false
+            return { success: false, message: "Usuario no encontrado" }
+        }
+        if (data_usuario.exp_bloq_apodo >= new Date()) {
+            bloquear_accion = false
+            return { success: false, message: "Tiempo de bloqueo no cumplido" }
+        }
+    }
+
     //comprobar contraseña
     let result = comprobar_apodo(apodo)
     if (!result.success) {
@@ -112,7 +156,7 @@ async function permitirCambioApodoUsuario(apodo) {
         bloquear_accion = false
         return { success: false, message: "Usuario no encontrado" }
     }
-    if (data_usuario.exp_bloq_correo >= new Date()) {
+    if (data_usuario.exp_bloq_apodo >= new Date()) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }

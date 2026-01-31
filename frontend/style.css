@@ -106,7 +106,6 @@ body {
 
 .ocultar-display {
     display: none !important;
-
 }
 
 .flex-display {
@@ -256,6 +255,7 @@ input[type="number"]::-webkit-outer-spin-button {
     width: 28px;
     height: 28px;
     cursor: pointer;
+    user-select: none;
 }
 
 #seccion-menu-cuenta-ajustes .menu-navegacion-ajustes {
@@ -359,8 +359,98 @@ input[type="number"]::-webkit-outer-spin-button {
     cursor: pointer;
 }
 
-#text-cuenta-creada-fecha{
+#text-cuenta-creada-fecha {
     margin-top: 12px;
     font-style: italic;
     color: rgb(112, 139, 130);
+}
+
+#alineador-menu-cambiar-contraseña {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(230, 234, 236, 0.411);
+    backdrop-filter: blur(4px);
+    z-index: 101 !important;
+}
+
+#alineador-menu-cambiar-contraseña #bt-cerrar-menu-cambio-contraseña {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 102 !important;
+}
+
+#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña {
+    width: 325px;
+    height: 200px;
+    background-color: rgba(249, 249, 249, 0.642);
+    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 20px;
+    border-radius: 12px;
+    corner-shape: squircle;
+}
+
+#alineador-menu-cambiar-contraseña #bt-cerrar-menu-cambio-contraseña img {
+    width: 24px;
+    height: 24px;
+}
+
+#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña h2 {
+    width: 100%;
+    text-align: center;
+    padding: 0;
+    margin: 0;
+    font-size: 17px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña label {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+}
+
+#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña input {
+    height: 20px;
+    padding: 1px;
+    margin-top: 2.5px;
+    padding-left: 8px;
+    font-size: 14.2px;
+    font-style: monospace;
+}
+
+#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña .bt-cambiar-pass-alineador-button {
+    display: flex;
+    justify-content: center;
+}
+
+#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña button {
+    cursor: pointer;
+    height: 29px;
+    width: 250px;
+    border-radius: 4px;
+    border: 1px solid rgba(113, 113, 113, 0.721);
+    margin: auto;
+    margin-top: 14px;
+    font-size: 14.5px;
+    transition: 0.08s;
+}
+
+#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña button:hover {
+    transition: 0.15s;
+    font-size: 15.7px;
 }
