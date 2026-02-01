@@ -342,8 +342,13 @@ async function cerrarSesionUsuario(correo) {
     if (data) LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
     //borrar usuario activo
     BorrarUsuarioActivo()
+    //limpiar datos
+    storage.setCorreoSesion(null)
+    storage.setApodoSesion(null)
 
+    //sesion cerrada
     console.warn("*Sesion cerrada")
+    return true
 }
 
 //TODO: añadir mas verificaciones
@@ -357,7 +362,7 @@ function comprobaciones_Correo(correo) {
     //resultado
     return { success: success, message: message }
 }
-
+//TODO: añadir mas verificaciones
 function comprobar_apodo(apodo) {
     let success = true;
     let message = "Username válido";
@@ -368,4 +373,12 @@ function comprobar_apodo(apodo) {
     //resultado
     return { success: success, message: message }
 }
-module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin }
+//TODO: añadir mas verificaciones
+function comprobarContraseñaValidaciones(contraseña) {
+    let success = true;
+    let message = "Username válido";
+    //validaciones
+
+    return { success: success, message: message }
+}
+module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobaciones_Correo, comprobar_apodo, comprobarContraseñaValidaciones }

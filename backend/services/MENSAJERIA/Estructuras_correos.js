@@ -87,10 +87,37 @@ const ConfirmacionInicioSesion = () => {
         <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
     return { asunto: asunto, htmlContenido: htmlContenido }
 }
-
+const CodigoCambiarDatosCuenta = ({ apodo, codigo, tipo }) => {
+    const asunto = "Cambio de Datos"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>El codigo para cambiar de ${tipo} es ${codigo}</span>
+        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    return { asunto: asunto, htmlContenido: htmlContenido }
+}
+const ConfirmacionCambioContraseña = ({ apodo }) => {
+    const asunto = "Cambio de contraseña"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado la contraseña</span>
+        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    return { asunto: asunto, htmlContenido: htmlContenido }
+}
+const ConfirmacionCambioCorreo = ({ apodo }) => {
+    const asunto = "Cambio de Correo"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado el correo.A partir de ahora recibiras todo en el nuevo correo.</span>
+        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    return { asunto: asunto, htmlContenido: htmlContenido }
+}
+const ConfirmacionCambioApodo = ({ apodo }) => {
+    const asunto = "Cambio de Apodo"
+    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado el apodo</span>
+        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
+    return { asunto: asunto, htmlContenido: htmlContenido }
+}
 module.exports = {
     ValidarCorreoEstructura,
     ConfirmacionCuentaCreadaEstructura,
     ValidarCuentaUsuario,
-    ConfirmacionInicioSesion
+    ConfirmacionInicioSesion,
+    CodigoCambiarDatosCuenta,
+    ConfirmacionCambioContraseña,
+    ConfirmacionCambioCorreo,
+    ConfirmacionCambioApodo
 }
