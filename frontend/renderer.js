@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     else {//TODO:mostrar errores en el html
                         if (result.bloqueador) return;
-                        console.log("NO SE HA INICIADO SESION CORRECTAMENTE")
+                        console.error("NO SE HA INICIADO SESION CORRECTAMENTE")
                         document.querySelector("#text-error-form-causa-codigo-validar").innerHTML = "*" + result.message + "*"
                         document.querySelector("#text-error-form-causa-codigo-validar").classList.remove("ocultar-display")
                         document.querySelector("#text-error-form-causa-codigo-validar").classList.add("flex-display")
@@ -122,7 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         else {//TODO: mostrar errores en el html
             if (result.bloqueador) return;
-            console.log("FALLO AL INICIO DEL LOGIN")
+            console.error("FALLO AL INICIO DEL LOGIN")
             document.querySelector("#text-error-form-causa-login").innerHTML = "*" + result.message + "*"
             document.querySelector("#text-error-form-causa-login").classList.remove("ocultar-display")
             document.querySelector("#text-error-form-causa-login").classList.add("flex-display")
@@ -176,7 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     })
                 }
                 else {//TODO:mostrar errores en el html
-                    console.log("NO SE HA CREADO EL USUARIO CORRECTAMENTE")
+                    console.error("NO SE HA CREADO EL USUARIO CORRECTAMENTE")
 
                 }
             })
@@ -280,7 +280,8 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         })
         //cerrar sesion
-        document.querySelector("#bt-cerrar-sesion").addEventListener("click", async () => {
+        document.querySelector("#bt-cerrar-sesion").addEventListener("click", async (e) => {
+            e.preventDefault()
             await window.sesion_usuario.CERRAR_SESION()
             //mostrar log
             mostrar_menu_sesion(true)
@@ -292,7 +293,8 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         //mostrar menu cambiar contraseña
         let bloquear_span_cambio_contraseña = false
-        document.querySelector("#bt-cambiar-contraseña").addEventListener("click", async () => {
+        document.querySelector("#bt-cambiar-contraseña").addEventListener("click", async (e) => {
+            e.preventDefault()
             if (bloquear_span_cambio_contraseña) {
                 //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
                 return;
@@ -305,9 +307,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 //eventos
                 //cambiar contraseña
-                document.querySelector("#form-cambio-contraseña").addEventListener("submit", async () => {
-                    const contraseña = document.querySelector("cambio-pass").value
-                    const contraseña_confirmacion = document.querySelector("cambio-pass-confirm").value
+                document.querySelector("#form-cambio-contraseña").addEventListener("submit", async (e) => {
+                    e.preventDefault()
+                    const contraseña = document.querySelector("#cambio-pass").value
+                    const contraseña_confirmacion = document.querySelector("#cambio-pass-confirm").value
+                    //TODO: añadir comprobaciones de validez
                     let valido = true
                     if (contraseña !== contraseña_confirmacion) {
                         valido = false
@@ -316,20 +320,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     document.querySelector("#cambio-pass-confirm").classList.remove("estrada-menu-registro-login-incorrecto")
                     document.querySelector("#span-repetir-contraseña-cambio").classList.remove("estrada-menu-registro-login-incorrecto")
-                    if (" ".test(contraseña)) {
+                    if (contraseña.includes(" ")) {
                         valido = false
                         document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
                         document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flexx-display")
                         document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = "*No puedes usar espacios*"
                     }
+
+                    //hacer el cambio de contraseña(validaciones hechas)
                     if (valido) {//cambiar contraseña
-                        let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA(contraseña, "contraseña")
-                        if (result.success) {
+                        let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: contraseña, tipo: "contraseña" })
+                        console.log(result)
+                        if (result && (result.success)) {
                             //TODO:mostrar menu para introducir codigo
+                            document.querySelector("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
+                            document.querySelector("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
                             document.querySelector("#seccion-validacion-codigo-ajustes").classList.remove("ocultar-display")
                             document.querySelector("#seccion-validacion-codigo-ajustes").classList.add("flexx-display")
 
-                            document.querySelector("#form-validation-correo-ajustes").addEventListener("click", async () => {
+                            document.querySelector("#form-validation-correo-ajustes").addEventListener("click", async (e) => {
+                                e.preventDefault()
                                 const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
                                 result = await windows.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
                                 if (result) {//cambiar contraseña
@@ -342,7 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                         }
                         else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
-
+                            console.error("FALLO AL CAMBIAR LA CONTRASEÑA")
                         }
 
                     }
@@ -354,9 +364,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         })
         //cerrar menu cambiar contraseña
-        document.querySelector("#bt-cerrar-menu-cambio-contraseña").addEventListener("click", () => {
-            document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
-            document.querySelectorAll("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
+        document.querySelector("#bt-cerrar-menu-cambio-contraseña").addEventListener("click", (e) => {
+            e.preventDefault()
+            document.querySelector("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
+            document.querySelector("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
             //limpiar inputs
             document.querySelector("#cambio-pass").value = ""
             document.querySelector("#cambio-pass-confirm").value = ""

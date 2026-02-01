@@ -145,24 +145,31 @@ const TokenVC = mongoose.model("tokenvcv", TokenSchema, "tokenvcv");
 
 //conectar db
 async function connectDB() {
-    //usar tls
+    //no se pueden poner comprobaciones de si esta conectado al iniciar la app porque tarda mucho y falla
+
+
     await mongoose.connect(process.env.URI_MONGODB, {
-        tls: true,
+        tls: true,                          //usar tls
         tlsInsecure: false,                 // verifica certificados
-        serverSelectionTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 5000,     //lo que puede tardar maximo
         socketTimeoutMS: 45000
     })
-        .then(() => console.log("✅ Conectado a MongoDB Atlas"))
-        .catch(() => console.error("❌ Error de conexión"));
+        .then(() => console.log("+ Conectado a MongoDB Atlas"))
+        .catch(() => console.error("- Error de conexión"));
 }
 //cerrar db
 async function closeDB() {
+    if (!estaConectado) return;
     await mongoose.disconnect();
-    console.log("-Cerrado MongoDB");
+    console.log("- Cerrado MongoDB");
 }
+function estaConectado() {
+    return mongoose.connection.readyState !== 0;
+}
+
 //reconectar mongo si cae
 mongoose.connection.on('disconnected', () => {
-    console.warn('⚠️ MongoDB desconectado.');
+    console.warn('- MongoDB desconectado.');
 });
 //loging usuario
 async function LoginUsuario({ correo = null, contraseña = null, token = null }) {
@@ -293,6 +300,7 @@ async function BorrarDatosCuentaVC(correo, code) {
     await ContraseñaVC.deleteMany({ correo: correo, code: code });
 }
 async function BorrarUsuarioActivo() {
+    if (!estaConectado) return;
     const deviceId = String(machineIdSync());
     await ActiveUser.deleteOne({ id_dp: deviceId });
 }
