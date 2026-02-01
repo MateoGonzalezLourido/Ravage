@@ -373,6 +373,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 bloquear_span_cambio_contraseña = true
             }
         })
+        
         //cerrar menu cambiar contraseña
         document.querySelector("#bt-cerrar-menu-cambio-contraseña").addEventListener("click", (e) => {
             e.preventDefault()
