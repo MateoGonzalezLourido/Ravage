@@ -28,6 +28,15 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     },
     BORRAR_CODES_VALIDACION_CUENTA: (correo) => {
         return ipcRenderer.invoke('borrar-code-login-usuario', correo)
+    },
+    CERRAR_SESION: () => {
+        return ipcRenderer.invoke('cerrar-sesion-usuario')
+    },
+    PERMITIR_CAMBIO_DATOS_CUENTA: ({ data = null, tipo }) => {
+        return ipcRenderer.invoke("permitir-cambio-datos-cuenta", data, tipo)
+    },
+    CAMBIAR_DATOS_CUENTA: (contraseña, code, tipo) => {
+        return ipcRenderer.invoke("cambiar-datos-usuario", contraseña, code, tipo)
     }
 })
 

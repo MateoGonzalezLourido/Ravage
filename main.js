@@ -3,8 +3,9 @@ const path = require('path')
 
 const { startServer } = require('./backend/server.js')
 const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = require("./backend/db/mongo.js")
-const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin } = require('./backend/services/sesion.js');
-
+const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } = require('./backend/services/sesion.js');
+const { getCorreoSesion } = require('./backend/STORAGE/Variables_sesion.js')
+const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({
         show: false, // evita parpadeo
@@ -38,14 +39,17 @@ app.whenReady().then(async () => {
 app.on('before-quit', async (e) => {//se ejecuta antes de cerrar (cubre cualquier cierre)
     try {
         await BorrarUsuarioActivo();
-        await closeDB()
     } catch (err) {
         console.error(err);
     }
 });
 app.on('window-all-closed', async () => {//solo cubre el cierre por ventana
-    await BorrarUsuarioActivo()
-    await closeDB()
+    try {
+        await BorrarUsuarioActivo();
+        await closeDB()
+    } catch (err) {
+        console.error(err);
+    }
     if (process.platform !== 'darwin') app.quit()
 })
 
@@ -72,3 +76,21 @@ ipcMain.handle('borrar-code-registrar-usuario', async (_, correo) => {
 ipcMain.handle('borrar-code-login-usuario', async (_, correo) => {
     return await BorrarCuentaVC(correo);
 });
+ipcMain.handle('cerrar-sesion-usuario', async (_) => {
+    const correo = getCorreoSesion()
+    return await cerrarSesionUsuario(correo);
+});
+ipcMain.handle("permitir-cambio-datos-cuenta", async (_, data, tipo) => {
+    if (tipo == "contraseña") {
+        return await permitirCambioContraseñaUsuario(data)
+    }
+    if (tipo == "correo") {
+        return await permitirCambioCorreoUsuario(data)
+    }
+    if (tipo == "apodo") {
+        return await permitirCambioApodoUsuario(data)
+    }
+})
+ipcMain.handle("cambiar-datos-usuario", async (_, data, code, tipo) => {
+    return await ValidarCodeCambioDatosCuenta({ data: data, code: code, tipo: tipo })
+})
