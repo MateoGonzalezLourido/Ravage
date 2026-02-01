@@ -52,6 +52,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
             storage.setCorreoSesion(usuario_datos.correo);
 
             await ActualizarUsuarioActivo({ correo: usuario_datos.correo });
+            comprobarActividadOnline()//iniciar comprobador usuario activo
         })();
         console.log("*Autologin correcto")
         return { success: true };
@@ -241,6 +242,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     if (autoverificacion) {//se autovalida
         (async () => {
             await ActualizarUsuarioActivo({ correo: usuario_data.correo });
+            comprobarActividadOnline()
         })();
         //JWT , mantener sesion iniciada en cache
         (async () => {
@@ -306,6 +308,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //mostrar como usuario activo en mongodb
     (async () => {
         await ActualizarUsuarioActivo({ correo: correo });
+        comprobarActividadOnline()
     })();
     //JWT , mantener sesion iniciada en cache
     (async () => {
@@ -341,6 +344,7 @@ async function cerrarSesionUsuario(correo) {
     //si existe ese archivo limpiar token
     if (data) LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
     //borrar usuario activo
+    clearInterval(IntervalTimerUsuarioActivo)
     BorrarUsuarioActivo()
     //limpiar datos
     storage.setCorreoSesion(null)

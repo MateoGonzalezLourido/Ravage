@@ -6,15 +6,26 @@ const { machineIdSync } = require('node-machine-id');
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 
-const { ActualizarUsuarioActivo, User, InsertarDatosCuentaVC, DatosCuentaVC, BorrarDatosCuentaVC, cambiarContraseñaUsuario, cambiarCorreoUsuario } = require('../db/mongo.js')
+const { ActualizarUsuarioActivo, User, InsertarDatosCuentaVC, DatosCuentaVC, BorrarDatosCuentaVC, cambiarContraseñaUsuario, cambiarCorreoUsuario, BorrarUsuarioActivo } = require('../db/mongo.js')
 const { getCorreoSesion, getApodoSesion } = require('../STORAGE/Variables_sesion.js')
 const { CodigoCambiarDatosCuenta, ConfirmacionCambioContraseña, ConfirmacionCambioCorreo, ConfirmacionCambioApodo } = require('./MENSAJERIA/Estructuras_correos.js')
 const { generarCodigoVerificacion, enviarEmail } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { comprobaciones_Correo, comprobar_apodo, comprobarContraseñaValidaciones, cerrarSesionUsuario } = require('./sesion.js')
+let IntervalTimerUsuarioActivo;
 //mantener sesion activa
 function comprobarActividadOnline() {
-    setInterval(() => {
-        ActualizarUsuarioActivo()
+    const correo_inicial = getCorreoSesion()
+    IntervalTimerUsuarioActivo = setInterval(() => {
+        const correo_actual = getCorreoSesion()
+        if (!correo_actual) {
+            //si no hay correo parar la comprobacion
+            clearInterval(IntervalTimerUsuarioActivo)
+            BorrarUsuarioActivo()
+            return;
+        }
+        if (correo_actual !== correo_inicial) BorrarUsuarioActivo()//borrar sesion desactualizada
+
+        ActualizarUsuarioActivo(correo)
     }, 4 * 60 * 1000)//4minutos, aunque mongo expire cada 5 minutos
 }
 //cambios de datos de la cuenta

@@ -6,6 +6,7 @@ const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = re
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } = require('./backend/services/sesion.js');
 const { getCorreoSesion } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
+
 function createWindow(AutoLogin = false) {
     const winMain = new BrowserWindow({
         show: false, // evita parpadeo
