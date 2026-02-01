@@ -335,18 +335,28 @@ document.addEventListener("DOMContentLoaded", () => {
                             //TODO:mostrar menu para introducir codigo
                             document.querySelector("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
                             document.querySelector("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
-                            document.querySelector("#seccion-validacion-codigo-ajustes").classList.remove("ocultar-display")
-                            document.querySelector("#seccion-validacion-codigo-ajustes").classList.add("flexx-display")
+                            document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.remove("ocultar-display")
+                            document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.add("flex-display")
 
+                            //cerrar validacion codigo de contraseña
+                            document.querySelector("#bt-cerrar-menu-cambio-contraseña-cd").addEventListener("click", (e) => {
+                                e.preventDefault()
+                                //cerrar menu de ajustes
+                                document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.remove("flex-display")
+                                document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.add("ocultar-display")
+                                //reiniciar bloqueadores de span
+                                bloquear_span_cambio_contraseña = true
+                            })
+                            //evento cambiar datos cuenta
                             document.querySelector("#form-validation-correo-ajustes").addEventListener("click", async (e) => {
                                 e.preventDefault()
                                 const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
-                                result = await windows.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
+                                result = await window.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
                                 if (result) {//cambiar contraseña
                                     bloquear_span_cambio_contraseña = true
                                     //cerrar menu
-                                    document.querySelector("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
-                                    document.querySelector("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
+                                    document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.remove("flex-display")
+                                    document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.add("ocultar-display")
                                 }
                             })
 
@@ -382,4 +392,5 @@ document.addEventListener("DOMContentLoaded", () => {
         //reiniciar bloqueadores de span
         bloquear_span_cambio_contraseña = true
     })
+
 })

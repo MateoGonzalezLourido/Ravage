@@ -21,7 +21,7 @@ function comprobarActividadOnline() {
 const n_intentos_codigo_validacion = 5;
 let intentos_codigo_validacion = n_intentos_codigo_validacion;
 let bloquear_accion = false
-async function permitirCambioContraseñaUsuario(contraseña){
+async function permitirCambioContraseñaUsuario(contraseña) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
 
@@ -64,7 +64,7 @@ async function permitirCambioContraseñaUsuario(contraseña){
     //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
     const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
-    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, code: code_generado, tipo: "contraseña" })
+    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "contraseña" })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     InsertarDatosCuentaVC({ correo: correo, code: hashed_ValidationCode, id: deviceId, tipo: "contraseña" })
@@ -117,7 +117,7 @@ async function permitirCambioCorreoUsuario(correo) {
     //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
     const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
-    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, code: code_generado, tipo: "correo" })
+    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "correo" })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     InsertarDatosCuentaVC({ correo: correo_viejo, code: hashed_ValidationCode, id: deviceId, tipo: "correo" })
@@ -171,7 +171,7 @@ async function permitirCambioApodoUsuario(apodo) {
     //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
     const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
-    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo_viejo, code: code_generado, tipo: "apodo" })
+    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo_viejo, codigo: code_generado, tipo: "apodo" })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     InsertarDatosCuentaVC({ correo: correo, code: hashed_ValidationCode, id: deviceId, tipo: "apodo" })
@@ -224,7 +224,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     //crear nueva cuenta de usuario
     if (tipo === "contraseña") {
         const contraseña_hashed = await bcrypt.hash(data, saltos_contraseña)
-        const nuevoUsuario = await cambiarContraseñaUsuario({ contraseña: contraseña_hashed });
+        const nuevoUsuario = await cambiarContraseñaUsuario(contraseña_hashed);
         if (!nuevoUsuario) {//error
             BorrarDatosCuentaVC(correo, code)//borrar codigos
             bloquear_accion = false
@@ -232,7 +232,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
         }
     }
     else if (tipo == "correo") {
-        const nuevoUsuario = await cambiarCorreoUsuario({ correo: correo });
+        const nuevoUsuario = await cambiarCorreoUsuario(data);
         if (!nuevoUsuario) {//error
             BorrarDatosCuentaVC(correo, code)//borrar codigos
             bloquear_accion = false
@@ -240,7 +240,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
         }
     }
     else if (tipo == "apodo") {
-        const nuevoUsuario = await cambiarCorreoUsuario({ correo: correo });
+        const nuevoUsuario = await cambiarApodoUsuario(data);
         if (!nuevoUsuario) {//error
             BorrarDatosCuentaVC(correo, code)//borrar codigos
             bloquear_accion = false
