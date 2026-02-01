@@ -380,7 +380,7 @@ input[type="number"]::-webkit-outer-spin-button {
     z-index: 101 !important;
 }
 
-#alineador-menu-cambiar-contraseña #bt-cerrar-menu-cambio-contraseña {
+.bt-cerrar-menu {
     position: absolute;
     top: 8px;
     right: 8px;
@@ -389,6 +389,11 @@ input[type="number"]::-webkit-outer-spin-button {
     cursor: pointer;
     user-select: none;
     z-index: 102 !important;
+}
+
+.bt-cerrar-menu img {
+    width: 24px;
+    height: 24px;
 }
 
 #alineador-menu-cambiar-contraseña .menu-cambiar-contraseña {
@@ -404,10 +409,6 @@ input[type="number"]::-webkit-outer-spin-button {
     corner-shape: squircle;
 }
 
-#alineador-menu-cambiar-contraseña #bt-cerrar-menu-cambio-contraseña img {
-    width: 24px;
-    height: 24px;
-}
 
 #alineador-menu-cambiar-contraseña .menu-cambiar-contraseña h2 {
     width: 100%;
@@ -454,4 +455,27 @@ input[type="number"]::-webkit-outer-spin-button {
 #alineador-menu-cambiar-contraseña .menu-cambiar-contraseña button:hover {
     transition: 0.15s;
     font-size: 15.7px;
+}
+
+#alineador-menu-cambiar-contraseña-validar-code {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(230, 234, 236, 0.411);
+    backdrop-filter: blur(4px);
+    z-index: 102 !important;
+}
+
+#alineador-menu-cambiar-contraseña-validar-code h2 {
+    text-align: center;
+}
+
+#seccion-validacion-codigo-ajustes {
+    position: relative !important;
+    top: 0;
+    left: 0;
 }

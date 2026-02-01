@@ -171,16 +171,17 @@
                     <button id="">Ver chats bloqueados</button>
                 </div>
                 <div class="ocultar-display" id="cuerpo-ajustes-soporte">
-                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-soporte">
+                    <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-soporte">
 
-                </div>
-                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-saber">
+                    </div>
+                    <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-saber">
 
+                    </div>
                 </div>
             </div>
             <div class="ocultar-display" id="alineador-menu-cambiar-contraseña">
                 <div class="menu-cambiar-contraseña">
-                    <div id="bt-cerrar-menu-cambio-contraseña">
+                    <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-contraseña">
                         <img src="./recursos/cruz.png" alt="cerrar" draggable="false">
                     </div>
                     <h2>Cambio de Contraseña</h2>
@@ -203,24 +204,27 @@
                     </form>
                 </div>
             </div>
-            <div class="menu-validacion-codigo ocultar-display" id="seccion-validacion-codigo-ajustes">
-                <h2>Cambiar Datos Cuenta</h2>
-                <span class="ayuda-texto">Introduzca el codigo que se ha enviado a su correo.</span>
-                <span class="span-aviso">Aviso: puede que se haya enviado a spam</span>
-                <span class="span-aviso">Aviso: debes poner el último código generado</span>
-                <form id="form-validation-correo-ajustes">
-                    <input id="bt-code-introducir-datos-cuenta" type="number" value="" placeholder="123456" required
-                        autocomplete="off" minlength="6" maxlength="6" autofocus="on">
-                    <span class="text-error-form-causa ocultar-display"
-                        id="text-error-form-causa-codigo-validar"></span>
-                    <button class="bt-validar-code">Validar</button>
-                    <span class="bt-cambio-login-registro" id="bt-cambiar-login-validation-code">¿Quieres volver?</span>
-                </form>
+            <div class="ocultar-display" id="alineador-menu-cambiar-contraseña-validar-code">
+                <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-contraseña-cd">
+                    <img src="./recursos/cruz.png" alt="cerrar" draggable="false">
+                </div>
+                <div class="menu-validacion-codigo" id="seccion-validacion-codigo-ajustes">
+                    <h2>Cambiar Datos Cuenta</h2>
+                    <span class="ayuda-texto">Introduzca el codigo que se ha enviado a su correo.</span>
+                    <span class="span-aviso">Aviso: puede que se haya enviado a spam</span>
+                    <span class="span-aviso">Aviso: debes poner el último código generado</span>
+                    <form id="form-validation-correo-ajustes">
+                        <input id="bt-code-introducir-datos-cuenta" type="number" value="" placeholder="123456" required
+                            autocomplete="off" minlength="6" maxlength="6" autofocus="on">
+                        <span class="text-error-form-causa ocultar-display"
+                            id="text-error-form-causa-codigo-validar"></span>
+                        <button class="bt-validar-code">Validar</button>
+                    </form>
+                </div>
             </div>
-        </div>
 
-        <!--SCRIPTS-->
-        <script defer src="./renderer.js"></script><!--CARGARLO AL FINAL DE TODO-->
+            <!--SCRIPTS-->
+            <script defer src="./renderer.js"></script><!--CARGARLO AL FINAL DE TODO-->
     </body>
 
 </html>
