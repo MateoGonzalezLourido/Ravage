@@ -166,6 +166,7 @@ input[type="number"]::-webkit-outer-spin-button {
     padding-right: 30px;
     border-radius: 12px;
     corner-shape: squircle;
+    z-index: 100 !important;
 }
 
 .menu-validacion-codigo input {

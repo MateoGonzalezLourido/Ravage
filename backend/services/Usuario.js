@@ -1,5 +1,8 @@
 const dotenv = require("dotenv");
 dotenv.config();
+const bcrypt = require('bcryptjs')
+const { machineIdSync } = require('node-machine-id');
+
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 
@@ -219,7 +222,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
         return { success: false, message: "Fallo al cambiar datos: codigo incorrecto", intentos: intentos_codigo_validacion };
     };
     //crear nueva cuenta de usuario
-    if (tipo == "contraseña") {
+    if (tipo === "contraseña") {
         const contraseña_hashed = await bcrypt.hash(data, saltos_contraseña)
         const nuevoUsuario = await cambiarContraseñaUsuario({ contraseña: contraseña_hashed });
         if (!nuevoUsuario) {//error
