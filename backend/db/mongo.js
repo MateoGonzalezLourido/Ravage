@@ -301,6 +301,7 @@ async function BorrarDatosCuentaVC(correo, code) {
 }
 async function BorrarUsuarioActivo() {
     if (!estaConectado) return;
+
     const deviceId = String(machineIdSync());
     await ActiveUser.deleteOne({ id_dp: deviceId });
 }
