@@ -10,7 +10,7 @@ const { ActualizarUsuarioActivo, User, InsertarDatosCuentaVC, DatosCuentaVC, Bor
 const { getCorreoSesion, getApodoSesion } = require('../STORAGE/Variables_sesion.js')
 const { CodigoCambiarDatosCuenta, ConfirmacionCambioContraseña, ConfirmacionCambioCorreo, ConfirmacionCambioApodo } = require('./MENSAJERIA/Estructuras_correos.js')
 const { generarCodigoVerificacion, enviarEmail } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
-const { comprobaciones_Correo, comprobar_apodo, comprobarContraseñaValidaciones } = require('./sesion.js')
+const { comprobaciones_Correo, comprobar_apodo, comprobarContraseñaValidaciones, cerrarSesionUsuario } = require('./sesion.js')
 //mantener sesion activa
 function comprobarActividadOnline() {
     setInterval(() => {
@@ -230,6 +230,8 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
             bloquear_accion = false
             return { success: false, message: "Fallo al cambiar contraseña" }
         }
+        //cerrar sesion
+        cerrarSesionUsuario(correo)
     }
     else if (tipo == "correo") {
         const nuevoUsuario = await cambiarCorreoUsuario(data);
