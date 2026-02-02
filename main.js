@@ -3,8 +3,8 @@ const path = require('path')
 
 const { startServer } = require('./backend/server.js')
 const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = require("./backend/db/mongo.js")
-const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } = require('./backend/services/sesion.js');
-const { getCorreoSesion } = require('./backend/STORAGE/Variables_sesion.js')
+const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } = require('./backend/services/sesionUsuario.js');
+const { getCorreoSesion, getApodoSesion } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
 
 function createWindow(AutoLogin = false) {
@@ -40,17 +40,12 @@ app.whenReady().then(async () => {
 app.on('before-quit', async (e) => {//se ejecuta antes de cerrar (cubre cualquier cierre)
     try {
         await BorrarUsuarioActivo();
+        await closeDB()
     } catch (err) {
         console.error(err);
     }
 });
 app.on('window-all-closed', async () => {//solo cubre el cierre por ventana
-    try {
-        await BorrarUsuarioActivo();
-        await closeDB()
-    } catch (err) {
-        console.error(err);
-    }
     if (process.platform !== 'darwin') app.quit()
 })
 
@@ -94,4 +89,7 @@ ipcMain.handle("permitir-cambio-datos-cuenta", async (_, data, tipo) => {
 })
 ipcMain.handle("cambiar-datos-usuario", async (_, data, code, tipo) => {
     return await ValidarCodeCambioDatosCuenta({ data: data, code: code, tipo: tipo })
+})
+ipcMain.handle("obtener-apodo-sesion", (_) => {
+    return getApodoSesion()
 })

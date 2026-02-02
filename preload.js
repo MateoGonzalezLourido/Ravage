@@ -37,6 +37,9 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     },
     CAMBIAR_DATOS_CUENTA: (contraseña, code, tipo) => {
         return ipcRenderer.invoke("cambiar-datos-usuario", contraseña, code, tipo)
+    },
+    GET_APODO_SESION:()=>{
+        return ipcRenderer.invoke("obtener-apodo-sesion")
     }
 })
 

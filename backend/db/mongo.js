@@ -29,7 +29,6 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true,
         minlength: 5,
-        maxlength: 20,
         trim: true,
     },
     exp_bloq_apodo: {
@@ -297,7 +296,7 @@ async function BorrarCuentaVC(correo) {
     await CuentaValidationCode.deleteMany({ correo: correo });
 }
 async function BorrarDatosCuentaVC(correo, code) {
-    await ContraseñaVC.deleteMany({ correo: correo, code: code });
+    await DatosCuentaVC.deleteMany({ correo: correo, code: code });
 }
 async function BorrarUsuarioActivo() {
     if (!estaConectado) return;
