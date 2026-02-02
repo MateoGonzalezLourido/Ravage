@@ -350,7 +350,8 @@ async function cerrarSesionUsuario(correo) {
     //limpiar datos
     storage.setCorreoSesion(null)
     storage.setApodoSesion(null)
-
+    //mostrar log
+    
     //sesion cerrada
     console.warn("*Sesion cerrada")
     return true

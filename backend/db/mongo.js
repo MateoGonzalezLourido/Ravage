@@ -37,7 +37,7 @@ const UserSchema = new mongoose.Schema({
     },
     exp_bloq_correo: {
         type: Date,
-        default: Date.now
+        default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas después
     },
     exp_bloq_contrasena: {
         type: Date,

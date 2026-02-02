@@ -7,7 +7,7 @@ const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsua
 const { getCorreoSesion, getApodoSesion } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
 
-function createWindow(AutoLogin = false) {
+function createMainWindowHome(AutoLogin = false) {
     const winMain = new BrowserWindow({
         show: false, // evita parpadeo
         width: 800,
@@ -27,13 +27,32 @@ function createWindow(AutoLogin = false) {
     winMain.show();          // muestra la ventana
     winMain.loadFile(path.join(__dirname, 'frontend', 'home.html')) // carga frontend: (<ruta absoluta>/renderer/home.html)
 }
+function createSecundaryWindowSoporte() {
+    const winMain = new BrowserWindow({
+        show: false, // evita parpadeo
+        width: 800,
+        height: 600,
+        minHeight: 400,
+        minWidth: 400,
+        title: "RAVAGE-Soporte",   // cambia el nombre de la ventana
+        autoHideMenuBar: true, // oculta menú opciones nativo
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'), // ruta absoluta
+            nodeIntegration: false,//evita que el render tenga acceso a require ...
+            additionalArguments: [`--start=${AutoLogin}`] // argumentos iniciales para el preload
+        },
+    })
 
+    winMain.maximize();      // maximiza la ventana
+    winMain.show();          // muestra la ventana
+    winMain.loadFile(path.join(__dirname, 'frontend', 'soporte', 'soporte.html')) // carga frontend: (<ruta absoluta>/renderer/home.html)
+}
 // Ejecuta cuando Electron está listo
 app.whenReady().then(async () => {
     await startServer() // iniciar servidor express
     await connectDB()
     const AutoLogin = await autoLoginUsuario();//true, false
-    createWindow(AutoLogin.success); // crear ventana
+    createMainWindowHome(AutoLogin.success); // crear ventana
 })
 
 /* Finalizar App cuando todas las ventanas estén cerradas */
@@ -77,13 +96,13 @@ ipcMain.handle('cerrar-sesion-usuario', async (_) => {
     return await cerrarSesionUsuario(correo);
 });
 ipcMain.handle("permitir-cambio-datos-cuenta", async (_, data, tipo) => {
-    if (tipo == "contraseña") {
+    if (tipo === "contraseña") {
         return await permitirCambioContraseñaUsuario(data)
     }
-    if (tipo == "correo") {
+    if (tipo === "correo") {
         return await permitirCambioCorreoUsuario(data)
     }
-    if (tipo == "apodo") {
+    if (tipo === "apodo") {
         return await permitirCambioApodoUsuario(data)
     }
 })

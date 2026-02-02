@@ -4,23 +4,24 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>RAVAGE</title>
-        <link rel="stylesheet" href="./style.css">
         <!--seguridad-->
         <meta http-equiv="Content-Security-Policy" content="
-                default-src 'self';
-                script-src 'self';
-                style-src 'self';
-                img-src 'self' data:;
-                font-src 'self';
-                object-src 'none';
-                frame-src 'none';
-                base-uri 'self';
-        ">
+                        default-src 'self';
+                        script-src 'self';
+                        style-src 'self';
+                        img-src 'self' data:;
+                        font-src 'self';
+                        object-src 'none';
+                        frame-src 'none';
+                        base-uri 'self';
+                ">
         <meta http-equiv="X-Content-Type-Options" content="nosniff">
         <!--<meta http-equiv="X-Frame-Options" content="DENY">-->
         <meta http-equiv="Referrer-Policy" content="no-referrer">
         <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+
+        <title>RAVAGE</title>
+        <link rel="stylesheet" href="./style.css">
 
     </head>
 
@@ -45,6 +46,8 @@
                     <span class="text-error-form-causa ocultar-display" id="text-error-form-causa-login"></span>
                     <button>Entrar</button>
                     <span class="bt-cambio-login-registro" id="bt-cambiar-registro">¿Crear cuenta?</span>
+                    <span class="bt-cambio-login-registro" id="bt-cambiar-contraseña-login">¿Problemas con tu
+                        cuenta?</span>
                 </form>
             </div>
             <div class="menu-registro-login menu-registro-login ocultar-display" id="seccion-registro">

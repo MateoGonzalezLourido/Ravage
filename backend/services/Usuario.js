@@ -6,7 +6,7 @@ const { machineIdSync } = require('node-machine-id');
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 
-const { User, InsertarDatosCuentaVC, DatosCuentaVC, BorrarDatosCuentaVC, cambiarContraseñaUsuario, cambiarCorreoUsuario } = require('../db/mongo.js')
+const { User, InsertarDatosCuentaVC, DatosCuentaVC, BorrarDatosCuentaVC, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario } = require('../db/mongo.js')
 const { getCorreoSesion, getApodoSesion } = require('../STORAGE/Variables_sesion.js')
 const { CodigoCambiarDatosCuenta, ConfirmacionCambioContraseña, ConfirmacionCambioCorreo, ConfirmacionCambioApodo } = require('./MENSAJERIA/Estructuras_correos.js')
 const { generarCodigoVerificacion, enviarEmail } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
@@ -21,20 +21,22 @@ let bloquear_accion = false
 async function permitirCambioContraseñaUsuario(contraseña) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
-
+    const correo = getCorreoSesion()
     //sin data solo mandar si no hay bloqueador de tiempo
     if (!contraseña) {
-        const correo = getCorreoSesion()
-        const data_usuario = await User.find({ correo: correo })
-        if (!data_usuario) {
+        const data_usuario = (await User.find({ correo: correo }))[0]
+        if (!data_usuario || (!data_usuario.exp_bloq_contrasena)) {
             bloquear_accion = false
             return { success: false, message: "Usuario no encontrado" }
         }
-        if (data_usuario.exp_bloq_contrasena >= new Date()) {
+        if (new Date(data_usuario.exp_bloq_contrasena) >= new Date()) {
             bloquear_accion = false
             return { success: false, message: "Tiempo de bloqueo no cumplido" }
         }
+        bloquear_accion = false
+        return { success: true }
     }
+
     //comprobar contraseña
     let result = comprobarContrasenaValidaciones(contraseña)
     if (!result.success) {
@@ -42,18 +44,18 @@ async function permitirCambioContraseñaUsuario(contraseña) {
         return { success: false, message: result.message }
     }
     //tiempo de bloqueo expirado?
-    const correo = getCorreoSesion()
-    const data_usuario = await User.find({ correo: correo })
-    if (!data_usuario) {
+    const data_usuario = (await User.find({ correo: correo }))[0]
+    if (!data_usuario || (!data_usuario.exp_bloq_contrasena)) {
         bloquear_accion = false
         return { success: false, message: "Usuario no encontrado" }
     }
     //comprobacion de seguridad
-    if (data_usuario.exp_bloq_contrasena >= new Date()) {
+    if (new Date(data_usuario.exp_bloq_contrasena) >= new Date()) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
-    if (data_usuario.contrasena == contraseña) {
+    const iguales = await bcrypt.compare(contraseña, data_usuario.contrasena)
+    if (iguales) {
         bloquear_accion = false
         return { success: false, message: "La contraseña es la misma" }
     }
@@ -201,7 +203,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     //cojer el ultimo codigo generado
     const correo = getCorreoSesion()
     let code_db = (await DatosCuentaVC.find({ correo: correo, tipo: tipo }).sort({ expira: -1 }).limit(1))[0];
-    if (code_db == []) {//no hay codes
+    if (!code_db || code_db == [] || code_db.length == 0) {//no hay codes
         bloquear_accion = false
         return { success: false, message: "Fallo al cambiar datos: no hay codigos" };
     }
