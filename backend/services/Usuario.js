@@ -6,30 +6,14 @@ const { machineIdSync } = require('node-machine-id');
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 
-const { ActualizarUsuarioActivo, User, InsertarDatosCuentaVC, DatosCuentaVC, BorrarDatosCuentaVC, cambiarContraseñaUsuario, cambiarCorreoUsuario, BorrarUsuarioActivo } = require('../db/mongo.js')
+const { User, InsertarDatosCuentaVC, DatosCuentaVC, BorrarDatosCuentaVC, cambiarContraseñaUsuario, cambiarCorreoUsuario } = require('../db/mongo.js')
 const { getCorreoSesion, getApodoSesion } = require('../STORAGE/Variables_sesion.js')
 const { CodigoCambiarDatosCuenta, ConfirmacionCambioContraseña, ConfirmacionCambioCorreo, ConfirmacionCambioApodo } = require('./MENSAJERIA/Estructuras_correos.js')
 const { generarCodigoVerificacion, enviarEmail } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
-const { comprobaciones_Correo, comprobar_apodo, comprobarContraseñaValidaciones, cerrarSesionUsuario } = require('./sesion.js')
-let IntervalTimerUsuarioActivo;
+const { comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones, cerrarSesionUsuario } = require('./sesionUsuario.js')
 
 
-//mantener sesion activa
-function comprobarActividadOnline() {
-    const correo_inicial = getCorreoSesion()
-    IntervalTimerUsuarioActivo = setInterval(() => {
-        const correo_actual = getCorreoSesion()
-        if (!correo_actual) {
-            //si no hay correo parar la comprobacion
-            clearInterval(IntervalTimerUsuarioActivo)
-            BorrarUsuarioActivo()
-            return;
-        }
-        if (correo_actual !== correo_inicial) BorrarUsuarioActivo()//borrar sesion desactualizada
 
-        ActualizarUsuarioActivo(correo)
-    }, 4 * 60 * 1000)//4minutos, aunque mongo expire cada 5 minutos
-}
 //cambios de datos de la cuenta
 const n_intentos_codigo_validacion = 5;
 let intentos_codigo_validacion = n_intentos_codigo_validacion;
@@ -52,7 +36,7 @@ async function permitirCambioContraseñaUsuario(contraseña) {
         }
     }
     //comprobar contraseña
-    let result = comprobarContraseñaValidaciones(contraseña)
+    let result = comprobarContrasenaValidaciones(contraseña)
     if (!result.success) {
         bloquear_accion = false
         return { success: false, message: result.message }
@@ -244,7 +228,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
             return { success: false, message: "Fallo al cambiar contraseña" }
         }
         //cerrar sesion
-        cerrarSesionUsuario(correo)
+        await cerrarSesionUsuario(correo)
     }
     else if (tipo == "correo") {
         const nuevoUsuario = await cambiarCorreoUsuario(data);
@@ -281,6 +265,10 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
         asunto = asunto2
         htmlContenido = htmlContenido2
     }
+    else {
+        asunto = "Confirmación Cambio Datos Cuenta"
+        htmlContenido = ""
+    }
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
     //limpiar datos 
     BorrarDatosCuentaVC(correo, code)
@@ -290,7 +278,6 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
 }
 
 module.exports = {
-    comprobarActividadOnline,
     permitirCambioContraseñaUsuario,
     ValidarCodeCambioDatosCuenta,
     permitirCambioCorreoUsuario,

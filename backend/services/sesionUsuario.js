@@ -7,6 +7,7 @@ const storage = require('../STORAGE/Variables_sesion.js')
 const { machineIdSync } = require('node-machine-id');
 const dotenv = require("dotenv");
 dotenv.config();
+let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 
@@ -50,7 +51,6 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
         (async () => {
             storage.setApodoSesion(usuario_datos.apodo);
             storage.setCorreoSesion(usuario_datos.correo);
-
             await ActualizarUsuarioActivo({ correo: usuario_datos.correo });
             comprobarActividadOnline()//iniciar comprobador usuario activo
         })();
@@ -240,6 +240,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
 
     if (autoverificacion) {//se autovalida
+        document.querySelector("#text-apodo-usuario-menu-inicio").innerHTML = usuario_data.apodo;
         (async () => {
             await ActualizarUsuarioActivo({ correo: usuario_data.correo });
             comprobarActividadOnline()
@@ -378,11 +379,28 @@ function comprobar_apodo(apodo) {
     return { success: success, message: message }
 }
 //TODO: añadir mas verificaciones
-function comprobarContraseñaValidaciones(contraseña) {
+function comprobarContrasenaValidaciones(contraseña) {
     let success = true;
     let message = "Username válido";
     //validaciones
 
     return { success: success, message: message }
 }
-module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobaciones_Correo, comprobar_apodo, comprobarContraseñaValidaciones }
+
+//mantener sesion activa
+async function comprobarActividadOnline() {
+    const correo_inicial = storage.getCorreoSesion()
+    IntervalTimerUsuarioActivo = setInterval(() => {
+        const correo_actual = storage.getCorreoSesion()
+        if (!correo_actual) {
+            //si no hay correo parar la comprobacion
+            clearInterval(IntervalTimerUsuarioActivo)
+            BorrarUsuarioActivo()
+            return;
+        }
+        if (correo_actual !== correo_inicial) BorrarUsuarioActivo()//borrar sesion desactualizada
+
+        ActualizarUsuarioActivo(correo)
+    }, 4 * 60 * 1000)//4minutos, aunque mongo expire cada 5 minutos
+}
+module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones }
