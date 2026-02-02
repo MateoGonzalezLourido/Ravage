@@ -12,6 +12,8 @@ const { CodigoCambiarDatosCuenta, ConfirmacionCambioContraseña, ConfirmacionCam
 const { generarCodigoVerificacion, enviarEmail } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { comprobaciones_Correo, comprobar_apodo, comprobarContraseñaValidaciones, cerrarSesionUsuario } = require('./sesion.js')
 let IntervalTimerUsuarioActivo;
+
+
 //mantener sesion activa
 function comprobarActividadOnline() {
     const correo_inicial = getCorreoSesion()

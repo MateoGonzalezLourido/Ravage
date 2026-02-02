@@ -179,33 +179,61 @@
                     </div>
                 </div>
             </div>
-            <div class="ocultar-display" id="alineador-menu-cambiar-contraseña">
+            <div class="ocultar-display" id="alineador-menu-cambiar-data-cuenta">
                 <div class="menu-cambiar-contraseña">
                     <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-contraseña">
                         <img src="./recursos/cruz.png" alt="cerrar" draggable="false">
                     </div>
-                    <h2>Cambio de Contraseña</h2>
-                    <form id="form-cambio-contraseña">
-                        <label for="cambio-pass">
-                            <span>Contraseña</span>
-                            <input id="cambio-pass" type="password" placeholder="Contraseña" required minlength="5"
-                                autocomplete="on">
-                        </label>
-                        <label for="cambio-pass-confirm">
-                            <span id="span-repetir-contraseña-cambio">Repita la Contraseña</span>
-                            <input id="cambio-pass-confirm" type="password" placeholder="Contraseña" required
-                                minlength="5">
-                        </label>
-                        <span class="text-error-form-causa ocultar-display"
-                            id="text-error-form-causa-cambio-contraseña"></span>
-                        <div class="bt-cambiar-pass-alineador-button">
-                            <button>Cambiar</button>
-                        </div>
-                    </form>
+                    <div class="flex-display" id="seccion-cambiar-contraseña-menu">
+                        <h2>Cambio de Contraseña</h2>
+                        <form id="form-cambio-contraseña">
+                            <label for="cambio-pass">
+                                <span>Contraseña</span>
+                                <input id="cambio-pass" type="password" placeholder="Contraseña" required minlength="5"
+                                    autocomplete="on">
+                            </label>
+                            <label for="cambio-pass-confirm">
+                                <span id="span-repetir-contraseña-cambio">Repita la Contraseña</span>
+                                <input id="cambio-pass-confirm" type="password" placeholder="Contraseña" required
+                                    minlength="5">
+                            </label>
+                            <span class="text-error-form-causa ocultar-display"
+                                id="text-error-form-causa-cambio-contraseña"></span>
+                            <div class="bt-cambiar-pass-alineador-button">
+                                <button>Cambiar</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="ocultar-display" id="seccion-cambiar-correo-menu">
+                        <h2>Cambio de Correo</h2>
+                        <form id="form-cambio-correo">
+                            <label for="cambio-correo">
+                                <span>Correo</span>
+                                <input id="cambio-correo" type="email" placeholder="correo electrónico" required
+                                    minlength="5" autocomplete="on">
+                            </label>
+                            <div class="bt-cambiar-pass-alineador-button">
+                                <button>Cambiar</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="ocultar-display" id="seccion-cambiar-apodo-menu">
+                        <h2>Cambio de Apodo</h2>
+                        <form id="form-cambio-apodo">
+                            <label for="cambio-apodo">
+                                <span>Apodo</span>
+                                <input id="cambio-apodo" type="text" placeholder="(visible para todos)" required
+                                    minlength="2" autocomplete="on">
+                            </label>
+                            <div class="bt-cambiar-pass-alineador-button">
+                                <button>Cambiar</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-            <div class="ocultar-display" id="alineador-menu-cambiar-contraseña-validar-code">
-                <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-contraseña-cd">
+            <div class="ocultar-display" id="alineador-menu-cambiar-data-cuenta-validar-code">
+                <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-data-cuenta-cd">
                     <img src="./recursos/cruz.png" alt="cerrar" draggable="false">
                 </div>
                 <div class="menu-validacion-codigo" id="seccion-validacion-codigo-ajustes">

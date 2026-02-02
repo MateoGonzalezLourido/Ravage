@@ -291,6 +291,32 @@ document.addEventListener("DOMContentLoaded", () => {
             mostrar_menu_log(true)
 
         })
+        function cambiar_seccion_menu_cambiar_datos_cuenta(tipo) {
+            if (tipo == "correo") {
+                document.querySelector("#seccion-cambiar-correo-menu").classList.remove("ocultar-display")
+                document.querySelector("#seccion-cambiar-correo-menu").classList.add("flex-display")
+            }
+            else {
+                document.querySelector("#seccion-cambiar-correo-menu").classList.remove("flex-display")
+                document.querySelector("#seccion-cambiar-correo-menu").classList.add("ocultar-display")
+            }
+            if (tipo == "contraseña") {
+                document.querySelector("#seccion-cambiar-contraseña-menu").classList.remove("ocultar-display")
+                document.querySelector("#seccion-cambiar-contraseña-menu").classList.add("flex-display")
+            }
+            else {
+                document.querySelector("#seccion-cambiar-contraseña-menu").classList.remove("flex-display")
+                document.querySelector("#seccion-cambiar-contraseña-menu").classList.add("ocultar-display")
+            }
+            if (tipo == "apodo") {
+                document.querySelector("#seccion-cambiar-apodo-menu").classList.remove("ocultar-display")
+                document.querySelector("#seccion-cambiar-apodo-menu").classList.add("flex-display")
+            }
+            else {
+                document.querySelector("#seccion-cambiar-apodo-menu").classList.remove("flex-display")
+                document.querySelector("#seccion-cambiar-apodo-menu").classList.add("ocultar-display")
+            }
+        }
         //mostrar menu cambiar contraseña
         let bloquear_span_cambio_contraseña = false
         document.querySelector("#bt-cambiar-contraseña").addEventListener("click", async (e) => {
@@ -302,8 +328,9 @@ document.addEventListener("DOMContentLoaded", () => {
             let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "contraseña" })
             //si puede mostrar menu de cambio de contraseña
             if (result) {
-                document.querySelector("#alineador-menu-cambiar-contraseña").classList.remove("ocultar-display")
-                document.querySelector("#alineador-menu-cambiar-contraseña").classList.add("flex-display")
+                document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
+                document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
+                cambiar_seccion_menu_cambiar_datos_cuenta("contraseña")
 
                 //eventos
                 //cambiar contraseña
@@ -330,20 +357,20 @@ document.addEventListener("DOMContentLoaded", () => {
                     //hacer el cambio de contraseña(validaciones hechas)
                     if (valido) {//cambiar contraseña
                         let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: contraseña, tipo: "contraseña" })
-                        console.log(result)
+
                         if (result && (result.success)) {
                             //TODO:mostrar menu para introducir codigo
-                            document.querySelector("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
-                            document.querySelector("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
-                            document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.remove("ocultar-display")
-                            document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.add("flex-display")
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("ocultar-display")
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("flex-display")
 
                             //cerrar validacion codigo de contraseña
-                            document.querySelector("#bt-cerrar-menu-cambio-contraseña-cd").addEventListener("click", (e) => {
+                            document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").addEventListener("click", (e) => {
                                 e.preventDefault()
                                 //cerrar menu de ajustes
-                                document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.remove("flex-display")
-                                document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.add("ocultar-display")
+                                document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
+                                document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
                                 //reiniciar bloqueadores de span
                                 bloquear_span_cambio_contraseña = true
                             })
@@ -355,8 +382,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 if (result) {//cambiar contraseña
                                     bloquear_span_cambio_contraseña = true
                                     //cerrar menu
-                                    document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.remove("flex-display")
-                                    document.querySelector("#alineador-menu-cambiar-contraseña-validar-code").classList.add("ocultar-display")
+                                    document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
+                                    document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
                                 }
                             })
 
@@ -373,7 +400,75 @@ document.addEventListener("DOMContentLoaded", () => {
                 bloquear_span_cambio_contraseña = true
             }
         })
-        
+        //mostrar menu cambiar correo
+        let bloquear_span_cambio_correo = false
+        document.querySelector("#bt-cambiar-correo").addEventListener("click", async (e) => {
+            e.preventDefault()
+            if (bloquear_span_cambio_correo) {
+                //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+                return;
+            }
+            let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "correo" })
+            //si puede mostrar menu de cambio de contraseña
+            if (result) {
+                document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
+                document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
+                cambiar_seccion_menu_cambiar_datos_cuenta("correo")
+
+                //eventos
+                //cambiar contraseña
+                document.querySelector("#form-cambio-correo").addEventListener("submit", async (e) => {
+                    e.preventDefault()
+                    const correo = document.querySelector("#cambio-correo").value
+                    //TODO: añadir comprobaciones de validez
+
+                    //hacer el cambio de contraseña(validaciones hechas)
+                    if (valido) {//cambiar contraseña
+                        let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: correo, tipo: "correo" })
+
+                        if (result && (result.success)) {
+                            //TODO:mostrar menu para introducir codigo
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("ocultar-display")
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("flex-display")
+
+                            //cerrar validacion codigo de contraseña
+                            document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").addEventListener("click", (e) => {
+                                e.preventDefault()
+                                //cerrar menu de ajustes
+                                document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
+                                document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
+                                //reiniciar bloqueadores de span
+                                bloquear_span_cambio_correo = true
+                            })
+                            //evento cambiar datos cuenta
+                            document.querySelector("#form-validation-correo-ajustes").addEventListener("click", async (e) => {
+                                e.preventDefault()
+                                const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
+                                result = await window.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
+                                if (result) {//cambiar contraseña
+                                    bloquear_span_cambio_correo = true
+                                    //cerrar menu
+                                    document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
+                                    document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
+                                    //TODO:MANDAR CORREO DE CONFIRMACION DE QUE EL CORREO ES USABLE Y EXISTE
+                                }
+                            })
+
+                        }
+                        else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+                            console.error("FALLO AL CAMBIAR LA CONTRASEÑA")
+                        }
+
+                    }
+                })
+            }
+            else {
+                //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+                bloquear_span_cambio_correo = true
+            }
+        })
         //cerrar menu cambiar contraseña
         document.querySelector("#bt-cerrar-menu-cambio-contraseña").addEventListener("click", (e) => {
             e.preventDefault()

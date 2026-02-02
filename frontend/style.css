@@ -366,7 +366,7 @@ input[type="number"]::-webkit-outer-spin-button {
     color: rgb(112, 139, 130);
 }
 
-#alineador-menu-cambiar-contraseña {
+#alineador-menu-cambiar-data-cuenta {
     position: fixed;
     top: 0;
     left: 0;
@@ -396,7 +396,7 @@ input[type="number"]::-webkit-outer-spin-button {
     height: 24px;
 }
 
-#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña {
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña {
     width: 325px;
     height: 200px;
     background-color: rgba(249, 249, 249, 0.642);
@@ -410,7 +410,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 
-#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña h2 {
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña h2 {
     width: 100%;
     text-align: center;
     padding: 0;
@@ -420,13 +420,13 @@ input[type="number"]::-webkit-outer-spin-button {
     margin-bottom: 15px;
 }
 
-#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña label {
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña label {
     display: flex;
     flex-direction: column;
     margin-bottom: 8px;
 }
 
-#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña input {
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña input {
     height: 20px;
     padding: 1px;
     margin-top: 2.5px;
@@ -435,12 +435,12 @@ input[type="number"]::-webkit-outer-spin-button {
     font-style: monospace;
 }
 
-#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña .bt-cambiar-pass-alineador-button {
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña .bt-cambiar-pass-alineador-button {
     display: flex;
     justify-content: center;
 }
 
-#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña button {
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña button {
     cursor: pointer;
     height: 29px;
     width: 250px;
@@ -452,12 +452,12 @@ input[type="number"]::-webkit-outer-spin-button {
     transition: 0.08s;
 }
 
-#alineador-menu-cambiar-contraseña .menu-cambiar-contraseña button:hover {
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña button:hover {
     transition: 0.15s;
     font-size: 15.7px;
 }
 
-#alineador-menu-cambiar-contraseña-validar-code {
+#alineador-menu-cambiar-data-cuenta-validar-code {
     position: fixed;
     top: 0;
     left: 0;
@@ -470,7 +470,7 @@ input[type="number"]::-webkit-outer-spin-button {
     z-index: 102 !important;
 }
 
-#alineador-menu-cambiar-contraseña-validar-code h2 {
+#alineador-menu-cambiar-data-cuenta-validar-code h2 {
     text-align: center;
 }
 
