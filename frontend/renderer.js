@@ -447,8 +447,8 @@ document.addEventListener("DOMContentLoaded", () => {
         //cerrar menu cambiar contraseña
         document.querySelector("#bt-cerrar-menu-cambio-contraseña").addEventListener("click", (e) => {
             e.preventDefault()
-            document.querySelector("#alineador-menu-cambiar-contraseña").classList.remove("flex-display")
-            document.querySelector("#alineador-menu-cambiar-contraseña").classList.add("ocultar-display")
+            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
+            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
             //limpiar inputs
             document.querySelector("#cambio-pass").value = ""
             document.querySelector("#cambio-pass-confirm").value = ""
