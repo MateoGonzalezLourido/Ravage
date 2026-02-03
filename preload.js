@@ -38,8 +38,19 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     CAMBIAR_DATOS_CUENTA: (contraseña, code, tipo) => {
         return ipcRenderer.invoke("cambiar-datos-usuario", contraseña, code, tipo)
     },
-    GET_APODO_SESION:()=>{
+    GET_APODO_SESION: () => {
         return ipcRenderer.invoke("obtener-apodo-sesion")
+    }
+})
+contextBridge.exposeInMainWorld('paginas_app', {//funciones de sesion
+    CAMBIAR_PAGINA_SOPORTE: () => {
+        ipcRenderer.send("cambiar-pagina-soporte");
+    },
+    CAMBIAR_PAGINA_HOME: () => {
+        ipcRenderer.send("cambiar-pagina-home");
+    },
+    CAMBIAR_PAGINA_SESION: () => {
+        ipcRenderer.send("cambiar-pagina-log");
     }
 })
 
