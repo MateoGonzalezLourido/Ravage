@@ -1,9 +1,12 @@
 //No mostrar el login si este ya tiene sesion iniciada con autolog
-if (window.boot.isLogged) {
-    window.paginas_app.CAMBIAR_PAGINA_HOME()//mandar al home
-} else {
-    mostrar_menu_sesion(true)
+async function preload_pag() {
+    if (window.boot.isLogged) {
+        await window.paginas_app.CAMBIAR_PAGINA_HOME()//mandar al home
+    } else {
+        mostrar_menu_sesion(true)
+    }
 }
+preload_pag()
 //animaciones
 function mostrar_menu_sesion(accion) {
     if (!accion) {//0: esconder, 1: mostrar
