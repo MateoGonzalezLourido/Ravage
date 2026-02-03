@@ -42,7 +42,7 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
         return ipcRenderer.invoke("obtener-apodo-sesion")
     }
 })
-contextBridge.exposeInMainWorld('paginas_app', {//funciones de sesion
+contextBridge.exposeInMainWorld('paginas_app', {//funciones de cambio paginas
     CAMBIAR_PAGINA_SOPORTE: () => {
         ipcRenderer.send("cambiar-pagina-soporte");
     },
@@ -53,7 +53,11 @@ contextBridge.exposeInMainWorld('paginas_app', {//funciones de sesion
         ipcRenderer.send("cambiar-pagina-log");
     }
 })
-
+contextBridge.exposeInMainWorld('ajustes_app', {//funciones de ajustes
+    OBTENER_FECHA_CREACION_CUENTA: () => {
+        return ipcRenderer.invoke("obtener-fecha-creacion-cuenta");
+    }
+})
 contextBridge.exposeInMainWorld('boot', {//funciones de inicio de la app
     isLogged: startPage === 'true'
 });

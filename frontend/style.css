@@ -223,7 +223,7 @@ input[type="number"]::-webkit-outer-spin-button {
     justify-content: left;
 }
 
-.menu-ajustes-sub label {
+.menu-ajustes-sub .label {
     display: flex;
     flex-direction: row;
     margin-bottom: 5px;
@@ -232,14 +232,14 @@ input[type="number"]::-webkit-outer-spin-button {
     align-items: center;
 }
 
-.menu-ajustes-sub label span {
+.menu-ajustes-sub .label span {
     text-align: left;
     display: flex;
     font-size: 16.5px;
     margin-right: 12px;
 }
 
-.menu-ajustes-sub label button {
+.menu-ajustes-sub .label button {
     user-select: none;
     width: 150px;
     height: 25px;

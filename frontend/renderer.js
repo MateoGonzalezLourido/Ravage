@@ -7,14 +7,18 @@ document.addEventListener("DOMContentLoaded", () => {
     //ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", (e) => {
         e.preventDefault()
+        cerrar_cuerpos_ajustes("cuenta")
         //mostrar menu de ajustes
         document.querySelector("#seccion-menu-cuenta-ajustes").classList.remove("ocultar-display")
         document.querySelector("#seccion-menu-cuenta-ajustes").classList.add("block-display")
         //cambios de seccion
-        function cerrar_cuerpos_ajustes(no_cerrar) {
+        async function cerrar_cuerpos_ajustes(no_cerrar) {
             if (no_cerrar == "cuenta") {
                 document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("ocultar-display")
                 document.querySelector("#cuerpo-ajustes-cuenta").classList.add("flex-display")
+                //actualizar datos mostrar
+                const fecha_creacion = await window.ajustes_app.OBTENER_FECHA_CREACION_CUENTA()
+                document.querySelector("#text-cuenta-creada-fecha").innerHTML=`*Cuenta creada el ${fecha_creacion}`
             }
             else {
                 document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("flex-display")
@@ -23,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (no_cerrar == "general") {
                 document.querySelector("#cuerpo-ajustes-general").classList.remove("ocultar-display")
                 document.querySelector("#cuerpo-ajustes-general").classList.add("flex-display")
+                //TODO:actualizar datos mostrar
             }
             else {
                 document.querySelector("#cuerpo-ajustes-general").classList.remove("flex-display")
@@ -31,6 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (no_cerrar == "notificaciones") {
                 document.querySelector("#cuerpo-ajustes-noti").classList.remove("ocultar-display")
                 document.querySelector("#cuerpo-ajustes-noti").classList.add("flex-display")
+                //TODO:actualizar datos mostrar
+
             }
             else {
                 document.querySelector("#cuerpo-ajustes-noti").classList.remove("flex-display")
@@ -39,6 +46,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (no_cerrar == "soporte") {
                 document.querySelector("#cuerpo-ajustes-soporte").classList.remove("ocultar-display")
                 document.querySelector("#cuerpo-ajustes-soporte").classList.add("flex-display")
+                //TODO:actualizar datos mostrar
+
             }
             else {
                 document.querySelector("#cuerpo-ajustes-soporte").classList.remove("flex-display")
@@ -47,6 +56,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (no_cerrar == "saber mas") {
                 document.querySelector("#cuerpo-ajustes-saber").classList.remove("ocultar-display")
                 document.querySelector("#cuerpo-ajustes-saber").classList.add("flex-display")
+                //TODO:actualizar datos mostrar
+
             }
             else {
                 document.querySelector("#cuerpo-ajustes-saber").classList.remove("flex-display")
@@ -279,6 +290,4 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#cambio-pass-confirm").value = ""
         })
     })
-
-
 })

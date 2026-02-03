@@ -54,6 +54,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
             await ActualizarUsuarioActivo({ correo: usuario_datos.correo });
             comprobarActividadOnline()//iniciar comprobador usuario activo
         })();
+        storage.setFechaCreacionCuenta(usuario_datos.createdAt)
         console.log("*Autologin correcto")
         return { success: true };
     }
@@ -253,6 +254,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
                 await AñadirJWTUsuario(usuario_data.correo, token_sesion)//guardar en mongodb
             }
         })();
+        storage.setFechaCreacionCuenta(usuario_data.createdAt)
         storage.setCorreoSesion(usuario_data.correo)
         console.log("-Autoverificacion de cuenta")
     }
@@ -401,7 +403,7 @@ async function comprobarActividadOnline() {
         }
         if (correo_actual !== correo_inicial) BorrarUsuarioActivo()//borrar sesion desactualizada
 
-        ActualizarUsuarioActivo(correo)
+        ActualizarUsuarioActivo(correo_actual)
     }, 4 * 60 * 1000)//4minutos, aunque mongo expire cada 5 minutos
 }
 module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones }
