@@ -10,99 +10,8 @@ body {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
-#seccion-registro-login {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    width: 100%;
-    height: 100%;
-    z-index: 100 !important;
-    background-color: rgb(230, 234, 236);
-    backdrop-filter: blur(10px);
-    justify-content: center;
-    align-items: center;
-    user-select: none;
-    display: flex;
-}
 
 
-.menu-registro-login {
-    background-color: rgba(249, 249, 249, 0.642);
-    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
-    width: 325px;
-    height: 300px;
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    border-radius: 12px;
-    corner-shape: squircle;
-}
-
-.label-check {
-    flex-direction: row !important;
-    align-items: center !important;
-    cursor: pointer !important;
-}
-
-.label-check input {
-    height: 20px !important;
-    width: 20px !important;
-    margin: 0 !important;
-    margin-left: 8px !important;
-    margin-top: 3px !important;
-    padding: 0 !important;
-}
-
-#seccion-registro-login button {
-    margin: auto;
-    cursor: pointer;
-    height: 29px;
-    width: 250px;
-    border-radius: 4px;
-    border: 1px solid rgba(113, 113, 113, 0.721);
-    margin-top: 8px;
-    font-size: 14.5px;
-    transition: 0.08s;
-}
-
-#seccion-registro-login button:hover {
-    transition: 0.15s;
-    font-size: 15.7px;
-}
-
-#seccion-registro-login h2 {
-    width: 100%;
-    text-align: center;
-    padding: 0;
-    margin: 0;
-    margin-top: 10px;
-    margin-bottom: 15px;
-}
-
-#seccion-registro-login form {
-    display: flex;
-    flex-direction: column;
-}
-
-#seccion-registro-login form input {
-    height: 24px;
-    padding: 1px;
-    margin-top: 2.5px;
-    padding-left: 8px;
-    font-size: 14.2px;
-    font-style: monospace;
-}
-
-
-#seccion-registro-login form label {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 8px;
-}
-
-#seccion-registro-login form label span {
-    margin-left: 8px;
-}
 
 .ocultar-display {
     display: none !important;
@@ -116,17 +25,6 @@ body {
     display: block !important;
 }
 
-#seccion-registro-login .bt-cambio-login-registro {
-    margin-top: 5px;
-    margin-left: 8px;
-    color: blue;
-    cursor: pointer;
-}
-
-#seccion-registro-login .bt-cambio-login-registro:hover {
-    text-decoration: underline;
-}
-
 .estrada-menu-registro-login-incorrecto {
     border-color: brown;
     color: brown;
@@ -136,11 +34,6 @@ body {
     border-color: brown;
     color: black;
 }
-
-#seccion-registro {
-    height: 390px !important;
-}
-
 .span-aviso {
     font-style: italic;
     color: rgba(148, 148, 148, 0.897);
