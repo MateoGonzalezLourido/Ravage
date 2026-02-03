@@ -6,9 +6,9 @@ const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = re
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } = require('./backend/services/sesionUsuario.js');
 const { getCorreoSesion, getApodoSesion } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
-
+let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
-    const winMain = new BrowserWindow({
+    winMain = new BrowserWindow({
         show: false, // evita parpadeo
         width: 800,
         height: 600,
@@ -25,27 +25,7 @@ function createMainWindowHome(AutoLogin = false) {
 
     winMain.maximize();      // maximiza la ventana
     winMain.show();          // muestra la ventana
-    winMain.loadFile(path.join(__dirname, 'frontend', 'home.html')) // carga frontend: (<ruta absoluta>/renderer/home.html)
-}
-function createSecundaryWindowSoporte() {
-    const winMain = new BrowserWindow({
-        show: false, // evita parpadeo
-        width: 800,
-        height: 600,
-        minHeight: 400,
-        minWidth: 400,
-        title: "RAVAGE-Soporte",   // cambia el nombre de la ventana
-        autoHideMenuBar: true, // oculta menú opciones nativo
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'), // ruta absoluta
-            nodeIntegration: false,//evita que el render tenga acceso a require ...
-            additionalArguments: [`--start=${AutoLogin}`] // argumentos iniciales para el preload
-        },
-    })
-
-    winMain.maximize();      // maximiza la ventana
-    winMain.show();          // muestra la ventana
-    winMain.loadFile(path.join(__dirname, 'frontend', 'soporte', 'soporte.html')) // carga frontend: (<ruta absoluta>/renderer/home.html)
+    winMain.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html')) // carga frontend: (<ruta absoluta>/renderer/home.html)
 }
 // Ejecuta cuando Electron está listo
 app.whenReady().then(async () => {
@@ -63,13 +43,24 @@ app.on('before-quit', async (e) => {//se ejecuta antes de cerrar (cubre cualquie
     } catch (err) {
         console.error(err);
     }
-});
+})
 app.on('window-all-closed', async () => {//solo cubre el cierre por ventana
     if (process.platform !== 'darwin') app.quit()
 })
 
-
-
+//cambiar pagina
+ipcMain.on("cambiar-pagina-soporte", (_) => {
+    winMain.setTitle("RAVAGE-Soporte")//cambiar titulo ventana
+    winMain.loadFile(path.join(__dirname, 'frontend', 'soporte', 'soporte.html')) // cargar nuevo frontend
+})
+ipcMain.on("cambiar-pagina-home", (_) => {
+    winMain.setTitle("RAVAGE-Home")//cambiar titulo ventana
+    winMain.loadFile(path.join(__dirname, 'frontend', 'home.html'))// cargar nuevo frontend
+})
+ipcMain.on("cambiar-pagina-log", (_) => {
+    winMain.setTitle("RAVAGE-Sesion")//cambiar titulo ventana
+    winMain.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html')) // cargar nuevo frontend
+})
 /*FUNCIONES DEL PRELOAD */
 ipcMain.handle('login-usuario', async (_, username, password, mantener_sesion_iniciada) => {
     return await loginUsuario({ username: username, contraseña: password, mantener_sesion_iniciada: mantener_sesion_iniciada });
@@ -91,7 +82,7 @@ ipcMain.handle('borrar-code-registrar-usuario', async (_, correo) => {
 ipcMain.handle('borrar-code-login-usuario', async (_, correo) => {
     return await BorrarCuentaVC(correo);
 });
-ipcMain.handle('cerrar-sesion-usuario', async (_) => {
+ipcMain.handle('cerrar-sesion-usuario', async () => {
     const correo = getCorreoSesion()
     return await cerrarSesionUsuario(correo);
 });
@@ -109,6 +100,6 @@ ipcMain.handle("permitir-cambio-datos-cuenta", async (_, data, tipo) => {
 ipcMain.handle("cambiar-datos-usuario", async (_, data, code, tipo) => {
     return await ValidarCodeCambioDatosCuenta({ data: data, code: code, tipo: tipo })
 })
-ipcMain.handle("obtener-apodo-sesion", (_) => {
+ipcMain.handle("obtener-apodo-sesion", () => {
     return getApodoSesion()
 })
