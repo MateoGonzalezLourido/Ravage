@@ -105,6 +105,28 @@ document.addEventListener("DOMContentLoaded", () => {
                 block: "start"
             });
         }
+        function mostrar_menu_cuenta_creada(accion) {
+            if (!accion) {
+                document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("flex-display")
+                document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("ocultar-display")
+            }
+            else {
+                document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("ocultar-display")
+                document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("flex-display")
+                document.querySelector("#bt-volver-login-confirmacion-cuenta").focus()
+            }
+        }
+        function mostrar_menu_validation_code(accion) {
+            if (!accion) {
+                document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
+                document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
+            }
+            else {
+                document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
+                document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
+                document.querySelector("#bt-code-introducir").focus()
+            }
+        }
         document.querySelector("#bt-menu-navegacion-ajustes-cuenta").addEventListener("click", cambiar_ajustes_cuenta)
         document.querySelector("#bt-menu-navegacion-ajustes-general").addEventListener("click", cambiar_ajustes_general)
         document.querySelector("#bt-menu-navegacion-ajustes-noti").addEventListener("click", cambiar_ajustes_noti)
