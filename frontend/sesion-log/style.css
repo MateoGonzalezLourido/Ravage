@@ -30,7 +30,7 @@ body {
     background-color: rgba(249, 249, 249, 0.642);
     box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
     width: 325px;
-    height: 300px;
+    height: 320px;
     display: flex;
     flex-direction: column;
     padding: 20px;
