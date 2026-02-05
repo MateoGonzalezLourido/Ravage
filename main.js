@@ -58,8 +58,8 @@ ipcMain.on("cambiar-pagina-home", (_) => {
     winMain.loadFile(path.join(__dirname, 'frontend', 'home.html'))// cargar nuevo frontend
 })
 ipcMain.on("cambiar-pagina-log", (_) => {
-    winMain.setTitle("RAVAGE-Sesion")//cambiar titulo ventana
-    winMain.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html')) // cargar nuevo frontend
+    app.relaunch();   // prepara relanzamiento
+    app.exit(0);
 })
 /*FUNCIONES DEL PRELOAD */
 ipcMain.handle('login-usuario', async (_, username, password, mantener_sesion_iniciada) => {
@@ -84,7 +84,9 @@ ipcMain.handle('borrar-code-login-usuario', async (_, correo) => {
 });
 ipcMain.handle('cerrar-sesion-usuario', async () => {
     const correo = getCorreoSesion()
-    return await cerrarSesionUsuario(correo);
+    await cerrarSesionUsuario(correo);
+    app.relaunch();   // prepara relanzamiento
+    app.exit(0);
 });
 ipcMain.handle("permitir-cambio-datos-cuenta", async (_, data, tipo) => {
     if (tipo === "contraseña") {
