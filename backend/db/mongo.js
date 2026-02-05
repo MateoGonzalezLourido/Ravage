@@ -334,8 +334,12 @@ async function cambiarContraseñaUsuario(contraseña) {//48h para volver a cambi
     const correo = storage.getCorreoSesion()
     await User.updateOne(
         { correo: correo },//filtro
-        { $set: { contrasena: contraseña } },
-        { $set: { exp_bloq_contrasena: new Date(Date.now() + (48 * 60 * 20 * 1000)) } },
+        {
+            $set: {
+                contrasena: contraseña,
+                exp_bloq_contrasena: new Date(Date.now() + (48 * 60 * 20 * 1000))
+            }
+        },
         { upsert: false } // crea si no existe
     )
 
@@ -345,10 +349,14 @@ async function cambiarCorreoUsuario(correo) {//14dias para volver a cambiarlo
     const correo_viejo = storage.getCorreoSesion()
     //actualizar todas las tablas importantes
     await User.updateOne(
-        { correo: correo_viejo },//filtro
-        { $set: { correo: correo } },
-        { $set: { exp_bloq_correo: new Date(Date.now() + (14 * 24 * 60 * 20 * 1000)) } },
-        { upsert: false } // crea si no existe
+        { correo: correo_viejo },              // filtro
+        {
+            $set: {
+                correo: correo,
+                exp_bloq_correo: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // corrección a ms
+            }
+        },
+        { upsert: false }                       // opciones
     );
     storage.setCorreoSesion(correo)
 
@@ -364,8 +372,12 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
     const correo = storage.getCorreoSesion()
     await User.updateOne(
         { correo: correo },//filtro
-        { $set: { apodo: apodo } },
-        { $set: { exp_bloq_apodo: new Date(Date.now() + (24 * 60 * 20 * 1000)) } },
+        {
+            $set: {
+                apodo: apodo,
+                exp_bloq_apodo: new Date(Date.now() + (24 * 60 * 20 * 1000))
+            }
+        },
         { upsert: false } // crea si no existe
     );
     storage.setApodoSesion(apodo)

@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.querySelector("#cuerpo-ajustes-cuenta").classList.add("flex-display")
                 //actualizar datos mostrar
                 const fecha_creacion = await window.ajustes_app.OBTENER_FECHA_CREACION_CUENTA()
-                document.querySelector("#text-cuenta-creada-fecha").innerHTML=`*Cuenta creada el ${fecha_creacion}`
+                document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${fecha_creacion}`
             }
             else {
                 document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("flex-display")
@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             }
             else {
-                document.querySelector("#cuerpo-ajustes-noti").classList.reomove("flex-display")
+                document.querySelector("#cuerpo-ajustes-noti").classList.remove("flex-display")
                 document.querySelector("#cuerpo-ajustes-noti").classList.add("ocultar-display")
             }
             if (no_cerrar == "soporte") {
@@ -134,11 +134,8 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault()
             await window.sesion_usuario.CERRAR_SESION()
             //mostrar log
-            mostrar_menu_sesion(true)
             mostrar_menu_cuenta_creada(false)
             mostrar_menu_validation_code(false)
-            mostrar_menu_reg(false)
-            mostrar_menu_log(true)
 
             document.querySelector("#bt-cerrar-sesion").removeEventListener("click", cerrar_sesion_bt)
         }
@@ -183,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
                 document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
                 cambiar_seccion_menu_cambiar_datos_cuenta("contraseña")
-
+                document.querySelector("#cambio-pass").focus()
                 //eventos
                 //cambiar contraseña
                 async function form_cambio_contraseña(e) {
@@ -224,7 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
                             document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("ocultar-display")
                             document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("flex-display")
-
+                            document.querySelector("#bt-code-introducir-datos-cuenta").focus()
                             //cerrar validacion codigo de contraseña
                             function bt_cerrar_menu(e) {
                                 e.preventDefault()
@@ -242,21 +239,13 @@ document.addEventListener("DOMContentLoaded", () => {
                                 e.preventDefault()
                                 const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
                                 result = await window.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
-                                if (!result) {//TODO:notificar:cambiar contraseña
-
-
+                                if (!result) {//TODO:notificar:cambiar contraseña error
+                                    console.log("no se pudo cambiar")
                                 }
                                 bloquear_span_cambio_contraseña = true
-                                //cerrar menu
-                                document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
-                                document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
-                                document.querySelector("#form-cambio-contraseña").removeEventListener("submit", form_cambio_contraseña)
-                                document.querySelector("#form-validation-correo-ajustes-datos-cuenta").removeEventListener("submit", form_validar_correo_ajustes_datos_cuenta)
-                                //mostrar log
-                                document.querySelector("#seccion-menu-cuenta-ajustes").classList.remove("block-display")
-                                document.querySelector("#seccion-menu-cuenta-ajustes").classList.add("ocultar-display")
-                                mostrar_menu_sesion(true)
-                                mostrar_menu_log(true)
+                                //cambiar a la pagina de log-sesion
+                                console.log("pagina cambiada")
+                                await window.paginas_app.CAMBIAR_PAGINA_SESION()
                             }
                             document.querySelector("#form-validation-correo-ajustes-datos-cuenta").addEventListener("submit", form_validar_correo_ajustes_datos_cuenta)
 

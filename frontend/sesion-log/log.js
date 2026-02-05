@@ -15,6 +15,7 @@ function mostrar_menu_sesion(accion) {
     } else {
         document.querySelector("#seccion-registro-login").classList.remove("ocultar-display")
         document.querySelector("#seccion-registro-login").classList.add("flex-display")
+        document.querySelector("#login-user").focus()
     }
 }
 function mostrar_menu_log(accion) {
@@ -25,6 +26,7 @@ function mostrar_menu_log(accion) {
     else {
         document.querySelector("#seccion-login").classList.remove("ocultar-display")
         document.querySelector("#seccion-login").classList.add("flex-display")
+        document.querySelector("#login-user").focus()
     }
 }
 function mostrar_menu_reg(accion) {
@@ -33,9 +35,9 @@ function mostrar_menu_reg(accion) {
         document.querySelector("#seccion-registro").classList.add("ocultar-display")
     }
     else {
-
         document.querySelector("#seccion-registro").classList.remove("ocultar-display")
         document.querySelector("#seccion-registro").classList.add("flex-display")
+        document.querySelector("#registro-apodo").focus()
     }
 }
 function mostrar_menu_validation_code(accion) {
@@ -46,6 +48,7 @@ function mostrar_menu_validation_code(accion) {
     else {
         document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
         document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
+        document.querySelector("#bt-code-introducir").focus()
     }
 }
 function mostrar_menu_cuenta_creada(accion) {
@@ -56,6 +59,7 @@ function mostrar_menu_cuenta_creada(accion) {
     else {
         document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("ocultar-display")
         document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("flex-display")
+        document.querySelector("#bt-volver-login-confirmacion-cuenta").focus()
     }
 }
 
@@ -84,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (result.success) {//sesion iniciada
             if (result.autoverificacion) {//sesion iniciada sin codigo de verificacion
                 console.log("SE HA INICIADO SESION CORRECTAMENTE")
-                mostrar_menu_sesion(false)
+                await window.paginas_app.CAMBIAR_PAGINA_HOME()//mandar al home
             }
             else {
                 mostrar_menu_log(false)
@@ -106,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         console.log("SE HA INICIADO SESION CORRECTAMENTE")
                         //mostrar menu de confirmacion cuenta creada
                         mostrar_menu_validation_code(false)
-                        window.paginas_app.CAMBIAR_PAGINA_HOME()//mandar al home
+                        await window.paginas_app.CAMBIAR_PAGINA_HOME()//mandar al home
 
                         document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
                             e.preventDefault()
