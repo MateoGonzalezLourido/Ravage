@@ -403,7 +403,7 @@ async function comprobarActividadOnline() {
         }
         if (correo_actual !== correo_inicial) BorrarUsuarioActivo()//borrar sesion desactualizada
 
-        ActualizarUsuarioActivo(correo_actual)
+        ActualizarUsuarioActivo({ correo: correo_actual })
     }, 4 * 60 * 1000)//4minutos, aunque mongo expire cada 5 minutos
 }
 module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones }
