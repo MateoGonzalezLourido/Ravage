@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             }
             else {
-                document.querySelector("#cuerpo-ajustes-noti").classList.remove("flex-display")
+                document.querySelector("#cuerpo-ajustes-noti").classList.reomove("flex-display")
                 document.querySelector("#cuerpo-ajustes-noti").classList.add("ocultar-display")
             }
             if (no_cerrar == "soporte") {
