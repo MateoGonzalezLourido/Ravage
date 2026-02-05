@@ -241,7 +241,6 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
 
     if (autoverificacion) {//se autovalida
-        document.querySelector("#text-apodo-usuario-menu-inicio").innerHTML = usuario_data.apodo;
         (async () => {
             await ActualizarUsuarioActivo({ correo: usuario_data.correo });
             comprobarActividadOnline()
@@ -254,6 +253,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
                 await AñadirJWTUsuario(usuario_data.correo, token_sesion)//guardar en mongodb
             }
         })();
+        storage.setApodoSesion(usuario_data.apodo)
         storage.setFechaCreacionCuenta(usuario_data.createdAt)
         storage.setCorreoSesion(usuario_data.correo)
         console.log("-Autoverificacion de cuenta")
