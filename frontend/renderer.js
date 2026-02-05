@@ -1,9 +1,17 @@
+let apodo_render = "Usuario"
+
 async function cambiar_menu_inicio_apodo() {
-    const apodo = await window.sesion_usuario.GET_APODO_SESION()
-    document.querySelector("#text-apodo-usuario-menu-inicio").innerHTML = apodo
+    apodo_render = await window.sesion_usuario.GET_APODO_SESION()
+    document.querySelector("#text-apodo-usuario-menu-inicio").innerHTML = apodo_render
 }
 document.addEventListener("DOMContentLoaded", () => {
     cambiar_menu_inicio_apodo()
+    //mensaje bienvenida
+    window.pushNotificacion({
+        prioridad: 0,        // menor número = más importante
+        texto: `Benvido ${apodo_render}`,
+        tipo: "info"      // "info", "error", "success"
+    })
     //ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", (e) => {
         e.preventDefault()
