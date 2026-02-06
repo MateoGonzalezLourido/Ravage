@@ -227,6 +227,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     const contraseña_confirmacion = document.querySelector("#cambio-pass-confirm").value
                     //TODO: añadir comprobaciones de validez
                     let valido = true
+                    function cambiar_error_contraseña(text) {
+                        valido = false
+                        document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
+                        document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flex-display")
+                        document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = text
+                    }
                     if (contraseña !== contraseña_confirmacion) {
                         valido = false
                         document.querySelector("#cambio-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto")
@@ -236,16 +242,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.querySelector("#cambio-pass-confirm").classList.remove("estrada-menu-registro-login-incorrecto")
                     document.querySelector("#span-repetir-contraseña-cambio").classList.remove("estrada-menu-registro-login-incorrecto")
                     if (contraseña.includes(" ")) {
-                        valido = false
-                        document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
-                        document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flex-display")
-                        document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = "*No puedes usar espacios*"
+                        cambiar_error_contraseña("*No puedes usar espacios*")
                     }
                     else if (contraseña.length > 30) {
-                        valido = false
-                        document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
-                        document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flex-display")
-                        document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = "*Longitud contraseña <=30*"
+                        cambiar_error_contraseña("*Longitud contraseña <=30*")
                     }
                     //hacer el cambio de contraseña(validaciones hechas)
                     if (valido) {//cambiar contraseña
@@ -321,6 +321,90 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
         document.querySelector("#bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña)
+        //mostrar menu cambiar apodo
+        let bloquear_span_cambio_apodo = false
+        async function funcion_cambiar_apodo(e) {
+            e.preventDefault()
+            if (bloquear_span_cambio_apodo) {
+                //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+                return;
+            }
+            let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "apodo" })
+            //si puede mostrar menu de cambio de contraseña
+            console.log(result)
+            if (result.success) {
+                document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
+                document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
+                cambiar_seccion_menu_cambiar_datos_cuenta("apodo")
+                document.querySelector("#cambio-apodo").focus()
+                //eventos
+                //cambiar contraseña
+                async function form_cambio_apodo(e) {
+                    e.preventDefault()
+                    const apodo = document.querySelector("#cambio-apodo").value.trim()
+                    //TODO: añadir comprobaciones de validez
+                    let valido = true
+                    function cambiar_error_apodo(text) {
+                        valido = false
+                        document.querySelector("#text-error-form-causa-cambio-apodo").classList.remove("ocultar-display")
+                        document.querySelector("#text-error-form-causa-cambio-apodo").classList.add("flex-display")
+                        document.querySelector("#text-error-form-causa-cambio-apodo").innerHTML = text
+                    }
+                    if (!(/^[a-zA-Z-0-9_]/.test(apodo))) {
+                        cambiar_error_apodo("*No puedes usar espacios ni simpobolos raros*")
+                    }
+                    else if (apodo.length > 30) {
+                        cambiar_error_apodo("*Longitud apodo <=30*")
+                    }
+                    //hacer el cambio de contraseña(validaciones hechas)
+                    if (valido) {//cambiar contraseña
+                        result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: apodo, tipo: "apodo" })
+
+                        if (result && (result.success)) {
+                            document.querySelector("#form-cambio-apodo").removeEventListener("submit", funcion_cambiar_apodo)
+
+                            result = await window.sesion_usuario.CAMBIAR_DATOS_CUENTA(apodo, null, "apodo")
+                            if (!result) {//TODO:notificar:cambiar contraseña error
+                                console.log("no se pudo cambiar")
+                            }
+                            bloquear_span_cambio_apodo = true
+                            //cambiar a la pagina de log-sesion
+                            window.pushNotificacion({
+                                prioridad: 0,        // menor número = más importante
+                                texto: `Contraseña cambiada`,
+                                tipo: "succes"      // "info", "error", "success"
+                            })
+                            //mostrar menu para introducir codigo
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
+                            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
+
+                        }
+                        else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+                            bloquear_span_cambio_apodo = false
+
+                            console.error("FALLO AL CAMBIAR EL APODO")
+                            window.pushNotificacion({
+                                prioridad: 0,        // menor número = más importante
+                                texto: `Fallo: cambiar apodo`,
+                                tipo: "error"      // "info", "error", "success"
+                            })
+                        }
+                    }
+                }
+                document.querySelector("#form-cambio-apodo").addEventListener("submit", form_cambio_apodo)
+            }
+            else {
+                //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+                bloquear_span_cambio_contraseña = true
+                console.log("Debes esperar a que termine el bloqueo")
+                window.pushNotificacion({
+                    prioridad: 0,        // menor número = más importante
+                    texto: `Cambiaste de apodo hace poco </br>Esperar: 1h desde la última vez`,
+                    tipo: "error"      // "info", "error", "success"
+                })
+            }
+        }
+        document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo)
 
         //cerrar menu cambiar contraseña
         document.querySelector("#bt-cerrar-menu-cambio-contraseña").addEventListener("click", (e) => {
