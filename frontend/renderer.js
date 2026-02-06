@@ -28,7 +28,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.querySelector("#cuerpo-ajustes-cuenta").classList.add("flex-display")
                 //actualizar datos mostrar
                 const fecha_creacion = await window.ajustes_app.OBTENER_FECHA_CREACION_CUENTA()
+                const fecha_bloqueo_apodo = await window.ajustes_app.OBTENER_FECHA_BLOQUEO_APODO()
+                const fecha_bloqueo_correo = await window.ajustes_app.OBTENER_FECHA_BLOQUEO_CORREO()
+                const fecha_bloqueo_contraseña = await window.ajustes_app.OBTENER_FECHA_BLOQUEO_CONTRASEÑA()
                 document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${fecha_creacion}`
+                if (fecha_bloqueo_apodo != "") document.querySelector("#bt-fecha-bloqueo-apodo").innerHTML = `*Bloqueado: ${fecha_bloqueo_apodo}h`
+                if (fecha_bloqueo_correo != "") document.querySelector("#bt-fecha-bloqueo-correo").innerHTML = `*Bloqueado: ${fecha_bloqueo_correo}h`
+                if (fecha_bloqueo_contraseña != "") document.querySelector("#bt-fecha-bloqueo-contraseña").innerHTML = `*Bloqueado: ${fecha_bloqueo_contraseña}h`
             }
             else {
                 document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("flex-display")

@@ -4,7 +4,7 @@ const path = require('path')
 const { startServer } = require('./backend/server.js')
 const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } = require('./backend/services/sesionUsuario.js');
-const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta } = require('./backend/STORAGE/Variables_sesion.js')
+const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
 let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
@@ -107,4 +107,15 @@ ipcMain.handle("obtener-apodo-sesion", () => {
 })
 ipcMain.handle("obtener-fecha-creacion-cuenta", () => {
     return getFechaCreacionCuenta()
+})
+ipcMain.handle("obtener-fecha-bloqueo-apodo", () => {
+    return getFechaBloqueoApodo()
+})
+
+ipcMain.handle("obtener-fecha-bloqueo-correo", () => {
+    return getFechaBloqueoCorreo()
+})
+
+ipcMain.handle("obtener-fecha-bloqueo-contraseña", () => {
+    return getFechaBloqueoContraseña()
 })

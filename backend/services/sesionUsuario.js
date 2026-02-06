@@ -11,6 +11,15 @@ let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 
+//vairables de usuario de sesion
+async function ACTUALIZAR_DATOS_LOGIN(data) {
+    storage.setApodoSesion(data.apodo);
+    storage.setCorreoSesion(data.correo);
+    storage.setFechaCreacionCuenta(data.createdAt)
+    storage.setFechaBloqueoApodo(data.exp_bloq_apodo)
+    storage.setFechaBloqueoCorreo(data.exp_bloq_correo)
+    storage.setFechaBloqueoContraseña(data.exp_bloq_contrasena)
+}
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior
     const data = readFileSession('sessionFile')
@@ -48,13 +57,11 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
         // se ha encontrado el usuario
         //establecer variables globales
         //añadir usuario activo
+        ACTUALIZAR_DATOS_LOGIN(usuario_datos);
         (async () => {
-            storage.setApodoSesion(usuario_datos.apodo);
-            storage.setCorreoSesion(usuario_datos.correo);
             await ActualizarUsuarioActivo({ correo: usuario_datos.correo });
             comprobarActividadOnline()//iniciar comprobador usuario activo
         })();
-        storage.setFechaCreacionCuenta(usuario_datos.createdAt)
         console.log("*Autologin correcto")
         return { success: true };
     }
@@ -204,8 +211,6 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         bloquear_accion = false
         return { success: false, message: 'Usuario no encontrado' }
     }
-    storage.setApodoSesion(usuario_data.apodo)
-
     //autovalidacion del codigo de verificacion de cuenta por token
     const data_autoverificacion = readFileSession("omitirVerificacionCuentaFile")
     let autoverificacion = false
@@ -239,7 +244,8 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
             LimpiarJWTUsuarioVC(username, data_autoverificacion.token)
         }
     }
-
+    //guardar correo en variables globales
+    ACTUALIZAR_DATOS_LOGIN(usuario_data);
     if (autoverificacion) {//se autovalida
         (async () => {
             await ActualizarUsuarioActivo({ correo: usuario_data.correo });
@@ -253,9 +259,6 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
                 await AñadirJWTUsuario(usuario_data.correo, token_sesion)//guardar en mongodb
             }
         })();
-        storage.setApodoSesion(usuario_data.apodo)
-        storage.setFechaCreacionCuenta(usuario_data.createdAt)
-        storage.setCorreoSesion(usuario_data.correo)
         console.log("-Autoverificacion de cuenta")
     }
     else {
@@ -327,8 +330,6 @@ async function ValidarCodeLogin({ correo, code }) {
         saveOmitirVerificacionCuentaFile({ username: correo, token: token })
         await AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
     })();
-    //guardar correo en variables globales
-    storage.setCorreoSesion(correo)
     //borrar codigos
     BorrarCuentaVC(correo)
 
@@ -353,7 +354,7 @@ async function cerrarSesionUsuario(correo) {
     storage.setCorreoSesion(null)
     storage.setApodoSesion(null)
     //mostrar log
-    
+
     //sesion cerrada
     console.warn("*Sesion cerrada")
     return true
