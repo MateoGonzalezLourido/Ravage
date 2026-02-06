@@ -27,13 +27,28 @@ function createMainWindowHome(AutoLogin = false) {
     winMain.show();          // muestra la ventana
     winMain.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html')) // carga frontend: (<ruta absoluta>/renderer/home.html)
 }
-// Ejecuta cuando Electron está listo
-app.whenReady().then(async () => {
-    await startServer() // iniciar servidor express
-    await connectDB()
-    const AutoLogin = await autoLoginUsuario();//true, false
-    createMainWindowHome(AutoLogin.success); // crear ventana
-})
+//evitar mas de una ventana/instancia
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    app.quit();
+}
+else {
+    app.on('second-instance', () => {
+        if (winMain) {
+            if (winMain.isMinimized()) winMain.restore();
+            winMain.focus();
+        }
+    });
+    // Ejecuta cuando Electron está listo
+    app.whenReady().then(async () => {
+        await startServer() // iniciar servidor express
+        await connectDB()
+        const AutoLogin = await autoLoginUsuario();//true, false
+        createMainWindowHome(AutoLogin.success); // crear ventana
+    })
+}
+
 
 /* Finalizar App cuando todas las ventanas estén cerradas */
 app.on('before-quit', async (e) => {//se ejecuta antes de cerrar (cubre cualquier cierre)
