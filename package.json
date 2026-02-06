@@ -36,5 +36,9 @@
   "devDependencies": {
     "electron": "^40.0.0",
     "standard": "^17.1.2"
-  }
+  },
+  "browserslist": [
+    "Chrome >= 120",
+    "Electron >= 40"
+  ]
 }
