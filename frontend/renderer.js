@@ -5,13 +5,15 @@ async function cambiar_menu_inicio_apodo() {
     document.querySelector("#text-apodo-usuario-menu-inicio").innerHTML = apodo_render
 }
 document.addEventListener("DOMContentLoaded", () => {
-    cambiar_menu_inicio_apodo()
-    //mensaje bienvenida
-    window.pushNotificacion({
-        prioridad: 0,        // menor número = más importante
-        texto: `Benvido ${apodo_render}`,
-        tipo: "info"      // "info", "error", "success"
+    cambiar_menu_inicio_apodo().then(() => {
+        //mensaje bienvenida
+        window.pushNotificacion({
+            prioridad: 0,        // menor número = más importante
+            texto: `Benvido ${apodo_render}`,
+            tipo: "info"      // "info", "error", "success"
+        })
     })
+
     //ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", (e) => {
         e.preventDefault()
@@ -274,6 +276,11 @@ document.addEventListener("DOMContentLoaded", () => {
                                 }
                                 bloquear_span_cambio_contraseña = true
                                 //cambiar a la pagina de log-sesion
+                                window.pushNotificacion({
+                                    prioridad: 0,        // menor número = más importante
+                                    texto: `Contraseña cambiada`,
+                                    tipo: "succes"      // "info", "error", "success"
+                                })
                                 console.log("pagina cambiada")
                                 await window.paginas_app.CAMBIAR_PAGINA_SESION()
                             }
@@ -285,6 +292,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             bloquear_span_cambio_contraseña = false
 
                             console.error("FALLO AL CAMBIAR LA CONTRASEÑA")
+                            window.pushNotificacion({
+                                prioridad: 0,        // menor número = más importante
+                                texto: `Fallo: cambiar contraseña`,
+                                tipo: "error"      // "info", "error", "success"
+                            })
                         }
 
                     }
@@ -295,6 +307,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
                 bloquear_span_cambio_contraseña = true
                 console.log("Debes esperar a que termine el bloqueo")
+                window.pushNotificacion({
+                    prioridad: 0,        // menor número = más importante
+                    texto: `Cambiaste de contraseña hace poco </br>Esperar: 24h desde la última vez`,
+                    tipo: "error"      // "info", "error", "success"
+                })
             }
         }
         document.querySelector("#bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña)
