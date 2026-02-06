@@ -33,15 +33,15 @@ const UserSchema = new mongoose.Schema({
     },
     exp_bloq_apodo: {
         type: Date,
-        default: Date.now
+        default: () => new Date(Date.now() + 1 * 60 * 60 * 1000) // 1 hora después
     },
     exp_bloq_correo: {
         type: Date,
-        default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas después
+        default: () => new Date(Date.now() + 72 * 60 * 60 * 1000) // 72 horas después
     },
     exp_bloq_contrasena: {
         type: Date,
-        default: Date.now
+        default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas después
     },
     createdAt: { type: Date, default: Date.now }
 })
@@ -284,7 +284,6 @@ async function ActualizarUsuarioActivo({ correo = null }) {
         { upsert: true } // crea si no existe
     );
 
-    console.log("Usuario activo insertado correctamente");
     return nuevoUsuarioActivo
 }
 

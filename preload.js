@@ -56,6 +56,15 @@ contextBridge.exposeInMainWorld('paginas_app', {//funciones de cambio paginas
 contextBridge.exposeInMainWorld('ajustes_app', {//funciones de ajustes
     OBTENER_FECHA_CREACION_CUENTA: () => {
         return ipcRenderer.invoke("obtener-fecha-creacion-cuenta");
+    },
+    OBTENER_FECHA_BLOQUEO_APODO: () => {
+        return ipcRenderer.invoke("obtener-fecha-bloqueo-apodo")
+    },
+    OBTENER_FECHA_BLOQUEO_CORREO: () => {
+        return ipcRenderer.invoke("obtener-fecha-bloqueo-correo")
+    },
+    OBTENER_FECHA_BLOQUEO_CONTRASEÑA: () => {
+        return ipcRenderer.invoke("obtener-fecha-bloqueo-contraseña")
     }
 })
 contextBridge.exposeInMainWorld('boot', {//funciones de inicio de la app

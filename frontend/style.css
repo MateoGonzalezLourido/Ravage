@@ -34,6 +34,7 @@ body {
     border-color: brown;
     color: black;
 }
+
 .span-aviso {
     font-style: italic;
     color: rgba(148, 148, 148, 0.897);
@@ -102,8 +103,8 @@ input[type="number"]::-webkit-outer-spin-button {
     right: 10px;
     top: 10px;
     cursor: pointer;
-    min-width: 150px;
-    max-width: 250px;
+    min-width: 135px;
+    max-width: 260px;
     width: auto;
     height: 40px;
     border-radius: 7px;
@@ -113,6 +114,8 @@ input[type="number"]::-webkit-outer-spin-button {
     align-items: center;
     user-select: none;
     padding: 2px;
+    padding-left: 8px;
+    padding-right: 8px;
 }
 
 #bt-seccion-menu-cuenta-ajustes:hover {
@@ -120,8 +123,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 #bt-seccion-menu-cuenta-ajustes span {
-    margin-left: 6px;
-    max-width: calc(100% - 52px);
+    max-width: calc(100% - 38px);
     font-size: 16px;
     font-weight: 600;
     display: inline-block;
@@ -135,8 +137,8 @@ input[type="number"]::-webkit-outer-spin-button {
 
 #bt-seccion-menu-cuenta-ajustes img {
     margin-left: 6px;
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
 }
 
 #seccion-menu-cuenta-ajustes {
@@ -402,4 +404,11 @@ input[type="number"]::-webkit-outer-spin-button {
     height: 100%;
     display: flex;
     flex-direction: column;
+}
+
+.text-avisar-espera-bloqueo {
+    color: rgb(105, 72, 138);
+    font-size: 13px !important;
+    font-style: oblique;
+    margin-left: 2px;
 }
