@@ -407,8 +407,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo)
 
-        //cerrar menu cambiar contraseña
-        document.querySelector("#bt-cerrar-menu-cambio-contraseña").addEventListener("click", (e) => {
+        //cerrar menu cambiar data
+        document.querySelector("#bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
             e.preventDefault()
             document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
             document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
