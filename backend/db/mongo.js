@@ -331,34 +331,36 @@ async function LimpiarJWTUsuarioVC(correo, token = "") {
 //cambiar datos usuario
 async function cambiarContraseñaUsuario(contraseña) {//48h para volver a cambiarla
     const correo = storage.getCorreoSesion()
+    const fecha_bloqueo = new Date(Date.now() + (48 * 60 * 20 * 1000))
     await User.updateOne(
         { correo: correo },//filtro
         {
             $set: {
                 contrasena: contraseña,
-                exp_bloq_contrasena: new Date(Date.now() + (48 * 60 * 20 * 1000))
+                exp_bloq_contrasena: fecha_bloqueo
             }
         },
         { upsert: false } // crea si no existe
     )
-
+    storage.setFechaBloqueoContraseña(fecha_bloqueo)
     return true
 }
 async function cambiarCorreoUsuario(correo) {//14dias para volver a cambiarlo
     const correo_viejo = storage.getCorreoSesion()
+    const fecha_bloqueo = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
     //actualizar todas las tablas importantes
     await User.updateOne(
         { correo: correo_viejo },              // filtro
         {
             $set: {
                 correo: correo,
-                exp_bloq_correo: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // corrección a ms
+                exp_bloq_correo: fecha_bloqueo // corrección a ms
             }
         },
         { upsert: false }                       // opciones
     );
     storage.setCorreoSesion(correo)
-
+    storage.setFechaBloqueoCorreo(fecha_bloqueo)
     //limpiar datos relacionados con codigos y tokens
     LimpiarJWTUsuario(correo_viejo)
     LimpiarJWTUsuarioVC(correo_viejo)
@@ -369,18 +371,19 @@ async function cambiarCorreoUsuario(correo) {//14dias para volver a cambiarlo
 }
 async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
     const correo = storage.getCorreoSesion()
+    const fecha_bloqueo = new Date(Date.now() + (24 * 60 * 20 * 1000))
     await User.updateOne(
         { correo: correo },//filtro
         {
             $set: {
                 apodo: apodo,
-                exp_bloq_apodo: new Date(Date.now() + (24 * 60 * 20 * 1000))
+                exp_bloq_apodo: fecha_bloqueo
             }
         },
         { upsert: false } // crea si no existe
     );
     storage.setApodoSesion(apodo)
-
+    storage.setFechaBloqueoApodo(fecha_bloqueo)
     return true
 }
 

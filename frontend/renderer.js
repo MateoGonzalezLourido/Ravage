@@ -367,6 +367,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (!result) {//TODO:notificar:cambiar contraseña error
                                 console.log("no se pudo cambiar")
                             }
+                            cambiar_menu_inicio_apodo()
                             bloquear_span_cambio_apodo = true
                             //cambiar a la pagina de log-sesion
                             window.pushNotificacion({
