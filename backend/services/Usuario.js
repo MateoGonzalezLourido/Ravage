@@ -7,7 +7,7 @@ const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 
 const { User, InsertarDatosCuentaVC, DatosCuentaVC, BorrarDatosCuentaVC, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario } = require('../db/mongo.js')
-const { getCorreoSesion, getApodoSesion } = require('../STORAGE/Variables_sesion.js')
+const { getCorreoSesion, getApodoSesion, setApodoSesion, setCorreoSesion } = require('../STORAGE/Variables_sesion.js')
 const { CodigoCambiarDatosCuenta, ConfirmacionCambioContraseña, ConfirmacionCambioCorreo, ConfirmacionCambioApodo } = require('./MENSAJERIA/Estructuras_correos.js')
 const { generarCodigoVerificacion, enviarEmail } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones, cerrarSesionUsuario } = require('./sesionUsuario.js')
@@ -166,8 +166,7 @@ async function permitirCambioApodoUsuario(apodo = null) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
-    const iguales = await bcrypt.compare(contraseña, data_usuario.apodo)
-    if (iguales) {
+    if (data_usuario.apodo == apodo) {
         bloquear_accion = false
         return { success: false, message: "El apodo es el mismo" }
     }
@@ -178,6 +177,7 @@ async function permitirCambioApodoUsuario(apodo = null) {
 async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
+    const correo = getCorreoSesion()
     if (tipo != "apodo") {
         intentos_codigo_validacion--
         //verificar si ya habia cabado los intentos
@@ -195,7 +195,6 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
             return { success: false, message: "Código no numérico" }
         }
         //cojer el ultimo codigo generado
-        const correo = getCorreoSesion()
         let code_db = (await DatosCuentaVC.find({ correo: correo, tipo: tipo }).sort({ expira: -1 }).limit(1))[0];
         if (!code_db || code_db == [] || code_db.length == 0) {//no hay codes
             bloquear_accion = false
@@ -229,6 +228,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     }
     else if (tipo === "correo") {
         const nuevoUsuario = await cambiarCorreoUsuario(data);
+        setCorreoSesion(data)
         if (!nuevoUsuario) {//error
             BorrarDatosCuentaVC(correo, code)//borrar codigos
             bloquear_accion = false
@@ -237,6 +237,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     }
     else if (tipo === "apodo") {
         const nuevoUsuario = await cambiarApodoUsuario(data);
+        setApodoSesion(data)
         if (!nuevoUsuario) {//error
             bloquear_accion = false
             return { success: false, message: "Fallo al cambiar apodo" }
