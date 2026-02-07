@@ -78,20 +78,22 @@ async function permitirCambioContraseñaUsuario(contraseña = null) {
 async function permitirCambioCorreoUsuario(correo = null) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
-
+    const correo_viejo = getCorreoSesion()
     //sin data solo mandar si no hay bloqueador de tiempo
     if (!correo) {
-        const correo_viejo = getCorreoSesion()
-        const data_usuario = await User.find({ correo: correo_viejo })
-        if (!data_usuario) {
+        const data_usuario = (await User.find({ correo: correo_viejo }))[0]
+        if (!data_usuario || (!data_usuario.exp_bloq_correo)) {
             bloquear_accion = false
             return { success: false, message: "Usuario no encontrado" }
         }
-        if (data_usuario.exp_bloq_correo >= new Date()) {
+        if (new Date(data_usuario.exp_bloq_correo) >= new Date()) {
             bloquear_accion = false
             return { success: false, message: "Tiempo de bloqueo no cumplido" }
         }
+        bloquear_accion = false
+        return { success: true }
     }
+
     //comprobar contraseña
     let result = comprobaciones_Correo(correo)
     if (!result.success) {
@@ -99,19 +101,25 @@ async function permitirCambioCorreoUsuario(correo = null) {
         return { success: false, message: result.message }
     }
     //tiempo de bloqueo expirado?
-    const correo_viejo = getCorreoSesion()
-    const data_usuario = await User.find({ correo: correo_viejo })
-    if (!data_usuario) {
+    const data_usuario = (await User.find({ correo: correo_viejo }))[0]
+    if (!data_usuario || (!data_usuario.exp_bloq_correo)) {
         bloquear_accion = false
         return { success: false, message: "Usuario no encontrado" }
     }
-    if (data_usuario.exp_bloq_correo >= new Date()) {
+    //comprobacion de seguridad
+    if (new Date(data_usuario.exp_bloq_correo) >= new Date()) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
     if (data_usuario.correo == correo) {
         bloquear_accion = false
         return { success: false, message: "El correo es el mismo" }
+    }
+    //ya existe alguien con ese correo? 
+    const data_usuario2 = (await User.find({ correo: correo }))[0]
+    if (data_usuario2) {
+        bloquear_accion = false
+        return { success: false, message: "Usuario ya existente" }
     }
     const apodo = getApodoSesion()
     //todo correcto, mandar correo con codigo
@@ -122,7 +130,7 @@ async function permitirCambioCorreoUsuario(correo = null) {
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     InsertarDatosCuentaVC({ correo: correo_viejo, code: hashed_ValidationCode, id: deviceId, tipo: "correo" })
     //mandar correo
-    enviarEmail({ correoDestino: correo_viejo, asunto: asunto, htmlContenido: htmlContenido })
+    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
     //intentos para poder poner el codigo correcto de verificacion
     intentos_codigo_validacion = n_intentos_codigo_validacion
     bloquear_accion = false
@@ -219,10 +227,10 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
         const contraseña_hashed = await bcrypt.hash(data, saltos_contraseña)
         const nuevoUsuario = await cambiarContraseñaUsuario(contraseña_hashed);
         if (!nuevoUsuario) {//error
-            BorrarDatosCuentaVC(correo, code)//borrar codigos
-            bloquear_accion = false
             return { success: false, message: "Fallo al cambiar contraseña" }
         }
+        BorrarDatosCuentaVC(correo, code)//borrar codigos
+        bloquear_accion = false
         //cerrar sesion
         await cerrarSesionUsuario(correo)
     }
@@ -230,18 +238,19 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
         const nuevoUsuario = await cambiarCorreoUsuario(data);
         setCorreoSesion(data)
         if (!nuevoUsuario) {//error
-            BorrarDatosCuentaVC(correo, code)//borrar codigos
-            bloquear_accion = false
             return { success: false, message: "Fallo al cambiar correo" }
         }
+        BorrarDatosCuentaVC(correo, code)//borrar codigos
+        bloquear_accion = false
     }
     else if (tipo === "apodo") {
         const nuevoUsuario = await cambiarApodoUsuario(data);
         setApodoSesion(data)
         if (!nuevoUsuario) {//error
-            bloquear_accion = false
             return { success: false, message: "Fallo al cambiar apodo" }
         }
+        BorrarDatosCuentaVC(correo, code)//borrar codigos
+        bloquear_accion = false
     }
 
     //mandar correo confirmando creacion de cuenta

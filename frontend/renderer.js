@@ -425,6 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 async function form_cambio_correo(e) {
                     e.preventDefault()
                     const correo_nuevo = document.querySelector("#cambio-correo").value
+                    const contraseña = document.querySelector("#confirmar-contraseña-correo").value
                     //TODO: añadir comprobaciones de validez
                     let valido = true
                     function cambiar_error_correo(text) {
@@ -437,6 +438,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         cambiar_error_correo("*Longitud contraseña <=255*")
                     }
                     //hacer el cambio de contraseña(validaciones hechas)
+                    if (valido) {
+                        result = await window.sesion_usuario.COMPROBAR_CONTRASEÑA({ contraseña: contraseña })
+                        valido = result
+                    }
                     if (valido) {//cambiar contraseña
                         result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: correo_nuevo, tipo: "correo" })
 

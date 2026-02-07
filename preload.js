@@ -40,6 +40,9 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     },
     GET_APODO_SESION: () => {
         return ipcRenderer.invoke("obtener-apodo-sesion")
+    },
+    COMPROBAR_CONTRASEÑA: ({ contraseña }) => {
+        return ipcRenderer.invoke("comprobar-contraseña-cuenta", contraseña)
     }
 })
 contextBridge.exposeInMainWorld('paginas_app', {//funciones de cambio paginas

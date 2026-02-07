@@ -390,7 +390,13 @@ function comprobarContrasenaValidaciones(contraseña) {
 
     return { success: success, message: message }
 }
-
+async function comprobar_contraseña_cuenta(contraseña) {
+    const correo = storage.getCorreoSesion()
+    const usuario_data = (await User.find({ correo: correo}).limit(1))[0]
+    if (!usuario_data) return false
+    const ok = await bcrypt.compare(String(contraseña), usuario_data.contrasena);
+    return ok
+}
 //mantener sesion activa
 async function comprobarActividadOnline() {
     const correo_inicial = storage.getCorreoSesion()
@@ -407,4 +413,4 @@ async function comprobarActividadOnline() {
         ActualizarUsuarioActivo({ correo: correo_actual })
     }, 4 * 60 * 1000)//4minutos, aunque mongo expire cada 5 minutos
 }
-module.exports = { registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones }
+module.exports = { comprobar_contraseña_cuenta, registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones }

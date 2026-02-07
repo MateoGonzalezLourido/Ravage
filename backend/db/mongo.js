@@ -321,11 +321,13 @@ async function AñadirJWTUsuarioVC(correo, token = "") {
     });
 }
 //limpiar tokens
-async function LimpiarJWTUsuario(correo, token = "") {
-    await TokenSession.deleteMany({ correo: correo, token: token });
+async function LimpiarJWTUsuario(correo, token = null) {
+    if (!token) await TokenVC.deleteMany({ correo: correo });
+    else await TokenSession.deleteMany({ correo: correo, token: token });
 }
-async function LimpiarJWTUsuarioVC(correo, token = "") {
-    await TokenVC.deleteMany({ correo: correo, token: token });
+async function LimpiarJWTUsuarioVC(correo, token = null) {
+    if (!token) await TokenVC.deleteMany({ correo: correo });
+    else await TokenVC.deleteMany({ correo: correo, token: token });
 }
 
 //cambiar datos usuario
@@ -359,13 +361,17 @@ async function cambiarCorreoUsuario(correo) {//14dias para volver a cambiarlo
         },
         { upsert: false }                       // opciones
     );
+    //limpiar datos relacionados con codigos y tokens
+    await BorrarUsuarioActivo()
+    //actualizar
     storage.setCorreoSesion(correo)
     storage.setFechaBloqueoCorreo(fecha_bloqueo)
-    //limpiar datos relacionados con codigos y tokens
-    LimpiarJWTUsuario(correo_viejo)
-    LimpiarJWTUsuarioVC(correo_viejo)
-    BorrarUsuarioActivo(correo_viejo)
+    //limpiar
     BorrarCuentaVC(correo_viejo)
+    ActualizarUsuarioActivo(correo_viejo)
+    LimpiarJWTUsuarioVC(correo_viejo)
+    LimpiarJWTUsuario(correo_viejo)
+
 
     return true
 }
