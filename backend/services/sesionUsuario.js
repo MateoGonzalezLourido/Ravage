@@ -19,6 +19,8 @@ async function ACTUALIZAR_DATOS_LOGIN(data) {
     storage.setFechaBloqueoApodo(data.exp_bloq_apodo)
     storage.setFechaBloqueoCorreo(data.exp_bloq_correo)
     storage.setFechaBloqueoContraseña(data.exp_bloq_contrasena)
+    storage.setGruposBloqueados(data.grups_bloq)
+    storage.setUsuariosBloqueados(data.users_bloq)
 }
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior
@@ -392,7 +394,7 @@ function comprobarContrasenaValidaciones(contraseña) {
 }
 async function comprobar_contraseña_cuenta(contraseña) {
     const correo = storage.getCorreoSesion()
-    const usuario_data = (await User.find({ correo: correo}).limit(1))[0]
+    const usuario_data = (await User.find({ correo: correo }).limit(1))[0]
     if (!usuario_data) return false
     const ok = await bcrypt.compare(String(contraseña), usuario_data.contrasena);
     return ok

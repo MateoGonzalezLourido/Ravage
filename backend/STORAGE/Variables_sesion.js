@@ -4,7 +4,8 @@ let FechaCreacionCuenta = "xx/xx/xx"
 let FechaBloqueoApodo = ""
 let FechaBloqueoCorreo = ""
 let FechaBloqueoContraseña = ""
-
+let GruposBloqueados = []
+let UsuariosBloqueados = []
 
 module.exports = {
     setCorreoSesion: (correo) => Correo_Usuario_sesion = correo,
@@ -59,4 +60,10 @@ module.exports = {
         FechaBloqueoContraseña = horasRestantes
     },
     getFechaBloqueoContraseña: () => FechaBloqueoContraseña,
+
+    setGruposBloqueados: (datos) => GruposBloqueados = datos,
+    getGruposBloqueados: () => GruposBloqueados,
+
+    setUsuariosBloqueados: (datos) => UsuariosBloqueados = datos,
+    getUsuariosBloqueados: () => UsuariosBloqueados,
 }
