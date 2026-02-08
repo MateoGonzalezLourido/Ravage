@@ -12,6 +12,7 @@ window.pushNotificacion = function (data) {
     div.id = id
     div.className = "notificacion"
     div.style.cssText = `
+    position:relative;
         border: 2px solid black;
         border-radius: 8px;
         background-color: azure;
@@ -23,6 +24,8 @@ window.pushNotificacion = function (data) {
         ${data.tipo === "success" ? "border:2px solid green;" : ""}
         opacity:1;
         transition: opacity 0.5s ease;
+        z-index:200 !important;
+        opacity:0.92;
     `
     const span = document.createElement("span")
     span.textContent = data.texto
@@ -36,7 +39,7 @@ window.pushNotificacion = function (data) {
     }
 
     div.addEventListener("click", cerrar)
-    setTimeout(cerrar, 2500)
+    setTimeout(cerrar, 5000)
 }
 
 
