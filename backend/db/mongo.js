@@ -43,6 +43,14 @@ const UserSchema = new mongoose.Schema({
         type: Date,
         default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas después
     },
+    users_bloq: {
+        type: [string],
+        default: []
+    },
+    grups_bloq: {
+        type: [string],
+        default: []
+    },
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({

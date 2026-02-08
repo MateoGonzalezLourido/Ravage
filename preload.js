@@ -68,6 +68,12 @@ contextBridge.exposeInMainWorld('ajustes_app', {//funciones de ajustes
     },
     OBTENER_FECHA_BLOQUEO_CONTRASEÑA: () => {
         return ipcRenderer.invoke("obtener-fecha-bloqueo-contraseña")
+    },
+    OBTENER_USUARIOS_BLOQUEADOS: () => {
+        return ipcRenderer.invoke("obtener-usuarios-bloqueados")
+    },
+    OBTENER_GRUPOS_BLOQUEADOS: () => {
+        return ipcRenderer.invoke("obtener-grupos-bloqueados")
     }
 })
 contextBridge.exposeInMainWorld('boot', {//funciones de inicio de la app
