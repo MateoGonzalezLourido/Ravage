@@ -29,7 +29,7 @@ async function generarteToken(duracion = "cuenta") {
         { expiresIn: duraciones[duracion] }
     );
 
-    return jwtToken;
+    return { jwtToken, sessionToken };
 }
 
 async function validateToken(token) {
