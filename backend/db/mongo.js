@@ -409,8 +409,8 @@ async function AñadirJWTUsuarioVC(correo, token = "") {
 }
 //limpiar tokens
 async function LimpiarJWTUsuario(correo, token = null) {
-    if (!token) await TokenVC.deleteMany({ correo: correo });
-    else await TokenSession.deleteMany({ correo: correo, token: token });
+    if (!token) await TokenVC.deleteMany({ correo: correo })//borra todos (por segurida)
+    else await TokenSession.deleteMany({ correo: correo, token: token });//borra ese solo
 }
 async function LimpiarJWTUsuarioVC(correo, token = null) {
     if (!token) await TokenVC.deleteMany({ correo: correo });
