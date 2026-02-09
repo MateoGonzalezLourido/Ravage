@@ -44,11 +44,11 @@ const UserSchema = new mongoose.Schema({
         default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas después
     },
     users_bloq: {
-        type: [string],
+        type: [[String]],
         default: []
     },
-    grups_bloq: {
-        type: [string],
+    users_silence: {
+        type: [[String]],
         default: []
     },
     createdAt: { type: Date, default: Date.now }
@@ -294,7 +294,46 @@ async function ActualizarUsuarioActivo({ correo = null }) {
 
     return nuevoUsuarioActivo
 }
+async function añadirUsuariosBloqueados(id, apodo) {
+    const correo = storage.getCorreoSesion()
+    let lista_bloqueados = storage.getUsuariosBloqueados()
+    const index = lista_bloqueados.findIndex(sub => sub.includes(id))
+    if (index != -1) return false //ya existe
 
+    lista_bloqueados.push([id, apodo])
+
+    await User.updateOne(
+        { correo: correo },//filtro
+        {
+            $set: {
+                users_bloq: lista_bloqueados
+            }
+        },
+        { upsert: false } // crea si no existe
+    )
+    storage.setUsuariosBloqueados(lista_bloqueados)
+    return true
+}
+async function añadirUsuariosSilenciados(id, apodo) {
+    const correo = storage.getCorreoSesion()
+    let lista_silenciados = storage.getUsuariosSilence()
+    const index = lista_silenciados.findIndex(sub => sub.includes(id))
+    if (index != -1) return false //ya existe
+
+    lista_silenciados.push([id, apodo])
+
+    await User.updateOne(
+        { correo: correo },//filtro
+        {
+            $set: {
+                users_silence: lista_silenciados
+            }
+        },
+        { upsert: false } // crea si no existe
+    )
+    storage.setUsuariosBloqueados(lista_silenciados)
+    return true
+}
 //borrar datos
 async function BorrarVC(correo) {
     await ValidationCode.deleteMany({ correo: correo });
@@ -310,6 +349,46 @@ async function BorrarUsuarioActivo() {
 
     const deviceId = String(machineIdSync());
     await ActiveUser.deleteOne({ id_dp: deviceId });
+}
+async function eliminarUsuariosBloqueados(id) {
+    const correo = storage.getCorreoSesion()
+    let lista_bloqueados = storage.getUsuariosBloqueados()
+    const index = lista_bloqueados.findIndex(sub => sub.includes(id))
+    if (index == -1) return false
+
+    lista_bloqueados.splice(index, 1)
+
+    await User.updateOne(
+        { correo: correo },//filtro
+        {
+            $set: {
+                users_bloq: lista_bloqueados
+            }
+        },
+        { upsert: false } // crea si no existe
+    )
+    storage.setUsuariosBloqueados(lista_bloqueados)
+    return true
+}
+async function eliminarUsuariosSilenciados(id) {
+    const correo = storage.getCorreoSesion()
+    let lista_silenciados = storage.getUsuariosBloqueados()
+    const index = lista_silenciados.findIndex(sub => sub.includes(id))
+    if (index == -1) return false
+
+    lista_silenciados.splice(index, 1)
+
+    await User.updateOne(
+        { correo: correo },//filtro
+        {
+            $set: {
+                users_silence: lista_silenciados
+            }
+        },
+        { upsert: false } // crea si no existe
+    )
+    storage.setUsuariosSilence(lista_silenciados)
+    return true
 }
 //añadir tokens
 async function AñadirJWTUsuario(correo, token = "") {
@@ -402,4 +481,4 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
 }
 
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados }

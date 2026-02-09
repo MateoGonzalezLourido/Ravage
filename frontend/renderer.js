@@ -516,6 +516,78 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         document.querySelector("#cambio-pass").value = ""
         document.querySelector("#cambio-pass-confirm").value = ""
     })
+    //listas de bloqueados
+    //usuarios
+    document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", (e) => {
+        e.stopPropagation()
+        document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = "*SIN USUARIOS*"
+        //actualizar lista
+        const lista_datos = window.ajustes_app.OBTENER_USUARIOS_SILENCIADOS()
+        let html = ""
+        lista_datos.forEach(usuario => {
+            html += `
+            <div>
+            <span>${usuario.apodo}</span>
+            <button data-id="${usuario.id}">Desilenciar</button>
+            </div>
+            `
+        })
+        document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = html
+        //eventos
+        document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
+            const id = btn.dataset.id;
+            const result = window.ajustes_app.ELIMINAR_USUARIO_SILENCIADOS(id).then(() => {
+                if (!result) {
+                    window.pushNotificacion({
+                        prioridad: 3,        // menor número = más importante
+                        texto: `Fallo al desbloquear usuario`,
+                        tipo: "error"      // "info", "error", "success"
+                    })
+                }
+                else {//cambiar html
+                    btn.closest("div").remove()//borrar elemento de la lista
+                }
+            })
+        })
+        //mostrar lista
+        document.querySelector("#lista-usuarios-silenciados").classList.remove("ocultar-display")
+        document.querySelector("#lista-usuarios-silenciados").classList.add("flex-display")
+    })
+    document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", async (e) => {
+        e.stopPropagation()
+        document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = "*SIN USUARIOS*"
+        //actualizar lista
+        const lista_datos = window.ajustes_app.OBTENER_USUARIOS_BLOQUEADOS()
+        let html = ""
+        lista_datos.forEach(usuario => {
+            html += `
+            <div>
+            <span>${usuario.apodo}</span>
+            <button data-id="${usuario.id}">Desbloquear</button>
+            </div>
+            `
+        })
+        document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = html
+        //eventos
+        document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
+            const id = btn.dataset.id;
+            const result = window.ajustes_app.ELIMINAR_USUARIO_BLOQUEADO(id).then(() => {
+                if (!result) {
+                    window.pushNotificacion({
+                        prioridad: 3,        // menor número = más importante
+                        texto: `Fallo al desbloquear usuario`,
+                        tipo: "error"      // "info", "error", "success"
+                    })
+                }
+                else {//cambiar html
+                    btn.closest("div").remove()//borrar elemento de la lista
+                }
+            })
+        })
+        //mostrar lista
+        document.querySelector("#lista-usuarios-bloqueados").classList.remove("ocultar-display")
+        document.querySelector("#lista-usuarios-bloqueados").classList.add("flex-display")
+    })
 }
 document.addEventListener("DOMContentLoaded", () => {
     cambiar_menu_inicio_apodo().then(() => {

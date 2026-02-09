@@ -72,8 +72,20 @@ contextBridge.exposeInMainWorld('ajustes_app', {//funciones de ajustes
     OBTENER_USUARIOS_BLOQUEADOS: () => {
         return ipcRenderer.invoke("obtener-usuarios-bloqueados")
     },
-    OBTENER_GRUPOS_BLOQUEADOS: () => {
-        return ipcRenderer.invoke("obtener-grupos-bloqueados")
+    OBTENER_USUARIOS_SILENCIADOS: () => {
+        return ipcRenderer.invoke("obtener-usuarios-silenciados")
+    },
+    ELIMINAR_USUARIO_BLOQUEADO: (id) => {
+        return ipcRenderer.invoke("eliminar-usuarios-bloqueados", id)
+    },
+    ELIMINAR_USUARIO_SILENCIADOS: (id) => {
+        return ipcRenderer.invoke("eliminar-usuarios-silenciados", id)
+    },
+    AÑADIR_USUARIO_SILENCIADOS: (id, apodo) => {
+        return ipcRenderer.invoke("añadir-usuarios-silenciados", id, apodo)
+    },
+    AÑADIR_USUARIO_BLOQUEADOS: (id, apodo) => {
+        return ipcRenderer.invoke("añadir-usuarios-bloqueados", id, apodo)
     }
 })
 contextBridge.exposeInMainWorld('boot', {//funciones de inicio de la app
