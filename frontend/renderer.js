@@ -518,20 +518,22 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
     })
     //listas de bloqueados
     //usuarios silenciados
-    async function ver_chats_silenciados() {
+    function ver_chats_silenciados() {
         e.stopPropagation()
         document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = "*SIN USUARIOS*"
         //actualizar lista
         const lista_datos = window.ajustes_app.OBTENER_USUARIOS_SILENCIADOS()
         let html = ""
-        lista_datos.forEach(usuario => {
-            html += `
-            <div>
-            <span>${usuario.apodo}</span>
-            <button data-id="${usuario.id}">Desilenciar</button>
-            </div>
-            `
-        })
+        if (lista_datos) {
+            lista_datos.forEach(usuario => {
+                html += `
+                <div>
+                <span>${usuario.apodo}</span>
+                <button data-id="${usuario.id}">Desilenciar</button>
+                </div>
+                `
+            })
+        }
         document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = html
         //eventos
         document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
@@ -561,20 +563,23 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
     }
     document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados)
     //usaurios bloqueados
-    async function ver_chats_bloqueados(e) {
+    function ver_chats_bloqueados(e) {
         e.stopPropagation()
         document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = "*SIN USUARIOS*"
         //actualizar lista
         const lista_datos = window.ajustes_app.OBTENER_USUARIOS_BLOQUEADOS()
+        console.log(lista_datos)
         let html = ""
-        lista_datos.forEach(usuario => {
-            html += `
+        if (lista_datos) {
+            lista_datos.forEach(usuario => {
+                html += `
             <div>
             <span>${usuario.apodo}</span>
             <button data-id="${usuario.id}">Desbloquear</button>
             </div>
             `
-        })
+            })
+        }
         document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = html
         //eventos
         document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {

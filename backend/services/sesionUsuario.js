@@ -52,6 +52,12 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
         console.error("Token invalido o expirado")
         return { success: false };
     }
+    if (token_datos != token_valido) {
+        LimpiarJWTUsuario(data.correo, data.token)//limpiar token de mongodb
+        clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
+        console.error("Token invalido o expirado")
+        return { success: false };
+    }
     // verificar si esa cuenta sigue existiendo en la base de datos
     const usuario_datos = await LoginUsuario({ correo: data.username, token: data.token })
     //mostrar como usuario activo en mongodb
