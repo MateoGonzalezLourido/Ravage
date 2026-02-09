@@ -517,8 +517,8 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         document.querySelector("#cambio-pass-confirm").value = ""
     })
     //listas de bloqueados
-    //usuarios
-    document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", (e) => {
+    //usuarios silenciados
+    async function ver_chats_silenciados() {
         e.stopPropagation()
         document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = "*SIN USUARIOS*"
         //actualizar lista
@@ -552,8 +552,16 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         //mostrar lista
         document.querySelector("#lista-usuarios-silenciados").classList.remove("ocultar-display")
         document.querySelector("#lista-usuarios-silenciados").classList.add("flex-display")
-    })
-    document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", async (e) => {
+        document.querySelector("#bt-cerrar-menu-lista-silenciados").addEventListener("click", () => {
+            document.querySelector("#principal-lista-usuarios-silenciados").classList.remove("flex-display")
+            document.querySelector("#principal-lista-usuarios-silenciados").classList.add("ocultar-display")
+            document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = ""
+            document.querySelector("#bt-ver-chats-silenciados").removeEventListener("click", ver_chats_silenciados)
+        })
+    }
+    document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados)
+    //usaurios bloqueados
+    async function ver_chats_bloqueados(e) {
         e.stopPropagation()
         document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = "*SIN USUARIOS*"
         //actualizar lista
@@ -587,7 +595,14 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         //mostrar lista
         document.querySelector("#lista-usuarios-bloqueados").classList.remove("ocultar-display")
         document.querySelector("#lista-usuarios-bloqueados").classList.add("flex-display")
-    })
+        document.querySelector("#bt-cerrar-menu-lista-bloqueados").addEventListener("click", () => {
+            document.querySelector("#principal-lista-usuarios-bloqueados").classList.remove("flex-display")
+            document.querySelector("#principal-lista-usuarios-bloqueados").classList.add("ocultar-display")
+            document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = ""
+            document.querySelector("#bt-ver-chats-bloqueados").removeEventListener("click", ver_chats_bloqueados)
+        })
+    }
+    document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados)
 }
 document.addEventListener("DOMContentLoaded", () => {
     cambiar_menu_inicio_apodo().then(() => {
