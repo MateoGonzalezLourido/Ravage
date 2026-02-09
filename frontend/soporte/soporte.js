@@ -30,7 +30,7 @@ document.querySelector("#bt-volver").addEventListener("click", () => {
     cerrar_secciones(true)
     cerrar_mini_secciones(false)
 })
-document.querySelector(`.${clase_mini_seccion}`).forEach(sec => {
+document.querySelectorAll(`.${clase_mini_seccion}`).forEach(sec => {
     sec.addEventListener("click", () => {
         cerrar_mini_secciones(true)
         //cojer el id y hacer que se muestre

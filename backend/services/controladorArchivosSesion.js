@@ -6,7 +6,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { app } = require('electron')
 const { machineIdSync } = require('node-machine-id');
-
+const saltos_token = Number(process.env.SALTOS_ENCRIPTAR_TOKEN)
+const crypto = require("crypto")
 const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;//codigo para crear jwt (un valor definido por mi)
 
 //rutas
@@ -68,27 +69,34 @@ async function clearFileSession(ruta) {//borrar archivo
 
 /*JWT */
 
-async function generarteToken(username = "j12bejkb1@gmail.com", duracion = "cuenta") {
+async function generarteToken(duracion = "cuenta") {
     const duraciones = {
         sesion: '7d',
         cuenta: '90m'
     }
+    // 1. Identificador único del dispositivo
+    const deviceId = String(machineIdSync());
 
-    // generar payload seguro para no replicar tokens en pcs distintos y evitar falsificacion
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-    const payload = await bcrypt.hash(username + deviceId, 9);
-    console.log("Token generado")
-    return jwt.sign(
-        { payload },           // payload
-        SECRET_KEY_JWT,             // clave secreta
-        { expiresIn: duraciones[duracion] }    // duración del token
+    // 2. Token aleatorio de sesión
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+
+    // 3. Hash seguro para almacenar en Mongo
+    const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
+
+    // 5. Crear JWT que solo contiene el hash
+    const jwtToken = jwt.sign(
+        { payload: tokenHash, deviceId },
+        SECRET_KEY_JWT,
+        { expiresIn: duraciones[duracion] }
     );
+
+    return jwtToken;
 }
 
-function validateToken(token) {
+async function validateToken(token) {
     try {
-        const decoded = jwt.verify(token, SECRET_KEY_JWT);//decodificador jwt
-        return decoded.payload; // si válido, devuelve username
+        const decoded = jwt.verify(token, SECRET_KEY_JWT);
+        return decoded.payload; // retorna el token hash
     } catch {
         return null; // token inválido o expirado
     }
