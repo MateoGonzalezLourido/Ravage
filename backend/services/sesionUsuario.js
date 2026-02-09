@@ -19,7 +19,7 @@ async function ACTUALIZAR_DATOS_LOGIN(data) {
     storage.setFechaBloqueoApodo(data.exp_bloq_apodo)
     storage.setFechaBloqueoCorreo(data.exp_bloq_correo)
     storage.setFechaBloqueoContraseña(data.exp_bloq_contrasena)
-    storage.setGruposBloqueados(data.grups_bloq)
+    storage.setUsuariosSilence(data.users_silence)
     storage.setUsuariosBloqueados(data.users_bloq)
 }
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo

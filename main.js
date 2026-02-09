@@ -2,9 +2,9 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 const { startServer } = require('./backend/server.js')
-const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC } = require("./backend/db/mongo.js")
+const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } = require('./backend/services/sesionUsuario.js');
-const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getGruposBloqueados, getUsuariosBloqueados } = require('./backend/STORAGE/Variables_sesion.js')
+const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getUsuariosSilence, getUsuariosBloqueados } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
 let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
@@ -138,9 +138,21 @@ ipcMain.handle("comprobar-contraseña-cuenta", async (_, contraseña) => {
     return await comprobar_contraseña_cuenta(contraseña)
 })
 
-ipcMain.handle("obtener-usuarios-bloqueados", () => {
-    return getGruposBloqueados()
+ipcMain.handle("obtener-usuarios-silenciados", () => {
+    return getUsuariosSilence()
 })
-ipcMain.handle("obtener-grupos-bloqueados", () => {
+ipcMain.handle("obtener-usuarios-bloqueados", () => {
     return getUsuariosBloqueados()
+})
+ipcMain.handle("eliminar-usuarios-bloqueados", async (_, id) => {
+    return await eliminarUsuariosBloqueados(id)
+})
+ipcMain.handle("eliminar-usuarios-silenciados", async (_, id) => {
+    return await eliminarUsuariosSilenciados(id)
+})
+ipcMain.handle("añadir-usuarios-bloqueados", async (_, id, apodo) => {
+    return await añadirUsuariosBloqueados(id, apodo)
+})
+ipcMain.handle("añadir-usuarios-silenciados", async (_, id, apodo) => {
+    return await añadirUsuariosSilenciados(id, apodo)
 })
