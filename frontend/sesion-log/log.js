@@ -7,6 +7,58 @@ async function preload_pag() {
     }
 }
 preload_pag()
+let intentos = 5;
+let username_g;
+async function form_validar_correo_registro(e) {
+    e.preventDefault()
+
+    if (intentos > 0) {
+        const codigo = document.querySelector("#bt-code-introducir").value
+        if (codigo.length == 6) result = await window.sesion_usuario.VALIDAR_CODE_REGISTRAR_USUARIO(username_g, codigo);
+        else result = { success: false, message: "Código muy largo" }
+
+        if (result.success) {//codigo valido
+            console.log("SE HA CREADO EL USUARIO CORRECTAMENTE")
+            //mostrar menu de confirmacion cuenta creada
+            mostrar_menu_validation_code(false)
+            mostrar_menu_cuenta_creada(true)
+        }
+        else {//TODO:mostrar errores en el html
+            intentos--;
+            document.querySelector("#text-error-form-causa-codigo-validar").innerHTML = `* Código incorrecto: ${intentos}intentos restantes*`
+            document.querySelector("#text-error-form-causa-codigo-validar").classList.remove("ocultar-display")
+            document.querySelector("#text-error-form-causa-codigo-validar").classList.add("flex-display")
+        }
+    }
+}
+async function form_validar_correo(e) {
+    e.preventDefault()
+    if (intentos > 0) {
+        const codigo = document.querySelector("#bt-code-introducir").value
+        if (codigo.length <= 6) result = await window.sesion_usuario.VALIDAR_CODE_LOGIN_USUARIO(username_g, codigo);
+        else result = { success: false, message: "Código muy largo" }
+
+        if (result.success) {//codigo valido
+            console.log("SE HA INICIADO SESION CORRECTAMENTE")
+            //mostrar menu de confirmacion cuenta creada
+            mostrar_menu_validation_code(false)
+            await window.paginas_app.CAMBIAR_PAGINA_HOME()//mandar al home
+
+            document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
+                e.preventDefault()
+                mostrar_menu_sesion(false)
+                window.sesion_usuario.BORRAR_CODES_VALIDACION_CORREO(username_g)
+            })
+        }
+        else {//TODO:mostrar errores en el html
+            if (result.bloqueador) return;
+            intentos--;
+            document.querySelector("#text-error-form-causa-codigo-validar").innerHTML = `* Código incorrecto: ${intentos}intentos restantes*`
+            document.querySelector("#text-error-form-causa-codigo-validar").classList.remove("ocultar-display")
+            document.querySelector("#text-error-form-causa-codigo-validar").classList.add("flex-display")
+        }
+    }
+}
 //animaciones
 function mostrar_menu_sesion(accion) {
     if (!accion) {//0: esconder, 1: mostrar
@@ -76,6 +128,8 @@ document.addEventListener("DOMContentLoaded", () => {
     })
     //login
     document.querySelector("#form-login").addEventListener("submit", async (e) => {
+        document.querySelector("#form-validation-correo").removeEventListener('submit', form_validar_correo)
+        document.querySelector("#form-validation-correo").removeEventListener('submit', form_validar_correo_registro)
 
         e.preventDefault()
         const username = document.querySelector('#login-user').value.trim()
@@ -94,38 +148,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 mostrar_menu_log(false)
                 mostrar_menu_reg(false)
                 mostrar_menu_validation_code(true)
-
-                document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", () => {
-                    e.preventDefault()
-                    mostrar_menu_validation_code(false)
-                    mostrar_menu_log(true)
-                })
-                document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
-                    e.preventDefault()
-                    const codigo = document.querySelector("#bt-code-introducir").value
-                    if (codigo.length <= 6) result = await window.sesion_usuario.VALIDAR_CODE_LOGIN_USUARIO(username, codigo);
-                    else result = { success: false, message: "Código muy largo" }
-
-                    if (result.success) {//codigo valido
-                        console.log("SE HA INICIADO SESION CORRECTAMENTE")
-                        //mostrar menu de confirmacion cuenta creada
-                        mostrar_menu_validation_code(false)
-                        await window.paginas_app.CAMBIAR_PAGINA_HOME()//mandar al home
-
-                        document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
-                            e.preventDefault()
-                            mostrar_menu_sesion(false)
-                            window.sesion_usuario.BORRAR_CODES_VALIDACION_CORREO(username)
-                        })
-                    }
-                    else {//TODO:mostrar errores en el html
-                        if (result.bloqueador) return;
-                        console.error("NO SE HA INICIADO SESION CORRECTAMENTE")
-                        document.querySelector("#text-error-form-causa-codigo-validar").innerHTML = "*" + result.message + "*"
-                        document.querySelector("#text-error-form-causa-codigo-validar").classList.remove("ocultar-display")
-                        document.querySelector("#text-error-form-causa-codigo-validar").classList.add("flex-display")
-                    }
-                })
+                intentos = 5
+                username_g = username
+                document.querySelector("#form-validation-correo").addEventListener('submit', form_validar_correo)
             }
         }
         else {//TODO: mostrar errores en el html
@@ -136,6 +161,12 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#text-error-form-causa-login").classList.add("flex-display")
         }
     })
+    document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", () => {
+        e.preventDefault()
+        mostrar_menu_validation_code(false)
+        mostrar_menu_reg(false)
+        mostrar_menu_log(true)
+    })
     //login-pagina soporte cambiar
     document.querySelector("#bt-cambiar-contraseña-login").addEventListener("click", (e) => {
         e.stopPropagation()
@@ -144,6 +175,10 @@ document.addEventListener("DOMContentLoaded", () => {
     //registro
     document.querySelector("#form-registro").addEventListener('submit', async (e) => {
         e.preventDefault()
+        document.querySelector("#bt-cambiar-login-validation-code").removeEventListener("click", camibar_login_validation_code)
+        document.querySelector("#form-validation-correo").removeEventListener('submit', form_validar_correo_registro)
+        document.querySelector("#form-validation-correo").removeEventListener('submit', form_validar_correo)
+
         let apodo = document.querySelector('#registro-apodo').value.trim()
         const username = document.querySelector('#registro-user').value.trim()
         const password = document.querySelector('#registro-pass').value.trim()
@@ -162,37 +197,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (result.success) {//datos validos: validar codigo de correo
             mostrar_menu_log(false)
             mostrar_menu_reg(false)
-
+            document.querySelector("#text-error-form-causa-codigo-validar").classList.remove("flex-display")
+            document.querySelector("#text-error-form-causa-codigo-validar").classList.add("ocultar-display")
             mostrar_menu_validation_code(true)
-            document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", () => {
+            function camibar_login_validation_code(e) {
                 e.preventDefault()
                 mostrar_menu_validation_code(false)
                 mostrar_menu_reg(true)
                 window.sesion_usuario.BORRAR_CODES_VALIDACION_CUENTA(username)
-            })
-            document.querySelector("#form-validation-correo").addEventListener('submit', async (e) => {
-                e.preventDefault()
-                const codigo = document.querySelector("#bt-code-introducir").value
-                if (codigo.length <= 6) result = await window.sesion_usuario.VALIDAR_CODE_REGISTRAR_USUARIO(username, codigo);
-                else result = { success: false, message: "Código muy largo" }
-
-                if (result.success) {//codigo valido
-                    console.log("SE HA CREADO EL USUARIO CORRECTAMENTE")
-                    //mostrar menu de confirmacion cuenta creada
-                    mostrar_menu_validation_code(false)
-                    mostrar_menu_cuenta_creada(true)
-
-                    document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
-                        e.preventDefault()
-                        mostrar_menu_cuenta_creada(false)
-                        mostrar_menu_log(true)
-                    })
-                }
-                else {//TODO:mostrar errores en el html
-                    console.error("NO SE HA CREADO EL USUARIO CORRECTAMENTE")
-
-                }
-            })
+            }
+            document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", camibar_login_validation_code)
+            intentos = 5;//esto se define en backend
+            username_g = username
+            document.querySelector("#form-validation-correo").addEventListener('submit', form_validar_correo_registro)
         }
         else {//TODO:mostrar errores en el html
             if (result.bloqueador) return;
@@ -201,5 +218,11 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#text-error-form-causa-registro").classList.remove("ocultar-display")
             document.querySelector("#text-error-form-causa-registro").classList.add("flex-display")
         }
+    })
+    document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
+        e.preventDefault()
+        mostrar_menu_cuenta_creada(false)
+        mostrar_menu_reg(false)
+        mostrar_menu_log(true)
     })
 })
