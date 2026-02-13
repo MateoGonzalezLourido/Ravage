@@ -219,7 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#text-error-form-causa-registro").classList.add("flex-display")
         }
     })
-    document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
+    document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", (e) => {
         e.preventDefault()
         mostrar_menu_cuenta_creada(false)
         mostrar_menu_reg(false)
