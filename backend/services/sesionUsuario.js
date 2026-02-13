@@ -159,7 +159,7 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     }
     //cojer el ultimo codigo generado
     const code_db = (await ValidationCode.find({ correo }).sort({ expira: -1 }).limit(1))[0];
-    if (code_db == []) {//no hay codes
+    if (code_db == [] || !code_db || (code_db.length == 0)) {//no hay codes
         contraseña_hashed = null;
         apodo_usuario = null;
         bloquear_accion = false

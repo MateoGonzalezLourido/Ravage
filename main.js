@@ -64,15 +64,15 @@ app.on('window-all-closed', async () => {//solo cubre el cierre por ventana
 })
 
 //cambiar pagina
-ipcMain.on("cambiar-pagina-soporte", (_) => {
+ipcMain.on("cambiar-pagina-soporte", () => {
     winMain.setTitle("RAVAGE-Soporte")//cambiar titulo ventana
     winMain.loadFile(path.join(__dirname, 'frontend', 'soporte', 'soporte.html')) // cargar nuevo frontend
 })
-ipcMain.on("cambiar-pagina-home", (_) => {
+ipcMain.on("cambiar-pagina-home", () => {
     winMain.setTitle("RAVAGE-Home")//cambiar titulo ventana
     winMain.loadFile(path.join(__dirname, 'frontend', 'home.html'))// cargar nuevo frontend
 })
-ipcMain.on("cambiar-pagina-log", (_) => {
+ipcMain.on("cambiar-pagina-log", () => {
     app.relaunch();   // prepara relanzamiento
     app.exit(0);
 })
