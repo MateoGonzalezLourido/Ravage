@@ -51,6 +51,24 @@ const UserSchema = new mongoose.Schema({
         type: [[String]],
         default: []
     },
+    id_secret: {
+        type: String,
+        unique: true,
+        required: true,
+        minlength: 15,
+        maxlength: 255
+    },
+    contactos: {
+        type: [{
+            id: { type: String, required: true },
+            apodo: { type: String, default: "" }
+        }],
+        default: []
+    },
+    chats: {
+        type: [mongoose.Schema.Types.ObjectId],
+        default: []
+    },
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({
@@ -136,6 +154,29 @@ const TokenSchema = new mongoose.Schema({
         default: () => new Date()
     }
 })
+const ChatSchema = new mongoose.Schema({
+    usuarios: {
+        type: [String]
+    },
+    secret_key: {
+        type: [String],
+        required: true
+    },
+    mensajes: {
+        type: [
+            {
+                emisor: { type: [mongoose.Schema.Types.ObjectId], required: true },
+                contenido: {
+                    type: [{
+                        asunto: { type: String, default: "" },
+                        id_file: { type: string, unique: true }
+                    }]
+                },
+                data: { type: Date, default: Date.now }
+            }
+        ]
+    }
+})
 //expiracion codigos y tokens
 TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });//90minutos
 ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });//10minutos
@@ -149,7 +190,7 @@ const DatosCuentaVC = mongoose.model("datoscuentavc", DatosCuentaValidationCodeS
 const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
 const TokenSession = mongoose.model("tksession", TokenSchema, "tksession");
 const TokenVC = mongoose.model("tokenvcv", TokenSchema, "tokenvcv");
-
+const ChatRavage = mongoose.model("chats", ChatSchema, "chats");
 //conectar db
 async function connectDB() {
     //no se pueden poner comprobaciones de si esta conectado al iniciar la app porque tarda mucho y falla
