@@ -44,16 +44,16 @@ const UserSchema = new mongoose.Schema({
         default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas después
     },
     users_bloq: {
-        type: [[String]],
+        type: [[mongoose.Schema.Types.ObjectId]],
         default: []
     },
     users_silence: {
-        type: [[String]],
+        type: [[mongoose.Schema.Types.ObjectId]],
         default: []
     },
     contactos: {
         type: [{
-            id: { type: String, required: true },
+            id: { type: mongoose.Schema.Types.ObjectId, required: true },
             apodo: { type: String, default: "" }
         }],
         default: []
