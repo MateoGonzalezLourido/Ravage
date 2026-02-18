@@ -51,13 +51,6 @@ const UserSchema = new mongoose.Schema({
         type: [[String]],
         default: []
     },
-    id_secret: {
-        type: String,
-        unique: true,
-        required: true,
-        minlength: 15,
-        maxlength: 255
-    },
     contactos: {
         type: [{
             id: { type: String, required: true },
@@ -156,11 +149,7 @@ const TokenSchema = new mongoose.Schema({
 })
 const ChatSchema = new mongoose.Schema({
     usuarios: {
-        type: [String]
-    },
-    secret_key: {
-        type: [String],
-        required: true
+        type: [mongoose.Schema.Types.ObjectId]
     },
     mensajes: {
         type: [
