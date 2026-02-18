@@ -62,6 +62,11 @@ const UserSchema = new mongoose.Schema({
         type: [mongoose.Schema.Types.ObjectId],
         default: []
     },
+    visible: {
+        type: Boolean,
+        default: true,
+        requried: true
+    },
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({
@@ -148,6 +153,10 @@ const TokenSchema = new mongoose.Schema({
     }
 })
 const ChatSchema = new mongoose.Schema({
+    nombre: {//solo si es un grupo (si es de dos se coje el apodo que le tengas a ese usuario)
+        type: String,
+        default: ""
+    },
     usuarios: {
         type: [mongoose.Schema.Types.ObjectId]
     },
@@ -158,7 +167,7 @@ const ChatSchema = new mongoose.Schema({
                 contenido: {
                     type: [{
                         asunto: { type: String, default: "" },
-                        id_file: { type: string, unique: true }
+                        id_file: { type: String, unique: true }
                     }]
                 },
                 data: { type: Date, default: Date.now }
