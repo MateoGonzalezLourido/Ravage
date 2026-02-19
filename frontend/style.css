@@ -412,3 +412,28 @@ input[type="number"]::-webkit-outer-spin-button {
     font-style: oblique;
     margin-left: 2px;
 }
+
+/*navegacion*/
+#nav-menu-inicio {
+    width: 100%;
+    height: 35px;
+    background-color: aquamarine;
+}
+
+#menu-chats-inicio {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: blueviolet;
+    z-index: 1 !important;
+    display: flex;
+}
+#lista-chats{
+width: 20vw;
+}
+.division-2 {
+    width: 80vw;
+    height: 100vh;
+}

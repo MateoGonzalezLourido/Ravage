@@ -18,26 +18,22 @@ async function generarteToken(duracion = "cuenta") {
 
     // 2. Token aleatorio de sesión
     const sessionToken = crypto.randomBytes(32).toString("hex");
-
-    // 3. Hash seguro para almacenar en Mongo
-    const tokenHash = crypto.createHash("sha256").update(sessionToken).digest("hex");
-
     // 5. Crear JWT que solo contiene el hash
     const jwtToken = jwt.sign(
-        { payload: tokenHash, deviceId },
+        { payload: sessionToken, deviceId },
         SECRET_KEY_JWT,
         { expiresIn: duraciones[duracion] }
     );
 
-    return { jwtToken, sessionToken };
+    return jwtToken;
 }
 
-async function validateToken(token) {
+async function validateToken(jwtToken) {
     try {
-        const decoded = jwt.verify(token, SECRET_KEY_JWT);
-        return decoded.payload; // retorna el token hash
+        const decoded = jwt.verify(jwtToken, SECRET_KEY_JWT);
+        return decoded;   // o true si prefieres booleano
     } catch {
-        return null; // token inválido o expirado
+        return null;
     }
 }
 
