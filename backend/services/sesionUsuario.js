@@ -188,11 +188,15 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         bloquear_accion = false
         return { success: false, message: 'Usuario no encontrado' }
     }
+    //dispositivo confianza
+    const deviceId = String(machineIdSync());// por defecto devuelve un hash único de la máquina
+    let dp_confianza = false
+    if ((usuario_data.data.dispositivos_confianza).indexOf(deviceId) != -1) {dp_confianza = true}
     //autovalidacion del codigo de verificacion de cuenta por token
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+
     const data_autoverificacion = readFileSession("omitirVerificacionCuentaFile")
     let autoverificacion = false
-    if (data_autoverificacion && (data_autoverificacion.token && data_autoverificacion.username)) {
+    if (!dp_confianza && data_autoverificacion && (data_autoverificacion.token && data_autoverificacion.username)) {
         const valido = validateToken(data_autoverificacion.token)
         if (valido) {
             //validar token con mongodb
@@ -210,7 +214,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     //guardar correo en variables globales
     ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data });
-    if (autoverificacion) {//se autovalida
+    if (autoverificacion || dp_confianza) {//se autovalida
         (async () => {
             await ActualizarUsuarioActivo({ correo: usuario_data.data.correo });
             comprobarActividadOnline()
