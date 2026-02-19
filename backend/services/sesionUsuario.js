@@ -86,8 +86,8 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
         return { success: false, message: resultado.message }
     }
     //verificar si no existe un usuario igual
-    const existe = await User.find({ correo: correo }).limit(1);
-    if (existe.length == 1) {
+    const existe = await User.find({ correo }).limit(1);
+    if (existe) {
         bloquear_accion = false
         return { success: false, message: "Correo ya registrado" };
     }
@@ -189,32 +189,19 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         return { success: false, message: 'Usuario no encontrado' }
     }
     //autovalidacion del codigo de verificacion de cuenta por token
+    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     const data_autoverificacion = readFileSession("omitirVerificacionCuentaFile")
     let autoverificacion = false
     if (data_autoverificacion && (data_autoverificacion.token && data_autoverificacion.username)) {
         const valido = validateToken(data_autoverificacion.token)
         if (valido) {
             //validar token con mongodb
-            const token_datos = await TokenVC.find({ correo: usuario_data.data.correo, token: data_autoverificacion.token })
-            if (!token_datos || token_datos == [] || token_datos.length == 0) {
-                clearFileSession('omitirVerificacionCuentaFile');
-            }
-            else {
-                let validado2 = false
-                for (let i = 0; i < token_datos.length; i++) {
-                    if (data_autoverificacion.token == token_datos[i].token) {
-                        validado2 = true
-                        break
-                    }
-                }
+            const tokenhash = crypto.createHash("sha256").update(data_autoverificacion.token).digest("hex");
+            const token_datos = await TokenVC.find({ correo: usuario_data.data.correo, token: tokenhash, id_dp: deviceId })
 
-                if (validado2) {
-                    autoverificacion = true
-                }
-                else {
-                    clearFileSession('omitirVerificacionCuentaFile');
-                }
-            }
+            if (!token_datos || token_datos == [] || token_datos.length == 0) clearFileSession('omitirVerificacionCuentaFile');
+            else autoverificacion = true
+
         }
         else {//limpiar archivo y token
             clearFileSession('omitirVerificacionCuentaFile');
@@ -244,7 +231,6 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         const code_generado = String(generarCodigoVerificacion())
         const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.data.apodo, code: code_generado })
         //insertar codigo en mongodb
-        const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
         InsertarCuentaVC({ correo: usuario_data.data.correo, code: code_generado, id: deviceId })
         //mandar correo
         enviarEmail({ correoDestino: usuario_data.data.correo, asunto: asunto, htmlContenido: htmlContenido })
