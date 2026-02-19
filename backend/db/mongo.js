@@ -69,6 +69,10 @@ const UserSchema = new mongoose.Schema({
         default: true,
         requried: true
     },
+    dispositivos_confianza: {
+        type: [String],
+        default: []
+    },
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({
