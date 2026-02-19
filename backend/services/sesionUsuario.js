@@ -1,4 +1,4 @@
-const { InsertarUsuario, LoginUsuario, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, ActualizarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession } = require('../db/mongo.js')
+const { InsertarUsuario, LoginUsuarioDB, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, ActualizarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession } = require('../db/mongo.js')
 const { saveSessionFile, clearFileSession, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
@@ -8,21 +8,21 @@ const { machineIdSync } = require('node-machine-id');
 const dotenv = require("dotenv");
 dotenv.config();
 const bcrypt = require('bcryptjs')//para contraseñas: mas seguro para esto
-const crypto = require("crypto");//para tokens: mas rapido e igual de funcional
+const crypto = require("crypto");//para tokens y codigos: mas rapido e igual de funcional
 
 let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
-const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
 //vairables de usuario de sesion
-async function ACTUALIZAR_DATOS_LOGIN(data) {
-    storage.setApodoSesion(data.apodo);
-    storage.setCorreoSesion(data.correo);
-    storage.setFechaCreacionCuenta(data.createdAt)
-    storage.setFechaBloqueoApodo(data.exp_bloq_apodo)
-    storage.setFechaBloqueoCorreo(data.exp_bloq_correo)
-    storage.setFechaBloqueoContraseña(data.exp_bloq_contrasena)
-    storage.setUsuariosSilence(data.users_silence)
-    storage.setUsuariosBloqueados(data.users_bloq)
+async function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
+    storage.setApodoSesion(!limpiar ? data.apodo : null);
+    storage.setCorreoSesion(!limpiar ? data.correo : null);
+    storage.setFechaCreacionCuenta(!limpiar ? data.createdAt : null)
+    storage.setFechaBloqueoApodo(!limpiar ? data.exp_bloq_apodo : null)
+    storage.setFechaBloqueoCorreo(!limpiar ? data.exp_bloq_correo : null)
+    storage.setFechaBloqueoContraseña(!limpiar ? data.exp_bloq_contrasena : null)
+    storage.setUsuariosSilence(!limpiar ? data.users_silence : null)
+    storage.setUsuariosBloqueados(!limpiar ? data.users_bloq : null)
+    storage.setIdDispositivo(!limpiar ? String(machineIdSync()) : null)
 }
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior
@@ -39,40 +39,17 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
         clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
         return { success: false }
     }
-    //token de validacion de sesion
-    let token_valido = validateToken(data.token);
-    if (!token_valido) {//token no valido
-        LimpiarJWTUsuario(data.correo, data.token)//limpiar token de mongodb (si existe)
-        clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
-        console.error("Token invalido o expirado")
-        return { success: false };
-    }
-    //verificar si mongodb tiene ese token
-    const token_datos = await TokenSession.find({ correo: data.username })
-    if (!token_datos || token_datos == [] || token_datos.length == 0) {
-        clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
-        console.error("Token invalido o expirado")
-        return { success: false };
-    }
-    const tokenHash = crypto.createHash("sha256").update(data.token).digest("hex");
-    //Comparar con los hashes guardados en Mongo
-    token_valido = token_datos.some(doc => doc.token === tokenHash);
-
-    if (!token_valido) {
-        clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
-        console.error("Token invalido o expirado")
-        return { success: false };
-    }
     // verificar si esa cuenta sigue existiendo en la base de datos
-    const usuario_datos = await LoginUsuario({ correo: data.username, token: data.token })
+    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+    const usuario_datos = await LoginUsuarioDB({ correo: data.username, token: data.token, id_dp: deviceId })
     //mostrar como usuario activo en mongodb
-    if (usuario_datos && data) {
+    if (usuario_datos.success && (usuario_datos.data)) {
         // se ha encontrado el usuario
         //establecer variables globales
         //añadir usuario activo
-        ACTUALIZAR_DATOS_LOGIN(usuario_datos);
+        ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data });
         (async () => {
-            await ActualizarUsuarioActivo({ correo: usuario_datos.correo });
+            await ActualizarUsuarioActivo({ correo: usuario_datos.data.correo });
             comprobarActividadOnline()//iniciar comprobador usuario activo
         })();
         console.log("*Autologin correcto")
@@ -125,12 +102,11 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
 
     //crear verificacion por codigo de correo
     const code_generado = String(generarCodigoVerificacion())
-    const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
     //generar correo
     const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodo, code: code_generado })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-    InsertarVC({ correo: correo, code: hashed_ValidationCode, id: deviceId })
+    InsertarVC({ correo: correo, code: code_generado, id: deviceId })
     //enviar correo
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
 
@@ -160,28 +136,16 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         return { success: false, message: "Código no numérico" }
     }
     //cojer el ultimo codigo generado
-    const code_db = (await ValidationCode.find({ correo }).sort({ expira: -1 }).limit(1))[0];
+    const codehash = crypto.createHash("sha256").update(code).digest("hex");//crear hash del code
+    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+
+    const code_db = await ValidationCode.find({ correo, code: codehash, id_dp: deviceId }).limit(1);
     if (code_db == [] || !code_db || (code_db.length == 0)) {//no hay codes
         contraseña_hashed = null;
         apodo_usuario = null;
         bloquear_accion = false
-        return { success: false, message: "Fallo al crear el usuario: no hay codigos" };
+        return { success: false, message: "Fallo al crear el usuario: no existe ese código" };
     }
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-
-    if (deviceId !== code_db.id_dp && (code_db.id_dp != "")) {//no son el mismo dispositivo
-        contraseña_hashed = null;
-        apodo_usuario = null;
-        bloquear_accion = false
-        return { success: false, message: "Fallo al crear el usuario: este codigo no pertenece a este dispositivo" };
-    }
-    //comparar codigo de usuario con el de mongodb
-    const ok = await bcrypt.compare(String(code), code_db.code);
-    if (!ok) {//no son iguales
-        console.error(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
-        bloquear_accion = false
-        return { success: false, message: "Fallo al crear el usuario:codigo incorrecto", intentos: intentos_codigo_validacion };
-    };
     //crear nueva cuenta de usuario
     const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correo });
     if (!nuevoUsuario) {//error
@@ -219,8 +183,8 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         return { success: false, message: resultado.message }
     }
     //iniciar sesion
-    const usuario_data = await LoginUsuario({ correo: username, contraseña: contraseña })
-    if (!usuario_data || (!usuario_data.correo || !usuario_data.apodo)) {
+    const usuario_data = await LoginUsuarioDB({ correo: username, contraseña: contraseña })
+    if (!usuario_data || !usuario_data.success) {
         bloquear_accion = false
         return { success: false, message: 'Usuario no encontrado' }
     }
@@ -231,7 +195,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         const valido = validateToken(data_autoverificacion.token)
         if (valido) {
             //validar token con mongodb
-            const token_datos = await TokenVC.find({ correo: usuario_data.correo, token: data_autoverificacion.token })
+            const token_datos = await TokenVC.find({ correo: usuario_data.data.correo, token: data_autoverificacion.token })
             if (!token_datos || token_datos == [] || token_datos.length == 0) {
                 clearFileSession('omitirVerificacionCuentaFile');
             }
@@ -258,18 +222,18 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         }
     }
     //guardar correo en variables globales
-    ACTUALIZAR_DATOS_LOGIN(usuario_data);
+    ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data });
     if (autoverificacion) {//se autovalida
         (async () => {
-            await ActualizarUsuarioActivo({ correo: usuario_data.correo });
+            await ActualizarUsuarioActivo({ correo: usuario_data.data.correo });
             comprobarActividadOnline()
         })();
         //JWT , mantener sesion iniciada en cache
         (async () => {
             if (mantener_sesion_iniciada) {
                 const token = await generarteToken('sesion');
-                saveSessionFile({ username: usuario_data.correo, token: token })//guardar sesion en fichero local
-                await AñadirJWTUsuario(usuario_data.correo, token)//guardar en mongodb
+                saveSessionFile({ username: usuario_data.data.correo, token: token })//guardar sesion en fichero local
+                await AñadirJWTUsuario(usuario_data.data.correo, token)//guardar en mongodb
             }
         })();
         console.log("-Autoverificacion de cuenta")
@@ -278,13 +242,12 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         mantener_sesion_iniciada_usuario = mantener_sesion_iniciada
         //crear verificacion por codigo de correo
         const code_generado = String(generarCodigoVerificacion())
-        const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
-        const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.apodo, code: code_generado })
+        const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.data.apodo, code: code_generado })
         //insertar codigo en mongodb
         const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-        InsertarCuentaVC({ correo: usuario_data.correo, code: hashed_ValidationCode, id: deviceId })
+        InsertarCuentaVC({ correo: usuario_data.data.correo, code: code_generado, id: deviceId })
         //mandar correo
-        enviarEmail({ correoDestino: usuario_data.correo, asunto: asunto, htmlContenido: htmlContenido })
+        enviarEmail({ correoDestino: usuario_data.data.correo, asunto: asunto, htmlContenido: htmlContenido })
         //intentos para poder poner el codigo correcto de verificacion
         intentos_codigo_validacion = n_intentos_codigo_validacion
     }
@@ -298,32 +261,27 @@ async function ValidarCodeLogin({ correo, code }) {
 
     intentos_codigo_validacion--
     //verificar si ya habia cabado los intentos
-    if (intentos_codigo_validacion < 0) { return { success: false, message: "Fallo al iniciar sesion:intentos acabados" } }
+    if (intentos_codigo_validacion < 0) {
+        ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
+        return { success: false, message: "Fallo al iniciar sesion:intentos acabados" }
+    }
     //mirar si es codigo valido
     if (code.length > 6) return { success: false, message: "Código muy largo" }
     if (isNaN(Number(code))) return { success: false, message: "Código no numérico" }
     //cojer el ultimo codigo generado
-    const code_db = await CuentaValidationCode.find({ correo }).sort({ expira: -1 }).limit(1);
-    if (code_db == [] || !code_db || code_db.length == 0) {//no hay codigos
-        mantener_sesion_iniciada_usuario = null
-        bloquear_accion = false
-        return { success: false, message: "Fallo al iniciar sesion: no hay codigos" };
-    }
+
+    //cojer el ultimo codigo generado
+    const codehash = crypto.createHash("sha256").update(code).digest("hex");
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
 
-    if (deviceId !== code_db[0].id_dp && (code_db[0].id_dp != "")) {//no son el mismo dispositivo
+    const code_db = await CuentaValidationCode.find({ correo, code: codehash, id_dp: deviceId }).limit(1);
+    if (code_db == [] || !code_db || (code_db.length == 0)) {//no hay codes
         contraseña_hashed = null;
         apodo_usuario = null;
         bloquear_accion = false
-        return { success: false, message: "Fallo al iniciar sesion: este codigo no pertenece a este dispositivo" };
+        ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
+        return { success: false, message: "Fallo al iniciar sesion: no existe ese código" };
     }
-    //comparar codigo de usuario con el de mongodb
-    const ok = await bcrypt.compare(String(code), code_db[0].code);
-    if (!ok) {//los codigos no son iguales
-        console.error(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
-        bloquear_accion = false
-        return { success: false, message: "Fallo al iniciar sesion: codigo incorrecto", intentos: intentos_codigo_validacion };
-    };
     //mostrar como usuario activo en mongodb
     (async () => {
         await ActualizarUsuarioActivo({ correo: correo });
