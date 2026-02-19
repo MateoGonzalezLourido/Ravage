@@ -3,9 +3,9 @@ const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
 dotenv.config();
 const storage = require('../STORAGE/Variables_sesion.js')
-const { machineIdSync } = require('node-machine-id');
 const crypto = require("crypto")
-
+const { clearFileSession } = require('../services/controladorArchivosSesion.js')
+const { validateToken } = require('../services/CreadorTokens.js')
 //esquemas de datos
 const UserSchema = new mongoose.Schema({
     apodo: {
@@ -74,8 +74,7 @@ const UserSchema = new mongoose.Schema({
 const ValidationCodeSchema = new mongoose.Schema({
     code: {
         type: String,
-        required: true,
-        minlength: 6
+        required: true
     },
     correo: {
         type: String,
@@ -146,12 +145,17 @@ const TokenSchema = new mongoose.Schema({
     },
     token: {
         type: String,
-        required:true,
+        required: true,
         default: ""
     },
     expira: {
         type: Date,
         default: () => new Date()
+    },
+    id_dp: {
+        type: String,
+        required: true,
+        default: ""
     }
 })
 const ChatSchema = new mongoose.Schema({
@@ -220,59 +224,56 @@ mongoose.connection.on('disconnected', () => {
     console.warn('- MongoDB desconectado.');
 });
 //loging usuario
-async function LoginUsuario({ correo = null, contraseña = null, token = null }) {
-    if (token && correo) {//validar por token + correo
-        //obtener usuario+datos
-        const usuario_datos = (await User.find({ correo }).limit(1))[0]
-        const token_datos = (await TokenSession.find({ correo }))
-        if (!usuario_datos) {
-            console.error("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
-            return {}
-        }
-        if (!token_datos || token_datos == [] || token_datos.length == 0) {
-            console.error("LOG, NO SE HA ENCONTRADO EL TOKEN")
-            return {}
-        }
-        //validar token
-        let validado = false
-        for (let i = 0; i < token_datos.length; i++) {
-            if (token === token_datos[i].token) {
-                validado = true
-                break
-            }
-        }
-        if (!validado) {
-            console.error("LOG, SESION EXPIRADA: TOKEN")
-            return {}
+async function LoginUsuarioDB({ correo = null, contraseña = null, token = null, id_dp = null }) {
+    if (token && correo && id_dp) {//validar por token + correo
+        //token de validacion de sesion
+        let token_valido = validateToken(token);
+        if (!token_valido) {//token no valido
+            LimpiarJWTUsuario(correo, token)//limpiar token de mongodb (si existe)
+            clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
+            console.error("Token invalido o expirado")
+            return { success: false };
         }
 
-        if (!(usuario_datos.correo === correo)) {
-            console.error("LOG, CORREOS INCORRECTOS")
-            return {}
+        //verificar si mongodb tiene ese token
+        const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+        const token_datos = await TokenSession.find({ correo, token: tokenhash, id_dp })
+
+        if (!token_datos || token_datos == [] || token_datos.length == 0) {
+            clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
+            console.error("Token invalido o expirado")
+            return { success: false };
+        }
+
+        //obtener usuario+datos
+        const usuario_datos = (await User.find({ correo }).limit(1))[0]
+        if (!usuario_datos || usuario_datos == [] || usuario_datos.length == 0) {
+            console.error("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
+            return { success: false }
         }
         //sesion iniciada
-        return usuario_datos
+        return { success: true, data: usuario_datos }
     }
     //log por correo y contraseña
     if (!correo || !contraseña) {
         console.error("Faltan datos para iniciar sesión");
-        return;
+        return { success: false };
     }
     //validar por credenciales correo + contraseña
     const usuario_datos = (await User.find({ correo }).limit(1))[0];
     if (!usuario_datos) {
         console.error("Credenciales incorrectas");
-        return {}
+        return { success: false }
     }
     //comparar contraseña del usuario con la de la base de datos
     const ok = await bcrypt.compare(contraseña, usuario_datos.contrasena);
     if (!ok) {
         console.error("Credenciales incorrectas");
-        return {}
+        return { success: false }
     }
     //sesion iniciada
     console.log(`Datos de usuario obtenidos: ${usuario_datos.apodo}`)
-    return usuario_datos
+    return { success: true, data: usuario_datos }
 }
 //instertar datos
 async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la contraseña ya biene hasheada
@@ -289,8 +290,10 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la
 async function InsertarVC({ correo = null, code = null, id = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
+    const codehash = crypto.createHash("sha256").update(code).digest("hex");
+
     await ValidationCode.create({
-        code: code,
+        code: codehash,
         correo: correo,
         id_dp: id
     });
@@ -301,8 +304,10 @@ async function InsertarVC({ correo = null, code = null, id = "" }) {
 async function InsertarCuentaVC({ correo = null, code = null, id = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
+    const codehash = crypto.createHash("sha256").update(code).digest("hex");
+
     await CuentaValidationCode.create({
-        code: code,
+        code: codehash,
         correo: correo,
         id_dp: id
     });
@@ -325,7 +330,7 @@ async function InsertarDatosCuentaVC({ correo = null, code = null, id = "", tipo
 }
 async function ActualizarUsuarioActivo({ correo = null }) {
     if (!correo) throw new Error("Faltan datos para insertar usuario activo");
-    const deviceId = String(machineIdSync());
+    const deviceId = storage.getIdDispositivo()
     //esto lo crea si no existe
     const nuevoUsuarioActivo = await ActiveUser.updateOne(
         { correo, id_dp: deviceId },
@@ -388,7 +393,7 @@ async function BorrarDatosCuentaVC(correo, code) {
 async function BorrarUsuarioActivo() {
     if (!estaConectado) return;
 
-    const deviceId = String(machineIdSync());
+    const deviceId = storage.getIdDispositivo()
     await ActiveUser.deleteOne({ id_dp: deviceId });
 }
 async function eliminarUsuariosBloqueados(id) {
@@ -434,20 +439,26 @@ async function eliminarUsuariosSilenciados(id) {
 //añadir tokens
 async function AñadirJWTUsuario(correo, token = "") {
     //exìra en 7dias, expira= (7dias - 90min del expire de mongo)
-    const tokenhash = await crypto.createHash("sha256").update(token).digest("hex");
+    const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+    const deviceId = storage.getIdDispositivo()
+
     await TokenSession.create({
         correo,
-        token:tokenhash,
-        expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000)))
+        token: tokenhash,
+        expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000))),
+        id_dp: deviceId
     });
 }
 async function AñadirJWTUsuarioVC(correo, token = "") {
     //exìra en 90min
-    const tokenhash = await crypto.createHash("sha256").update(token).digest("hex");
+    const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+    const deviceId = storage.getIdDispositivo()
+
     await TokenVC.create({
         correo,
-        token:tokenhash,
-        expira: new Date(Date.now())
+        token: tokenhash,
+        expira: new Date(Date.now()),
+        id_dp: deviceId
     });
 }
 //limpiar tokens
@@ -524,4 +535,4 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
 }
 
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuario, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados }

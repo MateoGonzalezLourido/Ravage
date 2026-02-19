@@ -6,7 +6,7 @@ let FechaBloqueoCorreo = ""
 let FechaBloqueoContraseña = ""
 let UsuariosSilenciados= []
 let UsuariosBloqueados = []
-
+let IdDispositivo;
 module.exports = {
     setCorreoSesion: (correo) => Correo_Usuario_sesion = correo,
     getCorreoSesion: () => Correo_Usuario_sesion,
@@ -66,4 +66,6 @@ module.exports = {
 
     setUsuariosBloqueados: (datos) => UsuariosBloqueados = datos,
     getUsuariosBloqueados: () => UsuariosBloqueados,
+    setIdDispositivo: (id) => IdDispositivo = id,
+    getIdDispositivo: () => IdDispositivo,
 }
