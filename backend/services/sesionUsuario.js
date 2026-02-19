@@ -1,5 +1,4 @@
 const { InsertarUsuario, LoginUsuario, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, ActualizarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession } = require('../db/mongo.js')
-const bcrypt = require('bcryptjs')
 const { saveSessionFile, clearFileSession, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
@@ -8,6 +7,9 @@ const storage = require('../STORAGE/Variables_sesion.js')
 const { machineIdSync } = require('node-machine-id');
 const dotenv = require("dotenv");
 dotenv.config();
+const bcrypt = require('bcryptjs')//para contraseñas: mas seguro para esto
+const crypto = require("crypto");//para tokens: mas rapido e igual de funcional
+
 let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
@@ -265,9 +267,9 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         //JWT , mantener sesion iniciada en cache
         (async () => {
             if (mantener_sesion_iniciada) {
-                const token_sesion = await generarteToken('sesion');
-                saveSessionFile({ username: usuario_data.correo, token: token_sesion.sessionToken })//guardar sesion en fichero local
-                await AñadirJWTUsuario(usuario_data.correo, token_sesion.jwtToken)//guardar en mongodb
+                const token = await generarteToken('sesion');
+                saveSessionFile({ username: usuario_data.correo, token: token })//guardar sesion en fichero local
+                await AñadirJWTUsuario(usuario_data.correo, token)//guardar en mongodb
             }
         })();
         console.log("-Autoverificacion de cuenta")
@@ -330,16 +332,16 @@ async function ValidarCodeLogin({ correo, code }) {
     //JWT , mantener sesion iniciada en cache
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
-            const token_sesion = await generarteToken('sesion');
-            saveSessionFile({ username: usuario_data.correo, token: token_sesion.sessionToken })//guardar sesion en fichero local
-            await AñadirJWTUsuario(usuario_data.correo, token_sesion.jwtToken)//guardar en mongodb
+            const token = await generarteToken('sesion');
+            saveSessionFile({ username: correo, token: token })//guardar sesion en fichero local
+            await AñadirJWTUsuario(correo, token)//guardar en mongodb
         }
     })();
     //guardar auto verificacion de cuenta en fichero local
     (async () => {
         const token = await generarteToken('cuenta');
-        saveOmitirVerificacionCuentaFile({ username: correo, token: token.sessionToken })
-        await AñadirJWTUsuarioVC(correo, token.jwtToken)//guardar en mongodb
+        saveOmitirVerificacionCuentaFile({ username: correo, token: token })
+        await AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
     })();
     //borrar codigos
     BorrarCuentaVC(correo)

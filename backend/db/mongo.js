@@ -4,6 +4,8 @@ const dotenv = require("dotenv");
 dotenv.config();
 const storage = require('../STORAGE/Variables_sesion.js')
 const { machineIdSync } = require('node-machine-id');
+const crypto = require("crypto")
+
 //esquemas de datos
 const UserSchema = new mongoose.Schema({
     apodo: {
@@ -144,7 +146,7 @@ const TokenSchema = new mongoose.Schema({
     },
     token: {
         type: String,
-        required: true,
+        required:true,
         default: ""
     },
     expira: {
@@ -432,17 +434,19 @@ async function eliminarUsuariosSilenciados(id) {
 //añadir tokens
 async function AñadirJWTUsuario(correo, token = "") {
     //exìra en 7dias, expira= (7dias - 90min del expire de mongo)
+    const tokenhash = await crypto.createHash("sha256").update(token).digest("hex");
     await TokenSession.create({
         correo,
-        token,
+        token:tokenhash,
         expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000)))
     });
 }
 async function AñadirJWTUsuarioVC(correo, token = "") {
     //exìra en 90min
+    const tokenhash = await crypto.createHash("sha256").update(token).digest("hex");
     await TokenVC.create({
         correo,
-        token,
+        token:tokenhash,
         expira: new Date(Date.now())
     });
 }
