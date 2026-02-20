@@ -69,6 +69,6 @@ module.exports = {
     getUsuariosBloqueados: () => UsuariosBloqueados,
     setIdDispositivo: (id) => IdDispositivo = id,
     getIdDispositivo: () => IdDispositivo,
-    setSecretKEY: (key) => secretKey = key == "" ?: undefined: key,
+    setSecretKEY: (key) => secretKey = key == "" ? undefined: key,
     getSecretKEY: () => secretKey,
 }
