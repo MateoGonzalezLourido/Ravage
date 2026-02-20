@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 const { app } = require('electron')
 const { getSecretKEY } = require('../STORAGE/Variables_sesion.js')
+const { ActualizarSecretKeyUsuario } = require('../db/mongo.js')
 const crypto = require('crypto')
 //rutas
 const ruta_app_data = app.getPath('userData')
@@ -56,29 +57,38 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
 }
 //leer archivos
 function readFileSession(ruta) {
-    //si no existe el archivo?
-    if (!fs.existsSync(RTDF[ruta])) return null;
-    //leer el archivo
-    const rawstr = fs.readFileSync(RTDF[ruta], 'utf8');
-    if (!rawstr) return null;//no recupero nada
-    const raw = JSON.parse(rawStr);
+    try {
+        //si no existe el archivo?
+        if (!fs.existsSync(RTDF[ruta])) return null;
+        //leer el archivo
+        const rawstr = fs.readFileSync(RTDF[ruta], 'utf8');
+        if (!rawstr) return null;//no recupero nada
+        const raw = JSON.parse(rawstr);
 
-    //pasarlo a json usable
-    const secretKey = Buffer.from(getSecretKEY(), "hex")
+        //pasarlo a json usable
+        let secretKey = getSecretKEY()
+        if (!secretKey) {
+            ActualizarSecretKeyUsuario()
+            return null
+        }
+        secretKey = getSecretKEYBuffer.from(secretKey, "hex")
 
-    const decipher = crypto.createDecipheriv(
-        algorithm,
-        secretKey,
-        Buffer.from(raw.iv, "hex")
-    );
-    decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
+        const decipher = crypto.createDecipheriv(
+            algorithm,
+            secretKey,
+            Buffer.from(raw.iv, "hex")
+        );
+        decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
 
-    const decrypted = Buffer.concat([
-        decipher.update(Buffer.from(raw.data, "hex")),
-        decipher.final()
-    ]);
+        const decrypted = Buffer.concat([
+            decipher.update(Buffer.from(raw.data, "hex")),
+            decipher.final()
+        ]);
 
-    return JSON.parse(decrypted.toString());
+        return JSON.parse(decrypted.toString());
+    } catch {
+        return null
+    }
 }
 
 //limpiar archios
@@ -97,20 +107,28 @@ async function limpiarArchivosCompleto() {//quita todos los archivos de la ruta
 }
 //cifrar archivos
 async function CifrarDatosArchivos(data) {
-    const secretKey = Buffer.from(getSecretKEY(), "hex")
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
-    const encrypted = Buffer.concat([
-        cipher.update(JSON.stringify(data)),
-        cipher.final()
-    ]);
-    const tag = cipher.getAuthTag(); // integridad
-    // Devuelve lo que guardas en disco
-    return {
-        iv: iv.toString("hex"),
-        tag: tag.toString("hex"),
-        data: encrypted.toString("hex")
-    };
+    try {
+        let secretKey = getSecretKEY()
+        if (!secretKey) secretKey = ActualizarSecretKeyUsuario()
+
+        secretKey = Buffer.from(secretKey, "hex")
+        const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
+        const encrypted = Buffer.concat([
+            cipher.update(JSON.stringify(data)),
+            cipher.final()
+        ]);
+        const tag = cipher.getAuthTag(); // integridad
+        // Devuelve lo que guardas en disco
+        return {
+            iv: iv.toString("hex"),
+            tag: tag.toString("hex"),
+            data: encrypted.toString("hex")
+        };
+    }
+    catch {
+        return null
+    }
 }
 
 module.exports = {
