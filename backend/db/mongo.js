@@ -71,7 +71,10 @@ const UserSchema = new mongoose.Schema({
     bloqueada: {
         type: Boolean,
         default: false
-    }
+    },
+    secretKey: {
+        type: String,
+    },
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({
@@ -315,6 +318,7 @@ async function LoginUsuarioDB({ correo = null, contraseña = null, token = null,
 async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la contraseña ya biene hasheada
     if (apodo == "") apodo = "Usuario"
     if (!contraseña || !correo) throw new Error("Faltan datos para insertar usuario");
+    const key = ActualziarSecretKeyUsuario
     await User.create({
         apodo: apodo,
         correo: correo,
@@ -580,6 +584,5 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
     storage.setFechaBloqueoApodo(fecha_bloqueo)
     return true
 }
-
 
 module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados }

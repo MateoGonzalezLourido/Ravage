@@ -1,4 +1,4 @@
-const { InsertarUsuario, LoginUsuarioDB, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, ActualizarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession } = require('../db/mongo.js')
+const { InsertarUsuario, LoginUsuarioDB, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, ActualizarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession, TokenDPC, DispositivosBloqueados } = require('../db/mongo.js')
 const { saveSessionFile, clearFileSession, saveOmitirVerificacionCuentaFile, readFileSession, limpiarArchivosCompleto } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
@@ -23,6 +23,7 @@ async function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
     storage.setUsuariosSilence(!limpiar ? data.users_silence : null)
     storage.setUsuariosBloqueados(!limpiar ? data.users_bloq : null)
     storage.setIdDispositivo(!limpiar ? String(machineIdSync()) : null)
+    storage.setSecretKEY(!limpiar ? data.secretKey : null)
 }
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior

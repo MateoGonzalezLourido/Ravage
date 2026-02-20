@@ -3,19 +3,22 @@ const path = require('path');
 const dotenv = require("dotenv");
 dotenv.config();
 const { app } = require('electron')
-
+const { getSecretKEY } = require('../STORAGE/Variables_sesion.js')
+const crypto = require('crypto')
 //rutas
 const ruta_app_data = app.getPath('userData')
 const name_carpeta = '.APP_DATA'
+const algorithm = "aes-256-gcm";
+
 const RTDF = {
     sessionDir: path.join(ruta_app_data, name_carpeta),
     sessionFile: path.join(ruta_app_data, name_carpeta, 'sesionfile.json'),
     omitirVerificacionCuentaFile: path.join(ruta_app_data, name_carpeta, 'auto_login.json'),
     dispositivoConfianza: path.join(ruta_app_data, name_carpeta, 'dp_confi.json')
 }
-
+//guardar archivos
 async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = { username, token };
+    const data = CifrarDatosArchivos({ username, token })
     //semiencriptar username
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
@@ -27,9 +30,8 @@ async function saveSessionFile({ username, token = "" }) {//guardar/ crear archi
         }
     });
 }
-/*CREAR GUARDADO DE OMITIR VERIFIACION DE CUENTA */
 async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = { username, token };
+    const data = CifrarDatosArchivos({ username, token })
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
@@ -41,7 +43,7 @@ async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//gua
     });
 }
 async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = { username, token };
+    const data = CifrarDatosArchivos({ username, token })
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
@@ -52,20 +54,34 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
         }
     });
 }
-/*generales */
+//leer archivos
 function readFileSession(ruta) {
     //si no existe el archivo?
     if (!fs.existsSync(RTDF[ruta])) return null;
     //leer el archivo
-    const raw = fs.readFileSync(RTDF[ruta], 'utf8');
-    if (!raw) return null;//no recupero nada
+    const rawstr = fs.readFileSync(RTDF[ruta], 'utf8');
+    if (!rawstr) return null;//no recupero nada
+    const raw = JSON.parse(rawStr);
+
     //pasarlo a json usable
-    const data = JSON.parse(raw);
-    // devuelves objeto {username, token} o null
-    if (data.username && data.token) return data;
-    return null;
+    const secretKey = Buffer.from(getSecretKEY(), "hex")
+
+    const decipher = crypto.createDecipheriv(
+        algorithm,
+        secretKey,
+        Buffer.from(raw.iv, "hex")
+    );
+    decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
+
+    const decrypted = Buffer.concat([
+        decipher.update(Buffer.from(raw.data, "hex")),
+        decipher.final()
+    ]);
+
+    return JSON.parse(decrypted.toString());
 }
 
+//limpiar archios
 async function clearFileSession(ruta) {//borrar archivo
     if (fs.existsSync(RTDF[ruta])) {//existe el archivo?
         fs.unlinkSync(RTDF[ruta]);//borrar archivo
@@ -79,8 +95,23 @@ async function limpiarArchivosCompleto() {//quita todos los archivos de la ruta
         }
     }
 }
-
-
+//cifrar archivos
+async function CifrarDatosArchivos(data) {
+    const secretKey = Buffer.from(getSecretKEY(), "hex")
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
+    const encrypted = Buffer.concat([
+        cipher.update(JSON.stringify(data)),
+        cipher.final()
+    ]);
+    const tag = cipher.getAuthTag(); // integridad
+    // Devuelve lo que guardas en disco
+    return {
+        iv: iv.toString("hex"),
+        tag: tag.toString("hex"),
+        data: encrypted.toString("hex")
+    };
+}
 
 module.exports = {
     saveSessionFile,
