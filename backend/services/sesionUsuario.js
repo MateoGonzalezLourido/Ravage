@@ -39,9 +39,16 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
         clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
         return { success: false }
     }
+    //comprobar si este dp no esta bloqueado
+    const deviceId = String(machineIdSync());// por defecto devuelve un hash único de la máquina
+    const dp_bloqueado_db = await DispositivosBloqueados.find({ correo: data.username, id_dp: deviceId }).limit(1)
+    if (dp_bloqueado_db && (dp_bloqueado_db.length != 0)) {
+        bloquear_accion = false
+        return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
+    }
     // verificar si esa cuenta sigue existiendo en la base de datos
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
     const usuario_datos = await LoginUsuarioDB({ correo: data.username, token: data.token, id_dp: deviceId })
+
     //mostrar como usuario activo en mongodb
     if (usuario_datos.success && (usuario_datos.data)) {
         // se ha encontrado el usuario
@@ -182,25 +189,44 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         bloquear_accion = false
         return { success: false, message: resultado.message }
     }
+    //comprobar si este dp no esta bloqueado
+    const deviceId = String(machineIdSync());// por defecto devuelve un hash único de la máquina
+    const dp_bloqueado_db = await DispositivosBloqueados.find({ correo: username, id_dp: deviceId }).limit(1)
+    if (dp_bloqueado_db && (dp_bloqueado_db.length != 0)) {
+        bloquear_accion = false
+        return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
+    }
     //iniciar sesion
-    const usuario_data = await LoginUsuarioDB({ correo: username, contraseña: contraseña })
+    const usuario_data = await LoginUsuarioDB({ correo: username, contraseña: contraseña, bloqueada: false })
     if (!usuario_data || !usuario_data.success) {
         bloquear_accion = false
         return { success: false, message: 'Usuario no encontrado' }
     }
     //dispositivo confianza
-    const deviceId = String(machineIdSync());// por defecto devuelve un hash único de la máquina
-    let dp_confianza = false
-    if ((usuario_data.data.dispositivos_confianza).indexOf(deviceId) != -1) {dp_confianza = true}
+    const dp_confianza_data = readFileSession('dispositivoConfianza')
+    if (!dp_confianza_data || (!dp_confianza_data.token || !dp_confianza_data.username)) {
+        bloquear_accion = false
+        return { success: false, message: 'Usuario no encontrado' }
+    }
+    if (!validateToken(dp_confianza_data.token)) {
+        bloquear_accion = false
+        return { success: false, message: 'Usuario no encontrado' }
+    }
+    let tokenhash = crypto.createHash("sha256").update(dp_confianza_data.token).digest("hex");
+    const dp_confianza_db = await TokenDPC.find({ correo: username, token: tokenhash, id_dp: deviceId }).limit(1)
+    if (dp_confianza_db == [] || !dp_confianza_db || (dp_confianza_db.length == 0)) {
+        bloquear_accion = false
+        return { success: false, message: 'dispositivo no encontrado' }
+    }
+    const dp_confianza = ((dp_confianza_db).indexOf(dp_confianza_data.token) == -1) ? false : true
     //autovalidacion del codigo de verificacion de cuenta por token
-
-    const data_autoverificacion = readFileSession("omitirVerificacionCuentaFile")
+    const data_autoverificacion = !dp_confianza ? readFileSession("omitirVerificacionCuentaFile") : ""
     let autoverificacion = false
     if (!dp_confianza && data_autoverificacion && (data_autoverificacion.token && data_autoverificacion.username)) {
         const valido = validateToken(data_autoverificacion.token)
         if (valido) {
             //validar token con mongodb
-            const tokenhash = crypto.createHash("sha256").update(data_autoverificacion.token).digest("hex");
+            tokenhash = crypto.createHash("sha256").update(data_autoverificacion.token).digest("hex");
             const token_datos = await TokenVC.find({ correo: usuario_data.data.correo, token: tokenhash, id_dp: deviceId })
 
             if (!token_datos || token_datos == [] || token_datos.length == 0) clearFileSession('omitirVerificacionCuentaFile');
