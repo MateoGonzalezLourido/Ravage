@@ -74,6 +74,7 @@ const UserSchema = new mongoose.Schema({
     },
     secretKey: {
         type: String,
+        default:""
     },
     createdAt: { type: Date, default: Date.now }
 })
