@@ -4,7 +4,6 @@ const dotenv = require("dotenv");
 dotenv.config();
 const storage = require('../STORAGE/Variables_sesion.js')
 const crypto = require("crypto")
-const { clearFileSession } = require('../services/controladorArchivosSesion.js')
 const { validateToken } = require('../services/CreadorTokens.js')
 //esquemas de datos
 const UserSchema = new mongoose.Schema({
@@ -74,7 +73,7 @@ const UserSchema = new mongoose.Schema({
     },
     secretKey: {
         type: String,
-        default:""
+        default: ""
     },
     createdAt: { type: Date, default: Date.now }
 })
@@ -264,13 +263,12 @@ mongoose.connection.on('disconnected', () => {
     console.warn('- MongoDB desconectado.');
 });
 //loging usuario
-async function LoginUsuarioDB({ correo = null, contraseña = null, token = null, id_dp = null }) {
+async function LoginUsuarioDB({ correo = null, contraseña = null, token = null, id_dp = null, bloqueada = false }) {
     if (token && correo && id_dp) {//validar por token + correo
         //token de validacion de sesion
         let token_valido = validateToken(token);
         if (!token_valido) {//token no valido
             LimpiarJWTUsuario(correo, token)//limpiar token de mongodb (si existe)
-            clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
             console.error("Token invalido o expirado")
             return { success: false };
         }
@@ -280,13 +278,12 @@ async function LoginUsuarioDB({ correo = null, contraseña = null, token = null,
         const token_datos = await TokenSession.find({ correo, token: tokenhash, id_dp })
 
         if (!token_datos || token_datos == [] || token_datos.length == 0) {
-            clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
             console.error("Token invalido o expirado")
             return { success: false };
         }
 
         //obtener usuario+datos
-        const usuario_datos = (await User.find({ correo }).limit(1))[0]
+        const usuario_datos = (await User.find({ correo, bloqueada }).limit(1))[0]
         if (!usuario_datos || usuario_datos == [] || usuario_datos.length == 0) {
             console.error("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
             return { success: false }
@@ -300,8 +297,8 @@ async function LoginUsuarioDB({ correo = null, contraseña = null, token = null,
         return { success: false };
     }
     //validar por credenciales correo + contraseña
-    const usuario_datos = (await User.find({ correo }).limit(1))[0];
-    if (!usuario_datos) {
+    const usuario_datos = (await User.find({ correo, bloqueada }).limit(1))[0];
+    if (!usuario_datos || usuario_datos == [] || (usuario_datos.length == 0)) {
         console.error("Credenciales incorrectas");
         return { success: false }
     }
@@ -319,11 +316,12 @@ async function LoginUsuarioDB({ correo = null, contraseña = null, token = null,
 async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la contraseña ya biene hasheada
     if (apodo == "") apodo = "Usuario"
     if (!contraseña || !correo) throw new Error("Faltan datos para insertar usuario");
-    const key = ActualziarSecretKeyUsuario
+    const key = await ActualizarSecretKeyUsuario(false)
     await User.create({
         apodo: apodo,
         correo: correo,
-        contrasena: contraseña
+        contrasena: contraseña,
+        secretKey: key
     });
     console.log("Usuario insertado correctamente");
     return true
@@ -376,7 +374,7 @@ async function ActualizarUsuarioActivo({ correo = null }) {
     const nuevoUsuarioActivo = await ActiveUser.updateOne(
         { correo, id_dp: deviceId },
         { $set: { expira: new Date() } },
-        { upsert: true } // crea si no existe
+        { upsert: true }
     );
 
     return nuevoUsuarioActivo
@@ -396,7 +394,7 @@ async function añadirUsuariosBloqueados(id, apodo) {
                 users_bloq: lista_bloqueados
             }
         },
-        { upsert: false } // crea si no existe
+        { upsert: true }
     )
     storage.setUsuariosBloqueados(lista_bloqueados)
     return true
@@ -416,7 +414,7 @@ async function añadirUsuariosSilenciados(id, apodo) {
                 users_silence: lista_silenciados
             }
         },
-        { upsert: false } // crea si no existe
+        { upsert: true }
     )
     storage.setUsuariosBloqueados(lista_silenciados)
     return true
@@ -452,7 +450,7 @@ async function eliminarUsuariosBloqueados(id) {
                 users_bloq: lista_bloqueados
             }
         },
-        { upsert: false } // crea si no existe
+        { upsert: true }
     )
     storage.setUsuariosBloqueados(lista_bloqueados)
     return true
@@ -472,7 +470,7 @@ async function eliminarUsuariosSilenciados(id) {
                 users_silence: lista_silenciados
             }
         },
-        { upsert: false } // crea si no existe
+        { upsert: false }
     )
     storage.setUsuariosSilence(lista_silenciados)
     return true
@@ -535,7 +533,7 @@ async function cambiarContraseñaUsuario(contraseña) {//48h para volver a cambi
                 exp_bloq_contrasena: fecha_bloqueo
             }
         },
-        { upsert: false } // crea si no existe
+        { upsert: false }
     )
     storage.setFechaBloqueoContraseña(fecha_bloqueo)
     return true
@@ -552,7 +550,7 @@ async function cambiarCorreoUsuario(correo) {//14dias para volver a cambiarlo
                 exp_bloq_correo: fecha_bloqueo // corrección a ms
             }
         },
-        { upsert: false }                       // opciones
+        { upsert: false }
     );
     //limpiar datos relacionados con codigos y tokens
     await BorrarUsuarioActivo()
@@ -579,24 +577,25 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
                 exp_bloq_apodo: fecha_bloqueo
             }
         },
-        { upsert: false } // crea si no existe
+        { upsert: false }
     );
     storage.setApodoSesion(apodo)
     storage.setFechaBloqueoApodo(fecha_bloqueo)
     return true
 }
-async function ActualizarSecretKeyUsuario() {
-    const correo = storage.getCorreoSesion()
+async function ActualizarSecretKeyUsuario(actualizar = true) {
     const key = crypto.randomBytes(32).toString("hex");
+    if (!actualizar) return key;//solo genera la key pero no la guarda directamente
     try {
+        const correo = storage.getCorreoSesion()
         await User.updateOne(
-            { correo: correo },//filtro
+            { correo },//filtro
             {
                 $set: {
                     secretKey: key,
                 }
             },
-            { upsert: false } // crea si no existe
+            { upsert: false }
         );
         return key
     }

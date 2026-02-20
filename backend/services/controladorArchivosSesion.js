@@ -5,6 +5,7 @@ dotenv.config();
 const { app } = require('electron')
 const { getSecretKEY } = require('../STORAGE/Variables_sesion.js')
 const { ActualizarSecretKeyUsuario } = require('../db/mongo.js')
+
 const crypto = require('crypto')
 //rutas
 const ruta_app_data = app.getPath('userData')
@@ -19,7 +20,7 @@ const RTDF = {
 }
 //guardar archivos
 async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = CifrarDatosArchivos({ username, token })
+    const data = { username, token }
     //semiencriptar username
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
@@ -32,7 +33,7 @@ async function saveSessionFile({ username, token = "" }) {//guardar/ crear archi
     });
 }
 async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = CifrarDatosArchivos({ username, token })
+    const data = await CifrarDatosArchivos({ username, token })
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
@@ -44,7 +45,7 @@ async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//gua
     });
 }
 async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = CifrarDatosArchivos({ username, token })
+    const data = await CifrarDatosArchivos({ username, token })
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
@@ -56,22 +57,27 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
     });
 }
 //leer archivos
-function readFileSession(ruta) {
+async function readFileSession(ruta, cifrado = true) {
     try {
+        if (!cifrado) {
+            const raw = fs.readFileSync(RTDF[ruta], 'utf8')
+            if (!raw) return null
+            return JSON.parse(raw)
+        }
         //si no existe el archivo?
         if (!fs.existsSync(RTDF[ruta])) return null;
         //leer el archivo
         const rawstr = fs.readFileSync(RTDF[ruta], 'utf8');
         if (!rawstr) return null;//no recupero nada
         const raw = JSON.parse(rawstr);
-
         //pasarlo a json usable
         let secretKey = getSecretKEY()
+
         if (!secretKey) {
-            ActualizarSecretKeyUsuario()
+            await ActualizarSecretKeyUsuario()
             return null
         }
-        secretKey = getSecretKEYBuffer.from(secretKey, "hex")
+        secretKey = Buffer.from(secretKey, "hex")
 
         const decipher = crypto.createDecipheriv(
             algorithm,
@@ -107,28 +113,23 @@ async function limpiarArchivosCompleto() {//quita todos los archivos de la ruta
 }
 //cifrar archivos
 async function CifrarDatosArchivos(data) {
-    try {
-        let secretKey = getSecretKEY()
-        if (!secretKey) secretKey = ActualizarSecretKeyUsuario()
+    let secretKey = getSecretKEY()
+    if (!secretKey) secretKey = await ActualizarSecretKeyUsuario()
 
-        secretKey = Buffer.from(secretKey, "hex")
-        const iv = crypto.randomBytes(12);
-        const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
-        const encrypted = Buffer.concat([
-            cipher.update(JSON.stringify(data)),
-            cipher.final()
-        ]);
-        const tag = cipher.getAuthTag(); // integridad
-        // Devuelve lo que guardas en disco
-        return {
-            iv: iv.toString("hex"),
-            tag: tag.toString("hex"),
-            data: encrypted.toString("hex")
-        };
-    }
-    catch {
-        return null
-    }
+    secretKey = Buffer.from(secretKey, "hex")
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
+    const encrypted = Buffer.concat([
+        cipher.update(JSON.stringify(data)),
+        cipher.final()
+    ]);
+    const tag = cipher.getAuthTag(); // integridad
+    // Devuelve lo que guardas en disco
+    return {
+        iv: iv.toString("hex"),
+        tag: tag.toString("hex"),
+        data: encrypted.toString("hex")
+    };
 }
 
 module.exports = {
