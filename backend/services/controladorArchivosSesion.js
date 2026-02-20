@@ -10,7 +10,8 @@ const name_carpeta = '.APP_DATA'
 const RTDF = {
     sessionDir: path.join(ruta_app_data, name_carpeta),
     sessionFile: path.join(ruta_app_data, name_carpeta, 'sesionfile.json'),
-    omitirVerificacionCuentaFile: path.join(ruta_app_data, name_carpeta, 'auto_login.json')
+    omitirVerificacionCuentaFile: path.join(ruta_app_data, name_carpeta, 'auto_login.json'),
+    dispositivoConfianza: path.join(ruta_app_data, name_carpeta, 'dp_confi.json')
 }
 
 async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
@@ -21,11 +22,10 @@ async function saveSessionFile({ username, token = "" }) {//guardar/ crear archi
     //sobrescribir/crear archivo con los datos
     fs.writeFile(RTDF.sessionFile, JSON.stringify(data), "utf8", (err) => {
         if (err) {//si falla, limpiar si existe
-            clearFileSession(username, 'sesion')
+            clearFileSession('sessionFile')
             console.error("Error al guardar sesión:", err);
         }
     });
-    console.log("cache de sesion actualizada")
 }
 /*CREAR GUARDADO DE OMITIR VERIFIACION DE CUENTA */
 async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//guardar/ crear archivo
@@ -35,11 +35,22 @@ async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//gua
     //sobrescribir/crear archivo con los datos
     fs.writeFile(RTDF.omitirVerificacionCuentaFile, JSON.stringify(data), "utf8", (err) => {
         if (err) {//si falla, limpiar si existe
-            clearFileSession(username, 'cuenta')
+            clearFileSession("omitirVerificacionCuentaFile")
             console.error("Error al guardar autoverifiacion de cuenta:", err);
         }
     });
-    console.log("cache de autoverifiacion de cuenta actualizada")
+}
+async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar/ crear archivo
+    const data = { username, token };
+    //crear carpeta si no existe
+    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
+    //sobrescribir/crear archivo con los datos
+    fs.writeFile(RTDF.dispositivoConfianza, JSON.stringify(data), "utf8", (err) => {
+        if (err) {//si falla, limpiar si existe
+            clearFileSession('dispositivoConfianza')
+            console.error("Error al guardar autoverifiacion de cuenta:", err);
+        }
+    });
 }
 /*generales */
 function readFileSession(ruta) {
@@ -68,4 +79,5 @@ module.exports = {
     clearFileSession,
     readFileSession,
     saveOmitirVerificacionCuentaFile,
+    saveDispositivoConfianzaFile
 };

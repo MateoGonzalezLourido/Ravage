@@ -66,13 +66,12 @@ const UserSchema = new mongoose.Schema({
     },
     visible: {
         type: Boolean,
-        default: true,
-        requried: true
+        default: true
     },
-    dispositivos_confianza: {
-        type: [String],
-        default: []
-    },
+    bloqueada: {
+        type: Boolean,
+        default: false
+    }
     createdAt: { type: Date, default: Date.now }
 })
 const ValidationCodeSchema = new mongoose.Schema({
@@ -162,6 +161,37 @@ const TokenSchema = new mongoose.Schema({
         default: ""
     }
 })
+const TokenDPCSchema = new mongoose.Schema({
+    correo: {
+        type: String,
+        required: true,
+        lowercase: true,
+        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    },
+    token: {
+        type: String,
+        required: true,
+        default: ""
+    },
+    id_dp: {
+        type: String,
+        required: true,
+        default: ""
+    }
+})
+const DPBLOQUEADOSchema = new mongoose.Schema({
+    correo: {
+        type: String,
+        required: true,
+        lowercase: true,
+        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    },
+    id_dp: {
+        type: String,
+        required: true,
+        default: ""
+    }
+})
 const ChatSchema = new mongoose.Schema({
     nombre: {//solo si es un grupo (si es de dos se coje el apodo que le tengas a ese usuario)
         type: String,
@@ -198,6 +228,8 @@ const DatosCuentaVC = mongoose.model("datoscuentavc", DatosCuentaValidationCodeS
 const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
 const TokenSession = mongoose.model("tksession", TokenSchema, "tksession");
 const TokenVC = mongoose.model("tokenvcv", TokenSchema, "tokenvcv");
+const TokenDPC = mongoose.model("tokendpc", TokenDPCSchema, "tokendpc");
+const DispositivosBloqueados = mongoose.model("dpbloqueados", DPBLOQUEADOSchema, "dpbloqueados");
 const ChatRavage = mongoose.model("chats", ChatSchema, "chats");
 //conectar db
 async function connectDB() {
@@ -465,6 +497,17 @@ async function AñadirJWTUsuarioVC(correo, token = "") {
         id_dp: deviceId
     });
 }
+async function AñadirJWTDPConfianza(correo, token = "") {
+    //exìra en 90min
+    const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+    const deviceId = storage.getIdDispositivo()
+
+    await TokenDPC.create({
+        correo,
+        token: tokenhash,
+        id_dp: deviceId
+    });
+}
 //limpiar tokens
 async function LimpiarJWTUsuario(correo, token = null) {
     if (!token) await TokenVC.deleteMany({ correo: correo })//borra todos (por segurida)
@@ -539,4 +582,4 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
 }
 
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados }
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados }
