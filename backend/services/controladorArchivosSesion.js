@@ -5,7 +5,7 @@ dotenv.config();
 const { app } = require('electron')
 const { getSecretKEY } = require('../STORAGE/Variables_sesion.js')
 const { ActualizarSecretKeyUsuario } = require('../db/mongo.js')
-
+const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
 const crypto = require('crypto')
 //rutas
 const ruta_app_data = app.getPath('userData')
@@ -20,7 +20,7 @@ const RTDF = {
 }
 //guardar archivos
 async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = { username, token }
+    const data = await CifrarDatosArchivos({ username, token }, 'sessionFile')
     //semiencriptar username
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
@@ -59,11 +59,14 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
 //leer archivos
 async function readFileSession(ruta, cifrado = true) {
     try {
+        //para archivos sin cifrado .json
         if (!cifrado) {
             const raw = fs.readFileSync(RTDF[ruta], 'utf8')
             if (!raw) return null
             return JSON.parse(raw)
         }
+        //*para archivos con cifrado .json
+
         //si no existe el archivo?
         if (!fs.existsSync(RTDF[ruta])) return null;
         //leer el archivo
@@ -72,12 +75,17 @@ async function readFileSession(ruta, cifrado = true) {
         const raw = JSON.parse(rawstr);
         //pasarlo a json usable
         let secretKey = getSecretKEY()
-
-        if (!secretKey) {
-            await ActualizarSecretKeyUsuario()
-            return null
+        if (ruta == 'sessionFile') {//especial
+            secretKey = SECRET_KEY_COKKIE
         }
-        secretKey = Buffer.from(secretKey, "hex")
+        else {//por defecto
+            secretKey = getSecretKEY()
+            if (!secretKey) {
+                await ActualizarSecretKeyUsuario()
+                return null
+            }
+            secretKey = Buffer.from(secretKey, "hex")
+        }
 
         const decipher = crypto.createDecipheriv(
             algorithm,
@@ -112,10 +120,15 @@ async function limpiarArchivosCompleto() {//quita todos los archivos de la ruta
     }
 }
 //cifrar archivos
-async function CifrarDatosArchivos(data) {
-    let secretKey = getSecretKEY()
-    if (!secretKey) secretKey = await ActualizarSecretKeyUsuario()
-
+async function CifrarDatosArchivos(data, especial) {
+    let secretKey;
+    if (!especial) {
+        secretKey = getSecretKEY()
+        if (!secretKey) secretKey = await ActualizarSecretKeyUsuario()
+    }
+    else if (especial == 'sessionFile') {
+        secretKey = SECRET_KEY_COKKIE
+    }
     secretKey = Buffer.from(secretKey, "hex")
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
@@ -131,7 +144,6 @@ async function CifrarDatosArchivos(data) {
         data: encrypted.toString("hex")
     };
 }
-
 module.exports = {
     saveSessionFile,
     clearFileSession,

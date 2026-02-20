@@ -27,7 +27,7 @@ async function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
 }
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior
-    const data = await readFileSession('sessionFile',false)
+    const data = await readFileSession('sessionFile')
     //verificar si estan todos los datos
     if (!data || (!data.username || !data.token)) {
         console.error("*Autologin: datos de fichero no validos")
@@ -46,7 +46,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     if (dp_bloqueado_db && (dp_bloqueado_db.length != 0)) {
         bloquear_accion = false
         limpiarArchivosCompleto()
-        return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
+        return { success: false, message: '*ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
     }
     // verificar si esa cuenta sigue existiendo en la base de datos
     const usuario_datos = await LoginUsuarioDB({ correo: data.username, token: data.token, id_dp: deviceId })
@@ -214,13 +214,11 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     else {
         const tokenhash = crypto.createHash("sha256").update(dp_confianza_data.token).digest("hex");
         const dp_confianza_db = await TokenDPC.find({ correo: username, token: tokenhash, id_dp: deviceId }).limit(1)
-        if (!(dp_confianza_db == [] || !dp_confianza_db || (dp_confianza_db.length == 0))) {
-            dp_confianza = ((dp_confianza_db).indexOf(dp_confianza_data.token) == -1) ? false : true
-        }
+        if (dp_confianza_db.length == 1) dp_confianza = ((dp_confianza_db).indexOf(dp_confianza_data.token) == -1) ? false : true
     }
     //autovalidacion del codigo de verificacion de cuenta por token
     const data_autoverificacion = !dp_confianza ? await readFileSession("omitirVerificacionCuentaFile") : ""
-    let autoverificacion = false
+    let autoverificacion = dp_confianza
     if (!dp_confianza && data_autoverificacion && (data_autoverificacion.token && data_autoverificacion.username)) {
         const valido = validateToken(data_autoverificacion.token)
         if (valido) {
@@ -239,7 +237,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     //guardar correo en variables globales
     ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data });
-    if (autoverificacion || dp_confianza) {//se autovalida
+    if (autoverificacion) {//se autovalida
         (async () => {
             await ActualizarUsuarioActivo({ correo: usuario_data.data.correo });
             comprobarActividadOnline()
@@ -328,7 +326,7 @@ async function ValidarCodeLogin({ correo, code }) {
 
 async function cerrarSesionUsuario(correo) {
     //cojer datos del archivo de sesion para borrar el token
-    const data = await readFileSession('sessionFile',false)
+    const data = await readFileSession('sessionFile')
     //limpiar archivo de sesion
     clearFileSession('sessionFile');
     //si existe ese archivo limpiar token
