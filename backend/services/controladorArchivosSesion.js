@@ -71,6 +71,14 @@ async function clearFileSession(ruta) {//borrar archivo
         fs.unlinkSync(RTDF[ruta]);//borrar archivo
     }
 }
+async function limpiarArchivosCompleto() {//quita todos los archivos de la ruta
+    const exclusiones = ['sessionDir']
+    for (const ruta of Object.keys(RTDF)) {
+        if (exclusiones.indexOf(ruta) == -1) {//no exta excluido
+            fs.unlinkSync(RTDF[ruta]);//borrar archivo
+        }
+    }
+}
 
 
 
@@ -79,5 +87,6 @@ module.exports = {
     clearFileSession,
     readFileSession,
     saveOmitirVerificacionCuentaFile,
-    saveDispositivoConfianzaFile
+    saveDispositivoConfianzaFile,
+    limpiarArchivosCompleto
 };

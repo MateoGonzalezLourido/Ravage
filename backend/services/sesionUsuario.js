@@ -1,5 +1,5 @@
 const { InsertarUsuario, LoginUsuarioDB, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, ActualizarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession } = require('../db/mongo.js')
-const { saveSessionFile, clearFileSession, saveOmitirVerificacionCuentaFile, readFileSession } = require('./controladorArchivosSesion.js')
+const { saveSessionFile, clearFileSession, saveOmitirVerificacionCuentaFile, readFileSession, limpiarArchivosCompleto } = require('./controladorArchivosSesion.js')
 const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
 const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
 const { generarteToken, validateToken } = require('./CreadorTokens.js')
@@ -44,6 +44,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     const dp_bloqueado_db = await DispositivosBloqueados.find({ correo: data.username, id_dp: deviceId }).limit(1)
     if (dp_bloqueado_db && (dp_bloqueado_db.length != 0)) {
         bloquear_accion = false
+        limpiarArchivosCompleto()
         return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
     }
     // verificar si esa cuenta sigue existiendo en la base de datos
