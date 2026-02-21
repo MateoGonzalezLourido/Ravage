@@ -612,30 +612,162 @@ const chat_componente_lista_structura_html = (data, data_grupo) => {
         if (data_grupo != -1) return (`<div class="numero-integrantes-chat-lista"><span>${data_grupo.usuarios.length} integrantes</span></div>`)
         else return ``
     }
+    function ultima_vez() {
+        if (data_grupo == -1) {
+            const fecha = new Date(datos.fecha);
+
+            const hora = fecha.toLocaleTimeString("es-ES", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+            });
+
+            const dia = fecha.getDate();
+
+            const mes = fecha.toLocaleString("es-ES", {
+                month: "short"
+            }).replace(".", ""); // quita punto si lo añade
+
+            const resultado = `${hora}, ${dia} ${mes}`;
+            return (`<div class="numero-integrantes-chat-lista"><span>${resultado} integrantes</span></div>`)
+        }
+        else { return `` }
+    }
     let html = `
-    <div data-id="${data._id}" class="chat-componente-lista-chats">
+    <div data-id="${data._id}" id="chat-componente-lista-chats">
         <div class="nombre-chat-lista-componente"><span>${nombre()}</span></div>
         ${usuarios()}
+        ${ultima_vez()}
     </div>`
 
     return html
+}
+//TODO
+const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
+    let html = ""
+    const class_mensajes = ["soy-emisor", "soy-receptor"]
+    const propio = data.emisor == id_propio
+    let nombres_id = []//{id,nombre}
+
+    function emisor_mensaje() {
+        if (propio) return class_mensajes[0]
+        else return class_mensajes[1]
+    }
+    async function nombre_emisor() {
+        let html = `<div class="nombre-mensaje-chat-usuario"><span>`
+        if (propio) return ``
+        else {
+            const nombre_indice = nombres_id.findIndex(x => x.id == data.emisor)
+            //TODO
+            if (nombre_indice == -1) {//hay que buscarlo
+                const indice = nombres_contactos.findIndex(x => x.id == data.emisor)//buscar si el id del otro usaurio esta ya en contactos
+                if (indice == -1) {//no lo tienes de contacto
+                    //cojer el correo del usaurio
+                    const data_usuarios_externo = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
+                    nombres_id.push({ id: id_buscar, nombre: data_usuarios_externo.apodo })
+                    html += data_usuarios_externo.apodo
+                }
+                else {
+                    nombres_id.push({ id: data.emisor, nombre: nombres_contactos[indice].apodo })
+                    html += nombres_contactos[indice].apodo//usar el apodo puesto
+                }
+            }
+            html += nombres_id[nombre_indice].nombre
+        }
+        html += '</span></div>'
+        return html
+    }
+    html += `
+    <div class="mensaje-chat ${emisor_mensaje()}">
+        ${await nombre_emisor()}
+        <div class="asunto-mensaje-chat">${data.contenido.asunto}</div>
+        <div class="file-mensaje-chat"data-id="${data.contenido.id_file}">${data.contenido.nombre}</div>
+    </div>`
+
+    return html
+}
+//TODO
+async function Crear_chat_html(datos, id_propio) {
+    let html = ""
+    //nav principal
+    const nombres_contactos = await window.datos_usuario.OBTENER_CONTACTOS_LISTA()
+    async function todo_chat() {
+        let html = ""
+        for (m of datos.mensajes) {
+            html += (await crear_mensaje_html(m, id_propio, nombres_contactos))
+        }
+
+        return html
+    }
+    html += `
+    <div id="nav-prinicpal-chat-usaurio" data-id="${data._id}">
+        <div id="nombre-chat-nav"><span>${datos.nombre}</span></div>
+        <div id="bt-crear-conexion-p2p" title="Iniciar conexion p2p">
+        <img src="" draggable="false" alt="">
+        </div>
+    </div>
+    ${await todo_chat()}
+    `
+
+}
+//TODO
+function mostrar_datos_chat_usaurios(e) {
+    (e) => {
+        e.preventDefault()
+        //TODO: MOSTRAR DATOS DEL USUARIO Y DEL CHAT
+        const id = e.target.dataset.id
+    }
+}
+//TODO
+function Comenzar_conexion_p2p(e) {
+    e.preventDefault()
 }
 async function INICIO_CHAT_MENU_PRINCIPAL() {
     const lista_chats = await window.datos_usuario.OBTENER_CHATS_USUARIO()
 
     window.datos_usuario.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
 
-    const datos_chats_grupales = await window.datos_usuario.OBTENER_DATOS_CHATS({ data: lista_chats, grupales: true, mensajes: false })
-    //crear html lsita chats
+    const datos_chats_grupales = await window.datos_usuario.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: true, mensajes: false })
+    //crear html lista chats
+    //TODO: ORDENAR LOS CHATS POR ULTIMO CAMBIO
     let html = ""
     lista_chats.forEach(c => {
         const data_grupo = datos_chats_grupales.findIndex(x => x._id.toString() === c._id.toString())
         html += chat_componente_lista_structura_html(c, datos_chats_grupales[data_grupo])
     })
+    document.querySelector("#lista-chats-componentes").innerHTML = html
     document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
-        componente.addEventListener("click", (e) => {
+        componente.addEventListener("click", async (e) => {
             e.preventDefault()
-            /*TODO: OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML */
+            //TODO: OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
+            const id = e.target.dataset.id
+            //obtener info de ese chat
+            //TODO: AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
+            let datos_chat = await window.datos_usuario.OBTENER_DATOS_CHAT_UNICO(id)
+            const id_usuario = await window.datos_usuario.OBTENER_ID_MONGODB_USUARIO()
+
+            //*obtener el nombre del chat (la dificultad es que puede sser grupo o no, y puede ser contacto o no)
+            if (!datos_chat.grupo) {
+                const nombres_contactos = await window.datos_usuario.OBTENER_CONTACTOS_LISTA()
+                const id_buscar = (datos_chat.usuarios).filter(x => x != id_usuario)//quitamos el id del usaurio
+                const indice = nombres_contactos.findIndex(x => x.id == id_buscar)//buscar si el id del otro usaurio esta ya en contactos
+                if (indice == -1) {//no lo tienes de contacto
+                    //cojer el correo del usaurio
+                    const data_usuarios_externo = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
+                    datos_chat.nombre = data_usuarios_externo.apodo
+                }
+                else {
+                    datos_chat.nombre = nombres_contactos[indice].apodo//usar el apodo puesto
+                }
+            }
+
+            document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat)
+            //eventos
+            document.querySelector("#nav-prinicpal-chat-usaurio").addEventListener("click", mostrar_datos_chat_usaurios, id_usuario)
+            document.querySelector("#nombre-chat-nav").addEventListener("click", mostrar_datos_chat_usaurios)
+            document.querySelector("#bt-crear-conexion-p2p").addEventListener("click", Comenzar_conexion_p2p)
+
+
         })
     })
 }
@@ -649,7 +781,7 @@ document.addEventListener("DOMContentLoaded", () => {
     //ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
     //chat
-    //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...*/
+    //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...
 
     INICIO_CHAT_MENU_PRINCIPAL()
     /*TODO: obtener buzon y mostrar cambios en lista chats si hay(usando id del chat)  mostrar notificaciones de otras cosas */

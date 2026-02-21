@@ -103,6 +103,13 @@ contextBridge.exposeInMainWorld('datos_usuario', {//funciones de ajustes
         return ipcRenderer.invoke("obtener-datos-chats-grupales-usuario", id)
     },
     LIMPIAR_MENSAJES_CHATS_ANTIGUOS: (chatIds) => {
-        return ipcRenderer.send("limpiar-chats-antiguos-mensajes",chatIds)
+        ipcRenderer.send("limpiar-chats-antiguos-mensajes", chatIds)
+    },
+    OBTENER_ID_MONGODB_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-id-mongodb-usuario")
+    },
+    OBTENER_DATOS_USUARIO_EXTERNO: (id, datos = null) => {
+        return ipcRenderer.invoke("obtener-datos-usuario-externo", id,datos)
     }
+
 })

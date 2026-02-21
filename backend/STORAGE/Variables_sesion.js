@@ -7,6 +7,7 @@ let FechaBloqueoContraseña = ""
 let UsuariosSilenciados = []
 let UsuariosBloqueados = []
 let IdDispositivo;
+let IdMongodbUsuario;
 let secretKey;
 
 let ListaChats = []
@@ -84,4 +85,6 @@ module.exports = {
     getListaContactos: () => ListaContactos,
     setVisibleUsuario: (bool) => VisibleUsuario = bool,
     getVisibleUsuario: () => VisibleUsuario,
+    setIDMongodbUsuario: (id) => setIDMongodbUsuario = id,
+    getIDMongodbUsuario: () => setIDMongodbUsuario,
 }

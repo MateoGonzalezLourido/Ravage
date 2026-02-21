@@ -14,6 +14,7 @@ let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 //vairables de usuario de sesion
 function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
+    storage.setIDMongodbUsuario(!limpiar ? String(data._id) : null);
     storage.setApodoSesion(!limpiar ? data.apodo : null);
     storage.setCorreoSesion(!limpiar ? data.correo : null);
     storage.setFechaCreacionCuenta(!limpiar ? data.createdAt : null)
