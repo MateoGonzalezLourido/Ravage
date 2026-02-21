@@ -9,6 +9,9 @@ const startPage = startArg?.split('=')[1] ?? 'true'; //esta autologueado: argume
 
 //estas funciones son llamamientos desde el render que crean llamadas para que desde el main se ejecuten las funciones y codigo correspondiente que no puede ir/no pertenece  al render y preload
 //los nombres de exposeInMainWorld('name) es el que quermos darle a ese grupo de funciones; pueden haber muchos grupos de funciones.
+contextBridge.exposeInMainWorld('boot', {//funciones de inicio de la app
+    isLogged: startPage === 'true'
+});
 contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     LOGIN_USUARIO: (usuario, contraseña, mantener_sesion_iniciada) => {//funcion que se llama desde el render con window.sesion_usuario.funcion(parametros)
         return ipcRenderer.invoke('login-usuario', usuario, contraseña, mantener_sesion_iniciada)
@@ -88,6 +91,18 @@ contextBridge.exposeInMainWorld('ajustes_app', {//funciones de ajustes
         return ipcRenderer.invoke("añadir-usuarios-bloqueados", id, apodo)
     }
 })
-contextBridge.exposeInMainWorld('boot', {//funciones de inicio de la app
-    isLogged: startPage === 'true'
-});
+
+contextBridge.exposeInMainWorld('datos_usuario', {//funciones de ajustes
+    OBTENER_CHATS_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-chats-usuario")
+    },
+    OBTENER_DATOS_CHATS_GRUPALES: ({ data, grupales, mensajes }) => {
+        return ipcRenderer.invoke("obtener-datos-chats-grupales-usuario", { data, grupales, mensajes })
+    },
+    OBTENER_DATOS_CHAT_UNICO: (id) => {
+        return ipcRenderer.invoke("obtener-datos-chats-grupales-usuario", id)
+    },
+    LIMPIAR_MENSAJES_CHATS_ANTIGUOS: (chatIds) => {
+        return ipcRenderer.send("limpiar-chats-antiguos-mensajes",chatIds)
+    }
+})

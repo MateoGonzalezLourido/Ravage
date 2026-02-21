@@ -2,9 +2,9 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 const { startServer } = require('./backend/server.js')
-const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados } = require("./backend/db/mongo.js")
+const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, obtener_datos_chats, limpiar_mensajes_chats_antiguos, obtener_datos_chat_unico } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } = require('./backend/services/sesionUsuario.js');
-const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getUsuariosSilence, getUsuariosBloqueados } = require('./backend/STORAGE/Variables_sesion.js')
+const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getUsuariosSilence, getUsuariosBloqueados, getListaChats } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
 let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
@@ -155,4 +155,17 @@ ipcMain.handle("añadir-usuarios-bloqueados", async (_, id, apodo) => {
 })
 ipcMain.handle("añadir-usuarios-silenciados", async (_, id, apodo) => {
     return await añadirUsuariosSilenciados(id, apodo)
+})
+ipcMain.handle("obtener-chats-usuario", async () => {
+    return await getListaChats()
+})
+
+ipcMain.handle("obtener-datos-chats-grupales-usuario", async (_, { data, grupales, mensajes }) => {
+    return await obtener_datos_chats({ data, grupales, mensajes })
+})
+ipcMain.handle("obtener-datos-chat-unico", async (_, id) => {
+    return await obtener_datos_chat_unico(id)
+})
+ipcMain.on("limpiar-chats-antiguos-mensajes", async (_,chatIds) => {
+    await limpiar_mensajes_chats_antiguos(chatIds)
 })

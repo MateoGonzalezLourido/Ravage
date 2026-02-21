@@ -1,6 +1,6 @@
 let apodo_render = "Usuario"
 
-
+//ajustes
 function Todos_Los_Eventos_Funciones_Ajustes(e) {
     e.preventDefault()
     cerrar_cuerpos_ajustes("cuenta")
@@ -602,6 +602,43 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
     }
     document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados)
 }
+//chat
+const chat_componente_lista_structura_html = (data, data_grupo) => {
+    function nombre() {
+        if (data_grupo == -1) return data.apodo
+        else return data_grupo.nombre
+    }
+    function usuarios() {
+        if (data_grupo != -1) return (`<div class="numero-integrantes-chat-lista"><span>${data_grupo.usuarios.length} integrantes</span></div>`)
+        else return ``
+    }
+    let html = `
+    <div data-id="${data._id}" class="chat-componente-lista-chats">
+        <div class="nombre-chat-lista-componente"><span>${nombre()}</span></div>
+        ${usuarios()}
+    </div>`
+
+    return html
+}
+async function INICIO_CHAT_MENU_PRINCIPAL() {
+    const lista_chats = await window.datos_usuario.OBTENER_CHATS_USUARIO()
+
+    window.datos_usuario.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
+
+    const datos_chats_grupales = await window.datos_usuario.OBTENER_DATOS_CHATS({ data: lista_chats, grupales: true, mensajes: false })
+    //crear html lsita chats
+    let html = ""
+    lista_chats.forEach(c => {
+        const data_grupo = datos_chats_grupales.findIndex(x => x._id.toString() === c._id.toString())
+        html += chat_componente_lista_structura_html(c, datos_chats_grupales[data_grupo])
+    })
+    document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
+        componente.addEventListener("click", (e) => {
+            e.preventDefault()
+            /*TODO: OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML */
+        })
+    })
+}
 document.addEventListener("DOMContentLoaded", () => {
     //mensaje bienvenida
     window.pushNotificacion({
@@ -613,4 +650,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
     //chat
     //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...*/
+
+    INICIO_CHAT_MENU_PRINCIPAL()
+    /*TODO: obtener buzon y mostrar cambios en lista chats si hay(usando id del chat)  mostrar notificaciones de otras cosas */
 })
