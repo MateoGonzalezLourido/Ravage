@@ -52,7 +52,7 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
     fs.writeFile(RTDF.dispositivoConfianza, JSON.stringify(data), "utf8", (err) => {
         if (err) {//si falla, limpiar si existe
             clearFileSession('dispositivoConfianza')
-            console.error("Error al guardar autoverifiacion de cuenta:", err);
+            console.error("Error al guardar dispositibvo de confianza:", err);
         }
     });
 }

@@ -13,7 +13,7 @@ function createMainWindowHome(AutoLogin = false) {
         width: 800,
         height: 600,
         minHeight: 400,
-        minWidth: 400,
+        minWidth: 450,
         title: "RAVAGE",   // cambia el nombre de la ventana
         autoHideMenuBar: true, // oculta menú opciones nativo
         webPreferences: {

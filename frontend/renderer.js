@@ -1,9 +1,5 @@
 let apodo_render = "Usuario"
 
-async function cambiar_menu_inicio_apodo() {
-    apodo_render = await window.sesion_usuario.GET_APODO_SESION()
-    document.querySelector("#text-apodo-usuario-menu-inicio").innerHTML = apodo_render
-}
 
 function Todos_Los_Eventos_Funciones_Ajustes(e) {
     e.preventDefault()
@@ -152,9 +148,6 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         document.querySelector("#bt-menu-navegacion-ajustes-saber").removeEventListener("click", cambiar_ajustes_saber)
         document.querySelector("#bt-cerrar-menu-ajustes").removeEventListener("click", cerrar_ajustes_pagina)
         document.querySelector("#bt-cambiar-contraseña").removeEventListener("click", funcion_cambiar_contraseña)
-
-        document.querySelector("#bt-seccion-menu-cuenta-ajustes").removeEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
-
         //reiniciar bloqueadores de span
         bloquear_span_cambio_contraseña = true
     }
@@ -610,16 +603,14 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados)
 }
 document.addEventListener("DOMContentLoaded", () => {
-    cambiar_menu_inicio_apodo().then(() => {
-        //mensaje bienvenida
-        window.pushNotificacion({
-            prioridad: 0,        // menor número = más importante
-            texto: `Benvido ${apodo_render}`,
-            tipo: "info"      // "info", "error", "success"
-        })
+    //mensaje bienvenida
+    window.pushNotificacion({
+        prioridad: 0,        // menor número = más importante
+        texto: `Benvido ${apodo_render}`,
+        tipo: "info"      // "info", "error", "success"
     })
-
     //ajustes
-
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
+    //chat
+    //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...*/
 })
