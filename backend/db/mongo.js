@@ -63,7 +63,7 @@ const UserSchema = new mongoose.Schema({
     chats: {
         type: [{
             id: { type: mongoose.Schema.Types.ObjectId, required: true },
-            apodo: { type: String, default: "" },//si es chat no hay
+            apodo: { type: String, default: "" },//si es grupo no hay
             grupo: { type: Boolean, default: false },
             ultimoCambio: { type: Date, default: Date.now }
         }],
@@ -225,6 +225,7 @@ const ChatSchema = new mongoose.Schema({
                 contenido: {
                     type: [{
                         asunto: { type: String, default: "" },
+                        nombre_file: { type: String, default: "_archivo_" },
                         id_file: { type: String, unique: true }
                     }]
                 },
@@ -683,5 +684,12 @@ async function obtener_datos_chat_unico(id) {
     } catch {
         return []
     }
+}
+
+async function obtener_datos_usuario(id, datos = null) {
+    const datos_buscar_defecto = "correo apodo visible"//se separan por espacio
+    const datos_buscar = datos ? datos : datos_buscar_defecto
+    const datos_usuario = await User.findById(id, datos_buscar)
+    return datos_usuario
 }
 module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario, obtener_datos_chats, obtener_datos_chat_unico, limpiar_mensajes_chats_antiguos }
