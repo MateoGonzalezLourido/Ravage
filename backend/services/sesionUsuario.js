@@ -13,17 +13,34 @@ const crypto = require("crypto");//para tokens y codigos: mas rapido e igual de 
 let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 //vairables de usuario de sesion
-async function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
+function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
     storage.setApodoSesion(!limpiar ? data.apodo : null);
     storage.setCorreoSesion(!limpiar ? data.correo : null);
     storage.setFechaCreacionCuenta(!limpiar ? data.createdAt : null)
     storage.setFechaBloqueoApodo(!limpiar ? data.exp_bloq_apodo : null)
     storage.setFechaBloqueoCorreo(!limpiar ? data.exp_bloq_correo : null)
     storage.setFechaBloqueoContraseña(!limpiar ? data.exp_bloq_contrasena : null)
-    storage.setUsuariosSilence(!limpiar ? data.users_silence : null)
-    storage.setUsuariosBloqueados(!limpiar ? data.users_bloq : null)
+    storage.setUsuariosSilence(!limpiar ? String(data.users_silence) : [])
+    storage.setUsuariosBloqueados(!limpiar ? String(data.users_bloq) : [])
     storage.setIdDispositivo(!limpiar ? String(machineIdSync()) : null)
     storage.setSecretKEY(!limpiar ? data.secretKey : null)
+    storage.setListaChats(
+        !limpiar
+            ? data.chats.map(c => ({
+                ...c,
+                id: c.id.toString() // convierte ObjectId a string si queda alguno
+            }))
+            : []
+    );
+    storage.setListaContactos(
+        !limpiar
+            ? data.contactos.map(c => ({
+                ...c,
+                id: c.id.toString() // convierte ObjectId a string si queda alguno
+            }))
+            : []
+    );
+    storage.setVisibleUsuario(!limpiar ? data.visible : false)
 }
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
     //leer fichero con datos de sesion anterior

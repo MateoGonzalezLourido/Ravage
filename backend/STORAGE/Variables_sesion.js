@@ -8,6 +8,12 @@ let UsuariosSilenciados = []
 let UsuariosBloqueados = []
 let IdDispositivo;
 let secretKey;
+
+let ListaChats = []
+let ListaContactos = []
+let VisibleUsuario = false
+
+
 module.exports = {
     setCorreoSesion: (correo) => Correo_Usuario_sesion = correo,
     getCorreoSesion: () => Correo_Usuario_sesion,
@@ -69,6 +75,13 @@ module.exports = {
     getUsuariosBloqueados: () => UsuariosBloqueados,
     setIdDispositivo: (id) => IdDispositivo = id,
     getIdDispositivo: () => IdDispositivo,
-    setSecretKEY: (key) =>  secretKey = (key != "") ? key : null ,
+    setSecretKEY: (key) => secretKey = (key != "") ? key : null,
     getSecretKEY: () => secretKey,
+
+    setListaChats: (lista) => ListaChats = lista,
+    getListaChats: () => ListaChats,
+    setListaContactos: (lista) => ListaContactos = lista,
+    getListaContactos: () => ListaContactos,
+    setVisibleUsuario: (bool) => VisibleUsuario = bool,
+    getVisibleUsuario: () => VisibleUsuario,
 }

@@ -55,12 +55,18 @@ const UserSchema = new mongoose.Schema({
     contactos: {
         type: [{
             id: { type: mongoose.Schema.Types.ObjectId, required: true },
-            apodo: { type: String, default: "" }
+            apodo: { type: String, default: "" },
+            grupo: { type: Boolean, default: false }
         }],
         default: []
     },
     chats: {
-        type: [mongoose.Schema.Types.ObjectId],
+        type: [{
+            id: { type: mongoose.Schema.Types.ObjectId, required: true },
+            apodo: { type: String, default: "" },//si es chat no hay
+            grupo: { type: Boolean, default: false },
+            ultimoCambio: { type: Date, default: Date.now }
+        }],
         default: []
     },
     visible: {
@@ -195,13 +201,22 @@ const DPBLOQUEADOSchema = new mongoose.Schema({
         default: ""
     }
 })
+const EntradaSchema = new mongoose.Schema({
+    tipo: { type: String, required: true },   // tipo de entrada, p.ej. "archivo", "mensaje"
+    data: { type: mongoose.Schema.Types.Mixed, required: true } // cualquier estructura de datos
+})//mongo genera un _id para cada entrada(esto es bueno para luego borrar cada entrada por id)
 const ChatSchema = new mongoose.Schema({
     nombre: {//solo si es un grupo (si es de dos se coje el apodo que le tengas a ese usuario)
         type: String,
         default: ""
     },
     usuarios: {
-        type: [mongoose.Schema.Types.ObjectId]
+        type: [mongoose.Schema.Types.ObjectId],
+        default: []
+    },
+    grupo: {
+        type: Boolean,
+        default: false
     },
     mensajes: {
         type: [
@@ -215,9 +230,25 @@ const ChatSchema = new mongoose.Schema({
                 },
                 data: { type: Date, default: Date.now }
             }
-        ]
+        ],
+        default: []
     }
 })
+const BuzonSchema = new mongoose.Schema({
+    correo: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        trim: true,
+        minlength: 2,
+        maxlength: 255
+    },
+    entrada: [EntradaSchema]
+})
+
+
 //expiracion codigos y tokens
 TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });//90minutos
 ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });//10minutos
@@ -233,7 +264,9 @@ const TokenSession = mongoose.model("tksession", TokenSchema, "tksession");
 const TokenVC = mongoose.model("tokenvcv", TokenSchema, "tokenvcv");
 const TokenDPC = mongoose.model("tokendpc", TokenDPCSchema, "tokendpc");
 const DispositivosBloqueados = mongoose.model("dpbloqueados", DPBLOQUEADOSchema, "dpbloqueados");
-const ChatRavage = mongoose.model("chats", ChatSchema, "chats");
+const ChatsRavage = mongoose.model("chats", ChatSchema, "chats");
+const BuzonUsuarios = mongoose.model("buzonsusuarios", BuzonSchema, "buzonusuarios");
+
 //conectar db
 async function connectDB() {
     //no se pueden poner comprobaciones de si esta conectado al iniciar la app porque tarda mucho y falla
@@ -603,5 +636,52 @@ async function ActualizarSecretKeyUsuario(actualizar = true) {
         return false
     }
 }
+async function limpiar_mensajes_chats_antiguos(data) {
+    const chatIds = []
+    data.forEach(c => { chatIds.push(c.id) })
 
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario }
+    //borrar chats de hace mas de un año 
+    const haceUnAno = new Date();
+    haceUnAno.setFullYear(haceUnAno.getFullYear() - 1);
+
+    await ChatsRavage.updateMany(
+        { _id: { $in: chatIds } }, // solo esos chats del usuario
+        {
+            $pull: {
+                mensajes: { data: { $lt: haceUnAno } } // elimina mensajes antiguos
+            }
+        }
+    );
+}
+async function obtener_datos_chats({ data, grupales = null, mensajes = true }) {
+    try {
+        let chatIds = []
+        //si grupales es null significa que no improta, es true:solo grupos, si es false: solo chats no grupales
+        data.forEach(c => {
+            if ((grupales == null) || (c.grupo == grupales)) {
+                chatIds.push(c.id)
+            }
+        })
+
+        //buscar los datos por mongodb
+        const data_obtenida = await ChatsRavage.find(
+            { _id: { $in: chatIds } },//filtro(todos los chatsid)
+            { mensajes: 0 } // proyección: 0 = excluir
+        );
+
+        return data_obtenida
+    } catch {
+        return []
+    }
+}
+async function obtener_datos_chat_unico(id) {
+    try {
+        //buscar los datos por mongodb
+        const data_obtenida = await ChatsRavage.findById(id);
+
+        return data_obtenida
+    } catch {
+        return []
+    }
+}
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario, obtener_datos_chats, obtener_datos_chat_unico, limpiar_mensajes_chats_antiguos }
