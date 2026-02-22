@@ -1,4 +1,5 @@
 let apodo_render = "Usuario"
+let contactos_añadir = []//{id , nombre(apodo puesto por ti o apodo propio)}
 
 //ajustes
 function Todos_Los_Eventos_Funciones_Ajustes(e) {
@@ -603,15 +604,89 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados)
 }
 //chat
-function desplegar_menu_añadir_chat(mostrar = true) {
+function desplegar_menu_añadir_chat(e, mostrar = true) {
+    e.preventDefault()
     if (mostrar) {
         document.querySelector("#alineador-seccion-añadir-chat").classList.remove("ocultar-display")
         document.querySelector("#alineador-seccion-añadir-chat").classList.add("flex-display")
-
     }
     else {
         document.querySelector("#alineador-seccion-añadir-chat").classList.remove("flex-display")
         document.querySelector("#alineador-seccion-añadir-chat").classList.add("ocultar-display")
+
+        contactos_añadir = []
+        actualizar_lista_contactos_añadir()
+    }
+}
+function actualizar_lista_contactos_añadir() {
+    function crear_eventos() {
+        document.querySelectorAll(".componente-lista-contactos-añadidos-chat-crear").forEach((c) => {
+            c.addEventListener("click", (e) => {
+                e.preventDefault()
+                const id = e.target.dataset.id
+                quitar_contacto_lista_añadir(id)
+            })
+        })
+    }
+    let html = ""
+    for (c of contactos_añadir) {
+        html += `<div class="componente-lista-contactos-añadidos-chat-crear" data-id="${c.id}">${c.nombre}</div>`
+    }
+
+    if (contactos_añadir.length == 1) {
+        document.querySelector("#contactos-añadidos-grupo").innerHTML = html
+        document.querySelector("#bt-agregar-contaco-nuevo").innerHTML = "Crear Chat"
+        crear_eventos()
+    }
+    else if (contactos_añadir.length > 1) {
+        document.querySelector("#contactos-añadidos-grupo").innerHTML = html
+        document.querySelector("#bt-agregar-contaco-nuevo").innerHTML = "Crear Grupo"
+        crear_eventos()
+    }
+    else {
+        document.querySelector("#contactos-añadidos-grupo").innerHTML = "<span>*Agrega contactos</span>"
+        document.querySelector("#bt-agregar-contaco-nuevo").innerHTML = "Agregar"
+    }
+}
+function añadir_contacto_lista_añadir(e) {
+    const id = e.target.dataset.id
+    const nombre = e.target.dataset.nombre
+    contactos_añadir.push({ id, nombre })
+
+    actualizar_lista_contactos_añadir()
+}
+function quitar_contacto_lista_añadir(id) {
+    contactos_añadir.filter(x => x.id != id)
+
+    actualizar_lista_contactos_añadir()
+}
+async function buscar_ususario_añadir_chat() {
+    function crear_eventos() {
+        document.querySelectorAll(".componente-posible-usaurio-añadir").forEach(c => {
+            c.addEventListener("click", (e) => {
+                e.preventDefault()
+                añadir_contacto_lista_añadir(e)
+            })
+        })
+    }
+    //buscar
+    const texto_buscar = document.querySelector("#texto-buscar-chat-añadir").value.trim()
+    let resultado;
+    if ('@'.test(texto_buscar)) {//es correo
+        //TODO: HAY QUE COMPROBAR SI EL CORREO ES VALIDO PARA REDUCIR LLAMADAS AL DB
+        resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar, true)
+    }
+    else if ('#'.test(texto_buscar)) {//id amigo
+        //TODO: COMPROBAR SI ES UN  ID VALIDO
+        resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar, false)
+    }
+
+    if (resultado) {
+        document.querySelector("#resultados-busqueda-usaurios").innerHTML = `<div class="componente-posible-usaurio-añadir" data-id="${resultado.id}" data-nombre="${resultado.nombre}">${resultado.nombre}</div>`
+        crear_eventos()
+    }
+    else {
+        document.querySelector("#resultados-busqueda-usaurios").innerHTML = `*No hay resultados`
     }
 }
 
@@ -800,8 +875,16 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
     //chat
     //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...
-
+    //añadir chat
     document.querySelector("#bt-añadir-chat").addEventListener("click", desplegar_menu_añadir_chat)
+    document.querySelector("#bt-cerrar-menu-añadir-chats").addEventListener("click", desplegar_menu_añadir_chat(false))
+
+    document.querySelector("#texto-buscar-chat-añadir").addEventListener("Keydown", (e) => {
+        if (e.key === "Enter") {
+            buscar_ususario_añadir_chat(e)
+        }
+    })
+
 
     INICIO_CHAT_MENU_PRINCIPAL()
     /*TODO: obtener buzon y mostrar cambios en lista chats si hay(usando id del chat)  mostrar notificaciones de otras cosas */

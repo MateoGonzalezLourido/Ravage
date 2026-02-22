@@ -7,7 +7,7 @@ const crypto = require("crypto")
 const { validateToken } = require('../services/CreadorTokens.js')
 //esquemas de datos
 const UserSchema = new mongoose.Schema({
-    apodo: {
+    apodo: {//es el nombre que se te pondra si otro usaurio no te tiene de contacto con su nombre propio
         type: String,
         required: true,
         minlength: 3,
@@ -26,33 +26,33 @@ const UserSchema = new mongoose.Schema({
         minlength: 2,
         maxlength: 255
     },
-    contrasena: {
+    contrasena: {//solo para iniciar sesion
         type: String,
         required: true,
         minlength: 5,
         trim: true,
     },
-    exp_bloq_apodo: {
+    exp_bloq_apodo: {//tiempo que tienes que esperar para cambiar de apodo
         type: Date,
         default: () => new Date(Date.now() + 1 * 60 * 60 * 1000) // 1 hora después
     },
-    exp_bloq_correo: {
+    exp_bloq_correo: {//tiempo que tienes que esperar para cambiar el correo
         type: Date,
         default: () => new Date(Date.now() + 72 * 60 * 60 * 1000) // 72 horas después
     },
-    exp_bloq_contrasena: {
+    exp_bloq_contrasena: {//tiempo que tienes que esperar para cambiar la cotnraseña
         type: Date,
         default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas después
     },
-    users_bloq: {
-        type: [[mongoose.Schema.Types.ObjectId]],
+    users_bloq: {//chats que tienes bloqueados
+        type: [mongoose.Schema.Types.ObjectId],
         default: []
     },
-    users_silence: {
-        type: [[mongoose.Schema.Types.ObjectId]],
+    users_silence: {//chats que tienes silenciados
+        type: [mongoose.Schema.Types.ObjectId],
         default: []
     },
-    contactos: {
+    contactos: {//acceso rapido a los contactos del usuario (se podria mover de aqui si la aplicacion crece mucho)
         type: [{
             id: { type: mongoose.Schema.Types.ObjectId, required: true },
             apodo: { type: String, default: "" },
@@ -60,7 +60,7 @@ const UserSchema = new mongoose.Schema({
         }],
         default: []
     },
-    chats: {
+    chats: {//un acceso rapido a los chats del usuario
         type: [{
             id: { type: mongoose.Schema.Types.ObjectId, required: true },
             apodo: { type: String, default: "" },//si es grupo no hay
@@ -69,19 +69,33 @@ const UserSchema = new mongoose.Schema({
         }],
         default: []
     },
-    visible: {
+    visible: {//esto te oculta por completo hacia otros usuarios (tampoco te peuden meter en chats ... pero si recibir menasjes de chats ya creados, solo que no ven que los lees ni nada)
         type: Boolean,
         default: true
     },
-    bloqueada: {
+    mostrarCorreo: {//esto oculta por completo tu correo 
+        type: Boolean,
+        default: true
+    },
+    bloqueada: {//!esto hay que moverlo de aqui (sirve para bloquear la cuenta)
         type: Boolean,
         default: false
     },
-    secretKey: {
+    bloquearChatsNuevos: {//esto permite que no te añadan a nuevos chats sin usar "visible"
+        type: Boolean,
+        default: false
+    },
+    idamigo: {//sustituye el correo a la ahora de crear chats y contactos
+        type: String,
+        default: "",
+        required: true,
+        unique: true
+    },
+    secretKey: {//key para cifrador los archivos en local de cada usuario
         type: String,
         default: ""
     },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now }//fecha de creacion de cuenta
 })
 const ValidationCodeSchema = new mongoose.Schema({
     code: {
@@ -309,9 +323,9 @@ async function LoginUsuarioDB({ correo = null, contraseña = null, token = null,
 
         //verificar si mongodb tiene ese token
         const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
-        const token_datos = await TokenSession.find({ correo, token: tokenhash, id_dp })
+        const token_datos = await TokenSession.exists({ correo, token: tokenhash, id_dp })
 
-        if (!token_datos || token_datos == [] || token_datos.length == 0) {
+        if (!token_datos) {
             console.error("Token invalido o expirado")
             return { success: false };
         }
@@ -351,11 +365,22 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la
     if (apodo == "") apodo = "Usuario"
     if (!contraseña || !correo) throw new Error("Faltan datos para insertar usuario");
     const key = await ActualizarSecretKeyUsuario(false)
+    //crear id amigo
+    function generarIdAmigo() {
+        return crypto.randomBytes(8).toString("hex").toUpperCase()
+    }
+    let idamigo = ""
+    let existe = true
+    while (existe) {
+        idamigo = generarIdAmigo()
+        existe = await User.exists({ idamigo: idamigo })
+    }
     await User.create({
         apodo: apodo,
         correo: correo,
         contrasena: contraseña,
-        secretKey: key
+        secretKey: key,
+        idamigo: idamigo
     });
     console.log("Usuario insertado correctamente");
     return true
@@ -633,7 +658,9 @@ async function ActualizarSecretKeyUsuario(actualizar = true) {
         );
         return key
     }
-    catch {
+    catch (e){
+        console.error(e)
+
         return false
     }
 }
@@ -671,7 +698,9 @@ async function obtener_datos_chats({ data, grupales = null, mensajes = true }) {
         );
 
         return data_obtenida
-    } catch {
+    } catch (e){
+        console.error(e)
+
         return []
     }
 }
@@ -681,7 +710,8 @@ async function obtener_datos_chat_unico(id) {
         const data_obtenida = await ChatsRavage.findById(id);
 
         return data_obtenida
-    } catch {
+    } catch (e) {
+        console.error(e)
         return []
     }
 }
@@ -692,4 +722,36 @@ async function obtener_datos_usuario(id, datos = null) {
     const datos_usuario = await User.findById(id, datos_buscar)
     return datos_usuario
 }
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario, obtener_datos_chats, obtener_datos_chat_unico, limpiar_mensajes_chats_antiguos }
+async function encontrar_usuario(texto, correo = false) {
+    function bloqueado(resultado) {
+        const id_buscado = String(resultado._id)
+        //mirar si te tiene bloqueado
+        const id_propio = storage.getIDMongodbUsuario()
+        if (resultado.users_bloq.indexOf(id_propio) != -1) return null
+        //mirar si lo tienes bloqueado
+        const bloqueados_propios = storage.getUsuariosBloqueados()
+        if (bloqueados_propios.indexOf(id_buscado) != -1) return null
+    }
+
+    if (correo) {
+        let resultado;
+        try {
+            resultado = await User.findOne({ correo: texto, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }, "_id apodo users_bloq")
+        } catch (e) {
+            console.error(e)
+        }
+        if (!resultado || bloqueado(resultado)) return null
+        else return { id: resultado._id, nombre: resultado.apodo }
+    }
+    else {
+        try {
+            const resultado = await User.findOne({ idamigo: texto, visible: true, bloquearChatsNuevos: false }, "_id apodo users_bloq")
+        } catch (e) {
+            console.error(e)
+        }
+        if (!resultado || bloqueado(resultado)) return null
+        else return { id: resultado._id, nombre: resultado.apodo }
+
+    }
+}
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario, obtener_datos_chats, obtener_datos_chat_unico, limpiar_mensajes_chats_antiguos, encontrar_usuario }

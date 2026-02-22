@@ -100,7 +100,9 @@ async function readFileSession(ruta, cifrado = true) {
         ]);
 
         return JSON.parse(decrypted.toString());
-    } catch {
+    } catch (e) {
+        console.error(e)
+
         return null
     }
 }
