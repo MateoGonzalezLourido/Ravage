@@ -13,7 +13,7 @@ let secretKey;
 let ListaChats = []
 let ListaContactos = []
 let VisibleUsuario = false
-
+let IDamigo
 
 module.exports = {
     setCorreoSesion: (correo) => Correo_Usuario_sesion = correo,
@@ -85,6 +85,8 @@ module.exports = {
     getListaContactos: () => ListaContactos,
     setVisibleUsuario: (bool) => VisibleUsuario = bool,
     getVisibleUsuario: () => VisibleUsuario,
-    setIDMongodbUsuario: (id) => setIDMongodbUsuario = id,
-    getIDMongodbUsuario: () => setIDMongodbUsuario,
+    setIDMongodbUsuario: (id) => IdMongodbUsuario = id,
+    getIDMongodbUsuario: () => IdMongodbUsuario,
+    setIDAmigo: (id) => IDamigo = id,
+    getIDAmigo: () => IDamigo,
 }

@@ -2,9 +2,9 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 const { startServer } = require('./backend/server.js')
-const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, obtener_datos_chats, limpiar_mensajes_chats_antiguos, obtener_datos_chat_unico, obtener_datos_usuario, encontrar_usuario, crear_chat_nuevo } = require("./backend/db/mongo.js")
+const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, obtener_datos_chats, limpiar_mensajes_chats_antiguos, obtener_datos_chat_unico, obtener_datos_usuario, encontrar_usuario, CREAR_CHAT_NUEVO } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } = require('./backend/services/sesionUsuario.js');
-const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getUsuariosSilence, getUsuariosBloqueados, getListaChats, getIDMongodbUsuario } = require('./backend/STORAGE/Variables_sesion.js')
+const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getUsuariosSilence, getUsuariosBloqueados, getListaChats, getIDMongodbUsuario, getIDAmigo, getListaContactos } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
 let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
@@ -156,8 +156,8 @@ ipcMain.handle("añadir-usuarios-bloqueados", async (_, id, apodo) => {
 ipcMain.handle("añadir-usuarios-silenciados", async (_, id, apodo) => {
     return await añadirUsuariosSilenciados(id, apodo)
 })
-ipcMain.handle("obtener-chats-usuario", async () => {
-    return await getListaChats()
+ipcMain.handle("obtener-chats-usuario", () => {
+    return getListaChats()
 })
 
 ipcMain.handle("obtener-datos-chats-grupales-usuario", async (_, { data, grupales, mensajes }) => {
@@ -179,5 +179,14 @@ ipcMain.handle("encontrar-usuario-externo", async (_, texto, correo = false) => 
     return await encontrar_usuario(texto, correo)
 })
 ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre) => {
-    return await crear_chat_nuevo(ids, nombre)
+    return await CREAR_CHAT_NUEVO(ids, nombre)
+})
+ipcMain.handle("obtener-correo-usuario", () => {
+    return getCorreoSesion()
+})
+ipcMain.handle("obtener-idamigo-usuario", () => {
+    return getIDAmigo()
+})
+ipcMain.handle("obtener-contactos-usuario", () => {
+    return getListaContactos()
 })

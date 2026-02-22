@@ -93,6 +93,8 @@ function mostrar_menu_reg(accion) {
     }
 }
 function mostrar_menu_validation_code(accion) {
+    document.querySelector("#bt-code-introducir").value = ""//limpiar input
+
     if (!accion) {
         document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
         document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")

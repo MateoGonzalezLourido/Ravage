@@ -609,6 +609,7 @@ function desplegar_menu_añadir_chat(e, mostrar = true) {
     if (mostrar) {
         document.querySelector("#alineador-seccion-añadir-chat").classList.remove("ocultar-display")
         document.querySelector("#alineador-seccion-añadir-chat").classList.add("flex-display")
+        document.querySelector("#texto-buscar-chat-añadir").focus()
     }
     else {
         document.querySelector("#alineador-seccion-añadir-chat").classList.remove("flex-display")
@@ -622,7 +623,6 @@ function actualizar_lista_contactos_añadir() {
     function crear_eventos() {
         document.querySelectorAll(".componente-lista-contactos-añadidos-chat-crear").forEach((c) => {
             c.addEventListener("click", (e) => {
-                e.preventDefault()
                 const id = e.target.dataset.id
                 quitar_contacto_lista_añadir(id)
             })
@@ -635,32 +635,33 @@ function actualizar_lista_contactos_añadir() {
 
     if (contactos_añadir.length == 1) {
         document.querySelector("#contactos-añadidos-grupo").innerHTML = html
-        document.querySelector("#bt-agregar-contaco-nuevo").innerHTML = "Crear Chat"
+        document.querySelector("#bt-agregar-contacto-nuevo").innerHTML = "Crear Chat"
         crear_eventos()
     }
     else if (contactos_añadir.length > 1) {
         document.querySelector("#contactos-añadidos-grupo").innerHTML = html
-        document.querySelector("#bt-agregar-contaco-nuevo").innerHTML = "Crear Grupo"
+        document.querySelector("#bt-agregar-contacto-nuevo").innerHTML = "Crear Grupo"
         crear_eventos()
     }
     else {
         document.querySelector("#contactos-añadidos-grupo").innerHTML = "<span>*Agrega contactos</span>"
-        document.querySelector("#bt-agregar-contaco-nuevo").innerHTML = "Agregar"
+        document.querySelector("#bt-agregar-contacto-nuevo").innerHTML = "Agregar"
     }
 }
 function añadir_contacto_lista_añadir(e) {
     const id = e.target.dataset.id
     const nombre = e.target.dataset.nombre
-    contactos_añadir.push({ id, nombre })
+    if (contactos_añadir.findIndex(x => x.id == id) == -1) {
+        contactos_añadir.push({ id, nombre })
+        actualizar_lista_contactos_añadir()
+    }
 
-    actualizar_lista_contactos_añadir()
 }
 function quitar_contacto_lista_añadir(id) {
-    contactos_añadir.filter(x => x.id != id)
-
+    contactos_añadir = contactos_añadir.filter(x => x.id != id)
     actualizar_lista_contactos_añadir()
 }
-async function buscar_ususario_añadir_chat() {
+async function buscar_ususario_añadir_chat(e) {
     function crear_eventos() {
         document.querySelectorAll(".componente-posible-usaurio-añadir").forEach(c => {
             c.addEventListener("click", (e) => {
@@ -672,13 +673,17 @@ async function buscar_ususario_añadir_chat() {
     //buscar
     const texto_buscar = document.querySelector("#texto-buscar-chat-añadir").value.trim()
     let resultado;
-    if ('@'.test(texto_buscar)) {//es correo
+    if (/[@]/.test(texto_buscar)) {//es correo
         //TODO: HAY QUE COMPROBAR SI EL CORREO ES VALIDO PARA REDUCIR LLAMADAS AL DB
-        resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar, true)
+        const correo_usuario = await window.datos_usuario.OBTENER_CORREO_USUARIO()
+        if (texto_buscar == correo_usuario) return null
+        else resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar, true)
     }
-    else if ('#'.test(texto_buscar)) {//id amigo
+    else if (/[#]/.test(texto_buscar)) {//id amigo
         //TODO: COMPROBAR SI ES UN  ID VALIDO
-        resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar, false)
+        const idamigo_usuario = await window.datos_usuario.OBTENER_IDAMIGO_USUARIO()
+        if (texto_buscar == idamigo_usuario) return null
+        else resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar, false)
     }
 
     if (resultado) {
@@ -695,14 +700,15 @@ async function crear_chat_nuevo(e) {
     if (contactos_añadir.length == 0) return null
     //nombre del chat
     let nombre = document.querySelector("#nombre-chat-nuevo-crear").value.trim()
-    if (nombre == "" && contactos_añadir.length == 1) {
+    if (nombre == "" && contactos_añadir.length != 1) {
+        nombre = "ChatGrupalSiNombre"
+    } else if (nombre == "") {
         nombre = contactos_añadir[0].nombre
     }
-    else {
-        nombre = "ChatGrupalSiNombre"
-    }
+
     //sacar el id del usuario
     const ids = []
+
     for (i of contactos_añadir) ids.push(i.id)
     contactos_añadir = []
     //TODO: MIRAR SI ES UN NOMBRE VALIDO
@@ -716,18 +722,20 @@ async function crear_chat_nuevo(e) {
     }
 
 }
-const chat_componente_lista_structura_html = (data, data_grupo) => {
+const chat_componente_lista_structura_html = (data, data_grupo, data_contacto) => {
+    console.log({ data, data_grupo, data_contacto })
     function nombre() {
-        if (data_grupo == -1) return data.apodo
+
+        if (!data_grupo) return data_contacto.apodo
         else return data_grupo.nombre
     }
     function usuarios() {
-        if (data_grupo != -1) return (`<div class="numero-integrantes-chat-lista"><span>${data_grupo.usuarios.length} integrantes</span></div>`)
+        if (data_grupo) return (`<div class="numero-integrantes-chat-lista"><span>${data_grupo.usuarios.length} integrantes</span></div>`)
         else return ``
     }
     function ultima_vez() {
-        if (data_grupo == -1) {
-            const fecha = new Date(datos.fecha);
+        if (!data_grupo) {
+            const fecha = new Date(data.ultimoCambio);
 
             const hora = fecha.toLocaleTimeString("es-ES", {
                 hour: "2-digit",
@@ -742,7 +750,7 @@ const chat_componente_lista_structura_html = (data, data_grupo) => {
             }).replace(".", ""); // quita punto si lo añade
 
             const resultado = `${hora}, ${dia} ${mes}`;
-            return (`<div class="numero-integrantes-chat-lista"><span>${resultado} integrantes</span></div>`)
+            return (`<div class="numero-integrantes-chat-lista"><span>${resultado}</span></div>`)
         }
         else { return `` }
     }
@@ -842,55 +850,72 @@ function Comenzar_conexion_p2p(e) {
     e.preventDefault()
 }
 async function INICIO_CHAT_MENU_PRINCIPAL() {
-    const lista_chats = await window.datos_usuario.OBTENER_CHATS_USUARIO()
+    try {
+        const lista_chats = await window.datos_usuario.OBTENER_CHATS_USUARIO()
+        const lista_contactos = await window.datos_usuario.OBTENER_CONTACTOS_USUARIO()
+        window.datos_usuario.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
 
-    window.datos_usuario.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
-
-    const datos_chats_grupales = await window.datos_usuario.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: true, mensajes: false })
-    //crear html lista chats
-    //TODO: ORDENAR LOS CHATS POR ULTIMO CAMBIO
-    let html = ""
-    lista_chats.forEach(c => {
-        const data_grupo = datos_chats_grupales.findIndex(x => x._id.toString() === c._id.toString())
-        html += chat_componente_lista_structura_html(c, datos_chats_grupales[data_grupo])
-    })
-    document.querySelector("#lista-chats-componentes").innerHTML = html
-    document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
-        componente.addEventListener("click", async (e) => {
-            e.preventDefault()
-            //TODO: OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
-            const id = e.target.dataset.id
-            //obtener info de ese chat
-            //TODO: AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
-            let datos_chat = await window.datos_usuario.OBTENER_DATOS_CHAT_UNICO(id)
-            const id_usuario = await window.datos_usuario.OBTENER_ID_MONGODB_USUARIO()
-
-            //*obtener el nombre del chat (la dificultad es que puede sser grupo o no, y puede ser contacto o no)
-            if (!datos_chat.grupo) {
-                const nombres_contactos = await window.datos_usuario.OBTENER_CONTACTOS_LISTA()
-                const id_buscar = (datos_chat.usuarios).filter(x => x != id_usuario)//quitamos el id del usaurio
-                const indice = nombres_contactos.findIndex(x => x.id == id_buscar)//buscar si el id del otro usaurio esta ya en contactos
-                if (indice == -1) {//no lo tienes de contacto
-                    //cojer el correo del usaurio
-                    const data_usuarios_externo = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
-                    datos_chat.nombre = data_usuarios_externo.apodo
-                }
-                else {
-                    datos_chat.nombre = nombres_contactos[indice].apodo//usar el apodo puesto
-                }
+        const datos_chats_grupales = await window.datos_usuario.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
+        //crear html lista chats
+        //TODO: ORDENAR LOS CHATS POR ULTIMO CAMBIO
+        let html = ""
+        console.log({ datos_chats_grupales, lista_chats, lista_contactos })
+        for (c of lista_chats) {
+            //TODO: HAY QUE MIRAR SI ES UN GRUPO, SI ES SE COJE EL NOMBRE DE CHATSRAVAGE, SI NO LOS ES SE BUSCA EL ID DEL OTRO USUARIO Y LUEGO EN CONTACTOS SE MIRA SI LO TENGO AGREGADO, SINO SE BUSCA ESE ID POR LA BASE DE DATOS DE USUARIO Y COJEMOS ESE APODO
+            /*let nombre = ""
+            const data_grupo = datos_chats_grupales.findIndex(x => x.id.toString() === c.id.toString())
+            if (data_grupo != -1 && (datos_chats_grupales[data_grupo].grupo)) {
+                nombre = datos_chats_grupales[data_grupo].nombre
             }
+            else if (data_grupo != -1 && (!datos_chats_grupales[data_grupo].grupo)) {
+                const id_propio = await window.datos_usuario.OBTENER_ID_MONGODB_USUARIO()
+                let us = lista_contactos.filter(x => x.id != id_propio)
+                const data_contacto = lista_contactos.findIndex(x => x.id.toString() === us[0].id.toString())
+            }*/
+            html += chat_componente_lista_structura_html(c, datos_chats_grupales[data_grupo], lista_contactos[data_contacto])
+        }
+        document.querySelector("#lista-chats-componentes").innerHTML = html
 
-            document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat)
-            //eventos
-            document.querySelector("#nav-prinicpal-chat-usaurio").addEventListener("click", mostrar_datos_chat_usaurios)
-            document.querySelector("#nombre-chat-nav").addEventListener("click", mostrar_datos_chat_usaurios)
-            document.querySelector("#bt-crear-conexion-p2p").addEventListener("click", Comenzar_conexion_p2p)
+        document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
+            componente.addEventListener("click", async (e) => {
+                e.preventDefault()
+                //TODO: OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
+                const id = e.target.dataset.id
+                //obtener info de ese chat
+                //TODO: AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
+                let datos_chat = await window.datos_usuario.OBTENER_DATOS_CHAT_UNICO(id)
+                const id_usuario = await window.datos_usuario.OBTENER_ID_MONGODB_USUARIO()
+
+                //*obtener el nombre del chat (la dificultad es que puede sser grupo o no, y puede ser contacto o no)
+                if (!datos_chat.grupo) {
+                    const nombres_contactos = await window.datos_usuario.OBTENER_CONTACTOS_LISTA()
+                    const id_buscar = (datos_chat.usuarios).filter(x => x != id_usuario)//quitamos el id del usaurio
+                    const indice = nombres_contactos.findIndex(x => x.id == id_buscar)//buscar si el id del otro usaurio esta ya en contactos
+                    if (indice == -1) {//no lo tienes de contacto
+                        //cojer el correo del usaurio
+                        const data_usuarios_externo = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
+                        datos_chat.nombre = data_usuarios_externo.apodo
+                    }
+                    else {
+                        datos_chat.nombre = nombres_contactos[indice].apodo//usar el apodo puesto
+                    }
+                }
+
+                document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat)
+                //eventos
+                document.querySelector("#nav-prinicpal-chat-usaurio").addEventListener("click", mostrar_datos_chat_usaurios)
+                document.querySelector("#nombre-chat-nav").addEventListener("click", mostrar_datos_chat_usaurios)
+                document.querySelector("#bt-crear-conexion-p2p").addEventListener("click", Comenzar_conexion_p2p)
 
 
+            })
         })
-    })
+    }
+    catch (e) {
+        throw e
+    }
 }
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     //mensaje bienvenida
     window.pushNotificacion({
         prioridad: 0,        // menor número = más importante
@@ -900,17 +925,19 @@ document.addEventListener("DOMContentLoaded", () => {
     //ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
     //chat
+    INICIO_CHAT_MENU_PRINCIPAL()
     //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...
     //añadir chat
-    document.querySelector("#bt-añadir-chat").addEventListener("click", desplegar_menu_añadir_chat)
-    document.querySelector("#bt-cerrar-menu-añadir-chats").addEventListener("click", desplegar_menu_añadir_chat(false))
-    document.querySelector("#texto-buscar-chat-añadir").addEventListener("Keydown", async (e) => {
-        if (e.key === "Enter") await buscar_ususario_añadir_chat(e)
+    document.querySelector("#bt-añadir-chat").addEventListener("click", (e) => desplegar_menu_añadir_chat(e, true))
+    document.querySelector("#bt-cerrar-menu-añadir-chats").addEventListener("click", (e) => desplegar_menu_añadir_chat(e, false))
+    document.querySelector("#texto-buscar-chat-añadir").addEventListener("keydown", async (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+
+            await buscar_ususario_añadir_chat(e)
+        }
     })
-    document.querySelector("#bt-agregar-contaco-nuevo").addEventListener("click", crear_chat_nuevo)
+    document.querySelector("#bt-agregar-contacto-nuevo").addEventListener("click", crear_chat_nuevo)
 
-
-
-    INICIO_CHAT_MENU_PRINCIPAL()
     /*TODO: obtener buzon y mostrar cambios en lista chats si hay(usando id del chat)  mostrar notificaciones de otras cosas */
 })

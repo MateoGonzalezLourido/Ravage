@@ -116,6 +116,16 @@ contextBridge.exposeInMainWorld('datos_usuario', {//funciones de ajustes
     },
     CREAR_CHAT_NUEVO: (ids, nombre) => {
         return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre)
+    },
+    OBTENER_CORREO_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-correo-usuario")
+    },
+    OBTENER_IDAMIGO_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-idamigo-usuario")
+    },
+    OBTENER_CONTACTOS_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-contactos-usuario")
     }
+
 
 })
