@@ -603,6 +603,18 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados)
 }
 //chat
+function desplegar_menu_añadir_chat(mostrar = true) {
+    if (mostrar) {
+        document.querySelector("#alineador-seccion-añadir-chat").classList.remove("ocultar-display")
+        document.querySelector("#alineador-seccion-añadir-chat").classList.add("flex-display")
+
+    }
+    else {
+        document.querySelector("#alineador-seccion-añadir-chat").classList.remove("flex-display")
+        document.querySelector("#alineador-seccion-añadir-chat").classList.add("ocultar-display")
+    }
+}
+
 const chat_componente_lista_structura_html = (data, data_grupo) => {
     function nombre() {
         if (data_grupo == -1) return data.apodo
@@ -642,7 +654,7 @@ const chat_componente_lista_structura_html = (data, data_grupo) => {
 
     return html
 }
-//TODO
+
 const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
     let html = ""
     const class_mensajes = ["soy-emisor", "soy-receptor"]
@@ -658,7 +670,7 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
         if (propio) return ``
         else {
             const nombre_indice = nombres_id.findIndex(x => x.id == data.emisor)
-            //TODO
+
             if (nombre_indice == -1) {//hay que buscarlo
                 const indice = nombres_contactos.findIndex(x => x.id == data.emisor)//buscar si el id del otro usaurio esta ya en contactos
                 if (indice == -1) {//no lo tienes de contacto
@@ -707,6 +719,12 @@ async function Crear_chat_html(datos, id_propio) {
         </div>
     </div>
     ${await todo_chat()}
+    <div class="seccion-escritura-mensaje-chat">
+        <div id="bt-añadir-archivo-mensaje-escritura">        
+            <img src="" alt="">
+        </div>
+        <textarea placeholder="Escribe un mensaje"value=""></textarea>
+    </div>
     `
 
 }
@@ -763,7 +781,7 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
 
             document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat)
             //eventos
-            document.querySelector("#nav-prinicpal-chat-usaurio").addEventListener("click", mostrar_datos_chat_usaurios, id_usuario)
+            document.querySelector("#nav-prinicpal-chat-usaurio").addEventListener("click", mostrar_datos_chat_usaurios)
             document.querySelector("#nombre-chat-nav").addEventListener("click", mostrar_datos_chat_usaurios)
             document.querySelector("#bt-crear-conexion-p2p").addEventListener("click", Comenzar_conexion_p2p)
 
@@ -782,6 +800,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
     //chat
     //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...
+
+    document.querySelector("#bt-añadir-chat").addEventListener("click", desplegar_menu_añadir_chat)
 
     INICIO_CHAT_MENU_PRINCIPAL()
     /*TODO: obtener buzon y mostrar cambios en lista chats si hay(usando id del chat)  mostrar notificaciones de otras cosas */
