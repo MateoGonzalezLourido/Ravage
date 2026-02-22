@@ -28,19 +28,32 @@ function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
     storage.setListaChats(
         !limpiar
             ? data.chats.map(c => ({
-                ...c,
-                id: c.id.toString() // convierte ObjectId a string si queda alguno
+                id: c.id.toString(),          // ObjectId -> string
+                apodo: c.apodo || "",         // evitar undefined
+                grupo: !!c.grupo,             // boolean
+                ultimoCambio: new Date(c.ultimoCambio).toISOString() // Date -> string ISO
+            }))
+            : []
+    );
+    storage.setListaChats(
+        !limpiar
+            ? data.chats.map(c => ({
+                id: c.id.toString(),          // ObjectId -> string
+                apodo: c.apodo || "",         // evitar undefined
+                grupo: !!c.grupo,             // boolean
+                ultimoCambio: new Date(c.ultimoCambio).toISOString() // Date -> string ISO
             }))
             : []
     );
     storage.setListaContactos(
         !limpiar
             ? data.contactos.map(c => ({
-                ...c,
-                id: c.id.toString() // convierte ObjectId a string si queda alguno
+                id: c.id.toString(),          // ObjectId -> string
+                apodo: c.apodo || "",         // evitar undefined
             }))
             : []
     );
+    storage.setIDAmigo(!limpiar ? data.idamigo : false)
     storage.setVisibleUsuario(!limpiar ? data.visible : false)
 }
 async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
