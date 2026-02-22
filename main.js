@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 const { startServer } = require('./backend/server.js')
-const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, obtener_datos_chats, limpiar_mensajes_chats_antiguos, obtener_datos_chat_unico, obtener_datos_usuario, encontrar_usuario } = require("./backend/db/mongo.js")
+const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, obtener_datos_chats, limpiar_mensajes_chats_antiguos, obtener_datos_chat_unico, obtener_datos_usuario, encontrar_usuario, crear_chat_nuevo } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } = require('./backend/services/sesionUsuario.js');
 const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getUsuariosSilence, getUsuariosBloqueados, getListaChats, getIDMongodbUsuario } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
@@ -173,8 +173,11 @@ ipcMain.handle("obtener-id-mongodb-usuario", async () => {
     return await getIDMongodbUsuario()
 })
 ipcMain.handle("obtener-datos-usuario-externo", async (_, id, datos) => {
-    return await obtener_datos_usuario(_, id, datos)
+    return await obtener_datos_usuario(id, datos)
 })
 ipcMain.handle("encontrar-usuario-externo", async (_, texto, correo = false) => {
-    return await encontrar_usuario(_, texto, correo)
+    return await encontrar_usuario(texto, correo)
+})
+ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre) => {
+    return await crear_chat_nuevo(ids, nombre)
 })

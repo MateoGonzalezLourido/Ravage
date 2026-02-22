@@ -55,15 +55,14 @@ const UserSchema = new mongoose.Schema({
     contactos: {//acceso rapido a los contactos del usuario (se podria mover de aqui si la aplicacion crece mucho)
         type: [{
             id: { type: mongoose.Schema.Types.ObjectId, required: true },
-            apodo: { type: String, default: "" },
-            grupo: { type: Boolean, default: false }
+            apodo: { type: String, default: "", maxlength: 30 }
         }],
         default: []
     },
     chats: {//un acceso rapido a los chats del usuario
         type: [{
             id: { type: mongoose.Schema.Types.ObjectId, required: true },
-            apodo: { type: String, default: "" },//si es grupo no hay
+            apodo: { type: String, default: "", maxlength: 30 },//si es grupo no hay
             grupo: { type: Boolean, default: false },
             ultimoCambio: { type: Date, default: Date.now }
         }],
@@ -658,7 +657,7 @@ async function ActualizarSecretKeyUsuario(actualizar = true) {
         );
         return key
     }
-    catch (e){
+    catch (e) {
         console.error(e)
 
         return false
@@ -698,7 +697,7 @@ async function obtener_datos_chats({ data, grupales = null, mensajes = true }) {
         );
 
         return data_obtenida
-    } catch (e){
+    } catch (e) {
         console.error(e)
 
         return []
@@ -732,9 +731,8 @@ async function encontrar_usuario(texto, correo = false) {
         const bloqueados_propios = storage.getUsuariosBloqueados()
         if (bloqueados_propios.indexOf(id_buscado) != -1) return null
     }
-
+    let resultado;
     if (correo) {
-        let resultado;
         try {
             resultado = await User.findOne({ correo: texto, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }, "_id apodo users_bloq")
         } catch (e) {
@@ -745,13 +743,69 @@ async function encontrar_usuario(texto, correo = false) {
     }
     else {
         try {
-            const resultado = await User.findOne({ idamigo: texto, visible: true, bloquearChatsNuevos: false }, "_id apodo users_bloq")
+            resultado = await User.findOne({ idamigo: texto, visible: true, bloquearChatsNuevos: false }, "_id apodo users_bloq")
         } catch (e) {
             console.error(e)
         }
         if (!resultado || bloqueado(resultado)) return null
         else return { id: resultado._id, nombre: resultado.apodo }
-
     }
 }
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario, obtener_datos_chats, obtener_datos_chat_unico, limpiar_mensajes_chats_antiguos, encontrar_usuario }
+
+async function CREAR_CHAT_NUEVO(ids, nombre = "") {//tu no vas dentro de esos ids, debes añadirlo
+    try {
+        if (ids.length == 0) return null;
+        //crear chat, si no falla: añadir chat a la tabla de cada ususario
+        const id_propio = storage.getIDMongodbUsuario()
+        const grupo = ids.length != 1
+        const ids_añadir = [...ids, id_propio]
+        const datos_chat = await ChatsRavage.create(
+            {
+                nombre: nombre,
+                usuarios: ids_añadir,
+                grupo: grupo
+            }
+        )
+        await User.updateMany(
+            { _id: { $in: ids_añadir } },
+            {
+                $addToSet: {//añade si no existe
+                    chats: {
+                        id: datos_chat._id,
+                        nombre: datos_chat.apodo,
+                        grupo: datos_chat.grupo,
+                        ultimoCambio: new Date()
+                    }
+                }
+            }
+        );
+
+        //si es solo un usuario añadir ese usaurio a contactos
+        await AÑADIR_CONTACTO(ids[0], datos_chat.apodo)
+    }
+    catch (e) {
+        console.error(e)
+        return null
+    }
+}
+async function AÑADIR_CONTACTO(id, nombre) {
+    try {
+        const id_propio = storage.getIDMongodbUsuario()
+        await User.updateOne(
+            { _id: id_propio },
+            {
+                $addToSet: {//añade si no existe
+                    contactos: {
+                        id: id,
+                        apodo: nombre
+                    }
+                }
+            }
+        );
+    }
+    catch (e) {
+        console.error(e)
+        return null
+    }
+}
+module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario, obtener_datos_chats, obtener_datos_chat_unico, limpiar_mensajes_chats_antiguos, encontrar_usuario, CREAR_CHAT_NUEVO }

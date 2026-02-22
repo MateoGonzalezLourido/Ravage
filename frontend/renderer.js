@@ -689,7 +689,33 @@ async function buscar_ususario_añadir_chat() {
         document.querySelector("#resultados-busqueda-usaurios").innerHTML = `*No hay resultados`
     }
 }
+async function crear_chat_nuevo(e) {
+    e.preventDefault()
+    //hay usuarios para crear chat??
+    if (contactos_añadir.length == 0) return null
+    //nombre del chat
+    let nombre = document.querySelector("#nombre-chat-nuevo-crear").value.trim()
+    if (nombre == "" && contactos_añadir.length == 1) {
+        nombre = contactos_añadir[0].nombre
+    }
+    else {
+        nombre = "ChatGrupalSiNombre"
+    }
+    //sacar el id del usuario
+    const ids = []
+    for (i of contactos_añadir) ids.push(i.id)
+    contactos_añadir = []
+    //TODO: MIRAR SI ES UN NOMBRE VALIDO
+    //crear chat y esperar resultado
+    const resultado = await window.datos_usuario.CREAR_CHAT_NUEVO(ids, nombre)
+    //TODO: actualizar html + mandar actualizaciones a los buzones de todos los ids (hacer esta parte asincrona sin await)
+    if (resultado) {
 
+    } else {
+        //TODO: AVISAR error al crear chat / contacto
+    }
+
+}
 const chat_componente_lista_structura_html = (data, data_grupo) => {
     function nombre() {
         if (data_grupo == -1) return data.apodo
@@ -878,12 +904,11 @@ document.addEventListener("DOMContentLoaded", () => {
     //añadir chat
     document.querySelector("#bt-añadir-chat").addEventListener("click", desplegar_menu_añadir_chat)
     document.querySelector("#bt-cerrar-menu-añadir-chats").addEventListener("click", desplegar_menu_añadir_chat(false))
-
-    document.querySelector("#texto-buscar-chat-añadir").addEventListener("Keydown", (e) => {
-        if (e.key === "Enter") {
-            buscar_ususario_añadir_chat(e)
-        }
+    document.querySelector("#texto-buscar-chat-añadir").addEventListener("Keydown", async (e) => {
+        if (e.key === "Enter") await buscar_ususario_añadir_chat(e)
     })
+    document.querySelector("#bt-agregar-contaco-nuevo").addEventListener("click", crear_chat_nuevo)
+
 
 
     INICIO_CHAT_MENU_PRINCIPAL()
