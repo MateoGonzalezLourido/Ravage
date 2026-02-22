@@ -116,7 +116,7 @@ async function permitirCambioCorreoUsuario(correo = null) {
         return { success: false, message: "El correo es el mismo" }
     }
     //ya existe alguien con ese correo? 
-    const data_usuario2 = (await User.find({ correo: correo }))[0]
+    const data_usuario2 = await User.exists({ correo: correo })
     if (data_usuario2) {
         bloquear_accion = false
         return { success: false, message: "Usuario ya existente" }

@@ -113,8 +113,8 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
         return { success: false, message: resultado.message }
     }
     //verificar si no existe un usuario igual
-    const existe = await User.find({ correo }).limit(1);
-    if (existe == [] || existe.length == 1) {
+    const existe = await User.exists({ correo });
+    if (existe) {
         bloquear_accion = false
         return { success: false, message: "Correo ya registrado" };
     }
@@ -166,8 +166,8 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     const codehash = crypto.createHash("sha256").update(code).digest("hex");//crear hash del code
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
 
-    const code_db = await ValidationCode.find({ correo, code: codehash, id_dp: deviceId }).limit(1);
-    if (code_db == [] || !code_db || (code_db.length == 0)) {//no hay codes
+    const code_db = await ValidationCode.exists({ correo, code: codehash, id_dp: deviceId })
+    if (!code_db) {//no hay codes
         contraseña_hashed = null;
         apodo_usuario = null;
         bloquear_accion = false
@@ -211,8 +211,8 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     //comprobar si este dp no esta bloqueado
     const deviceId = String(machineIdSync());// por defecto devuelve un hash único de la máquina
-    const dp_bloqueado_db = await DispositivosBloqueados.find({ correo: username, id_dp: deviceId }).limit(1)
-    if (dp_bloqueado_db && (dp_bloqueado_db.length != 0)) {
+    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo: username, id_dp: deviceId })
+    if (dp_bloqueado_db) {
         bloquear_accion = false
         return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
     }
@@ -231,8 +231,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     else {
         const tokenhash = crypto.createHash("sha256").update(dp_confianza_data.token).digest("hex");
-        const dp_confianza_db = await TokenDPC.find({ correo: username, token: tokenhash, id_dp: deviceId }).limit(1)
-        if (dp_confianza_db.length == 1) dp_confianza = ((dp_confianza_db).indexOf(dp_confianza_data.token) == -1) ? false : true
+        dp_confianza = await TokenDPC.exists({ correo: username, token: tokenhash, id_dp: deviceId })
     }
     //autovalidacion del codigo de verificacion de cuenta por token
     const data_autoverificacion = !dp_confianza ? await readFileSession("omitirVerificacionCuentaFile") : ""
@@ -242,9 +241,9 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         if (valido) {
             //validar token con mongodb
             const tokenhash = crypto.createHash("sha256").update(data_autoverificacion.token).digest("hex");
-            const token_datos = await TokenVC.find({ correo: usuario_data.data.correo, token: tokenhash, id_dp: deviceId })
+            const token_datos = await TokenVC.exists({ correo: usuario_data.data.correo, token: tokenhash, id_dp: deviceId })
 
-            if (!token_datos || token_datos == [] || token_datos.length == 0) clearFileSession('omitirVerificacionCuentaFile');
+            if (!token_datos) clearFileSession('omitirVerificacionCuentaFile');
             else autoverificacion = true
 
         }
@@ -305,8 +304,8 @@ async function ValidarCodeLogin({ correo, code }) {
     const codehash = crypto.createHash("sha256").update(code).digest("hex");
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
 
-    const code_db = await CuentaValidationCode.find({ correo, code: codehash, id_dp: deviceId }).limit(1);
-    if (code_db == [] || !code_db || (code_db.length == 0)) {//no hay codes
+    const code_db = await CuentaValidationCode.exists({ correo, code: codehash, id_dp: deviceId })
+    if (!code_db) {//no hay codes
         contraseña_hashed = null;
         apodo_usuario = null;
         bloquear_accion = false

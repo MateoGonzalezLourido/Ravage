@@ -109,7 +109,10 @@ contextBridge.exposeInMainWorld('datos_usuario', {//funciones de ajustes
         return ipcRenderer.invoke("obtener-id-mongodb-usuario")
     },
     OBTENER_DATOS_USUARIO_EXTERNO: (id, datos = null) => {
-        return ipcRenderer.invoke("obtener-datos-usuario-externo", id,datos)
+        return ipcRenderer.invoke("obtener-datos-usuario-externo", id, datos)
+    },
+    ENCONTRAR_USARIOS_EXTERNOS: (texto, correo = false) => {
+        return ipcRenderer.invoke("encontrar-usuario-externo", texto, correo)
     }
 
 })
