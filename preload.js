@@ -113,6 +113,9 @@ contextBridge.exposeInMainWorld('datos_usuario', {//funciones de ajustes
     },
     ENCONTRAR_USARIOS_EXTERNOS: (texto, correo = false) => {
         return ipcRenderer.invoke("encontrar-usuario-externo", texto, correo)
+    },
+    CREAR_CHAT_NUEVO: (ids, nombre) => {
+        return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre)
     }
 
 })
