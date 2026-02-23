@@ -8,7 +8,6 @@ const { validateToken } = require('../services/CreadorTokens.js')
 //esquemas de datos
 const ChatUsuarioSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    apodo: { type: String, default: "", maxlength: 30 },//si es grupo no hay
     grupo: { type: Boolean, default: false },
     ultimoCambio: { type: Date, default: Date.now }
 }, { _id: false });
@@ -698,10 +697,11 @@ async function obtener_datos_chats({ data, grupales = null, mensajes = true }) {
             { _id: { $in: chatIds } },//filtro(todos los chatsid)
             { mensajes: 0 } // proyección: 0 = excluir
         );
-         //pasar _id a string
+        //pasar _id a string
         data_obtenida = data_obtenida.map(el => ({
             ...el.toObject?.() ?? el,
-            _id: el._id.toString()
+            _id: el._id.toString(),
+            usuarios: el.usuarios.map(c => c.toString())
         }));
 
         return data_obtenida
@@ -716,6 +716,7 @@ async function obtener_datos_chat_unico(id) {
         //buscar los datos por mongodb
         let data_obtenida = await ChatsRavage.findById(id);
         data_obtenida._id = data_obtenida._id.toString()
+        data_obtenida.usuarios = data_obtenida.usuarios.map(c => c.toString())
         return data_obtenida
     } catch (e) {
         console.error(e)
