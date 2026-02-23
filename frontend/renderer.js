@@ -722,20 +722,17 @@ async function crear_chat_nuevo(e) {
     }
 
 }
-const chat_componente_lista_structura_html = (data, data_grupo, data_contacto) => {
-    console.log({ data, data_grupo, data_contacto })
+const chat_componente_lista_structura_html = (datos_usar) => {
     function nombre() {
-
-        if (!data_grupo) return data_contacto.apodo
-        else return data_grupo.nombre
+        return datos_usar.nombre
     }
     function usuarios() {
-        if (data_grupo) return (`<div class="numero-integrantes-chat-lista"><span>${data_grupo.usuarios.length} integrantes</span></div>`)
+        if (datos_usar.usuarios.length > 2) return (`<div class="numero-integrantes-chat-lista"><span>${datos_usar.usuarios.length} integrantes</span></div>`)
         else return ``
     }
     function ultima_vez() {
-        if (!data_grupo) {
-            const fecha = new Date(data.ultimoCambio);
+        if (datos_usar.usuarios.length <= 2) {
+            const fecha = new Date(datos_usar.ultimoCambio);
 
             const hora = fecha.toLocaleTimeString("es-ES", {
                 hour: "2-digit",
@@ -755,7 +752,7 @@ const chat_componente_lista_structura_html = (data, data_grupo, data_contacto) =
         else { return `` }
     }
     let html = `
-    <div data-id="${data._id}" id="chat-componente-lista-chats">
+    <div data-id="${datos_usar.id}" id="chat-componente-lista-chats">
         <div class="nombre-chat-lista-componente"><span>${nombre()}</span></div>
         ${usuarios()}
         ${ultima_vez()}
@@ -861,18 +858,38 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
         let html = ""
         console.log({ datos_chats_grupales, lista_chats, lista_contactos })
         for (c of lista_chats) {
-            //TODO: HAY QUE MIRAR SI ES UN GRUPO, SI ES SE COJE EL NOMBRE DE CHATSRAVAGE, SI NO LOS ES SE BUSCA EL ID DEL OTRO USUARIO Y LUEGO EN CONTACTOS SE MIRA SI LO TENGO AGREGADO, SINO SE BUSCA ESE ID POR LA BASE DE DATOS DE USUARIO Y COJEMOS ESE APODO
-            /*let nombre = ""
-            const data_grupo = datos_chats_grupales.findIndex(x => x.id.toString() === c.id.toString())
-            if (data_grupo != -1 && (datos_chats_grupales[data_grupo].grupo)) {
-                nombre = datos_chats_grupales[data_grupo].nombre
-            }
-            else if (data_grupo != -1 && (!datos_chats_grupales[data_grupo].grupo)) {
+            console.log(c)
+            //HAY QUE MIRAR SI ES UN GRUPO, SI ES SE COJE EL NOMBRE DE CHATSRAVAGE, SI NO LOS ES SE BUSCA EL ID DEL OTRO USUARIO Y LUEGO EN CONTACTOS SE MIRA SI LO TENGO AGREGADO, SINO SE BUSCA ESE ID POR LA BASE DE DATOS DE USUARIO Y COJEMOS ESE APODO
+            let nombre = ""
+            //buscar el chat
+            const indice_chat = datos_chats_grupales.findIndex(x => x.id == c._id)
+            if (indice_chat == -1) throw "ESTE CHAT NO EXISTE EN DB"
+            if (c.grupo) {//cojer el nombre del chat
+                nombre = datos_chats_grupales[indice_chat].nombre
+            } else {//buscar en contactos o usuarios
+                //para esto ha que buscar el chat, sacar al otro usuarioF (contacto) y buscar su nombre en nuestros contactos (si no lo tenemos de contacto ponemos el nombre que este use)
                 const id_propio = await window.datos_usuario.OBTENER_ID_MONGODB_USUARIO()
-                let us = lista_contactos.filter(x => x.id != id_propio)
-                const data_contacto = lista_contactos.findIndex(x => x.id.toString() === us[0].id.toString())
-            }*/
-            html += chat_componente_lista_structura_html(c, datos_chats_grupales[data_grupo], lista_contactos[data_contacto])
+                const usuario_buscar = datos_chats_grupales[indice_chat].usuarios.filter(x => x != id_propio)
+                //asi solo deberia quedar un id
+                if (!usuario_buscar || usuario_buscar.length !== 1) {
+                    throw "ERROR AL ENCONTRAR NOMBRE DEL CHAT"
+                }
+                //buscar en contactos para ver si le tenemos nombre propio
+                const indice_contacto = lista_contactos.findIndex(x => x.id == usuario_buscar[0])
+                if (indice_contacto == -1) {//buscar por usuarios para cojer el apodo que el usuario tiene
+                    const nombre_usuario = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(usuario_buscar[0], "apodo")
+                    if (nombre_usuario) nombre = nombre_usuario
+                    else throw "USUARIO NO ENCONTRADO"
+                }
+                else {//buscar el apodo que tenemos
+                    nombre = lista_contactos[indice_contacto].apodo
+                }
+
+            }
+            //nombre, usuarios, ultima_vez ,_id CHAT
+            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: datos_chats_grupales[indice_chat].usuarios, nombre: nombre }
+            console.log(datos_usar)
+            html += chat_componente_lista_structura_html(datos_usar)
         }
         document.querySelector("#lista-chats-componentes").innerHTML = html
 
