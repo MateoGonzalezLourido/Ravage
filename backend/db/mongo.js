@@ -727,7 +727,7 @@ async function obtener_datos_chat_unico(id) {
 async function obtener_datos_usuario(id, datos = null) {
     const datos_buscar_defecto = "correo apodo visible idamigo"//se separan por espacio
     const datos_buscar = datos ? datos : datos_buscar_defecto
-    let datos_usuario = await User.findById(id, datos_buscar)
+    let datos_usuario = await User.findById(id, datos_buscar).lean()
     datos_usuario._id = datos_usuario._id.toString()
     return datos_usuario
 }
@@ -772,7 +772,7 @@ async function CREAR_CHAT_NUEVO(ids, nombre = "") {//tu no vas dentro de esos id
 
         const datos_chat = await ChatsRavage.create(
             {
-                nombre: nombre,
+                nombre: grupo ? nombre : "",
                 usuarios: ids_añadir,
                 grupo: grupo
             }

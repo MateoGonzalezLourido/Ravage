@@ -856,9 +856,7 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
         //crear html lista chats
         //TODO: ORDENAR LOS CHATS POR ULTIMO CAMBIO
         let html = ""
-        console.log({ datos_chats_grupales, lista_chats, lista_contactos })
         for (c of lista_chats) {
-            console.log(c)
             //HAY QUE MIRAR SI ES UN GRUPO, SI ES SE COJE EL NOMBRE DE CHATSRAVAGE, SI NO LOS ES SE BUSCA EL ID DEL OTRO USUARIO Y LUEGO EN CONTACTOS SE MIRA SI LO TENGO AGREGADO, SINO SE BUSCA ESE ID POR LA BASE DE DATOS DE USUARIO Y COJEMOS ESE APODO
             let nombre = ""
             //buscar el chat
@@ -878,7 +876,7 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
                 const indice_contacto = lista_contactos.findIndex(x => x.id == usuario_buscar[0])
                 if (indice_contacto == -1) {//buscar por usuarios para cojer el apodo que el usuario tiene
                     const nombre_usuario = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(usuario_buscar[0], "apodo")
-                    if (nombre_usuario) nombre = nombre_usuario
+                    if (nombre_usuario) nombre = nombre_usuario.apodo
                     else throw "USUARIO NO ENCONTRADO"
                 }
                 else {//buscar el apodo que tenemos
@@ -888,7 +886,6 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
             }
             //nombre, usuarios, ultima_vez ,_id CHAT
             const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: datos_chats_grupales[indice_chat].usuarios, nombre: nombre }
-            console.log(datos_usar)
             html += chat_componente_lista_structura_html(datos_usar)
         }
         document.querySelector("#lista-chats-componentes").innerHTML = html
