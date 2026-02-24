@@ -604,8 +604,8 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados)
 }
 //chat
-function desplegar_menu_añadir_chat(e, mostrar = true) {
-    e.preventDefault()
+function desplegar_menu_añadir_chat({ e, mostrar = true }) {
+    if (e) e.preventDefault()
     if (mostrar) {
         document.querySelector("#alineador-seccion-añadir-chat").classList.remove("ocultar-display")
         document.querySelector("#alineador-seccion-añadir-chat").classList.add("flex-display")
@@ -683,7 +683,7 @@ async function buscar_ususario_añadir_chat(e) {
         //TODO: COMPROBAR SI ES UN  ID VALIDO
         const idamigo_usuario = await window.datos_usuario.OBTENER_IDAMIGO_USUARIO()
         if (texto_buscar == idamigo_usuario) return null
-        else resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar, false)
+        else resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar.replace("#", ""), false)
     }
 
     if (resultado) {
@@ -716,7 +716,8 @@ async function crear_chat_nuevo(e) {
     const resultado = await window.datos_usuario.CREAR_CHAT_NUEVO(ids, nombre)
     //TODO: actualizar html + mandar actualizaciones a los buzones de todos los ids (hacer esta parte asincrona sin await)
     if (resultado) {
-
+        desplegar_menu_añadir_chat({ e, mostrar: false })
+        await ACTUALIZAR_LISTAS_CHAT()
     } else {
         //TODO: AVISAR error al crear chat / contacto
     }
@@ -724,15 +725,18 @@ async function crear_chat_nuevo(e) {
 }
 const chat_componente_lista_structura_html = (datos_usar) => {
     function nombre() {
-        return datos_usar.nombre
+        if (datos_usar.nombre) return datos_usar.nombre
+        else return `<<no encontrado>>`
     }
     function usuarios() {
-        if (datos_usar.usuarios.length > 2) return (`<div class="numero-integrantes-chat-lista"><span>${datos_usar.usuarios.length} integrantes</span></div>`)
+        if (datos_usar.usuarios.length > 2 && datos_usar.usuarios.length) return (`<div class="numero-integrantes-chat-lista"><span>${datos_usar.usuarios.length} integrantes</span></div>`)
         else return ``
     }
     function ultima_vez() {
-        if (datos_usar.usuarios.length <= 2) {
+        if (datos_usar.usuarios.length <= 2 && datos_usar.ultimoCambio) {
+
             const fecha = new Date(datos_usar.ultimoCambio);
+            const ahora = new Date();
 
             const hora = fecha.toLocaleTimeString("es-ES", {
                 hour: "2-digit",
@@ -740,21 +744,44 @@ const chat_componente_lista_structura_html = (datos_usar) => {
                 hour12: false
             });
 
-            const dia = fecha.getDate();
+            // 🔹 Normalizamos fechas a medianoche para comparar días
+            const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+            const fechaComparar = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
 
-            const mes = fecha.toLocaleString("es-ES", {
-                month: "short"
-            }).replace(".", ""); // quita punto si lo añade
+            const diferenciaDias = (hoy - fechaComparar) / (1000 * 60 * 60 * 24);
 
-            const resultado = `${hora}, ${dia} ${mes}`;
-            return (`<div class="numero-integrantes-chat-lista"><span>${resultado}</span></div>`)
+            let resultado;
+
+            if (diferenciaDias === 0) {
+                resultado = `Hoy, ${hora}`;
+            }
+            else if (diferenciaDias === 1) {
+                resultado = `Ayer, ${hora}`;
+            }
+            else {
+                const dia = fecha.getDate();
+                const mes = fecha.toLocaleString("es-ES", {
+                    month: "short"
+                }).replace(".", "");
+
+                resultado = `${hora}, ${dia} ${mes}`;
+            }
+
+            return `<div class="numero-integrantes-chat-lista"><span>${resultado}</span></div>`;
         }
-        else { return `` }
+        else {
+            return ``;
+        }
+    }
+    function ultimo_mensaje() {
+        if (datos_usar.usuarios.length == 2 && datos_usar.ultimomensaje) return (`<div class="ultimo-mensaje-chat-lista"><span>${datos_usar.ultimomensaje}</span></div>`)
+        else return ``
     }
     let html = `
-    <div data-id="${datos_usar.id}" id="chat-componente-lista-chats">
+    <div data-id="${datos_usar.id}" class="chat-componente-lista-chats">
         <div class="nombre-chat-lista-componente"><span>${nombre()}</span></div>
         ${usuarios()}
+        ${ultimo_mensaje()}
         ${ultima_vez()}
     </div>`
 
@@ -846,7 +873,7 @@ function mostrar_datos_chat_usaurios(e) {
 function Comenzar_conexion_p2p(e) {
     e.preventDefault()
 }
-async function INICIO_CHAT_MENU_PRINCIPAL() {
+async function ACTUALIZAR_LISTAS_CHAT() {
     try {
         const lista_chats = await window.datos_usuario.OBTENER_CHATS_USUARIO()
         const lista_contactos = await window.datos_usuario.OBTENER_CONTACTOS_USUARIO()
@@ -876,7 +903,7 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
                 const indice_contacto = lista_contactos.findIndex(x => x.id == usuario_buscar[0])
                 if (indice_contacto == -1) {//buscar por usuarios para cojer el apodo que el usuario tiene
                     const nombre_usuario = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(usuario_buscar[0], "apodo")
-                    if (nombre_usuario) nombre = nombre_usuario.apodo
+                    if (nombre_usuario) nombre = "~" + nombre_usuario.apodo
                     else throw "USUARIO NO ENCONTRADO"
                 }
                 else {//buscar el apodo que tenemos
@@ -885,7 +912,7 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
 
             }
             //nombre, usuarios, ultima_vez ,_id CHAT
-            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: datos_chats_grupales[indice_chat].usuarios, nombre: nombre }
+            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: datos_chats_grupales[indice_chat].usuarios, nombre: nombre, ultimomensaje: c.ultimomensaje }
             html += chat_componente_lista_structura_html(datos_usar)
         }
         document.querySelector("#lista-chats-componentes").innerHTML = html
@@ -929,6 +956,14 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
         throw e
     }
 }
+async function INICIO_CHAT_MENU_PRINCIPAL() {
+    try {
+        await ACTUALIZAR_LISTAS_CHAT()
+    }
+    catch (e) {
+        throw e
+    }
+}
 document.addEventListener("DOMContentLoaded", async () => {
     //mensaje bienvenida
     window.pushNotificacion({
@@ -942,8 +977,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     INICIO_CHAT_MENU_PRINCIPAL()
     //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...
     //añadir chat
-    document.querySelector("#bt-añadir-chat").addEventListener("click", (e) => desplegar_menu_añadir_chat(e, true))
-    document.querySelector("#bt-cerrar-menu-añadir-chats").addEventListener("click", (e) => desplegar_menu_añadir_chat(e, false))
+    document.querySelector("#bt-añadir-chat").addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
+    document.querySelector("#bt-cerrar-menu-añadir-chats").addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: false }))
     document.querySelector("#texto-buscar-chat-añadir").addEventListener("keydown", async (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
