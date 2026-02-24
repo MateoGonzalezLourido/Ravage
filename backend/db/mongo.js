@@ -9,7 +9,9 @@ const { validateToken } = require('../services/CreadorTokens.js')
 const ChatUsuarioSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
     grupo: { type: Boolean, default: false },
-    ultimoCambio: { type: Date, default: Date.now }
+    ultimoCambio: { type: Date, default: Date.now },
+    ultimomensaje: { type: String, default: "" },
+    fijado: { type: Boolean, default: false }
 }, { _id: false });
 const ContactoUsuarioSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -786,7 +788,8 @@ async function CREAR_CHAT_NUEVO(ids, nombre = "") {//tu no vas dentro de esos id
                             id: datos_chat._id,
                             nombre: datos_chat.nombre,
                             grupo: datos_chat.grupo,
-                            ultimoCambio: new Date()
+                            ultimoCambio: new Date(),
+                            ultimomensaje: "Bienvenido😀"
                         }
                     }
                 }
