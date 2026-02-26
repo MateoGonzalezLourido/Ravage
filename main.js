@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
-
+require("dotenv").config();//solo hace falta importarlo una vez para todo el proyecto
 const { startServer } = require('./backend/server.js')
 const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, obtener_datos_chats, limpiar_mensajes_chats_antiguos, obtener_datos_chat_unico, obtener_datos_usuario, encontrar_usuario, CREAR_CHAT_NUEVO } = require("./backend/db/mongo.js")
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } = require('./backend/services/sesionUsuario.js');

@@ -1,8 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { machineIdSync } = require('node-machine-id');
 const crypto = require("crypto")
-const dotenv = require("dotenv");
-dotenv.config();
 const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;//codigo para crear jwt (un valor definido por mi)
 
 

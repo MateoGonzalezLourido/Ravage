@@ -1,6 +1,4 @@
 const fetch = require('node-fetch');
-const dotenv = require("dotenv");
-dotenv.config()
 
 function generarCodigoVerificacion() {//generar codigo 6 digitos que se utilizara para verificar
     const codigo_verificacion = Math.floor(100000 + Math.random() * 900000)

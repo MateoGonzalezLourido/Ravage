@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-const dotenv = require("dotenv");
-dotenv.config();
 const crypto = require("crypto")
 
 const { getIdDispositivo, getCorreoSesion, getUsuariosBloqueados, getUsuariosSilence, setUsuariosBloqueados, setUsuariosSilence, setFechaBloqueoContraseña, setFechaBloqueoCorreo, setApodoSesion, setFechaBloqueoApodo, getIDMongodbUsuario } = require('../STORAGE/Variables_sesion.js')

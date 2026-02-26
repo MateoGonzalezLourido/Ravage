@@ -1,7 +1,6 @@
 const fs = require("fs")
 const path = require('path');
-const dotenv = require("dotenv");
-dotenv.config();
+
 const { app } = require('electron')
 const { getSecretKEY } = require('../STORAGE/Variables_sesion.js')
 const { ActualizarSecretKeyUsuario } = require('../db/mongo.js')
