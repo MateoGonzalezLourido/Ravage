@@ -2,10 +2,13 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
 dotenv.config();
-const storage = require('../STORAGE/Variables_sesion.js')
 const crypto = require("crypto")
+
+const { getIdDispositivo, getCorreoSesion, getUsuariosBloqueados, getUsuariosSilence, setUsuariosBloqueados, setUsuariosSilence, setFechaBloqueoContraseña, setFechaBloqueoCorreo, setApodoSesion, setFechaBloqueoApodo, getIDMongodbUsuario } = require('../STORAGE/Variables_sesion.js')
 const { validateToken } = require('../services/CreadorTokens.js')
+
 //esquemas de datos
+//subesquemas
 const ChatUsuarioSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
     grupo: { type: Boolean, default: false },
@@ -99,7 +102,7 @@ const UserSchema = new mongoose.Schema({
     },
     createdAt: { type: Date, default: Date.now }//fecha de creacion de cuenta
 })
-
+//esquemas principales
 const ValidationCodeSchema = new mongoose.Schema({
     code: {
         type: String,
@@ -221,7 +224,7 @@ const DPBLOQUEADOSchema = new mongoose.Schema({
 const EntradaSchema = new mongoose.Schema({
     tipo: { type: String, required: true },   // tipo de entrada, p.ej. "archivo", "mensaje"
     data: { type: mongoose.Schema.Types.Mixed, required: true } // cualquier estructura de datos
-})//mongo genera un _id para cada entrada(esto es bueno para luego borrar cada entrada por id)
+})
 const ChatSchema = new mongoose.Schema({
     nombre: {//solo si es un grupo (si es de dos se coje el apodo que le tengas a ese usuario)
         type: String,
@@ -266,13 +269,12 @@ const BuzonSchema = new mongoose.Schema({
     entrada: [EntradaSchema]
 })
 
-
 //expiracion codigos y tokens
 TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });//90minutos
 ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });//10minutos
 ActiveUserSchema.index({ expira: 1 }, { expireAfterSeconds: 5 * 60 });//5minutos
 DatosCuentaValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });//10minutos
-//las tablas de datos de Ravage
+//las tablas de datos de mondo db  
 const User = mongoose.model("User", UserSchema, "usuarios");
 const ValidationCode = mongoose.model("ValidationCodes", ValidationCodeSchema, "validationcodes");
 const CuentaValidationCode = mongoose.model("CuentaValidationCode", ValidationCodeSchema, "cuentavalidationcode");
@@ -287,81 +289,85 @@ const BuzonUsuarios = mongoose.model("buzonsusuarios", BuzonSchema, "buzonusuari
 
 //conectar db
 async function connectDB() {
-    //no se pueden poner comprobaciones de si esta conectado al iniciar la app porque tarda mucho y falla
-
-
+    //conectar db ; no se pueden poner comprobaciones de si esta conectado al iniciar la app porque tarda mucho y falla si no lo esta
     await mongoose.connect(process.env.URI_MONGODB, {
         tls: true,                          //usar tls
         tlsInsecure: false,                 // verifica certificados
         serverSelectionTimeoutMS: 5000,     //lo que puede tardar maximo
         socketTimeoutMS: 45000
     })
-        .then(() => console.log("+ Conectado a MongoDB Atlas"))
-        .catch(() => console.error("- Error de conexión"));
+        .then(() => console.log("(+) Conectado a MongoDB Atlas"))
+        .catch(() => console.error("(-) Error de conexión"));
 }
 //cerrar db
 async function closeDB() {
     if (!estaConectado) return;
     await mongoose.disconnect();
-    console.log("- Cerrado MongoDB");
+    console.warn("(-) Cerrado MongoDB");
 }
+//comprobar si esta conectado
 function estaConectado() {
     return mongoose.connection.readyState !== 0;
 }
 
 //reconectar mongo si cae
 mongoose.connection.on('disconnected', () => {
-    console.warn('- MongoDB desconectado.');
+    console.warn('(-) MongoDB desconectado.');
 });
 //loging usuario
 async function LoginUsuarioDB({ correo = null, contraseña = null, token = null, id_dp = null, bloqueada = false }) {
-    if (token && correo && id_dp) {//validar por token + correo
-        //token de validacion de sesion
-        let token_valido = validateToken(token);
-        if (!token_valido) {//token no valido
-            LimpiarJWTUsuario(correo, token)//limpiar token de mongodb (si existe)
-            console.error("Token invalido o expirado")
+    try {
+        if (token && correo && id_dp) {//validar por token + correo
+            //token de validacion de sesion
+            let token_valido = validateToken(token);
+            if (!token_valido) {//token no valido
+                LimpiarJWTUsuario(correo, token)//limpiar token de mongodb (si existe)
+                console.error("Token invalido o expirado")
+                return { success: false };
+            }
+
+            //verificar si mongodb tiene ese token
+            const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+            const token_datos = await TokenSession.exists({ correo, token: tokenhash, id_dp })
+
+            if (!token_datos) {
+                console.error("Token invalido o expirado")
+                return { success: false };
+            }
+
+            //obtener usuario+datos
+            const usuario_datos = (await User.find({ correo, bloqueada }).limit(1))[0]
+            if (!usuario_datos || usuario_datos == [] || usuario_datos.length == 0) {
+                console.error("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
+                return { success: false }
+            }
+            //sesion iniciada
+            return { success: true, data: usuario_datos }
+        }
+        //log por correo y contraseña
+        if (!correo || !contraseña) {
+            console.error("Faltan datos para iniciar sesión");
             return { success: false };
         }
-
-        //verificar si mongodb tiene ese token
-        const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
-        const token_datos = await TokenSession.exists({ correo, token: tokenhash, id_dp })
-
-        if (!token_datos) {
-            console.error("Token invalido o expirado")
-            return { success: false };
+        //validar por credenciales correo + contraseña
+        const usuario_datos = (await User.find({ correo, bloqueada }).limit(1))[0];
+        if (!usuario_datos || usuario_datos == [] || (usuario_datos.length == 0)) {
+            console.error("Credenciales incorrectas");
+            return { success: false }
         }
-
-        //obtener usuario+datos
-        const usuario_datos = (await User.find({ correo, bloqueada }).limit(1))[0]
-        if (!usuario_datos || usuario_datos == [] || usuario_datos.length == 0) {
-            console.error("LOG, NO SE HAN ENCONTRADO DATOS DEL USUARIO")
+        //comparar contraseña del usuario con la de la base de datos
+        const ok = await bcrypt.compare(contraseña, usuario_datos.contrasena);
+        if (!ok) {
+            console.error("Credenciales incorrectas");
             return { success: false }
         }
         //sesion iniciada
+        console.log(`Datos de usuario obtenidos: ${usuario_datos.apodo}`)
         return { success: true, data: usuario_datos }
-    }
-    //log por correo y contraseña
-    if (!correo || !contraseña) {
-        console.error("Faltan datos para iniciar sesión");
+    } catch (e) {
+        console.error(e);
         return { success: false };
     }
-    //validar por credenciales correo + contraseña
-    const usuario_datos = (await User.find({ correo, bloqueada }).limit(1))[0];
-    if (!usuario_datos || usuario_datos == [] || (usuario_datos.length == 0)) {
-        console.error("Credenciales incorrectas");
-        return { success: false }
-    }
-    //comparar contraseña del usuario con la de la base de datos
-    const ok = await bcrypt.compare(contraseña, usuario_datos.contrasena);
-    if (!ok) {
-        console.error("Credenciales incorrectas");
-        return { success: false }
-    }
-    //sesion iniciada
-    console.log(`Datos de usuario obtenidos: ${usuario_datos.apodo}`)
-    return { success: true, data: usuario_datos }
 }
 //instertar datos
 async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la contraseña ya biene hasheada
@@ -378,108 +384,152 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la
         idamigo = generarIdAmigo()
         existe = await User.exists({ idamigo: idamigo })
     }
-    await User.create({
-        apodo: apodo,
-        correo: correo,
-        contrasena: contraseña,
-        secretKey: key,
-        idamigo: idamigo
-    });
-    console.log("Usuario insertado correctamente");
-    return true
+    try {
+        const r = await User.create({
+            apodo: apodo,
+            correo: correo,
+            contrasena: contraseña,
+            secretKey: key,
+            idamigo: idamigo
+        });
+        console.log("Usuario insertado correctamente");
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 async function InsertarVC({ correo = null, code = null, id = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
     const codehash = crypto.createHash("sha256").update(code).digest("hex");
 
-    await ValidationCode.create({
-        code: codehash,
-        correo: correo,
-        id_dp: id
-    });
+    try {
+        const r = await ValidationCode.create({
+            code: codehash,
+            correo: correo,
+            id_dp: id
+        });
 
-    console.log("Codigo insertado correctamente");
-    return true
+        console.log("Codigo insertado correctamente");
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 async function InsertarCuentaVC({ correo = null, code = null, id = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
     const codehash = crypto.createHash("sha256").update(code).digest("hex");
 
-    await CuentaValidationCode.create({
-        code: codehash,
-        correo: correo,
-        id_dp: id
-    });
+    try {
+        const r = await CuentaValidationCode.create({
+            code: codehash,
+            correo: correo,
+            id_dp: id
+        });
 
-    console.log("Codigo insertado correctamente");
-    return true
+        console.log("Codigo insertado correctamente");
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 async function InsertarDatosCuentaVC({ correo = null, code = null, id = "", tipo = "" }) {
-    if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
+    if (!correo || !code) {
+        console.error("Faltan datos para insertar codigo")
+        return null
+    }
+    try {
+        await DatosCuentaVC.create({
+            code: code,
+            correo: correo,
+            id_dp: id,
+            tipo: tipo
+        });
 
-    await DatosCuentaVC.create({
-        code: code,
-        correo: correo,
-        id_dp: id,
-        tipo: tipo
-    });
-
-    console.log("Codigo insertado correctamente");
-    return true
+        console.log("Codigo insertado correctamente");
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 async function ActualizarUsuarioActivo({ correo = null }) {
-    if (!correo) throw new Error("Faltan datos para insertar usuario activo");
-    const deviceId = storage.getIdDispositivo()
+    if (!correo) {
+        console.error("Faltan datos para insertar usuario activo")
+        return null
+    }
+    const deviceId = getIdDispositivo()
     //esto lo crea si no existe
-    const nuevoUsuarioActivo = await ActiveUser.updateOne(
-        { correo, id_dp: deviceId },
-        { $set: { expira: new Date() } },
-        { upsert: true }
-    );
+    try {
+        const nuevoUsuarioActivo = await ActiveUser.updateOne(
+            { correo, id_dp: deviceId },
+            { $set: { expira: new Date() } },
+            { upsert: true }
+        );
 
-    return nuevoUsuarioActivo
+        return nuevoUsuarioActivo
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 async function añadirUsuariosBloqueados(id, apodo) {
-    const correo = storage.getCorreoSesion()
-    let lista_bloqueados = storage.getUsuariosBloqueados()
+    const correo = getCorreoSesion()
+    let lista_bloqueados = getUsuariosBloqueados()
     const index = lista_bloqueados.findIndex(sub => sub.includes(id))
     if (index != -1) return false //ya existe
 
     lista_bloqueados.push([id, apodo])
 
-    await User.updateOne(
-        { correo: correo },//filtro
-        {
-            $set: {
-                users_bloq: lista_bloqueados
-            }
-        },
-        { upsert: true }
-    )
-    storage.setUsuariosBloqueados(lista_bloqueados)
-    return true
+    try {
+        const r = await User.updateOne(
+            { correo: correo },//filtro
+            {
+                $set: {
+                    users_bloq: lista_bloqueados
+                }
+            },
+            { upsert: true }
+        )
+        if (r.matchedCount === 0) return false; // correo no encontrado
+
+        setUsuariosBloqueados(lista_bloqueados)
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 async function añadirUsuariosSilenciados(id, apodo) {
-    const correo = storage.getCorreoSesion()
-    let lista_silenciados = storage.getUsuariosSilence()
+    const correo = getCorreoSesion()
+    let lista_silenciados = getUsuariosSilence()
     const index = lista_silenciados.findIndex(sub => sub.includes(id))
     if (index != -1) return false //ya existe
 
     lista_silenciados.push([id, apodo])
 
-    await User.updateOne(
-        { correo: correo },//filtro
-        {
-            $set: {
-                users_silence: lista_silenciados
-            }
-        },
-        { upsert: true }
-    )
-    storage.setUsuariosBloqueados(lista_silenciados)
-    return true
+    try {
+        const r = await User.updateOne(
+            { correo: correo },//filtro
+            {
+                $set: {
+                    users_silence: lista_silenciados
+                }
+            },
+            { upsert: true }
+        )
+        if (r.matchedCount === 0) return false; // correo no encontrado
+
+        setUsuariosBloqueados(lista_silenciados)
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 //borrar datos
 async function BorrarVC(correo) {
@@ -491,57 +541,70 @@ async function BorrarCuentaVC(correo) {
 async function BorrarDatosCuentaVC(correo, code) {
     await DatosCuentaVC.deleteMany({ correo: correo, code: code });
 }
+
 async function BorrarUsuarioActivo() {
     if (!estaConectado) return;
 
-    const deviceId = storage.getIdDispositivo()
-    await ActiveUser.deleteOne({ id_dp: deviceId });
+    const deviceId = getIdDispositivo()
+    await ActiveUser.deleteOne({ id_dp: deviceId })
 }
 async function eliminarUsuariosBloqueados(id) {
-    const correo = storage.getCorreoSesion()
-    let lista_bloqueados = storage.getUsuariosBloqueados()
+    const correo = getCorreoSesion()
+    let lista_bloqueados = getUsuariosBloqueados()
     const index = lista_bloqueados.findIndex(sub => sub.includes(id))
-    if (index == -1) return false
+    if (index === -1) return false
 
     lista_bloqueados.splice(index, 1)
-
-    await User.updateOne(
-        { correo: correo },//filtro
-        {
-            $set: {
-                users_bloq: lista_bloqueados
-            }
-        },
-        { upsert: true }
-    )
-    storage.setUsuariosBloqueados(lista_bloqueados)
-    return true
+    try {
+        const r = await User.updateOne(
+            { correo: correo },//filtro
+            {
+                $set: {
+                    users_bloq: lista_bloqueados
+                }
+            },
+            { upsert: true }
+        )
+        if (r.matchedCount === 0) return false; // correo no encontrado
+        setUsuariosBloqueados(lista_bloqueados)
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 async function eliminarUsuariosSilenciados(id) {
-    const correo = storage.getCorreoSesion()
-    let lista_silenciados = storage.getUsuariosBloqueados()
+    const correo = getCorreoSesion()
+    let lista_silenciados = getUsuariosBloqueados()
     const index = lista_silenciados.findIndex(sub => sub.includes(id))
-    if (index == -1) return false
+    if (index === -1) return false
 
     lista_silenciados.splice(index, 1)
 
-    await User.updateOne(
-        { correo: correo },//filtro
-        {
-            $set: {
-                users_silence: lista_silenciados
-            }
-        },
-        { upsert: false }
-    )
-    storage.setUsuariosSilence(lista_silenciados)
-    return true
+    try {
+        const r = await User.updateOne(
+            { correo: correo },//filtro
+            {
+                $set: {
+                    users_silence: lista_silenciados
+                }
+            },
+            { upsert: false }
+        )
+        if (r.matchedCount === 0) return false; // correo no encontrado
+
+        setUsuariosSilence(lista_silenciados)
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
-//añadir tokens
+//añadir tokens (no rompen nada si fallan)
 async function AñadirJWTUsuario(correo, token = "") {
     //exìra en 7dias, expira= (7dias - 90min del expire de mongo)
     const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
-    const deviceId = storage.getIdDispositivo()
+    const deviceId = getIdDispositivo()
 
     await TokenSession.create({
         correo,
@@ -549,11 +612,12 @@ async function AñadirJWTUsuario(correo, token = "") {
         expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000))),
         id_dp: deviceId
     });
+
 }
 async function AñadirJWTUsuarioVC(correo, token = "") {
     //exìra en 90min
     const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
-    const deviceId = storage.getIdDispositivo()
+    const deviceId = getIdDispositivo()
 
     await TokenVC.create({
         correo,
@@ -562,95 +626,121 @@ async function AñadirJWTUsuarioVC(correo, token = "") {
         id_dp: deviceId
     });
 }
+//TODO: usarlo
 async function AñadirJWTDPConfianza(correo, token = "") {
     //exìra en 90min
     const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
-    const deviceId = storage.getIdDispositivo()
+    const deviceId = getIdDispositivo()
 
     await TokenDPC.create({
         correo,
         token: tokenhash,
         id_dp: deviceId
-    });
+    })
 }
 //limpiar tokens
 async function LimpiarJWTUsuario(correo, token = null) {
-    if (!token) await TokenVC.deleteMany({ correo: correo })//borra todos (por segurida)
-    else await TokenSession.deleteMany({ correo: correo, token: token });//borra ese solo
+    if (!token) try { await TokenVC.deleteMany({ correo: correo }) } catch (e) { throw e }//borra todos (por segurida)
+    else try { await TokenSession.deleteMany({ correo: correo, token: token }) } catch (e) { throw e }//borra ese solo
 }
 async function LimpiarJWTUsuarioVC(correo, token = null) {
-    if (!token) await TokenVC.deleteMany({ correo: correo });
-    else await TokenVC.deleteMany({ correo: correo, token: token });
+    if (!token) try { await TokenVC.deleteMany({ correo: correo }) } catch (e) { throw e }
+    else try { await TokenVC.deleteMany({ correo: correo, token: token }) } catch (e) { throw e }
 }
 
 //cambiar datos usuario
 async function cambiarContraseñaUsuario(contraseña) {//48h para volver a cambiarla
-    const correo = storage.getCorreoSesion()
+    const correo = getCorreoSesion()
     const fecha_bloqueo = new Date(Date.now() + (48 * 60 * 20 * 1000))
-    await User.updateOne(
-        { correo: correo },//filtro
-        {
-            $set: {
-                contrasena: contraseña,
-                exp_bloq_contrasena: fecha_bloqueo
-            }
-        },
-        { upsert: false }
-    )
-    storage.setFechaBloqueoContraseña(fecha_bloqueo)
-    return true
+    try {
+        const r = await User.updateOne(
+            { correo: correo },//filtro
+            {
+                $set: {
+                    contrasena: contraseña,
+                    exp_bloq_contrasena: fecha_bloqueo
+                }
+            },
+            { upsert: false }
+        )
+        if (r.matchedCount === 0) return false; // correo no encontrado
+
+        setFechaBloqueoContraseña(fecha_bloqueo)
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
 }
 async function cambiarCorreoUsuario(correo) {//14dias para volver a cambiarlo
-    const correo_viejo = storage.getCorreoSesion()
+    const correo_viejo = getCorreoSesion()
     const fecha_bloqueo = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
     //actualizar todas las tablas importantes
-    await User.updateOne(
-        { correo: correo_viejo },              // filtro
-        {
-            $set: {
-                correo: correo,
-                exp_bloq_correo: fecha_bloqueo // corrección a ms
-            }
-        },
-        { upsert: false }
-    );
-    //limpiar datos relacionados con codigos y tokens
-    await BorrarUsuarioActivo()
-    //actualizar
-    storage.setCorreoSesion(correo)
-    storage.setFechaBloqueoCorreo(fecha_bloqueo)
-    //limpiar
-    BorrarCuentaVC(correo_viejo)
-    ActualizarUsuarioActivo(correo_viejo)
-    LimpiarJWTUsuarioVC(correo_viejo)
-    LimpiarJWTUsuario(correo_viejo)
+    try {
+        const r = await User.updateOne(
+            { correo: correo_viejo },              // filtro
+            {
+                $set: {
+                    correo: correo,
+                    exp_bloq_correo: fecha_bloqueo // corrección a ms
+                }
+            },
+            { upsert: false }
+        );
+        if (r.matchedCount === 0) return false; // correo no encontrado
 
+        //limpiar datos relacionados con codigos y tokens
+        await BorrarUsuarioActivo()
+        //actualizar
+        setCorreoSesion(correo)
+        setFechaBloqueoCorreo(fecha_bloqueo)
 
-    return true
+            //limpiar (asincronos)
+            (async () => {
+                try { BorrarCuentaVC(correo_viejo) } catch (e) { console.error(e) }
+                try { ActualizarUsuarioActivo(correo_viejo) } catch (e) { console.error(e) }
+                try { LimpiarJWTUsuarioVC(correo_viejo) } catch (e) { console.error(e) }
+                try { LimpiarJWTUsuario(correo_viejo) } catch (e) { console.error(e) }
+            })()
+
+        return true
+    } catch (e) {
+        console.error(e)
+        return null
+    }
+
 }
 async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
-    const correo = storage.getCorreoSesion()
+    const correo = getCorreoSesion()
     const fecha_bloqueo = new Date(Date.now() + (24 * 60 * 20 * 1000))
-    await User.updateOne(
-        { correo: correo },//filtro
-        {
-            $set: {
-                apodo: apodo,
-                exp_bloq_apodo: fecha_bloqueo
-            }
-        },
-        { upsert: false }
-    );
-    storage.setApodoSesion(apodo)
-    storage.setFechaBloqueoApodo(fecha_bloqueo)
-    return true
+    try {
+        const r = await User.updateOne(
+            { correo: correo },//filtro
+            {
+                $set: {
+                    apodo: apodo,
+                    exp_bloq_apodo: fecha_bloqueo
+                }
+            },
+            { upsert: false }
+        );
+        if (r.matchedCount === 0) return false; // correo no encontrado
+
+        setApodoSesion(apodo)
+        setFechaBloqueoApodo(fecha_bloqueo)
+        return true
+    }
+    catch (e) {
+        console.log(e)
+        return null
+    }
 }
 async function ActualizarSecretKeyUsuario(actualizar = true) {
     const key = crypto.randomBytes(32).toString("hex");
     if (!actualizar) return key;//solo genera la key pero no la guarda directamente
     try {
-        const correo = storage.getCorreoSesion()
-        await User.updateOne(
+        const correo = getCorreoSesion()
+        const r = await User.updateOne(
             { correo },//filtro
             {
                 $set: {
@@ -659,181 +749,190 @@ async function ActualizarSecretKeyUsuario(actualizar = true) {
             },
             { upsert: false }
         );
+        if (r.matchedCount === 0) return false; // correo no encontrado
+
         return key
     }
     catch (e) {
         console.error(e)
 
-        return false
+        return null
     }
 }
+//chats
 async function limpiar_mensajes_chats_antiguos(data) {
-    const chatIds = []
-    data.forEach(c => { chatIds.push(c.id) })
-
+    const chatIds = data.map(c => c.id);
+    if (chatIds.length == 0) return null;
     //borrar chats de hace mas de un año 
     const haceUnAno = new Date();
     haceUnAno.setFullYear(haceUnAno.getFullYear() - 1);
-
-    await ChatsRavage.updateMany(
-        { _id: { $in: chatIds } }, // solo esos chats del usuario
-        {
-            $pull: {
-                mensajes: { data: { $lt: haceUnAno } } // elimina mensajes antiguos
+    try {//como es asincrono siempre y no tiene nada que ocurra posterior no romperia si falla
+        const r = await ChatsRavage.updateMany(
+            { _id: { $in: chatIds } }, // solo esos chats del usuario
+            {
+                $pull: {
+                    mensajes: { data: { $lt: haceUnAno } } // elimina mensajes antiguos
+                }
             }
-        }
-    );
+        );
+        if (r.matchedCount === 0) return false; // correo no encontrado
+        return true
+    } catch (e) {
+        console.error(e)
+        return null;
+    }
 }
-async function obtener_datos_chats({ data, grupales = null, mensajes = true }) {
+async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
     try {
-        let chatIds = []
-        //si grupales es null significa que no improta, es true:solo grupos, si es false: solo chats no grupales
-        data.forEach(c => {
-            if ((grupales == null) || (c.grupo == grupales)) {
-                chatIds.push(c.id)
-            }
-        })
+        //sacar los ids
+        const chatIds = data
+            .filter(c => grupales === null || c.grupo === grupales)
+            .map(c => c.id);
+
+        //si no hay ids ->terminar
+        if (chatIds.length === 0) return []
 
         //buscar los datos por mongodb
         let data_obtenida = await ChatsRavage.find(
             { _id: { $in: chatIds } },//filtro(todos los chatsid)
-            { mensajes: 0 } // proyección: 0 = excluir
+            { _id: 1, mensajes: mensajes ? 1 : 0 }  // 0 = excluir
         );
         //pasar _id a string
-        data_obtenida = data_obtenida.map(el => ({
+        return data_obtenida.map(el => ({
             ...el.toObject?.() ?? el,
             _id: el._id.toString(),
             usuarios: el.usuarios.map(c => c.toString())
         }));
-
-        return data_obtenida
     } catch (e) {
         console.error(e)
-
         return []
     }
 }
+//funcion muy parecida a la de obtener varios chats ,pero optimizada y funciona distinto
 async function obtener_datos_chat_unico(id) {
     try {
         //buscar los datos por mongodb
         let data_obtenida = await ChatsRavage.findById(id);
-        data_obtenida._id = data_obtenida._id.toString()
-        data_obtenida.usuarios = data_obtenida.usuarios.map(c => c.toString())
-        return data_obtenida
+        if (!data_obtenida) return null;//chat no encontrado
+        const obj = data_obtenida.toObject?.() ?? data_obtenida;//si existe object() lo llama, sino data_obtenida ya es object
+
+        return {
+            ...obj,
+            _id: obj._id.toString(),
+            usuarios: obj.usuarios.map(u => u.toString())
+        };
     } catch (e) {
         console.error(e)
-        return []
+        return null
     }
 }
+async function CREAR_CHAT_NUEVO(ids = null, nombre = "") {//tu no vas dentro de esos ids, debes añadirlo
+    if (!ids || ids.length === 0) return null;
 
-async function obtener_datos_usuario(id, datos = null) {
-    const datos_buscar_defecto = "correo apodo visible idamigo"//se separan por espacio
-    const datos_buscar = datos ? datos : datos_buscar_defecto
-    let datos_usuario = await User.findById(id, datos_buscar).lean()
-    datos_usuario._id = datos_usuario._id.toString()
-    return datos_usuario
-}
-async function encontrar_usuario(texto, correo = false) {
-    function bloqueado(resultado) {
-        const id_buscado = (resultado._id).toString()
-        //mirar si te tiene bloqueado
-        const id_propio = storage.getIDMongodbUsuario()
-        if (resultado.users_bloq.indexOf(id_propio) != -1) return null
-        //mirar si lo tienes bloqueado
-        const bloqueados_propios = storage.getUsuariosBloqueados()
-        if (bloqueados_propios.indexOf(id_buscado) != -1) return null
-    }
-    let resultado;
-    if (correo) {
-        try {
-            resultado = await User.findOne({ correo: texto, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }, "_id apodo users_bloq")
-        } catch (e) {
-            console.error(e)
-        }
-        if (!resultado || bloqueado(resultado)) return null
-        else return { id: resultado._id.toString(), nombre: resultado.apodo }
-    }
-    else {
-        try {
-            resultado = await User.findOne({ idamigo: texto, visible: true, bloquearChatsNuevos: false }, "_id apodo users_bloq")
-        } catch (e) {
-            console.error(e)
-        }
-        if (!resultado || bloqueado(resultado)) return null
-        else return { id: resultado._id.toString(), nombre: resultado.apodo }
-    }
-}
+    const id_propio = getIDMongodbUsuario();
+    const grupo = ids.length !== 1;
+    const ids_añadir = [...ids, id_propio];
 
-async function CREAR_CHAT_NUEVO(ids, nombre = "") {//tu no vas dentro de esos ids, debes añadirlo
+    let datos_chat;
+
     try {
-        if (ids.length == 0) return null;
-        //crear chat, si no falla: añadir chat a la tabla de cada ususario
-        const id_propio = storage.getIDMongodbUsuario()
-        const grupo = ids.length != 1
-        const ids_añadir = [...ids, id_propio]
+        // crear chat
+        datos_chat = await ChatsRavage.create({
+            nombre: grupo ? nombre : "",
+            usuarios: ids_añadir,
+            grupo
+        });
 
-        const datos_chat = await ChatsRavage.create(
+        // actualizar chats de todos los integrantes
+        await User.updateMany(
+            { _id: { $in: ids_añadir } },
             {
-                nombre: grupo ? nombre : "",
-                usuarios: ids_añadir,
-                grupo: grupo
-            }
-        )
-        try {
-            await User.updateMany(
-                { _id: { $in: ids_añadir } },
-                {
-                    $addToSet: {//añade si no existe
-                        chats: {
-                            id: datos_chat._id,
-                            nombre: datos_chat.nombre,
-                            grupo: datos_chat.grupo,
-                            ultimoCambio: new Date(),
-                            ultimomensaje: "Bienvenido😀"
-                        }
-                    }
-                }
-            );
-            //si es solo un usuario añadir ese usaurio a contactos
-            if (ids.length == 1) {
-                try {
-                    await AÑADIR_CONTACTO(ids[0], nombre)
-                }
-                catch (e) {
-                    //borrar chat creado
-                    await ChatsRavage.deleteOne({ _id: datos_chat._id });
-                    throw e
-                }
-            }
-        } catch (e) {
-            //borrar chat creado
-            await ChatsRavage.deleteOne({ _id: datos_chat._id });
-            throw e
-        }
-
-    }
-    catch (e) {
-        throw e
-    }
-}
-async function AÑADIR_CONTACTO(id, nombre) {
-    try {
-        const id_propio = storage.getIDMongodbUsuario()
-        await User.updateOne(
-            { _id: id_propio },
-            {
-                $addToSet: {//añade si no existe
-                    contactos: {
-                        id: id,
-                        apodo: nombre
+                $addToSet: {
+                    chats: {
+                        id: datos_chat._id,
+                        nombre: datos_chat.nombre,
+                        grupo: datos_chat.grupo,
+                        ultimoCambio: new Date(),
+                        ultimomensaje: "Bienvenido😀"
                     }
                 }
             }
         );
+
+        // si es chat 1-a-1, añadir contacto
+        if (ids.length === 1) {
+            await AÑADIR_CONTACTO(ids[0], nombre);
+        }
+
+        return datos_chat; // devolver chat creado
+
+    } catch (e) {
+        // rollback: borrar chat si se creó
+        if (datos_chat?._id) {
+            await ChatsRavage.deleteOne({ _id: datos_chat._id });
+        }
+        throw e
     }
-    catch (e) {
-        console.error(e)
-        return null
+}
+//contactos / usuarios externos
+async function obtener_datos_usuario(id, datos_usar = null) {
+    const datos_buscar_defecto = "correo apodo visible idamigo"//se separan por espacio
+    const datos_buscar = datos_usar ? datos_usar : datos_buscar_defecto //elegir datos buscar
+
+    const usuario = await User.findById(id, datos_buscar).lean();
+    if (!usuario) return null;
+
+    return {
+        ...usuario,
+        _id: usuario._id?.toString(),
+    };
+}
+async function encontrar_usuario(texto, correo = false) {
+    //TODO: DEBE REVISAR SI EN MONGODB ESA CUENTA ESTA BLOQUEADA DE LA APP (bloqueo global)
+    // función que revisa bloqueos
+    const bloqueado = (usuario) => {
+        const id_buscado = usuario._id.toString();
+        const id_propio = getIDMongodbUsuario();
+
+        // si te tiene bloqueado o tú lo tienes bloqueado
+        const verificaciones = [
+            usuario.users_bloq.includes(id_propio),// te tiene bloqueado
+            getUsuariosBloqueados().includes(id_buscado) // tú lo tienes bloqueado
+        ]
+        return verificaciones.some(Boolean);//comprobar si se cumple alguna
+    }
+    try {
+        // filtro dinámico
+        const filtro = correo
+            ? { correo: texto, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }
+            : { idamigo: texto, visible: true, bloquearChatsNuevos: false };
+
+        // campos a traer
+        const campos = "_id apodo users_bloq";
+
+        const usuario = await User.findOne(filtro, campos).lean();
+        if (!usuario || bloqueado(usuario)) return null;
+
+        return { id: usuario._id.toString(), nombre: usuario.apodo };
+
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+}
+async function AÑADIR_CONTACTO(id, nombre) {
+    try {
+        const id_propio = getIDMongodbUsuario();
+        const r = await User.updateOne(
+            { _id: id_propio, "contactos.id": { $ne: id } }, // añade solo si ese id no existe
+            {
+                $push: { contactos: { id, apodo: nombre } }
+            }
+        );
+        return r.modifiedCount > 0; // true si se añadió, false si ya existía
+    } catch (e) {
+        console.error(e);
+        return false;
     }
 }
 module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario, obtener_datos_chats, obtener_datos_chat_unico, limpiar_mensajes_chats_antiguos, encontrar_usuario, CREAR_CHAT_NUEVO, obtener_datos_usuario }
