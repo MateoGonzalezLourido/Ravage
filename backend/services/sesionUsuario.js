@@ -5,8 +5,6 @@ const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuen
 const { generarteToken, validateToken } = require('./CreadorTokens.js')
 const storage = require('../STORAGE/Variables_sesion.js')
 const { machineIdSync } = require('node-machine-id');
-const dotenv = require("dotenv");
-dotenv.config();
 const bcrypt = require('bcryptjs')//para contraseñas: mas seguro para esto
 const crypto = require("crypto");//para tokens y codigos: mas rapido e igual de funcional
 
