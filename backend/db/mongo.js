@@ -1,9 +1,21 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const crypto = require("crypto")
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
 
-const { getIdDispositivo, getCorreoSesion, getUsuariosBloqueados, getUsuariosSilence, setUsuariosBloqueados, setUsuariosSilence, setFechaBloqueoContraseña, setFechaBloqueoCorreo, setApodoSesion, setFechaBloqueoApodo, getIDMongodbUsuario } = require('../STORAGE/Variables_sesion.js')
-const { validateToken } = require('../services/CreadorTokens.js')
+import {
+    getIdDispositivo,
+    getCorreoSesion,
+    getUsuariosBloqueados,
+    getUsuariosSilence,
+    setUsuariosBloqueados,
+    setUsuariosSilence,
+    setFechaBloqueoContraseña,
+    setFechaBloqueoCorreo,
+    setApodoSesion,
+    setFechaBloqueoApodo,
+    getIDMongodbUsuario
+} from '../STORAGE/Variables_sesion.js';
+import { validateToken } from '../services/CreadorTokens.js';
 
 //esquemas de datos
 //subesquemas
@@ -933,4 +945,44 @@ async function AÑADIR_CONTACTO(id, nombre) {
         return false;
     }
 }
-module.exports = { connectDB, closeDB, InsertarUsuario, LoginUsuarioDB, LimpiarJWTUsuario, InsertarVC, BorrarVC, User, ValidationCode, CuentaValidationCode, InsertarCuentaVC, BorrarCuentaVC, BorrarUsuarioActivo, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenSession, TokenVC, ActualizarUsuarioActivo, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario, DatosCuentaVC, InsertarDatosCuentaVC, BorrarDatosCuentaVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, TokenDPC, DispositivosBloqueados, ActualizarSecretKeyUsuario, obtener_datos_chats, obtener_datos_chat_unico, limpiar_mensajes_chats_antiguos, encontrar_usuario, CREAR_CHAT_NUEVO, obtener_datos_usuario }
+export {
+    connectDB,
+    closeDB,
+    InsertarUsuario,
+    LoginUsuarioDB,
+    LimpiarJWTUsuario,
+    InsertarVC,
+    BorrarVC,
+    User,
+    ValidationCode,
+    CuentaValidationCode,
+    InsertarCuentaVC,
+    BorrarVC as BorrarVC_mongo,
+    BorrarUsuarioActivo,
+    AñadirJWTUsuario,
+    AñadirJWTUsuarioVC,
+    LimpiarJWTUsuarioVC,
+    TokenSession,
+    TokenVC,
+    ActualizarUsuarioActivo,
+    cambiarContraseñaUsuario,
+    cambiarCorreoUsuario,
+    cambiarApodoUsuario,
+    DatosCuentaVC,
+    InsertarDatosCuentaVC,
+    BorrarDatosCuentaVC,
+    eliminarUsuariosBloqueados,
+    eliminarUsuariosSilenciados,
+    añadirUsuariosBloqueados,
+    añadirUsuariosSilenciados,
+    TokenDPC,
+    DispositivosBloqueados,
+    ActualizarSecretKeyUsuario,
+    obtener_datos_chats,
+    obtener_datos_chat_unico,
+    limpiar_mensajes_chats_antiguos,
+    encontrar_usuario,
+    CREAR_CHAT_NUEVO,
+    obtener_datos_usuario,
+    BorrarCuentaVC
+};

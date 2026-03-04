@@ -1,16 +1,39 @@
-const dotenv = require("dotenv");
-dotenv.config();
-const bcrypt = require('bcryptjs')
-const { machineIdSync } = require('node-machine-id');
+import pkgBcrypt from 'bcryptjs';
+const bcrypt = pkgBcrypt;
+import pkgMachineId from 'node-machine-id';
+const { machineIdSync } = pkgMachineId;
 
-const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
-const saltos_code = Number(process.env.SALTOS_ENCRIPTAR_CODE)
-
-const { User, InsertarDatosCuentaVC, DatosCuentaVC, BorrarDatosCuentaVC, cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario } = require('../db/mongo.js')
-const { getCorreoSesion, getApodoSesion, setApodoSesion, setCorreoSesion } = require('../STORAGE/Variables_sesion.js')
-const { CodigoCambiarDatosCuenta, ConfirmacionCambioContraseña, ConfirmacionCambioCorreo, ConfirmacionCambioApodo } = require('./MENSAJERIA/Estructuras_correos.js')
-const { generarCodigoVerificacion, enviarEmail } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
-const { comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones, cerrarSesionUsuario } = require('./sesionUsuario.js')
+import {
+    User,
+    InsertarDatosCuentaVC,
+    DatosCuentaVC,
+    BorrarDatosCuentaVC,
+    cambiarContraseñaUsuario,
+    cambiarCorreoUsuario,
+    cambiarApodoUsuario
+} from '../db/mongo.js';
+import {
+    getCorreoSesion,
+    getApodoSesion,
+    setApodoSesion,
+    setCorreoSesion
+} from '../STORAGE/Variables_sesion.js';
+import {
+    CodigoCambiarDatosCuenta,
+    ConfirmacionCambioContraseña,
+    ConfirmacionCambioCorreo,
+    ConfirmacionCambioApodo
+} from './MENSAJERIA/Estructuras_correos.js';
+import {
+    generarCodigoVerificacion,
+    enviarEmail
+} from './MENSAJERIA/Servicio_mensajeria_correo.js';
+import {
+    comprobaciones_Correo,
+    comprobar_apodo,
+    comprobarContrasenaValidaciones,
+    cerrarSesionUsuario
+} from './sesionUsuario.js';
 
 
 
@@ -285,9 +308,9 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     return { success: true };
 }
 
-module.exports = {
+export {
     permitirCambioContraseñaUsuario,
     ValidarCodeCambioDatosCuenta,
     permitirCambioCorreoUsuario,
     permitirCambioApodoUsuario
-}
+};

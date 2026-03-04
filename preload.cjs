@@ -2,6 +2,7 @@
   Puente entre frontend y backend (contextBridge).
   Expone únicamente lo necesario al renderer, sin exponer el backend directamente.
   Cada grupo de funciones representa un dominio lógico de la aplicación.
+  OBLIGATORIAMENTE DEBE SER UN CJS (CommonJS)
 */
 
 const { contextBridge, ipcRenderer } = require('electron');
