@@ -1,21 +1,25 @@
-/*aqui todo se usa como puente para mandar "llamadas de funciones" o "valores de variables" entre frontend y backend para no exponer el backend en el fronted
-Es decir, puedes mandar datos entre fronted y backend ,y llamar funciones para que interactuen frontend y backend y la app funcione correctamente
+/*
+  Puente entre frontend y backend (contextBridge).
+  Expone únicamente lo necesario al renderer, sin exponer el backend directamente.
+  Cada grupo de funciones representa un dominio lógico de la aplicación.
 */
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-const startArg = process.argv.find(a => a.startsWith('--start='));//coger argumentos de la ventana añadidos
-const startPage = startArg?.split('=')[1] ?? 'true'; //esta autologueado: argumento de autolog de la ventana
+const startArg = process.argv.find(a => a.startsWith('--start='));
+const startPage = startArg?.split('=')[1] ?? 'true';
 
-//estas funciones son llamamientos desde el render que crean llamadas para que desde el main se ejecuten las funciones y codigo correspondiente que no puede ir/no pertenece  al render y preload
-//los nombres de exposeInMainWorld('name) es el que quermos darle a ese grupo de funciones; pueden haber muchos grupos de funciones.
-contextBridge.exposeInMainWorld('boot', {//funciones de inicio de la app
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+// Estado inicial de la app al arrancar
+contextBridge.exposeInMainWorld('boot', {
     isLogged: startPage === 'true'
 });
-contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
-    LOGIN_USUARIO: (usuario, contraseña, mantener_sesion_iniciada) => {//funcion que se llama desde el render con window.sesion_usuario.funcion(parametros)
+
+// ─── SESIÓN ───────────────────────────────────────────────────────────────────
+// Login, registro, verificación de códigos y cierre de sesión
+contextBridge.exposeInMainWorld('sesion_usuario', {
+    LOGIN_USUARIO: (usuario, contraseña, mantener_sesion_iniciada) => {
         return ipcRenderer.invoke('login-usuario', usuario, contraseña, mantener_sesion_iniciada)
-        //ipcrenderer.invoke hace el llamamiento al main para que ese ejecute el codigo
     },
     REGISTRAR_USUARIO: (apodo, username, password) => {
         return ipcRenderer.invoke('registrar-usuario', apodo, username, password)
@@ -34,6 +38,36 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     },
     CERRAR_SESION: () => {
         return ipcRenderer.invoke('cerrar-sesion-usuario')
+    }
+});
+
+// ─── NAVEGACIÓN ───────────────────────────────────────────────────────────────
+// Cambio de páginas/vistas dentro de la app
+contextBridge.exposeInMainWorld('paginas_app', {
+    CAMBIAR_PAGINA_SOPORTE: () => ipcRenderer.send("cambiar-pagina-soporte"),
+    CAMBIAR_PAGINA_HOME: () => ipcRenderer.send("cambiar-pagina-home"),
+    CAMBIAR_PAGINA_SESION: () => ipcRenderer.send("cambiar-pagina-log")
+});
+
+// ─── CUENTA DEL USUARIO ───────────────────────────────────────────────────────
+// Datos propios del usuario (IDs, correo, apodo) y modificación de cuenta
+contextBridge.exposeInMainWorld('cuenta_usuario', {
+    // Obtener datos
+    GET_APODO_SESION: () => {
+        return ipcRenderer.invoke("obtener-apodo-sesion")
+    },
+    OBTENER_CORREO_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-correo-usuario")
+    },
+    OBTENER_ID_MONGODB_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-id-mongodb-usuario")
+    },
+    OBTENER_IDAMIGO_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-idamigo-usuario")
+    },
+    // Cambio de datos de cuenta
+    COMPROBAR_CONTRASEÑA: ({ contraseña }) => {
+        return ipcRenderer.invoke("comprobar-contraseña-cuenta", contraseña)
     },
     PERMITIR_CAMBIO_DATOS_CUENTA: ({ data = null, tipo }) => {
         return ipcRenderer.invoke("permitir-cambio-datos-cuenta", data, tipo)
@@ -41,27 +75,9 @@ contextBridge.exposeInMainWorld('sesion_usuario', {//funciones de sesion
     CAMBIAR_DATOS_CUENTA: (contraseña, code, tipo) => {
         return ipcRenderer.invoke("cambiar-datos-usuario", contraseña, code, tipo)
     },
-    GET_APODO_SESION: () => {
-        return ipcRenderer.invoke("obtener-apodo-sesion")
-    },
-    COMPROBAR_CONTRASEÑA: ({ contraseña }) => {
-        return ipcRenderer.invoke("comprobar-contraseña-cuenta", contraseña)
-    }
-})
-contextBridge.exposeInMainWorld('paginas_app', {//funciones de cambio paginas
-    CAMBIAR_PAGINA_SOPORTE: () => {
-        ipcRenderer.send("cambiar-pagina-soporte");
-    },
-    CAMBIAR_PAGINA_HOME: () => {
-        ipcRenderer.send("cambiar-pagina-home");
-    },
-    CAMBIAR_PAGINA_SESION: () => {
-        ipcRenderer.send("cambiar-pagina-log");
-    }
-})
-contextBridge.exposeInMainWorld('ajustes_app', {//funciones de ajustes
+    // Fechas de bloqueo de cambios (para mostrar en ajustes)
     OBTENER_FECHA_CREACION_CUENTA: () => {
-        return ipcRenderer.invoke("obtener-fecha-creacion-cuenta");
+        return ipcRenderer.invoke("obtener-fecha-creacion-cuenta")
     },
     OBTENER_FECHA_BLOQUEO_APODO: () => {
         return ipcRenderer.invoke("obtener-fecha-bloqueo-apodo")
@@ -71,6 +87,20 @@ contextBridge.exposeInMainWorld('ajustes_app', {//funciones de ajustes
     },
     OBTENER_FECHA_BLOQUEO_CONTRASEÑA: () => {
         return ipcRenderer.invoke("obtener-fecha-bloqueo-contraseña")
+    }
+});
+
+// ─── SOCIAL ───────────────────────────────────────────────────────────────────
+// Búsqueda de otros usuarios, contactos, bloqueados y silenciados
+contextBridge.exposeInMainWorld('social_usuario', {
+    ENCONTRAR_USUARIOS_EXTERNOS: (texto, correo = false) => {
+        return ipcRenderer.invoke("encontrar-usuario-externo", texto, correo)
+    },
+    OBTENER_DATOS_USUARIO_EXTERNO: (id, datos = null) => {
+        return ipcRenderer.invoke("obtener-datos-usuario-externo", id, datos)
+    },
+    OBTENER_CONTACTOS_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-contactos-usuario")
     },
     OBTENER_USUARIOS_BLOQUEADOS: () => {
         return ipcRenderer.invoke("obtener-usuarios-bloqueados")
@@ -78,21 +108,23 @@ contextBridge.exposeInMainWorld('ajustes_app', {//funciones de ajustes
     OBTENER_USUARIOS_SILENCIADOS: () => {
         return ipcRenderer.invoke("obtener-usuarios-silenciados")
     },
+    AÑADIR_USUARIO_BLOQUEADOS: (id, apodo) => {
+        return ipcRenderer.invoke("añadir-usuarios-bloqueados", id, apodo)
+    },
     ELIMINAR_USUARIO_BLOQUEADO: (id) => {
         return ipcRenderer.invoke("eliminar-usuarios-bloqueados", id)
-    },
-    ELIMINAR_USUARIO_SILENCIADOS: (id) => {
-        return ipcRenderer.invoke("eliminar-usuarios-silenciados", id)
     },
     AÑADIR_USUARIO_SILENCIADOS: (id, apodo) => {
         return ipcRenderer.invoke("añadir-usuarios-silenciados", id, apodo)
     },
-    AÑADIR_USUARIO_BLOQUEADOS: (id, apodo) => {
-        return ipcRenderer.invoke("añadir-usuarios-bloqueados", id, apodo)
+    ELIMINAR_USUARIO_SILENCIADOS: (id) => {
+        return ipcRenderer.invoke("eliminar-usuarios-silenciados", id)
     }
-})
+});
 
-contextBridge.exposeInMainWorld('datos_usuario', {//funciones de ajustes
+// ─── CHATS ────────────────────────────────────────────────────────────────────
+// Todo lo relacionado con chats y mensajes
+contextBridge.exposeInMainWorld('chats', {
     OBTENER_CHATS_USUARIO: () => {
         return ipcRenderer.invoke("obtener-chats-usuario")
     },
@@ -105,27 +137,7 @@ contextBridge.exposeInMainWorld('datos_usuario', {//funciones de ajustes
     LIMPIAR_MENSAJES_CHATS_ANTIGUOS: (chatIds) => {
         ipcRenderer.send("limpiar-chats-antiguos-mensajes", chatIds)
     },
-    OBTENER_ID_MONGODB_USUARIO: () => {
-        return ipcRenderer.invoke("obtener-id-mongodb-usuario")
-    },
-    OBTENER_DATOS_USUARIO_EXTERNO: (id, datos = null) => {
-        return ipcRenderer.invoke("obtener-datos-usuario-externo", id, datos)
-    },
-    ENCONTRAR_USARIOS_EXTERNOS: (texto, correo = false) => {
-        return ipcRenderer.invoke("encontrar-usuario-externo", texto, correo)
-    },
     CREAR_CHAT_NUEVO: (ids, nombre) => {
         return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre)
-    },
-    OBTENER_CORREO_USUARIO: () => {
-        return ipcRenderer.invoke("obtener-correo-usuario")
-    },
-    OBTENER_IDAMIGO_USUARIO: () => {
-        return ipcRenderer.invoke("obtener-idamigo-usuario")
-    },
-    OBTENER_CONTACTOS_USUARIO: () => {
-        return ipcRenderer.invoke("obtener-contactos-usuario")
     }
-
-
-})
+});

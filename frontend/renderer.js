@@ -14,10 +14,10 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("ocultar-display")
             document.querySelector("#cuerpo-ajustes-cuenta").classList.add("flex-display")
             //actualizar datos mostrar
-            const fecha_creacion = await window.ajustes_app.OBTENER_FECHA_CREACION_CUENTA()
-            const fecha_bloqueo_apodo = await window.ajustes_app.OBTENER_FECHA_BLOQUEO_APODO()
-            const fecha_bloqueo_correo = await window.ajustes_app.OBTENER_FECHA_BLOQUEO_CORREO()
-            const fecha_bloqueo_contraseña = await window.ajustes_app.OBTENER_FECHA_BLOQUEO_CONTRASEÑA()
+            const fecha_creacion = await window.cuenta_usuario.OBTENER_FECHA_CREACION_CUENTA()
+            const fecha_bloqueo_apodo = await window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_APODO()
+            const fecha_bloqueo_correo = await window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CORREO()
+            const fecha_bloqueo_contraseña = await window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA()
             document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${fecha_creacion}`
             if (fecha_bloqueo_apodo != "") document.querySelector("#bt-fecha-bloqueo-apodo").innerHTML = `*Bloqueado: ${fecha_bloqueo_apodo}h`
             if (fecha_bloqueo_correo != "") document.querySelector("#bt-fecha-bloqueo-correo").innerHTML = `*Bloqueado: ${fecha_bloqueo_correo}h`
@@ -198,7 +198,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
             return;
         }
-        let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "contraseña" })
+        let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "contraseña" })
         //si puede mostrar menu de cambio de contraseña
         if (result.success) {
             document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
@@ -235,7 +235,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                 }
                 //hacer el cambio de contraseña(validaciones hechas)
                 if (valido) {//cambiar contraseña
-                    result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: contraseña, tipo: "contraseña" })
+                    result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: contraseña, tipo: "contraseña" })
 
                     if (result && (result.success)) {
                         document.querySelector("#form-cambio-contraseña").removeEventListener("submit", form_cambio_contraseña)
@@ -262,7 +262,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                         async function form_validar_correo_ajustes_datos_cuenta(e) {
                             e.preventDefault()
                             const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
-                            result = await window.sesion_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
+                            result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
                             if (!result) {//TODO:notificar:cambiar contraseña error
                                 console.log("no se pudo cambiar")
                             }
@@ -315,7 +315,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
             return;
         }
-        let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "apodo" })
+        let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "apodo" })
         //si puede mostrar menu de cambio de contraseña
         if (result.success) {
             document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
@@ -343,12 +343,12 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                 }
                 //hacer el cambio de contraseña(validaciones hechas)
                 if (valido) {//cambiar contraseña
-                    result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: apodo, tipo: "apodo" })
+                    result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: apodo, tipo: "apodo" })
 
                     if (result && (result.success)) {
                         document.querySelector("#form-cambio-apodo").removeEventListener("submit", funcion_cambiar_apodo)
 
-                        result = await window.sesion_usuario.CAMBIAR_DATOS_CUENTA(apodo, null, "apodo")
+                        result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(apodo, null, "apodo")
                         if (!result) {//TODO:notificar:cambiar contraseña error
                             console.log("no se pudo cambiar")
                         }
@@ -399,7 +399,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
             return;
         }
-        let result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "correo" })
+        let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "correo" })
         //si puede mostrar menu de cambio de contraseña
         if (result.success) {
             document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
@@ -425,11 +425,11 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                 }
                 //hacer el cambio de contraseña(validaciones hechas)
                 if (valido) {
-                    result = await window.sesion_usuario.COMPROBAR_CONTRASEÑA({ contraseña: contraseña })
+                    result = await window.cuenta_usuario.COMPROBAR_CONTRASEÑA({ contraseña: contraseña })
                     valido = result
                 }
                 if (valido) {//cambiar contraseña
-                    result = await window.sesion_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: correo_nuevo, tipo: "correo" })
+                    result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: correo_nuevo, tipo: "correo" })
 
                     if (result && (result.success)) {
                         document.querySelector("#form-cambio-correo").removeEventListener("submit", form_cambio_correo)
@@ -456,7 +456,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                         async function form_validar_correo_ajustes_datos_cuenta(e) {
                             e.preventDefault()
                             const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
-                            result = await window.sesion_usuario.CAMBIAR_DATOS_CUENTA(correo_nuevo, code, "correo")
+                            result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(correo_nuevo, code, "correo")
                             if (!result) {//TODO:notificar:cambiar contraseña error
                                 console.log("no se pudo cambiar")
                             }
@@ -516,7 +516,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         e.stopPropagation()
         document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = "*SIN USUARIOS*"
         //actualizar lista
-        const lista_datos = window.ajustes_app.OBTENER_USUARIOS_SILENCIADOS()
+        const lista_datos = window.social_usuario.OBTENER_USUARIOS_SILENCIADOS()
         let html = ""
         if (lista_datos) {
             lista_datos.forEach(usuario => {
@@ -532,7 +532,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         //eventos
         document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
             const id = btn.dataset.id;
-            const result = window.ajustes_app.ELIMINAR_USUARIO_SILENCIADOS(id).then(() => {
+            const result = window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(id).then(() => {
                 if (!result) {
                     window.pushNotificacion({
                         prioridad: 3,        // menor número = más importante
@@ -561,7 +561,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         e.stopPropagation()
         document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = "*SIN USUARIOS*"
         //actualizar lista
-        const lista_datos = window.ajustes_app.OBTENER_USUARIOS_BLOQUEADOS()
+        const lista_datos = window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
         console.log(lista_datos)
         let html = ""
         if (lista_datos) {
@@ -578,7 +578,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         //eventos
         document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
             const id = btn.dataset.id;
-            const result = window.ajustes_app.ELIMINAR_USUARIO_BLOQUEADO(id).then(() => {
+            const result = window.social_usuario.ELIMINAR_USUARIO_BLOQUEADO(id).then(() => {
                 if (!result) {
                     window.pushNotificacion({
                         prioridad: 3,        // menor número = más importante
@@ -675,15 +675,15 @@ async function buscar_ususario_añadir_chat(e) {
     let resultado;
     if (/[@]/.test(texto_buscar)) {//es correo
         //TODO: HAY QUE COMPROBAR SI EL CORREO ES VALIDO PARA REDUCIR LLAMADAS AL DB
-        const correo_usuario = await window.datos_usuario.OBTENER_CORREO_USUARIO()
+        const correo_usuario = await window.cuenta_usuario.OBTENER_CORREO_USUARIO()
         if (texto_buscar == correo_usuario) return null
-        else resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar, true)
+        else resultado = await window.social_usuario.ENCONTRAR_USUARIOS_EXTERNOS(texto_buscar, true)
     }
     else if (/[#]/.test(texto_buscar)) {//id amigo
         //TODO: COMPROBAR SI ES UN  ID VALIDO
-        const idamigo_usuario = await window.datos_usuario.OBTENER_IDAMIGO_USUARIO()
+        const idamigo_usuario = await window.cuenta_usuario.OBTENER_IDAMIGO_USUARIO()
         if (texto_buscar == idamigo_usuario) return null
-        else resultado = await window.datos_usuario.ENCONTRAR_USARIOS_EXTERNOS(texto_buscar.replace("#", ""), false)
+        else resultado = await window.social_usuario.ENCONTRAR_USUARIOS_EXTERNOS(texto_buscar.replace("#", ""), false)
     }
 
     if (resultado) {
@@ -713,7 +713,7 @@ async function crear_chat_nuevo(e) {
     contactos_añadir = []
     //TODO: MIRAR SI ES UN NOMBRE VALIDO
     //crear chat y esperar resultado
-    const resultado = await window.datos_usuario.CREAR_CHAT_NUEVO(ids, nombre)
+    const resultado = await window.chats.CREAR_CHAT_NUEVO(ids, nombre)
     //TODO: actualizar html + mandar actualizaciones a los buzones de todos los ids (hacer esta parte asincrona sin await)
     if (resultado) {
         desplegar_menu_añadir_chat({ e, mostrar: false })
@@ -808,7 +808,7 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
                 const indice = nombres_contactos.findIndex(x => x.id == data.emisor)//buscar si el id del otro usaurio esta ya en contactos
                 if (indice == -1) {//no lo tienes de contacto
                     //cojer el correo del usaurio
-                    const data_usuarios_externo = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
+                    const data_usuarios_externo = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
                     nombres_id.push({ id: id_buscar, nombre: data_usuarios_externo.apodo })
                     html += data_usuarios_externo.apodo
                 }
@@ -835,7 +835,7 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
 async function Crear_chat_html(datos, id_propio) {
     let html = ""
     //nav principal
-    const nombres_contactos = await window.datos_usuario.OBTENER_CONTACTOS_LISTA()
+    const nombres_contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
     async function todo_chat() {
         let html = ""
         for (m of datos.mensajes) {
@@ -875,11 +875,11 @@ function Comenzar_conexion_p2p(e) {
 }
 async function ACTUALIZAR_LISTAS_CHAT() {
     try {
-        const lista_chats = await window.datos_usuario.OBTENER_CHATS_USUARIO()
-        const lista_contactos = await window.datos_usuario.OBTENER_CONTACTOS_USUARIO()
-        window.datos_usuario.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
+        const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
+        const lista_contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
+        window.chats.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
 
-        const datos_chats_grupales = await window.datos_usuario.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
+        const datos_chats_grupales = await window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
         //crear html lista chats
         //TODO: ORDENAR LOS CHATS POR ULTIMO CAMBIO
         let html = ""
@@ -893,7 +893,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 nombre = datos_chats_grupales[indice_chat].nombre
             } else {//buscar en contactos o usuarios
                 //para esto ha que buscar el chat, sacar al otro usuarioF (contacto) y buscar su nombre en nuestros contactos (si no lo tenemos de contacto ponemos el nombre que este use)
-                const id_propio = await window.datos_usuario.OBTENER_ID_MONGODB_USUARIO()
+                const id_propio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                 const usuario_buscar = datos_chats_grupales[indice_chat].usuarios.filter(x => x != id_propio)
                 //asi solo deberia quedar un id
                 if (!usuario_buscar || usuario_buscar.length !== 1) {
@@ -902,7 +902,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 //buscar en contactos para ver si le tenemos nombre propio
                 const indice_contacto = lista_contactos.findIndex(x => x.id == usuario_buscar[0])
                 if (indice_contacto == -1) {//buscar por usuarios para cojer el apodo que el usuario tiene
-                    const nombre_usuario = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(usuario_buscar[0], "apodo")
+                    const nombre_usuario = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(usuario_buscar[0], "apodo")
                     if (nombre_usuario) nombre = "~" + nombre_usuario.apodo
                     else throw "USUARIO NO ENCONTRADO"
                 }
@@ -924,17 +924,17 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 const id = e.target.dataset.id
                 //obtener info de ese chat
                 //TODO: AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
-                let datos_chat = await window.datos_usuario.OBTENER_DATOS_CHAT_UNICO(id)
-                const id_usuario = await window.datos_usuario.OBTENER_ID_MONGODB_USUARIO()
+                let datos_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id)
+                const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
 
                 //*obtener el nombre del chat (la dificultad es que puede sser grupo o no, y puede ser contacto o no)
                 if (!datos_chat.grupo) {
-                    const nombres_contactos = await window.datos_usuario.OBTENER_CONTACTOS_LISTA()
+                    const nombres_contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
                     const id_buscar = (datos_chat.usuarios).filter(x => x != id_usuario)//quitamos el id del usaurio
                     const indice = nombres_contactos.findIndex(x => x.id == id_buscar)//buscar si el id del otro usaurio esta ya en contactos
                     if (indice == -1) {//no lo tienes de contacto
                         //cojer el correo del usaurio
-                        const data_usuarios_externo = await window.datos_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
+                        const data_usuarios_externo = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
                         datos_chat.nombre = data_usuarios_externo.apodo
                     }
                     else {
