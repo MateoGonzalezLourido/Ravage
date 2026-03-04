@@ -2,68 +2,103 @@
 FECHA:05/02/2026. BY:MATEO WITH CHATGPT *^____^*
 */
 
+// ── Iconos por tipo ──────────────────────────────────────────────────────────
+const NOTI_ICONOS = {
+    error: '✕',
+    info: 'ℹ',
+    success: '✓',
+    warning: '⚠',
+    default: '●'
+}
 
-let cola_notificaciones = [] // prioridad: menor = más importante
-let mostrando = false // controla si hay notificaciones activas
-window.pushNotificacion = function (data) {
-    const id = `noti-${crypto.randomUUID()}`
+const NOTI_TITULOS = {
+    error: 'Error',
+    info: 'Info',
+    success: 'Listo',
+    warning: 'Aviso',
+    default: 'Aviso'
+}
 
-    const div = document.createElement("div")
-    div.id = id
-    div.className = "notificacion"
-    div.style.cssText = `
-    position:relative;
-        border: 2px solid black;
-        border-radius: 8px;
-        background-color: azure;
-        max-width: 250px;
-        max-height: 150px;
-        padding: 4px;
-        ${data.tipo === "error" ? "border:2px solid red;" : ""}
-        ${data.tipo === "info" ? "border:2px solid blue;" : ""}
-        ${data.tipo === "success" ? "border:2px solid green;" : ""}
-        opacity:1;
-        transition: opacity 0.5s ease;
-        z-index:200 !important;
-        opacity:0.92;
-    `
-    const span = document.createElement("span")
-    span.textContent = data.texto
-    div.appendChild(span)
-    document.body.appendChild(div)
-
-    const cerrar = () => {
-        div.style.opacity = 0 // dispara transición
-        // forzar remove tras duración de la transición
-        setTimeout(() => div.remove(), 500)
+// ── Contenedor compartido ────────────────────────────────────────────────────
+function obtenerContenedor() {
+    let contenedor = document.getElementById('notificaciones-contenedor')
+    if (!contenedor) {
+        contenedor = document.createElement('div')
+        contenedor.id = 'notificaciones-contenedor'
+        document.body.appendChild(contenedor)
     }
+    return contenedor
+}
 
-    div.addEventListener("click", cerrar)
-    setTimeout(cerrar, 5000)
+// ── Función de cierre (con animación de salida) ──────────────────────────────
+function cerrarNotificacion(div) {
+    div.classList.add('noti-salir')
+    setTimeout(() => div.remove(), 420)
+}
+
+// ── Constructora de elemento notificación ────────────────────────────────────
+function crearElementoNoti(texto, tipo, duracion) {
+    const tipoValido = ['error', 'info', 'success', 'warning'].includes(tipo) ? tipo : 'default'
+
+    const div = document.createElement('div')
+    div.className = `notificacion noti-${tipoValido}`
+    div.style.setProperty('--noti-duracion', `${duracion}ms`)
+
+    // Icono
+    const icono = document.createElement('span')
+    icono.className = 'noti-icono'
+    icono.textContent = NOTI_ICONOS[tipoValido]
+
+    // Cuerpo
+    const cuerpo = document.createElement('div')
+    cuerpo.className = 'noti-cuerpo'
+
+    const titulo = document.createElement('span')
+    titulo.className = 'noti-titulo'
+    titulo.textContent = NOTI_TITULOS[tipoValido]
+
+    const span = document.createElement('span')
+    span.className = 'noti-texto'
+    span.textContent = texto
+
+    cuerpo.appendChild(titulo)
+    cuerpo.appendChild(span)
+
+    // Botón cerrar
+    const cerrarBtn = document.createElement('span')
+    cerrarBtn.className = 'noti-cerrar'
+    cerrarBtn.textContent = '✕'
+
+    div.appendChild(icono)
+    div.appendChild(cuerpo)
+    div.appendChild(cerrarBtn)
+
+    return div
+}
+
+// ── pushNotificacion ─────────────────────────────────────────────────────────
+// Notificaciones independientes (pueden apilarse, no bloquean entre sí)
+window.pushNotificacion = function (data) {
+    const duracion = data.duracion ?? 5000
+    const contenedor = obtenerContenedor()
+    const div = crearElementoNoti(data.texto, data.tipo, duracion)
+
+    const cerrar = () => cerrarNotificacion(div)
+
+    div.querySelector('.noti-cerrar').addEventListener('click', (e) => {
+        e.stopPropagation()
+        cerrar()
+    })
+    div.addEventListener('click', cerrar)
+
+    contenedor.appendChild(div)
+    setTimeout(cerrar, duracion)
 }
 
 
-
-const bloque_noti_estilos_base = `
-  border: 2px solid black;
-  border-radius: 8px;
-  background-color: azure;
-  max-width: 250px;
-  max-height: 150px;
-  padding: 4px;
-`
-
-const estilos_bloque_noti = {
-    "error": "border: 2px solid red;",
-    "info": "border: 2px solid blue;",
-    "success": "border: 2px solid green;"
-}
-
-const estilos_contenido_noti = {
-    "error": "color:red; padding:1px;",
-    "info": "color:blue; padding:1px;",
-    "success": "color:green; padding:1px;"
-}
+// ── Sistema con cola (notificaciones secuenciales) ───────────────────────────
+let cola_notificaciones = []
+let mostrando = false
 
 function mostrarNotificacion() {
     if (mostrando || cola_notificaciones.length === 0) return
@@ -76,22 +111,21 @@ function mostrarNotificacion() {
         }
 
         const noti = cola_notificaciones.shift()
-        const id = `noti-${crypto.randomUUID()}`
+        const duracion = noti.duracion ?? 2500
         const token = { cancelled: false }
-
-        const div = document.createElement("div")
-        div.id = id
-        div.style.cssText = bloque_noti_estilos_base + estilos_bloque_noti[noti.tipo]
-        const span = document.createElement("span")
-        span.style.cssText = estilos_contenido_noti[noti.tipo]
-        span.textContent = noti.text
-        div.appendChild(span)
-        document.body.appendChild(div)
+        const contenedor = obtenerContenedor()
+        const div = crearElementoNoti(noti.text, noti.tipo, duracion)
 
         const clickHandler = () => token.cancel && token.cancel()
-        div.addEventListener("click", clickHandler, { once: true }) // se elimina al dispararse
+        div.querySelector('.noti-cerrar').addEventListener('click', (e) => {
+            e.stopPropagation()
+            clickHandler()
+        })
+        div.addEventListener('click', clickHandler, { once: true })
 
-        sleep(2500, token, div).then(() => {
+        contenedor.appendChild(div)
+
+        sleep(duracion, token, div).then(() => {
             procesarSiguiente()
         })
     }
@@ -102,14 +136,17 @@ function mostrarNotificacion() {
 function sleep(ms, token, div) {
     return new Promise(resolve => {
         const timeoutId = setTimeout(() => {
-            if (!token.cancelled) resolve()
+            if (!token.cancelled) {
+                cerrarNotificacion(div)
+                setTimeout(resolve, 420)
+            }
         }, ms)
 
         token.cancel = () => {
             clearTimeout(timeoutId)
             token.cancelled = true
-            div?.remove()
-            resolve()
+            cerrarNotificacion(div)
+            setTimeout(resolve, 420)
         }
     })
 }
