@@ -29,6 +29,13 @@ Desde el directorio raíz del proyecto, ejecuta:
 npm install
 ```
 
+Si prefieres instalarlas manualmente una a una:
+
+```bash
+npm install @getbrevo/brevo bcryptjs brevo dotenv express jsonwebtoken keytar mongodb mongoose node-machine-id systeminformation validator
+npm install --save-dev electron standard
+```
+
 ### 4. Configuración de Variables de Entorno
 
 Crea un archivo `.env` en la raíz del proyecto (basado en la configuración requerida) con las siguientes claves:
