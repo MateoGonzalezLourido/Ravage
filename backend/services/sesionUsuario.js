@@ -35,10 +35,7 @@ import {
 } from './MENSAJERIA/Estructuras_correos.js';
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
-import pkgMachineId from 'node-machine-id';
-const { machineIdSync } = pkgMachineId;
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+import { hash, compare, createHash, machineIdSync } from '../utils/libs.js';
 
 let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
@@ -162,7 +159,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
         return { success: false, message: "Correo ya registrado" };
     }
     //guardar vairables para pasarlas a la validacion por correo
-    contraseña_hashed = await bcrypt.hash(password, saltos_contraseña);//contraseña hasheada
+    contraseña_hashed = await hash(password, saltos_contraseña);//contraseña hasheada
     const apodo_valido = comprobar_apodo(apodo)
     if (!apodo_valido.success) {
         bloquear_accion = false
@@ -206,7 +203,7 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         return { success: false, message: "Código no numérico" }
     }
     //cojer el ultimo codigo generado
-    const codehash = crypto.createHash("sha256").update(code).digest("hex");//crear hash del code
+    const codehash = createHash("sha256").update(code).digest("hex");//crear hash del code
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
 
     const code_db = await ValidationCode.exists({ correo, code: codehash, id_dp: deviceId })
@@ -273,7 +270,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         clearFileSession('dispositivoConfianza')
     }
     else {
-        const tokenhash = crypto.createHash("sha256").update(dp_confianza_data.token).digest("hex");
+        const tokenhash = createHash("sha256").update(dp_confianza_data.token).digest("hex");
         dp_confianza = await TokenDPC.exists({ correo: username, token: tokenhash, id_dp: deviceId })
     }
     //autovalidacion del codigo de verificacion de cuenta por token
@@ -283,7 +280,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         const valido = validateToken(data_autoverificacion.token)
         if (valido) {
             //validar token con mongodb
-            const tokenhash = crypto.createHash("sha256").update(data_autoverificacion.token).digest("hex");
+            const tokenhash = createHash("sha256").update(data_autoverificacion.token).digest("hex");
             const token_datos = await TokenVC.exists({ correo: usuario_data.data.correo, token: tokenhash, id_dp: deviceId })
 
             if (!token_datos) clearFileSession('omitirVerificacionCuentaFile');
@@ -344,7 +341,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //cojer el ultimo codigo generado
 
     //cojer el ultimo codigo generado
-    const codehash = crypto.createHash("sha256").update(code).digest("hex");
+    const codehash = createHash("sha256").update(code).digest("hex");
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
 
     const code_db = await CuentaValidationCode.exists({ correo, code: codehash, id_dp: deviceId })
@@ -438,7 +435,7 @@ async function comprobar_contraseña_cuenta(contraseña) {
     const correo = storage.getCorreoSesion()
     const usuario_data = (await User.find({ correo: correo }).limit(1))[0]
     if (!usuario_data) return false
-    const ok = await bcrypt.compare(String(contraseña), usuario_data.contrasena);
+    const ok = await compare(String(contraseña), usuario_data.contrasena);
     return ok
 }
 //mantener sesion activa

@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+// Usando fetch nativo de Node.js v18+
 
 function generarCodigoVerificacion() {//generar codigo 6 digitos que se utilizara para verificar
     const codigo_verificacion = Math.floor(100000 + Math.random() * 900000)
