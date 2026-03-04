@@ -262,7 +262,8 @@ const ChatSchema = new mongoose.Schema({
             }
         ],
         default: []
-    }
+    },
+    fecha_creacion: { type: Date, default: Date.now }
 })
 const BuzonSchema = new mongoose.Schema({
     correo: {
