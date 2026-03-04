@@ -133,7 +133,7 @@ contextBridge.exposeInMainWorld('chats', {
         return ipcRenderer.invoke("obtener-datos-chats-grupales-usuario", { data, grupales, mensajes })
     },
     OBTENER_DATOS_CHAT_UNICO: (id) => {
-        return ipcRenderer.invoke("obtener-datos-chats-grupales-usuario", id)
+        return ipcRenderer.invoke("obtener-datos-chat-unico-usuario", id)
     },
     LIMPIAR_MENSAJES_CHATS_ANTIGUOS: (chatIds) => {
         ipcRenderer.send("limpiar-chats-antiguos-mensajes", chatIds)

@@ -283,7 +283,7 @@ ipcMain.handle("obtener-datos-chats-grupales-usuario", async (_, { data, grupale
     return await obtener_datos_chats({ data, grupales, mensajes })
 })
 
-ipcMain.handle("obtener-datos-chat-unico", async (_, id) => {
+ipcMain.handle("obtener-datos-chat-unico-usuario", async (_, id) => {
     return await obtener_datos_chat_unico(id)
 })
 
