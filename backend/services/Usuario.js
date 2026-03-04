@@ -1,7 +1,4 @@
-import pkgBcrypt from 'bcryptjs';
-const bcrypt = pkgBcrypt;
-import pkgMachineId from 'node-machine-id';
-const { machineIdSync } = pkgMachineId;
+import { hash, compare, machineIdSync } from '../utils/libs.js';
 
 import {
     User,
@@ -77,7 +74,7 @@ async function permitirCambioContraseñaUsuario(contraseña = null) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
-    const iguales = await bcrypt.compare(contraseña, data_usuario.contrasena)
+    const iguales = await compare(contraseña, data_usuario.contrasena)
     if (iguales) {
         bloquear_accion = false
         return { success: false, message: "La contraseña es la misma" }
@@ -85,7 +82,7 @@ async function permitirCambioContraseñaUsuario(contraseña = null) {
     const apodo = getApodoSesion()
     //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
-    const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
+    const hashed_ValidationCode = await hash(code_generado, saltos_code)
     const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "contraseña" })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
@@ -147,7 +144,7 @@ async function permitirCambioCorreoUsuario(correo = null) {
     const apodo = getApodoSesion()
     //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
-    const hashed_ValidationCode = await bcrypt.hash(code_generado, saltos_code)
+    const hashed_ValidationCode = await hash(code_generado, saltos_code)
     const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "correo" })
     //insertar codigo en mongodb
     const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
@@ -238,7 +235,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
             return { success: false, message: "Fallo al cambiar datos: este codigo no pertenece a este dispositivo" };
         }
         //comparar codigo de usuario con el de mongodb
-        const ok = await bcrypt.compare(String(code), code_db.code);
+        const ok = await compare(String(code), code_db.code);
         if (!ok) {//no son iguales
             console.error(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
             bloquear_accion = false
@@ -247,7 +244,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     }
     //crear nueva cuenta de usuario
     if (tipo === "contraseña") {
-        const contraseña_hashed = await bcrypt.hash(data, saltos_contraseña)
+        const contraseña_hashed = await hash(data, saltos_contraseña)
         const nuevoUsuario = await cambiarContraseñaUsuario(contraseña_hashed);
         if (!nuevoUsuario) {//error
             return { success: false, message: "Fallo al cambiar contraseña" }

@@ -3,7 +3,7 @@ import path from 'path';
 import { app } from 'electron';
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../db/mongo.js';
-import crypto from 'crypto';
+import { randomBytes, createCipheriv, createDecipheriv } from '../utils/libs.js';
 
 const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
 
@@ -102,7 +102,7 @@ async function readFileSession(ruta, cifrado = true) {
             secretKey = Buffer.from(secretKey, "hex")
         }
 
-        const decipher = crypto.createDecipheriv(
+        const decipher = createDecipheriv(
             algorithm,
             secretKey,
             Buffer.from(raw.iv, "hex")
@@ -161,8 +161,8 @@ async function CifrarDatosArchivos(data, especial) {
         secretKey = SECRET_KEY_COKKIE
     }
     secretKey = Buffer.from(secretKey, "hex")
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
+    const iv = randomBytes(12);
+    const cipher = createCipheriv(algorithm, secretKey, iv);
     const encrypted = Buffer.concat([
         cipher.update(JSON.stringify(data)),
         cipher.final()

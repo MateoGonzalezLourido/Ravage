@@ -1,7 +1,4 @@
-import jwt from 'jsonwebtoken';
-import pkgMachineId from 'node-machine-id';
-const { machineIdSync } = pkgMachineId;
-import crypto from 'crypto';
+import { sign, verify, machineIdSync, randomBytes } from '../utils/libs.js';
 const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;//codigo para crear jwt (un valor definido por mi)
 
 
@@ -16,9 +13,9 @@ export async function generarteToken(duracion = "cuenta") {
     const deviceId = String(machineIdSync());
 
     // 2. Token aleatorio de sesión
-    const sessionToken = crypto.randomBytes(32).toString("hex");
+    const sessionToken = randomBytes(32).toString("hex");
     // 5. Crear JWT que solo contiene el hash
-    const jwtToken = jwt.sign(
+    const jwtToken = sign(
         { payload: sessionToken, deviceId },
         SECRET_KEY_JWT,
         { expiresIn: duraciones[duracion] }
@@ -29,7 +26,7 @@ export async function generarteToken(duracion = "cuenta") {
 
 export async function validateToken(jwtToken) {
     try {
-        const decoded = jwt.verify(jwtToken, SECRET_KEY_JWT);
+        const decoded = verify(jwtToken, SECRET_KEY_JWT);
         return decoded;   // o true si prefieres booleano
     } catch {
         return null;

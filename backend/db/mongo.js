@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt";
-import crypto from "crypto";
+import { compare, createHash, randomBytes } from "../utils/libs.js";
 
 import {
     getIdDispositivo,
@@ -337,7 +336,7 @@ async function LoginUsuarioDB({ correo = null, contraseña = null, token = null,
             }
 
             //verificar si mongodb tiene ese token
-            const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+            const tokenhash = createHash("sha256").update(token).digest("hex");
             const token_datos = await TokenSession.exists({ correo, token: tokenhash, id_dp })
 
             if (!token_datos) {
@@ -366,7 +365,7 @@ async function LoginUsuarioDB({ correo = null, contraseña = null, token = null,
             return { success: false }
         }
         //comparar contraseña del usuario con la de la base de datos
-        const ok = await bcrypt.compare(contraseña, usuario_datos.contrasena);
+        const ok = await compare(contraseña, usuario_datos.contrasena);
         if (!ok) {
             console.error("Credenciales incorrectas");
             return { success: false }
@@ -386,7 +385,7 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la
     const key = await ActualizarSecretKeyUsuario(false)
     //crear id amigo
     function generarIdAmigo() {
-        return crypto.randomBytes(8).toString("hex").toUpperCase()
+        return randomBytes(8).toString("hex").toUpperCase()
     }
     let idamigo = ""
     let existe = true
@@ -395,7 +394,7 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la
         existe = await User.exists({ idamigo: idamigo })
     }
     try {
-        const r = await User.create({
+        await User.create({
             apodo: apodo,
             correo: correo,
             contrasena: contraseña,
@@ -412,7 +411,7 @@ async function InsertarUsuario({ apodo = "Usuario", contraseña, correo }) {//la
 async function InsertarVC({ correo = null, code = null, id = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
-    const codehash = crypto.createHash("sha256").update(code).digest("hex");
+    const codehash = createHash("sha256").update(code).digest("hex");
 
     try {
         const r = await ValidationCode.create({
@@ -431,7 +430,7 @@ async function InsertarVC({ correo = null, code = null, id = "" }) {
 async function InsertarCuentaVC({ correo = null, code = null, id = "" }) {
     if (!correo || !code) throw new Error("Faltan datos para insertar codigo");
 
-    const codehash = crypto.createHash("sha256").update(code).digest("hex");
+    const codehash = createHash("sha256").update(code).digest("hex");
 
     try {
         const r = await CuentaValidationCode.create({
@@ -613,7 +612,7 @@ async function eliminarUsuariosSilenciados(id) {
 //añadir tokens (no rompen nada si fallan)
 async function AñadirJWTUsuario(correo, token = "") {
     //exìra en 7dias, expira= (7dias - 90min del expire de mongo)
-    const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenhash = createHash("sha256").update(token).digest("hex");
     const deviceId = getIdDispositivo()
 
     await TokenSession.create({
@@ -626,7 +625,7 @@ async function AñadirJWTUsuario(correo, token = "") {
 }
 async function AñadirJWTUsuarioVC(correo, token = "") {
     //exìra en 90min
-    const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenhash = createHash("sha256").update(token).digest("hex");
     const deviceId = getIdDispositivo()
 
     await TokenVC.create({
@@ -639,7 +638,7 @@ async function AñadirJWTUsuarioVC(correo, token = "") {
 //TODO: usarlo
 async function AñadirJWTDPConfianza(correo, token = "") {
     //exìra en 90min
-    const tokenhash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenhash = createHash("sha256").update(token).digest("hex");
     const deviceId = getIdDispositivo()
 
     await TokenDPC.create({
@@ -746,7 +745,7 @@ async function cambiarApodoUsuario(apodo) {//24h para vovler a cambiarlo
     }
 }
 async function ActualizarSecretKeyUsuario(actualizar = true) {
-    const key = crypto.randomBytes(32).toString("hex");
+    const key = randomBytes(32).toString("hex");
     if (!actualizar) return key;//solo genera la key pero no la guarda directamente
     try {
         const correo = getCorreoSesion()
