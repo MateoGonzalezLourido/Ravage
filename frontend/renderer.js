@@ -1,4 +1,3 @@
-let apodo_render = "Usuario"
 let contactos_añadir = []//{id , nombre(apodo puesto por ti o apodo propio)}
 
 //ajustes
@@ -14,10 +13,17 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("ocultar-display")
             document.querySelector("#cuerpo-ajustes-cuenta").classList.add("flex-display")
             //actualizar datos mostrar
-            const fecha_creacion = await window.cuenta_usuario.OBTENER_FECHA_CREACION_CUENTA()
-            const fecha_bloqueo_apodo = await window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_APODO()
-            const fecha_bloqueo_correo = await window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CORREO()
-            const fecha_bloqueo_contraseña = await window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA()
+            const [fecha_creacion, fecha_bloqueo_apodo, fecha_bloqueo_correo, fecha_bloqueo_contraseña, apodo, correo] = await Promise.all([
+                window.cuenta_usuario.OBTENER_FECHA_CREACION_CUENTA(),
+                window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_APODO(),
+                window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CORREO(),
+                window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA(),
+                window.cuenta_usuario.GET_APODO_SESION(),
+                window.cuenta_usuario.OBTENER_CORREO_USUARIO()
+            ])
+            // Si tienes elementos en el HTML para mostrar el apodo y correo, puedes añadirlos aquí:
+            document.querySelector("#text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${apodo}</font>`
+            document.querySelector("#text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${correo}</font>`
             document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${fecha_creacion}`
             if (fecha_bloqueo_apodo != "") document.querySelector("#bt-fecha-bloqueo-apodo").innerHTML = `*Bloqueado: ${fecha_bloqueo_apodo}h`
             if (fecha_bloqueo_correo != "") document.querySelector("#bt-fecha-bloqueo-correo").innerHTML = `*Bloqueado: ${fecha_bloqueo_correo}h`
@@ -68,540 +74,529 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         }
         //mover al inicio de los ajustes
     }
+    const formatoScroollAnimacion = {
+        behavior: "smooth",
+        block: "start"
+    }
     function cambiar_ajustes_cuenta(e) {
         e.preventDefault()
         cerrar_cuerpos_ajustes("cuenta")
-        document.querySelector("#cuerpo-ajustes-cuenta").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+        document.querySelector("#cuerpo-ajustes-cuenta").scrollIntoView(formatoScroollAnimacion);
     }
     function cambiar_ajustes_general(e) {
         e.preventDefault()
         cerrar_cuerpos_ajustes("general")
-        document.querySelector("#cuerpo-ajustes-general").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+        document.querySelector("#cuerpo-ajustes-general").scrollIntoView(formatoScroollAnimacion);
     }
     function cambiar_ajustes_noti(e) {
         e.preventDefault()
         cerrar_cuerpos_ajustes("notificaciones")
-        document.querySelector("#cuerpo-ajustes-noti").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+        document.querySelector("#cuerpo-ajustes-noti").scrollIntoView(formatoScroollAnimacion);
     }
     function cambiar_ajustes_soporte(e) {
         e.preventDefault()
         cerrar_cuerpos_ajustes("soporte")
-        document.querySelector("#cuerpo-ajustes-soporte").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+        document.querySelector("#cuerpo-ajustes-soporte").scrollIntoView(formatoScroollAnimacion);
+}
+function cambiar_ajustes_saber(e) {
+    e.preventDefault()
+    cerrar_cuerpos_ajustes("saber mas")
+    document.querySelector("#cuerpo-ajustes-saber").scrollIntoView(formatoScroollAnimacion);
+}
+function mostrar_menu_cuenta_creada(accion) {
+    if (!accion) {
+        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("flex-display")
+        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("ocultar-display")
     }
-    function cambiar_ajustes_saber(e) {
-        e.preventDefault()
-        cerrar_cuerpos_ajustes("saber mas")
-        document.querySelector("#cuerpo-ajustes-saber").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+    else {
+        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("ocultar-display")
+        document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("flex-display")
+        document.querySelector("#bt-volver-login-confirmacion-cuenta").focus()
     }
-    function mostrar_menu_cuenta_creada(accion) {
-        if (!accion) {
-            document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("flex-display")
-            document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("ocultar-display")
-        }
-        else {
-            document.querySelector("#seccion-confirmacion-cuenta-creada").classList.remove("ocultar-display")
-            document.querySelector("#seccion-confirmacion-cuenta-creada").classList.add("flex-display")
-            document.querySelector("#bt-volver-login-confirmacion-cuenta").focus()
-        }
+}
+function mostrar_menu_validation_code(accion) {
+    if (!accion) {
+        document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
+        document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
     }
-    function mostrar_menu_validation_code(accion) {
-        if (!accion) {
-            document.querySelector("#seccion-validacion-codigo-correo").classList.remove("flex-display")
-            document.querySelector("#seccion-validacion-codigo-correo").classList.add("ocultar-display")
-        }
-        else {
-            document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
-            document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
-            document.querySelector("#bt-code-introducir").focus()
-        }
+    else {
+        document.querySelector("#seccion-validacion-codigo-correo").classList.remove("ocultar-display")
+        document.querySelector("#seccion-validacion-codigo-correo").classList.add("flex-display")
+        document.querySelector("#bt-code-introducir").focus()
     }
-    document.querySelector("#bt-menu-navegacion-ajustes-cuenta").addEventListener("click", cambiar_ajustes_cuenta)
-    document.querySelector("#bt-menu-navegacion-ajustes-general").addEventListener("click", cambiar_ajustes_general)
-    document.querySelector("#bt-menu-navegacion-ajustes-noti").addEventListener("click", cambiar_ajustes_noti)
-    document.querySelector("#bt-menu-navegacion-ajustes-soporte").addEventListener("click", cambiar_ajustes_soporte)
-    document.querySelector("#bt-menu-navegacion-ajustes-saber").addEventListener("click", cambiar_ajustes_saber)
-    //cerrar ajustes
-    function cerrar_ajustes_pagina(e) {
-        e.preventDefault()
-        //cerrar menu de ajustes
-        document.querySelector("#seccion-menu-cuenta-ajustes").classList.remove("block-display")
-        document.querySelector("#seccion-menu-cuenta-ajustes").classList.add("ocultar-display")
-        //quitar eventos
-        document.querySelector("#bt-menu-navegacion-ajustes-cuenta").removeEventListener("click", cambiar_ajustes_cuenta)
-        document.querySelector("#bt-menu-navegacion-ajustes-general").removeEventListener("click", cambiar_ajustes_general)
-        document.querySelector("#bt-menu-navegacion-ajustes-noti").removeEventListener("click", cambiar_ajustes_noti)
-        document.querySelector("#bt-menu-navegacion-ajustes-soporte").removeEventListener("click", cambiar_ajustes_soporte)
-        document.querySelector("#bt-menu-navegacion-ajustes-saber").removeEventListener("click", cambiar_ajustes_saber)
-        document.querySelector("#bt-cerrar-menu-ajustes").removeEventListener("click", cerrar_ajustes_pagina)
-        document.querySelector("#bt-cambiar-contraseña").removeEventListener("click", funcion_cambiar_contraseña)
-        //reiniciar bloqueadores de span
-        bloquear_span_cambio_contraseña = true
+}
+document.querySelector("#bt-menu-navegacion-ajustes-cuenta").addEventListener("click", cambiar_ajustes_cuenta)
+document.querySelector("#bt-menu-navegacion-ajustes-general").addEventListener("click", cambiar_ajustes_general)
+document.querySelector("#bt-menu-navegacion-ajustes-noti").addEventListener("click", cambiar_ajustes_noti)
+document.querySelector("#bt-menu-navegacion-ajustes-soporte").addEventListener("click", cambiar_ajustes_soporte)
+document.querySelector("#bt-menu-navegacion-ajustes-saber").addEventListener("click", cambiar_ajustes_saber)
+//cerrar ajustes
+function cerrar_ajustes_pagina(e) {
+    e.preventDefault()
+    //cerrar menu de ajustes
+    document.querySelector("#seccion-menu-cuenta-ajustes").classList.remove("block-display")
+    document.querySelector("#seccion-menu-cuenta-ajustes").classList.add("ocultar-display")
+    //quitar eventos
+    document.querySelector("#bt-menu-navegacion-ajustes-cuenta").removeEventListener("click", cambiar_ajustes_cuenta)
+    document.querySelector("#bt-menu-navegacion-ajustes-general").removeEventListener("click", cambiar_ajustes_general)
+    document.querySelector("#bt-menu-navegacion-ajustes-noti").removeEventListener("click", cambiar_ajustes_noti)
+    document.querySelector("#bt-menu-navegacion-ajustes-soporte").removeEventListener("click", cambiar_ajustes_soporte)
+    document.querySelector("#bt-menu-navegacion-ajustes-saber").removeEventListener("click", cambiar_ajustes_saber)
+    document.querySelector("#bt-cerrar-menu-ajustes").removeEventListener("click", cerrar_ajustes_pagina)
+    document.querySelector("#bt-cambiar-contraseña").removeEventListener("click", funcion_cambiar_contraseña)
+    //reiniciar bloqueadores de span
+    bloquear_span_cambio_contraseña = true
+}
+document.querySelector("#bt-cerrar-menu-ajustes").addEventListener("click", cerrar_ajustes_pagina)
+//cerrar sesion
+async function cerrar_sesion_bt(e) {
+    e.preventDefault()
+    await window.sesion_usuario.CERRAR_SESION()
+    //mostrar log
+    mostrar_menu_cuenta_creada(false)
+    mostrar_menu_validation_code(false)
+
+    document.querySelector("#bt-cerrar-sesion").removeEventListener("click", cerrar_sesion_bt)
+}
+document.querySelector("#bt-cerrar-sesion").addEventListener("click", cerrar_sesion_bt)
+function cambiar_seccion_menu_cambiar_datos_cuenta(tipo) {
+    if (tipo == "correo") {
+        document.querySelector("#seccion-cambiar-correo-menu").classList.remove("ocultar-display")
+        document.querySelector("#seccion-cambiar-correo-menu").classList.add("flex-display")
     }
-    document.querySelector("#bt-cerrar-menu-ajustes").addEventListener("click", cerrar_ajustes_pagina)
-    //cerrar sesion
-    async function cerrar_sesion_bt(e) {
-        e.preventDefault()
-        await window.sesion_usuario.CERRAR_SESION()
-        //mostrar log
-        mostrar_menu_cuenta_creada(false)
-        mostrar_menu_validation_code(false)
-
-        document.querySelector("#bt-cerrar-sesion").removeEventListener("click", cerrar_sesion_bt)
+    else {
+        document.querySelector("#seccion-cambiar-correo-menu").classList.remove("flex-display")
+        document.querySelector("#seccion-cambiar-correo-menu").classList.add("ocultar-display")
     }
-    document.querySelector("#bt-cerrar-sesion").addEventListener("click", cerrar_sesion_bt)
-    function cambiar_seccion_menu_cambiar_datos_cuenta(tipo) {
-        if (tipo == "correo") {
-            document.querySelector("#seccion-cambiar-correo-menu").classList.remove("ocultar-display")
-            document.querySelector("#seccion-cambiar-correo-menu").classList.add("flex-display")
-        }
-        else {
-            document.querySelector("#seccion-cambiar-correo-menu").classList.remove("flex-display")
-            document.querySelector("#seccion-cambiar-correo-menu").classList.add("ocultar-display")
-        }
-        if (tipo == "contraseña") {
-            document.querySelector("#seccion-cambiar-contraseña-menu").classList.remove("ocultar-display")
-            document.querySelector("#seccion-cambiar-contraseña-menu").classList.add("flex-display")
-        }
-        else {
-            document.querySelector("#seccion-cambiar-contraseña-menu").classList.remove("flex-display")
-            document.querySelector("#seccion-cambiar-contraseña-menu").classList.add("ocultar-display")
-        }
-        if (tipo == "apodo") {
-            document.querySelector("#seccion-cambiar-apodo-menu").classList.remove("ocultar-display")
-            document.querySelector("#seccion-cambiar-apodo-menu").classList.add("flex-display")
-        }
-        else {
-            document.querySelector("#seccion-cambiar-apodo-menu").classList.remove("flex-display")
-            document.querySelector("#seccion-cambiar-apodo-menu").classList.add("ocultar-display")
-        }
+    if (tipo == "contraseña") {
+        document.querySelector("#seccion-cambiar-contraseña-menu").classList.remove("ocultar-display")
+        document.querySelector("#seccion-cambiar-contraseña-menu").classList.add("flex-display")
     }
-    //mostrar menu cambiar contraseña
-    let bloquear_span_cambio_contraseña = false
-    async function funcion_cambiar_contraseña(e) {
-        e.preventDefault()
-        if (bloquear_span_cambio_contraseña) {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
-            return;
-        }
-        let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "contraseña" })
-        //si puede mostrar menu de cambio de contraseña
-        if (result.success) {
-            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
-            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
-            cambiar_seccion_menu_cambiar_datos_cuenta("contraseña")
-            document.querySelector("#cambio-pass").focus()
-            //eventos
-            //cambiar contraseña
-            async function form_cambio_contraseña(e) {
-                e.preventDefault()
-                const contraseña = document.querySelector("#cambio-pass").value
-                const contraseña_confirmacion = document.querySelector("#cambio-pass-confirm").value
-                //TODO: añadir comprobaciones de validez
-                let valido = true
-                function cambiar_error_contraseña(text) {
-                    valido = false
-                    document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
-                    document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flex-display")
-                    document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = text
-                }
-                if (contraseña !== contraseña_confirmacion) {
-                    valido = false
-                    document.querySelector("#cambio-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto")
-                    document.querySelector("#span-repetir-contraseña-cambio").classList.add("estrada-menu-registro-login-incorrecto")
-                }
-
-                document.querySelector("#cambio-pass-confirm").classList.remove("estrada-menu-registro-login-incorrecto")
-                document.querySelector("#span-repetir-contraseña-cambio").classList.remove("estrada-menu-registro-login-incorrecto")
-                if (contraseña.includes(" ")) {
-                    cambiar_error_contraseña("*No puedes usar espacios*")
-                }
-                else if (contraseña.length > 30) {
-                    cambiar_error_contraseña("*Longitud contraseña <=30*")
-                }
-                //hacer el cambio de contraseña(validaciones hechas)
-                if (valido) {//cambiar contraseña
-                    result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: contraseña, tipo: "contraseña" })
-
-                    if (result && (result.success)) {
-                        document.querySelector("#form-cambio-contraseña").removeEventListener("submit", form_cambio_contraseña)
-
-                        //mostrar menu para introducir codigo
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("ocultar-display")
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("flex-display")
-                        document.querySelector("#bt-code-introducir-datos-cuenta").focus()
-                        //cerrar validacion codigo de contraseña
-                        function bt_cerrar_menu(e) {
-                            e.preventDefault()
-                            //cerrar menu de ajustes
-                            document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
-                            document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
-                            //reiniciar bloqueadores de span
-                            bloquear_span_cambio_contraseña = false
-                            document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
-                            document.querySelector("#form-cambio-contraseña").removeEventListener("submit", form_cambio_contraseña)
-                        }
-                        document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").addEventListener("click", bt_cerrar_menu)
-                        //evento cambiar datos cuenta
-                        async function form_validar_correo_ajustes_datos_cuenta(e) {
-                            e.preventDefault()
-                            const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
-                            result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
-                            if (!result) {//TODO:notificar:cambiar contraseña error
-                                console.log("no se pudo cambiar")
-                            }
-                            bloquear_span_cambio_contraseña = true
-                            //cambiar a la pagina de log-sesion
-                            window.pushNotificacion({
-                                prioridad: 0,        // menor número = más importante
-                                texto: `Contraseña cambiada`,
-                                tipo: "succes"      // "info", "error", "success"
-                            })
-                            console.log("pagina cambiada")
-                            await window.paginas_app.CAMBIAR_PAGINA_SESION()
-                        }
-                        document.querySelector("#form-validation-correo-ajustes-datos-cuenta").addEventListener("submit", form_validar_correo_ajustes_datos_cuenta)
-
-                    }
-                    else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
-                        document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
-                        bloquear_span_cambio_contraseña = false
-
-                        console.error("FALLO AL CAMBIAR LA CONTRASEÑA")
-                        window.pushNotificacion({
-                            prioridad: 0,        // menor número = más importante
-                            texto: `Fallo: cambiar contraseña`,
-                            tipo: "error"      // "info", "error", "success"
-                        })
-                    }
-
-                }
+    else {
+        document.querySelector("#seccion-cambiar-contraseña-menu").classList.remove("flex-display")
+        document.querySelector("#seccion-cambiar-contraseña-menu").classList.add("ocultar-display")
+    }
+    if (tipo == "apodo") {
+        document.querySelector("#seccion-cambiar-apodo-menu").classList.remove("ocultar-display")
+        document.querySelector("#seccion-cambiar-apodo-menu").classList.add("flex-display")
+    }
+    else {
+        document.querySelector("#seccion-cambiar-apodo-menu").classList.remove("flex-display")
+        document.querySelector("#seccion-cambiar-apodo-menu").classList.add("ocultar-display")
+    }
+}
+//mostrar menu cambiar contraseña
+let bloquear_span_cambio_contraseña = false
+async function funcion_cambiar_contraseña(e) {
+    e.preventDefault()
+    if (bloquear_span_cambio_contraseña) {
+        //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+        return;
+    }
+    let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "contraseña" })
+    //si puede mostrar menu de cambio de contraseña
+    if (result.success) {
+        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
+        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
+        cambiar_seccion_menu_cambiar_datos_cuenta("contraseña")
+        document.querySelector("#cambio-pass").focus()
+        //eventos
+        //cambiar contraseña
+        async function form_cambio_contraseña(e) {
+            e.preventDefault()
+            const contraseña = document.querySelector("#cambio-pass").value
+            const contraseña_confirmacion = document.querySelector("#cambio-pass-confirm").value
+            //TODO: añadir comprobaciones de validez
+            let valido = true
+            function cambiar_error_contraseña(text) {
+                valido = false
+                document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
+                document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flex-display")
+                document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = text
             }
-            document.querySelector("#form-cambio-contraseña").addEventListener("submit", form_cambio_contraseña)
-        }
-        else {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
-            bloquear_span_cambio_contraseña = true
-            console.log("Debes esperar a que termine el bloqueo")
-            window.pushNotificacion({
-                prioridad: 0,        // menor número = más importante
-                texto: `Cambiaste de contraseña hace poco \nEsperar: 24h desde la última vez`,
-                tipo: "error"      // "info", "error", "success"
-            })
-        }
-    }
-    document.querySelector("#bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña)
-    //mostrar menu cambiar apodo
-    let bloquear_span_cambio_apodo = false
-    async function funcion_cambiar_apodo(e) {
-        e.preventDefault()
-        if (bloquear_span_cambio_apodo) {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
-            return;
-        }
-        let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "apodo" })
-        //si puede mostrar menu de cambio de contraseña
-        if (result.success) {
-            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
-            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
-            cambiar_seccion_menu_cambiar_datos_cuenta("apodo")
-            document.querySelector("#cambio-apodo").focus()
-            //eventos
-            //cambiar contraseña
-            async function form_cambio_apodo(e) {
-                e.preventDefault()
-                const apodo = document.querySelector("#cambio-apodo").value.trim()
-                //TODO: añadir comprobaciones de validez
-                let valido = true
-                function cambiar_error_apodo(text) {
-                    valido = false
-                    document.querySelector("#text-error-form-causa-cambio-apodo").classList.remove("ocultar-display")
-                    document.querySelector("#text-error-form-causa-cambio-apodo").classList.add("flex-display")
-                    document.querySelector("#text-error-form-causa-cambio-apodo").innerHTML = text
-                }
-                if (!(/^[a-zA-Z-0-9_]/.test(apodo))) {
-                    cambiar_error_apodo("*No puedes usar espacios ni simpobolos raros*")
-                }
-                else if (apodo.length > 30) {
-                    cambiar_error_apodo("*Longitud apodo <=30*")
-                }
-                //hacer el cambio de contraseña(validaciones hechas)
-                if (valido) {//cambiar contraseña
-                    result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: apodo, tipo: "apodo" })
+            if (contraseña !== contraseña_confirmacion) {
+                valido = false
+                document.querySelector("#cambio-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto")
+                document.querySelector("#span-repetir-contraseña-cambio").classList.add("estrada-menu-registro-login-incorrecto")
+            }
 
-                    if (result && (result.success)) {
-                        document.querySelector("#form-cambio-apodo").removeEventListener("submit", funcion_cambiar_apodo)
+            document.querySelector("#cambio-pass-confirm").classList.remove("estrada-menu-registro-login-incorrecto")
+            document.querySelector("#span-repetir-contraseña-cambio").classList.remove("estrada-menu-registro-login-incorrecto")
+            if (contraseña.includes(" ")) {
+                cambiar_error_contraseña("*No puedes usar espacios*")
+            }
+            else if (contraseña.length > 30) {
+                cambiar_error_contraseña("*Longitud contraseña <=30*")
+            }
+            //hacer el cambio de contraseña(validaciones hechas)
+            if (valido) {//cambiar contraseña
+                result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: contraseña, tipo: "contraseña" })
 
-                        result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(apodo, null, "apodo")
+                if (result && (result.success)) {
+                    document.querySelector("#form-cambio-contraseña").removeEventListener("submit", form_cambio_contraseña)
+
+                    //mostrar menu para introducir codigo
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("ocultar-display")
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("flex-display")
+                    document.querySelector("#bt-code-introducir-datos-cuenta").focus()
+                    //cerrar validacion codigo de contraseña
+                    function bt_cerrar_menu(e) {
+                        e.preventDefault()
+                        //cerrar menu de ajustes
+                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
+                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
+                        //reiniciar bloqueadores de span
+                        bloquear_span_cambio_contraseña = false
+                        document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
+                        document.querySelector("#form-cambio-contraseña").removeEventListener("submit", form_cambio_contraseña)
+                    }
+                    document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").addEventListener("click", bt_cerrar_menu)
+                    //evento cambiar datos cuenta
+                    async function form_validar_correo_ajustes_datos_cuenta(e) {
+                        e.preventDefault()
+                        const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
+                        result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(contraseña, code, "contraseña")
                         if (!result) {//TODO:notificar:cambiar contraseña error
                             console.log("no se pudo cambiar")
                         }
-                        cambiar_menu_inicio_apodo()
-                        bloquear_span_cambio_apodo = true
+                        bloquear_span_cambio_contraseña = true
                         //cambiar a la pagina de log-sesion
                         window.pushNotificacion({
                             prioridad: 0,        // menor número = más importante
                             texto: `Contraseña cambiada`,
                             tipo: "succes"      // "info", "error", "success"
                         })
-                        //mostrar menu para introducir codigo
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
-
+                        console.log("pagina cambiada")
+                        await window.paginas_app.CAMBIAR_PAGINA_SESION()
                     }
-                    else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
-                        bloquear_span_cambio_apodo = false
+                    document.querySelector("#form-validation-correo-ajustes-datos-cuenta").addEventListener("submit", form_validar_correo_ajustes_datos_cuenta)
 
-                        console.error("FALLO AL CAMBIAR EL APODO")
-                        window.pushNotificacion({
-                            prioridad: 0,        // menor número = más importante
-                            texto: `Fallo: cambiar apodo`,
-                            tipo: "error"      // "info", "error", "success"
-                        })
+                }
+                else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+                    document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
+                    bloquear_span_cambio_contraseña = false
+
+                    console.error("FALLO AL CAMBIAR LA CONTRASEÑA")
+                    window.pushNotificacion({
+                        prioridad: 0,        // menor número = más importante
+                        texto: `Fallo: cambiar contraseña`,
+                        tipo: "error"      // "info", "error", "success"
+                    })
+                }
+
+            }
+        }
+        document.querySelector("#form-cambio-contraseña").addEventListener("submit", form_cambio_contraseña)
+    }
+    else {
+        //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+        bloquear_span_cambio_contraseña = true
+        console.log("Debes esperar a que termine el bloqueo")
+        window.pushNotificacion({
+            prioridad: 0,        // menor número = más importante
+            texto: `Cambiaste de contraseña hace poco \nEsperar: 24h desde la última vez`,
+            tipo: "error"      // "info", "error", "success"
+        })
+    }
+}
+document.querySelector("#bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña)
+//mostrar menu cambiar apodo
+let bloquear_span_cambio_apodo = false
+async function funcion_cambiar_apodo(e) {
+    e.preventDefault()
+    if (bloquear_span_cambio_apodo) {
+        //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+        return;
+    }
+    let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "apodo" })
+    //si puede mostrar menu de cambio de contraseña
+    if (result.success) {
+        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
+        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
+        cambiar_seccion_menu_cambiar_datos_cuenta("apodo")
+        document.querySelector("#cambio-apodo").focus()
+        //eventos
+        //cambiar contraseña
+        async function form_cambio_apodo(e) {
+            e.preventDefault()
+            const apodo = document.querySelector("#cambio-apodo").value.trim()
+            //TODO: añadir comprobaciones de validez
+            let valido = true
+            function cambiar_error_apodo(text) {
+                valido = false
+                document.querySelector("#text-error-form-causa-cambio-apodo").classList.remove("ocultar-display")
+                document.querySelector("#text-error-form-causa-cambio-apodo").classList.add("flex-display")
+                document.querySelector("#text-error-form-causa-cambio-apodo").innerHTML = text
+            }
+            if (!(/^[a-zA-Z-0-9_]/.test(apodo))) {
+                cambiar_error_apodo("*No puedes usar espacios ni simpobolos raros*")
+            }
+            else if (apodo.length > 30) {
+                cambiar_error_apodo("*Longitud apodo <=30*")
+            }
+            //hacer el cambio de contraseña(validaciones hechas)
+            if (valido) {//cambiar contraseña
+                result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: apodo, tipo: "apodo" })
+
+                if (result && (result.success)) {
+                    document.querySelector("#form-cambio-apodo").removeEventListener("submit", funcion_cambiar_apodo)
+
+                    result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(apodo, null, "apodo")
+                    if (!result) {//TODO:notificar:cambiar contraseña error
+                        console.log("no se pudo cambiar")
                     }
+                    cambiar_menu_inicio_apodo()
+                    bloquear_span_cambio_apodo = true
+                    //cambiar a la pagina de log-sesion
+                    window.pushNotificacion({
+                        prioridad: 0,        // menor número = más importante
+                        texto: `Contraseña cambiada`,
+                        tipo: "succes"      // "info", "error", "success"
+                    })
+                    //mostrar menu para introducir codigo
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
+
+                }
+                else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+                    bloquear_span_cambio_apodo = false
+
+                    console.error("FALLO AL CAMBIAR EL APODO")
+                    window.pushNotificacion({
+                        prioridad: 0,        // menor número = más importante
+                        texto: `Fallo: cambiar apodo`,
+                        tipo: "error"      // "info", "error", "success"
+                    })
                 }
             }
-            document.querySelector("#form-cambio-apodo").addEventListener("submit", form_cambio_apodo)
         }
-        else {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
-            bloquear_span_cambio_contraseña = true
-            console.log("Debes esperar a que termine el bloqueo")
-            window.pushNotificacion({
-                prioridad: 0,        // menor número = más importante
-                texto: `Cambiaste de apodo hace poco \nEsperar: 1h desde la última vez`,
-                tipo: "error"      // "info", "error", "success"
-            })
-        }
+        document.querySelector("#form-cambio-apodo").addEventListener("submit", form_cambio_apodo)
     }
-    document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo)
-    //TODO:mostrar menu cambiar correo
-    let bloquear_span_cambio_correo = false
-    async function funcion_cambiar_correo(e) {
-        e.preventDefault()
-        if (bloquear_span_cambio_correo) {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
-            return;
-        }
-        let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "correo" })
-        //si puede mostrar menu de cambio de contraseña
-        if (result.success) {
-            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
-            document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
-            cambiar_seccion_menu_cambiar_datos_cuenta("correo")
-            document.querySelector("#cambio-correo").focus()
-            //eventos
-            //cambiar contraseña
-            async function form_cambio_correo(e) {
-                e.preventDefault()
-                const correo_nuevo = document.querySelector("#cambio-correo").value
-                const contraseña = document.querySelector("#confirmar-contraseña-correo").value
-                //TODO: añadir comprobaciones de validez
-                let valido = true
-                function cambiar_error_correo(text) {
-                    valido = false
-                    document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
-                    document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flex-display")
-                    document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = text
-                }
-                if (correo_nuevo.length > 255) {
-                    cambiar_error_correo("*Longitud contraseña <=255*")
-                }
-                //hacer el cambio de contraseña(validaciones hechas)
-                if (valido) {
-                    result = await window.cuenta_usuario.COMPROBAR_CONTRASEÑA({ contraseña: contraseña })
-                    valido = result
-                }
-                if (valido) {//cambiar contraseña
-                    result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: correo_nuevo, tipo: "correo" })
+    else {
+        //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+        bloquear_span_cambio_contraseña = true
+        console.log("Debes esperar a que termine el bloqueo")
+        window.pushNotificacion({
+            prioridad: 0,        // menor número = más importante
+            texto: `Cambiaste de apodo hace poco \nEsperar: 1h desde la última vez`,
+            tipo: "error"      // "info", "error", "success"
+        })
+    }
+}
+document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo)
+//TODO:mostrar menu cambiar correo
+let bloquear_span_cambio_correo = false
+async function funcion_cambiar_correo(e) {
+    e.preventDefault()
+    if (bloquear_span_cambio_correo) {
+        //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+        return;
+    }
+    let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "correo" })
+    //si puede mostrar menu de cambio de contraseña
+    if (result.success) {
+        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("ocultar-display")
+        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("flex-display")
+        cambiar_seccion_menu_cambiar_datos_cuenta("correo")
+        document.querySelector("#cambio-correo").focus()
+        //eventos
+        //cambiar contraseña
+        async function form_cambio_correo(e) {
+            e.preventDefault()
+            const correo_nuevo = document.querySelector("#cambio-correo").value
+            const contraseña = document.querySelector("#confirmar-contraseña-correo").value
+            //TODO: añadir comprobaciones de validez
+            let valido = true
+            function cambiar_error_correo(text) {
+                valido = false
+                document.querySelector("#text-error-form-causa-cambio-contraseña").classList.remove("ocultar-display")
+                document.querySelector("#text-error-form-causa-cambio-contraseña").classList.add("flex-display")
+                document.querySelector("#text-error-form-causa-cambio-contraseña").innerHTML = text
+            }
+            if (correo_nuevo.length > 255) {
+                cambiar_error_correo("*Longitud contraseña <=255*")
+            }
+            //hacer el cambio de contraseña(validaciones hechas)
+            if (valido) {
+                result = await window.cuenta_usuario.COMPROBAR_CONTRASEÑA({ contraseña: contraseña })
+                valido = result
+            }
+            if (valido) {//cambiar contraseña
+                result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: correo_nuevo, tipo: "correo" })
 
-                    if (result && (result.success)) {
-                        document.querySelector("#form-cambio-correo").removeEventListener("submit", form_cambio_correo)
+                if (result && (result.success)) {
+                    document.querySelector("#form-cambio-correo").removeEventListener("submit", form_cambio_correo)
 
-                        //mostrar menu para introducir codigo
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("ocultar-display")
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("flex-display")
-                        document.querySelector("#bt-code-introducir-datos-cuenta").focus()
-                        //cerrar validacion codigo de contraseña
-                        function bt_cerrar_menu(e) {
-                            e.preventDefault()
-                            //cerrar menu de ajustes
-                            document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
-                            document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
-                            //reiniciar bloqueadores de span
-                            bloquear_span_cambio_correo = false
-                            document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
-                            document.querySelector("#form-cambio-correo").removeEventListener("submit", form_cambio_correo)
-                        }
-                        document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").addEventListener("click", bt_cerrar_menu)
-                        //evento cambiar datos cuenta
-                        async function form_validar_correo_ajustes_datos_cuenta(e) {
-                            e.preventDefault()
-                            const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
-                            result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(correo_nuevo, code, "correo")
-                            if (!result) {//TODO:notificar:cambiar contraseña error
-                                console.log("no se pudo cambiar")
-                            }
-                            bloquear_span_cambio_correo = true
-                            //cambiar a la pagina de log-sesion
-                            window.pushNotificacion({
-                                prioridad: 0,        // menor número = más importante
-                                texto: `Correo cambiado`,
-                                tipo: "succes"      // "info", "error", "success"
-                            })
-                            await window.paginas_app.CAMBIAR_PAGINA_SESION()
-                        }
-                        document.querySelector("#form-validation-correo-ajustes-datos-cuenta").addEventListener("submit", form_validar_correo_ajustes_datos_cuenta)
-
-                    }
-                    else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
-                        document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
+                    //mostrar menu para introducir codigo
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("ocultar-display")
+                    document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("flex-display")
+                    document.querySelector("#bt-code-introducir-datos-cuenta").focus()
+                    //cerrar validacion codigo de contraseña
+                    function bt_cerrar_menu(e) {
+                        e.preventDefault()
+                        //cerrar menu de ajustes
+                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.remove("flex-display")
+                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.add("ocultar-display")
+                        //reiniciar bloqueadores de span
                         bloquear_span_cambio_correo = false
-
-                        console.error("FALLO AL CAMBIAR EL CORREO")
+                        document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
+                        document.querySelector("#form-cambio-correo").removeEventListener("submit", form_cambio_correo)
+                    }
+                    document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").addEventListener("click", bt_cerrar_menu)
+                    //evento cambiar datos cuenta
+                    async function form_validar_correo_ajustes_datos_cuenta(e) {
+                        e.preventDefault()
+                        const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
+                        result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(correo_nuevo, code, "correo")
+                        if (!result) {//TODO:notificar:cambiar contraseña error
+                            console.log("no se pudo cambiar")
+                        }
+                        bloquear_span_cambio_correo = true
+                        //cambiar a la pagina de log-sesion
                         window.pushNotificacion({
                             prioridad: 0,        // menor número = más importante
-                            texto: `Fallo: cambiar correo`,
-                            tipo: "error"      // "info", "error", "success"
+                            texto: `Correo cambiado`,
+                            tipo: "succes"      // "info", "error", "success"
                         })
+                        await window.paginas_app.CAMBIAR_PAGINA_SESION()
                     }
+                    document.querySelector("#form-validation-correo-ajustes-datos-cuenta").addEventListener("submit", form_validar_correo_ajustes_datos_cuenta)
 
                 }
-            }
-            document.querySelector("#form-cambio-correo").addEventListener("submit", form_cambio_correo)
-        }
-        else {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
-            bloquear_span_cambio_correo = true
-            console.log("Debes esperar a que termine el bloqueo")
-            window.pushNotificacion({
-                prioridad: 0,        // menor número = más importante
-                texto: `Cambiaste de correo hace poco \nEsperar: 24h desde la última vez`,
-                tipo: "error"      // "info", "error", "success"
-            })
-        }
-    }
-    document.querySelector("#bt-cambiar-correo").addEventListener("click", funcion_cambiar_correo)
+                else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+                    document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
+                    bloquear_span_cambio_correo = false
 
-    //cerrar menu cambiar data
-    document.querySelector("#bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
-        e.preventDefault()
-        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
-        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
-        //limpiar inputs
-        document.querySelector("#cambio-pass").value = ""
-        document.querySelector("#cambio-pass-confirm").value = ""
-    })
-    //listas de bloqueados
-    //usuarios silenciados
-    function ver_chats_silenciados() {
-        e.stopPropagation()
-        document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = "*SIN USUARIOS*"
-        //actualizar lista
-        const lista_datos = window.social_usuario.OBTENER_USUARIOS_SILENCIADOS()
-        let html = ""
-        if (lista_datos) {
-            lista_datos.forEach(usuario => {
-                html += `
+                    console.error("FALLO AL CAMBIAR EL CORREO")
+                    window.pushNotificacion({
+                        prioridad: 0,        // menor número = más importante
+                        texto: `Fallo: cambiar correo`,
+                        tipo: "error"      // "info", "error", "success"
+                    })
+                }
+
+            }
+        }
+        document.querySelector("#form-cambio-correo").addEventListener("submit", form_cambio_correo)
+    }
+    else {
+        //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+        bloquear_span_cambio_correo = true
+        console.log("Debes esperar a que termine el bloqueo")
+        window.pushNotificacion({
+            prioridad: 0,        // menor número = más importante
+            texto: `Cambiaste de correo hace poco \nEsperar: 24h desde la última vez`,
+            tipo: "error"      // "info", "error", "success"
+        })
+    }
+}
+document.querySelector("#bt-cambiar-correo").addEventListener("click", funcion_cambiar_correo)
+
+//cerrar menu cambiar data
+document.querySelector("#bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
+    e.preventDefault()
+    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.remove("flex-display")
+    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
+    //limpiar inputs
+    document.querySelector("#cambio-pass").value = ""
+    document.querySelector("#cambio-pass-confirm").value = ""
+})
+//listas de bloqueados
+//usuarios silenciados
+function ver_chats_silenciados() {
+    e.stopPropagation()
+    document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = "*SIN USUARIOS*"
+    //actualizar lista
+    const lista_datos = window.social_usuario.OBTENER_USUARIOS_SILENCIADOS()
+    let html = ""
+    if (lista_datos) {
+        lista_datos.forEach(usuario => {
+            html += `
                 <div>
                 <span>${usuario.apodo}</span>
                 <button data-id="${usuario.id}">Desilenciar</button>
                 </div>
                 `
-            })
-        }
-        document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = html
-        //eventos
-        document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
-            const id = btn.dataset.id;
-            const result = window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(id).then(() => {
-                if (!result) {
-                    window.pushNotificacion({
-                        prioridad: 3,        // menor número = más importante
-                        texto: `Fallo al desbloquear usuario`,
-                        tipo: "error"      // "info", "error", "success"
-                    })
-                }
-                else {//cambiar html
-                    btn.closest("div").remove()//borrar elemento de la lista
-                }
-            })
-        })
-        //mostrar lista
-        document.querySelector("#lista-usuarios-silenciados").classList.remove("ocultar-display")
-        document.querySelector("#lista-usuarios-silenciados").classList.add("flex-display")
-        document.querySelector("#bt-cerrar-menu-lista-silenciados").addEventListener("click", () => {
-            document.querySelector("#principal-lista-usuarios-silenciados").classList.remove("flex-display")
-            document.querySelector("#principal-lista-usuarios-silenciados").classList.add("ocultar-display")
-            document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = ""
-            document.querySelector("#bt-ver-chats-silenciados").removeEventListener("click", ver_chats_silenciados)
         })
     }
-    document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados)
-    //usaurios bloqueados
-    function ver_chats_bloqueados(e) {
-        e.stopPropagation()
-        document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = "*SIN USUARIOS*"
-        //actualizar lista
-        const lista_datos = window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
-        console.log(lista_datos)
-        let html = ""
-        if (lista_datos) {
-            lista_datos.forEach(usuario => {
-                html += `
+    document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = html
+    //eventos
+    document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
+        const id = btn.dataset.id;
+        const result = window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(id).then(() => {
+            if (!result) {
+                window.pushNotificacion({
+                    prioridad: 3,        // menor número = más importante
+                    texto: `Fallo al desbloquear usuario`,
+                    tipo: "error"      // "info", "error", "success"
+                })
+            }
+            else {//cambiar html
+                btn.closest("div").remove()//borrar elemento de la lista
+            }
+        })
+    })
+    //mostrar lista
+    document.querySelector("#lista-usuarios-silenciados").classList.remove("ocultar-display")
+    document.querySelector("#lista-usuarios-silenciados").classList.add("flex-display")
+    document.querySelector("#bt-cerrar-menu-lista-silenciados").addEventListener("click", () => {
+        document.querySelector("#principal-lista-usuarios-silenciados").classList.remove("flex-display")
+        document.querySelector("#principal-lista-usuarios-silenciados").classList.add("ocultar-display")
+        document.querySelector("#principal-lista-usuarios-silenciados").innerHTML = ""
+        document.querySelector("#bt-ver-chats-silenciados").removeEventListener("click", ver_chats_silenciados)
+    })
+}
+document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados)
+//usaurios bloqueados
+function ver_chats_bloqueados(e) {
+    e.stopPropagation()
+    document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = "*SIN USUARIOS*"
+    //actualizar lista
+    const lista_datos = window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
+    console.log(lista_datos)
+    let html = ""
+    if (lista_datos) {
+        lista_datos.forEach(usuario => {
+            html += `
             <div>
             <span>${usuario.apodo}</span>
             <button data-id="${usuario.id}">Desbloquear</button>
             </div>
             `
-            })
-        }
-        document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = html
-        //eventos
-        document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
-            const id = btn.dataset.id;
-            const result = window.social_usuario.ELIMINAR_USUARIO_BLOQUEADO(id).then(() => {
-                if (!result) {
-                    window.pushNotificacion({
-                        prioridad: 3,        // menor número = más importante
-                        texto: `Fallo al desbloquear usuario`,
-                        tipo: "error"      // "info", "error", "success"
-                    })
-                }
-                else {//cambiar html
-                    btn.closest("div").remove()//borrar elemento de la lista
-                }
-            })
-        })
-        //mostrar lista
-        document.querySelector("#lista-usuarios-bloqueados").classList.remove("ocultar-display")
-        document.querySelector("#lista-usuarios-bloqueados").classList.add("flex-display")
-        document.querySelector("#bt-cerrar-menu-lista-bloqueados").addEventListener("click", () => {
-            document.querySelector("#principal-lista-usuarios-bloqueados").classList.remove("flex-display")
-            document.querySelector("#principal-lista-usuarios-bloqueados").classList.add("ocultar-display")
-            document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = ""
-            document.querySelector("#bt-ver-chats-bloqueados").removeEventListener("click", ver_chats_bloqueados)
         })
     }
-    document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados)
+    document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = html
+    //eventos
+    document.querySelectorAll("#principal-lista-usuarios-bloqueados button").forEach(btn => {
+        const id = btn.dataset.id;
+        const result = window.social_usuario.ELIMINAR_USUARIO_BLOQUEADO(id).then(() => {
+            if (!result) {
+                window.pushNotificacion({
+                    prioridad: 3,        // menor número = más importante
+                    texto: `Fallo al desbloquear usuario`,
+                    tipo: "error"      // "info", "error", "success"
+                })
+            }
+            else {//cambiar html
+                btn.closest("div").remove()//borrar elemento de la lista
+            }
+        })
+    })
+    //mostrar lista
+    document.querySelector("#lista-usuarios-bloqueados").classList.remove("ocultar-display")
+    document.querySelector("#lista-usuarios-bloqueados").classList.add("flex-display")
+    document.querySelector("#bt-cerrar-menu-lista-bloqueados").addEventListener("click", () => {
+        document.querySelector("#principal-lista-usuarios-bloqueados").classList.remove("flex-display")
+        document.querySelector("#principal-lista-usuarios-bloqueados").classList.add("ocultar-display")
+        document.querySelector("#principal-lista-usuarios-bloqueados").innerHTML = ""
+        document.querySelector("#bt-ver-chats-bloqueados").removeEventListener("click", ver_chats_bloqueados)
+    })
+}
+document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados)
 }
 //chat
 function desplegar_menu_añadir_chat({ e, mostrar = true }) {
@@ -875,11 +870,14 @@ function Comenzar_conexion_p2p(e) {
 }
 async function ACTUALIZAR_LISTAS_CHAT() {
     try {
-        const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
-        const lista_contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
+        const [lista_chats, lista_contactos] = await Promise.all([
+            window.chats.OBTENER_CHATS_USUARIO(),
+            window.social_usuario.OBTENER_CONTACTOS_USUARIO()
+        ])
         window.chats.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
 
         const datos_chats_grupales = await window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
+        const id_propio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
         //crear html lista chats
         //TODO: ORDENAR LOS CHATS POR ULTIMO CAMBIO
         let html = ""
@@ -893,7 +891,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 nombre = datos_chats_grupales[indice_chat].nombre
             } else {//buscar en contactos o usuarios
                 //para esto ha que buscar el chat, sacar al otro usuarioF (contacto) y buscar su nombre en nuestros contactos (si no lo tenemos de contacto ponemos el nombre que este use)
-                const id_propio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+
                 const usuario_buscar = datos_chats_grupales[indice_chat].usuarios.filter(x => x != id_propio)
                 //asi solo deberia quedar un id
                 if (!usuario_buscar || usuario_buscar.length !== 1) {
@@ -924,8 +922,10 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 const id = e.target.dataset.id
                 //obtener info de ese chat
                 //TODO: AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
-                let datos_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id)
-                const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+                const [datos_chat, id_usuario] = await Promise.all([
+                    window.chats.OBTENER_DATOS_CHAT_UNICO(id),
+                    window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+                ])
 
                 //*obtener el nombre del chat (la dificultad es que puede sser grupo o no, y puede ser contacto o no)
                 if (!datos_chat.grupo) {
@@ -967,11 +967,14 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
 document.addEventListener("DOMContentLoaded", async () => {
     //mensaje bienvenida
     (async () => {
-        const ajustes_app = await window.ajustes_app.OBTENER_AJUSTES_APP()
+        const [ajustes_app, apodo] = await Promise.all([
+            window.ajustes_app.OBTENER_AJUSTES_APP(),
+            window.cuenta_usuario.GET_APODO_SESION()
+        ])
         if (ajustes_app.MSBienvenida) {
             window.pushNotificacion({
                 prioridad: 0,        // menor número = más importante
-                texto: `Benvido ${apodo_render}`,
+                texto: `Benvido ${apodo}`,
                 tipo: "info"      // "info", "error", "success"
             })
             //marcar como hecho para no volver a mostrarlo
