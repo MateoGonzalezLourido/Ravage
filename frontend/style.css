@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200..1000&display=swap');
-
 :root {
     --background-fondo-claro: rgb(220, 224, 228);
 }
@@ -400,7 +398,7 @@ input[type="number"]::-webkit-outer-spin-button {
     padding: 0;
     display: flex;
     background-color: aquamarine;
-    justify-content: right;
+    justify-content: flex-end;
     z-index: 10 !important;
 }
 
@@ -479,8 +477,10 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .division-2 {
-    width: calc(100% - 360px);
+    flex-grow: 1;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .titulo-lista-chats-principal {
