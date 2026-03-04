@@ -1,0 +1,89 @@
+#chat-usuario {
+    flex-grow: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 20px 6%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Base Message Component */
+.mensaje-componente {
+    max-width: 65%;
+    padding: 6px 7px 8px 9px;
+    border-radius: 7.5px;
+    position: relative;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    word-wrap: break-word;
+    box-shadow: 0 1px 0.5px rgba(11, 20, 26, .13);
+}
+
+.mensaje-componente.soy-emisor {
+    background-color: var(--wa-message-out);
+    align-self: flex-end;
+    margin-left: auto;
+    border-top-right-radius: 0;
+}
+
+.mensaje-componente.soy-emisor::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -8px;
+    width: 0;
+    height: 0;
+    border-top: 10px solid var(--wa-message-out);
+    border-right: 10px solid transparent;
+}
+
+.mensaje-componente.soy-receptor {
+    background-color: var(--wa-message-in);
+    align-self: flex-start;
+    margin-right: auto;
+    border-top-left-radius: 0;
+}
+
+.mensaje-componente.soy-receptor::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -8px;
+    width: 0;
+    height: 0;
+    border-top: 10px solid var(--wa-message-in);
+    border-left: 10px solid transparent;
+}
+
+/* Sender Name */
+.nombre-mensaje-chat-usuario {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #1f7aec;
+    margin-bottom: 2px;
+}
+
+/* Message Text */
+.contenido-mensaje-chat-usuario {
+    display: block;
+}
+
+.contenido-mensaje-chat-usuario span {
+    font-size: 14.5px;
+    color: var(--wa-text-primary);
+    line-height: 19px;
+    font-family: system-ui, -apple-system, inherit;
+}
+
+/* Time */
+.hora-mensaje-chat-usuario {
+    font-size: 11px;
+    color: var(--wa-text-secondary);
+    text-align: right;
+    margin-top: -10px;
+    float: right;
+    display: block;
+    margin-left: 14px;
+    line-height: normal;
+}
