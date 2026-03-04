@@ -68,16 +68,6 @@ async function saveAjustesAppFile({ data = {} }) {//guardar/ crear archivo
         }
     });
 }
-async function saveInforAppFile({ data = {} }) {//guardar/ crear archivo
-    //crear carpeta si no existe
-    if (!fs.existsSync(RTDF.infoAPP)) fs.mkdirSync(RTDF.infoAPP, { recursive: true });
-    //sobrescribir/crear archivo con los datos
-    fs.writeFile(RTDF.infoAPP, JSON.stringify(data), "utf8", (err) => {
-        if (err) {//si falla, limpiar si existe
-            console.error("Error al guardar informacion de la app:", err);
-        }
-    });
-}
 //leer archivos
 async function readFileSession(ruta, cifrado = true) {
     try {
@@ -176,6 +166,5 @@ module.exports = {
     saveOmitirVerificacionCuentaFile,
     saveDispositivoConfianzaFile,
     limpiarArchivosCompleto,
-    saveAjustesAppFile,
-    saveInforAppFile
+    saveAjustesAppFile
 };
