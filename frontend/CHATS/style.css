@@ -1,8 +1,19 @@
 #chat-usuario {
     flex-grow: 1;
-    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Evita que el contenedor principal haga scroll */
+    padding: 10px;
+    /* Quitamos el padding global para que la cabecera y el pie ocupen el 100% del ancho */
+    background-color: var(--wa-bg-default);
+}
+
+#cuerpo-mensajes-chat {
+    flex-grow: 1;
     overflow-y: auto;
-    padding: 20px 6%;
+    /* Solo los mensajes hacen scroll */
+    padding: 10px 6%;
     display: flex;
     flex-direction: column;
 }
