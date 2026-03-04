@@ -141,3 +141,14 @@ contextBridge.exposeInMainWorld('chats', {
         return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre)
     }
 });
+
+// ─── AJUSTES DE LA APP ───────────────────────────────────────────────────────
+// Obtener y guardar ajustes de la app
+contextBridge.exposeInMainWorld('ajustes_app', {
+    OBTENER_AJUSTES_APP: () => {
+        return ipcRenderer.invoke("obtener-ajustes-app")
+    },
+    GUARDAR_AJUSTES_APP: (data) => {
+        return ipcRenderer.invoke("guardar-ajustes-app", data)
+    }
+});

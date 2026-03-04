@@ -966,11 +966,20 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
 }
 document.addEventListener("DOMContentLoaded", async () => {
     //mensaje bienvenida
-    window.pushNotificacion({
-        prioridad: 0,        // menor número = más importante
-        texto: `Benvido ${apodo_render}`,
-        tipo: "info"      // "info", "error", "success"
-    })
+    (async () => {
+        const ajustes_app = await window.ajustes_app.OBTENER_AJUSTES_APP()
+        if (ajustes_app.MSBienvenida) {
+            window.pushNotificacion({
+                prioridad: 0,        // menor número = más importante
+                texto: `Benvido ${apodo_render}`,
+                tipo: "info"      // "info", "error", "success"
+            })
+            //marcar como hecho para no volver a mostrarlo
+            ajustes_app.MSBienvenida = false
+            window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes_app)
+        }
+    })()
+
     //ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
     //chat

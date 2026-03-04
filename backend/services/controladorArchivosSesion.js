@@ -16,7 +16,9 @@ const RTDF = {
     sessionDir: path.join(ruta_app_data, name_carpeta),
     sessionFile: path.join(ruta_app_data, name_carpeta, 'sesionfile.json'),
     omitirVerificacionCuentaFile: path.join(ruta_app_data, name_carpeta, 'auto_login.json'),
-    dispositivoConfianza: path.join(ruta_app_data, name_carpeta, 'dp_confi.json')
+    dispositivoConfianza: path.join(ruta_app_data, name_carpeta, 'dp_confi.json'),
+    ajustesAPP: path.join(ruta_app_data, name_carpeta, 'ajustes_app.json'),
+    infoAPP: path.join(ruta_app_data, name_carpeta, 'info_app.json')
 }
 //guardar archivos
 async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
@@ -53,6 +55,26 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
         if (err) {//si falla, limpiar si existe
             clearFileSession('dispositivoConfianza')
             console.error("Error al guardar dispositibvo de confianza:", err);
+        }
+    });
+}
+async function saveAjustesAppFile({ data = {} }) {//guardar/ crear archivo
+    //crear carpeta si no existe
+    if (!fs.existsSync(RTDF.ajustesAPP)) fs.mkdirSync(RTDF.ajustesAPP, { recursive: true });
+    //sobrescribir/crear archivo con los datos
+    fs.writeFile(RTDF.ajustesAPP, JSON.stringify(data), "utf8", (err) => {
+        if (err) {//si falla, limpiar si existe
+            console.error("Error al guardar ajustes de app:", err);
+        }
+    });
+}
+async function saveInforAppFile({ data = {} }) {//guardar/ crear archivo
+    //crear carpeta si no existe
+    if (!fs.existsSync(RTDF.infoAPP)) fs.mkdirSync(RTDF.infoAPP, { recursive: true });
+    //sobrescribir/crear archivo con los datos
+    fs.writeFile(RTDF.infoAPP, JSON.stringify(data), "utf8", (err) => {
+        if (err) {//si falla, limpiar si existe
+            console.error("Error al guardar informacion de la app:", err);
         }
     });
 }
@@ -147,12 +169,13 @@ async function CifrarDatosArchivos(data, especial) {
     };
 }
 
-
 module.exports = {
     saveSessionFile,
     clearFileSession,
     readFileSession,
     saveOmitirVerificacionCuentaFile,
     saveDispositivoConfianzaFile,
-    limpiarArchivosCompleto
+    limpiarArchivosCompleto,
+    saveAjustesAppFile,
+    saveInforAppFile
 };

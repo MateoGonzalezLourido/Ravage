@@ -6,6 +6,7 @@ const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, elimi
 const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } = require('./backend/services/sesionUsuario.js');
 const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getUsuariosSilence, getUsuariosBloqueados, getListaChats, getIDMongodbUsuario, getIDAmigo, getListaContactos } = require('./backend/STORAGE/Variables_sesion.js')
 const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
+const { saveAjustesAppFile, readFileSession } = require('./backend/services/controladorArchivosSesion.js')
 
 let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
@@ -241,4 +242,13 @@ ipcMain.on("limpiar-chats-antiguos-mensajes", async (_, chatIds) => {
 
 ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre) => {
     return await CREAR_CHAT_NUEVO(ids, nombre)
+})
+
+//ajustes
+ipcMain.handle("obtener-ajustes-app", () => {
+    return readFileSession('ajustesAPP')
+})
+
+ipcMain.handle("guardar-ajustes-app", async (_, data) => {
+    return await saveAjustesAppFile({ data })
 })
