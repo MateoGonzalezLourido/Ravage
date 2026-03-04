@@ -6,6 +6,7 @@ const { getSecretKEY } = require('../STORAGE/Variables_sesion.js')
 const { ActualizarSecretKeyUsuario } = require('../db/mongo.js')
 const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
 const crypto = require('crypto')
+
 //rutas
 const ruta_app_data = app.getPath('userData')
 const name_carpeta = '.APP_DATA'
@@ -145,6 +146,8 @@ async function CifrarDatosArchivos(data, especial) {
         data: encrypted.toString("hex")
     };
 }
+
+
 module.exports = {
     saveSessionFile,
     clearFileSession,
