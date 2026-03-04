@@ -58,12 +58,15 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
         }
     });
 }
+const AJUSTES_APP_DEFAULT = {
+    MSBienvenida: true
+}
 async function saveAjustesAppFile({ data = {} }) {//guardar/ crear archivo
-    //crear carpeta si no existe
-    if (!fs.existsSync(RTDF.ajustesAPP)) fs.mkdirSync(RTDF.ajustesAPP, { recursive: true });
+    //crear carpeta si no existe (apunta a la carpeta, no al archivo)
+    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
     fs.writeFile(RTDF.ajustesAPP, JSON.stringify(data), "utf8", (err) => {
-        if (err) {//si falla, limpiar si existe
+        if (err) {
             console.error("Error al guardar ajustes de app:", err);
         }
     });
@@ -119,6 +122,20 @@ async function readFileSession(ruta, cifrado = true) {
     }
 }
 
+async function getAjustesAppFile() {
+    //si no existe, crearlo con valores por defecto
+    if (!fs.existsSync(RTDF.ajustesAPP)) {
+        await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT })
+        return { ...AJUSTES_APP_DEFAULT }
+    }
+    try {
+        const raw = fs.readFileSync(RTDF.ajustesAPP, 'utf8')
+        return raw ? JSON.parse(raw) : { ...AJUSTES_APP_DEFAULT }
+    } catch (e) {
+        console.error('Error al leer ajustes de app:', e)
+        return { ...AJUSTES_APP_DEFAULT }
+    }
+}
 //limpiar archios
 async function clearFileSession(ruta) {//borrar archivo
     if (fs.existsSync(RTDF[ruta])) {//existe el archivo?
@@ -166,5 +183,6 @@ module.exports = {
     saveOmitirVerificacionCuentaFile,
     saveDispositivoConfianzaFile,
     limpiarArchivosCompleto,
-    saveAjustesAppFile
+    saveAjustesAppFile,
+    getAjustesAppFile
 };
