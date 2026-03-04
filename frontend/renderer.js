@@ -861,10 +861,125 @@ async function Crear_chat_html(datos, id_propio) {
 }
 
 //TODO
-function mostrar_datos_chat_usaurios(e) {
+async function mostrar_datos_chat_usaurios(e) {
     e.preventDefault()
     //TODO: MOSTRAR DATOS DEL USUARIO Y DEL CHAT
-    const id = e.currentTarget.dataset.id
+    const id = e.currentTarget.dataset.id || document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
+    const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id)
+    console.log(info_chat)
+    const infoSeccion = document.querySelector("#info-chat-seccion")
+    //crear html de la seccion
+    const nombre_chat = document.querySelector("#nombre-chat-nav span")?.textContent || "no encontrado";
+    const añadido_nombre_chat = async () => {
+        if (info_chat?.grupo) {
+            return `<div>${info_chat?.usuarios.length} integrantes</div>`
+        } else {
+            // Obtener el ID del usuario principal
+            const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+            // Filtrar para quedarse con el ID del otro usuario
+            const id_otro = info_chat?.usuarios.find(u => u !== id_mio)
+
+            if (id_otro) {
+                // Buscar la info en la base de datos de ese ID
+                const datos_otro = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_otro)
+                if (datos_otro?.correo) return `<div>${datos_otro?.correo}</div>`
+                return ``
+            }
+            return `<div>Chat individual</div>`
+        }
+    }
+    const fecha_formateada = info_chat?.fecha_creacion
+        ? new Date(info_chat.fecha_creacion).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : "*No disponible";
+
+    let html = `
+    <div class="info-chat-header">
+        <div id="bt-cerrar-info-chat">
+            <img src="./recursos/cruz.png" alt="cerrar">
+        </div>
+        <span>Información del chat</span>
+    </div>
+    
+    <div class="info-chat-cuerpo">
+        <div class="info-chat-perfil">
+            <div class="info-chat-nombre">
+                <span>${nombre_chat}</span>
+            </div>
+            <div class="info-chat-subtitulo">
+                ${await añadido_nombre_chat()}
+            </div>
+        </div>
+
+        <div class="info-chat-detalles">
+            <div class="info-chat-item">
+                <span class="info-chat-label">Mensajes</span>
+                <span class="info-chat-valor">${info_chat?.mensajes?.length || 0}</span>
+            </div>
+            <div class="info-chat-item">
+                <span class="info-chat-label">Creado el</span>
+                <span class="info-chat-valor">${fecha_formateada}</span>
+            </div>
+        </div>
+
+        <div class="div-botones-info-chat">
+            <button id="bt-ver-archivos-chat">
+                Ver Archivos
+            </button>
+        </div>
+
+        ${info_chat?.grupo ? await (async () => {
+            const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+            const participantes_ids = info_chat.usuarios.filter(id => id !== id_mio)
+
+            // Obtener datos de todos los participantes en paralelo
+            const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id))
+            const participantes_datos = await Promise.all(participantes_promesas)
+
+            let lista_html = `
+            <div class="info-chat-lista-participantes">
+                <div class="info-chat-lista-titulo">Participantes (${participantes_datos.length + 1})</div>
+                <div class="info-chat-lista-items">
+                <div class="info-chat-participante-item">
+                    <div class="info-chat-participante-info">
+                        <span class="info-chat-participante-nombre">Tú</span>
+                        <span class="info-chat-participante-correo">${await window.cuenta_usuario.OBTENER_CORREO_USUARIO()}</span>
+                    </div>
+                </div>
+            `
+            participantes_datos.forEach(p => {
+                if (p) {
+                    lista_html += `
+                    <div class="info-chat-participante-item">
+                        <div class="info-chat-participante-info">
+                            <span class="info-chat-participante-nombre">${p.apodo || "Sin apodo"}</span>
+                            <span class="info-chat-participante-correo">${p.correo || ""}</span>
+                        </div>
+                    </div>
+                    `
+                }
+            })
+            lista_html += `</div></div>`
+            return lista_html
+        })() : ''}
+    </div>
+    `
+    infoSeccion.innerHTML = html
+
+    // Eventos de la sección de información
+    document.querySelector("#bt-cerrar-info-chat")?.addEventListener("click", () => {
+        infoSeccion.classList.remove("abierto")
+    })
+
+    document.querySelector("#bt-ver-archivos-chat")?.addEventListener("click", () => {
+        console.log("Abriendo archivos del chat:", id)
+        // TODO: Implementar el menú de archivos mandados
+    })
+
+    //mostrar seccion + cambiar css secciones
+
+    if (infoSeccion) {
+        infoSeccion.classList.toggle("abierto")
+    }
 }
 //TODO
 function Comenzar_conexion_p2p(e) {
@@ -952,7 +1067,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat)
                 //eventos
                 document.querySelector("#nav-prinicpal-chat-usaurio")?.addEventListener("click", mostrar_datos_chat_usaurios)
-                document.querySelector("#nombre-chat-nav")?.addEventListener("click", mostrar_datos_chat_usaurios)
+
                 document.querySelector("#bt-crear-conexion-p2p")?.addEventListener("click", Comenzar_conexion_p2p)
 
 
