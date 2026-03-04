@@ -1,12 +1,44 @@
-const { InsertarUsuario, LoginUsuarioDB, User, ValidationCode, LimpiarJWTUsuario, BorrarVC, InsertarVC, InsertarCuentaVC, BorrarCuentaVC, ActualizarUsuarioActivo, CuentaValidationCode, BorrarUsuarioActivo, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, TokenVC, TokenSession, TokenDPC, DispositivosBloqueados } = require('../db/mongo.js')
-const { saveSessionFile, clearFileSession, saveOmitirVerificacionCuentaFile, readFileSession, limpiarArchivosCompleto } = require('./controladorArchivosSesion.js')
-const { enviarEmail, generarCodigoVerificacion } = require('./MENSAJERIA/Servicio_mensajeria_correo.js')
-const { ValidarCorreoEstructura, ConfirmacionCuentaCreadaEstructura, ValidarCuentaUsuario, ConfirmacionInicioSesion } = require('./MENSAJERIA/Estructuras_correos.js')
-const { generarteToken, validateToken } = require('./CreadorTokens.js')
-const storage = require('../STORAGE/Variables_sesion.js')
-const { machineIdSync } = require('node-machine-id');
-const bcrypt = require('bcryptjs')//para contraseñas: mas seguro para esto
-const crypto = require("crypto");//para tokens y codigos: mas rapido e igual de funcional
+import {
+    InsertarUsuario,
+    LoginUsuarioDB,
+    User,
+    ValidationCode,
+    LimpiarJWTUsuario,
+    BorrarVC,
+    InsertarVC,
+    InsertarCuentaVC,
+    BorrarCuentaVC,
+    ActualizarUsuarioActivo,
+    CuentaValidationCode,
+    BorrarUsuarioActivo,
+    AñadirJWTUsuario,
+    AñadirJWTUsuarioVC,
+    LimpiarJWTUsuarioVC,
+    TokenVC,
+    TokenSession,
+    TokenDPC,
+    DispositivosBloqueados
+} from '../db/mongo.js';
+import {
+    saveSessionFile,
+    clearFileSession,
+    saveOmitirVerificacionCuentaFile,
+    readFileSession,
+    limpiarArchivosCompleto
+} from './controladorArchivosSesion.js';
+import { enviarEmail, generarCodigoVerificacion } from './MENSAJERIA/Servicio_mensajeria_correo.js';
+import {
+    ValidarCorreoEstructura,
+    ConfirmacionCuentaCreadaEstructura,
+    ValidarCuentaUsuario,
+    ConfirmacionInicioSesion
+} from './MENSAJERIA/Estructuras_correos.js';
+import { generarteToken, validateToken } from './CreadorTokens.js';
+import * as storage from '../STORAGE/Variables_sesion.js';
+import pkgMachineId from 'node-machine-id';
+const { machineIdSync } = pkgMachineId;
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
@@ -425,4 +457,15 @@ async function comprobarActividadOnline() {
         ActualizarUsuarioActivo({ correo: correo_actual })
     }, 4 * 60 * 1000)//4minutos, aunque mongo expire cada 5 minutos
 }
-module.exports = { comprobar_contraseña_cuenta, registerUsuario, loginUsuario, autoLoginUsuario, cerrarSesionUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, comprobaciones_Correo, comprobar_apodo, comprobarContrasenaValidaciones }
+export {
+    comprobar_contraseña_cuenta,
+    registerUsuario,
+    loginUsuario,
+    autoLoginUsuario,
+    cerrarSesionUsuario,
+    ValidarCodeRegistroUsuario,
+    ValidarCodeLogin,
+    comprobaciones_Correo,
+    comprobar_apodo,
+    comprobarContrasenaValidaciones
+};

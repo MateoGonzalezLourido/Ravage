@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 function generarCodigoVerificacion() {//generar codigo 6 digitos que se utilizara para verificar
     const codigo_verificacion = Math.floor(100000 + Math.random() * 900000)
@@ -38,4 +38,4 @@ async function enviarEmail({ correoDestino = null, asunto = "Sin asunto", htmlCo
     console.log("Correo enviado al usuario")
 }
 
-module.exports = { enviarEmail, generarCodigoVerificacion }
+export { enviarEmail, generarCodigoVerificacion };

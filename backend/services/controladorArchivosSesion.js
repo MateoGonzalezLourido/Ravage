@@ -1,11 +1,11 @@
-const fs = require("fs")
-const path = require('path');
+import fs from "fs";
+import path from 'path';
+import { app } from 'electron';
+import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
+import { ActualizarSecretKeyUsuario } from '../db/mongo.js';
+import crypto from 'crypto';
 
-const { app } = require('electron')
-const { getSecretKEY } = require('../STORAGE/Variables_sesion.js')
-const { ActualizarSecretKeyUsuario } = require('../db/mongo.js')
 const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
-const crypto = require('crypto')
 
 //rutas
 const ruta_app_data = app.getPath('userData')
@@ -176,7 +176,7 @@ async function CifrarDatosArchivos(data, especial) {
     };
 }
 
-module.exports = {
+export {
     saveSessionFile,
     clearFileSession,
     readFileSession,

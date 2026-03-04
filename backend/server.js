@@ -1,4 +1,4 @@
-const express = require('express');
+import express from 'express';
 
 let appServer; // para poder cerrar el server si quieres
 
@@ -18,4 +18,4 @@ function stopServer() {
     if (appServer) appServer.close(() => console.warn('*Servidor cerrado'));
 }
 
-module.exports = { startServer, stopServer };
+export { startServer, stopServer };

@@ -1,12 +1,63 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
-const path = require('path')
-require("dotenv").config();//solo hace falta importarlo una vez para todo el proyecto
-const { startServer } = require('./backend/server.js')
-const { connectDB, BorrarUsuarioActivo, closeDB, BorrarCuentaVC, BorrarVC, eliminarUsuariosBloqueados, eliminarUsuariosSilenciados, añadirUsuariosBloqueados, añadirUsuariosSilenciados, obtener_datos_chats, limpiar_mensajes_chats_antiguos, obtener_datos_chat_unico, obtener_datos_usuario, encontrar_usuario, CREAR_CHAT_NUEVO } = require("./backend/db/mongo.js")
-const { autoLoginUsuario, registerUsuario, loginUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } = require('./backend/services/sesionUsuario.js');
-const { getCorreoSesion, getApodoSesion, getFechaCreacionCuenta, getFechaBloqueoApodo, getFechaBloqueoCorreo, getFechaBloqueoContraseña, getUsuariosSilence, getUsuariosBloqueados, getListaChats, getIDMongodbUsuario, getIDAmigo, getListaContactos } = require('./backend/STORAGE/Variables_sesion.js')
-const { permitirCambioContraseñaUsuario, ValidarCodeCambioDatosCuenta, permitirCambioCorreoUsuario, permitirCambioApodoUsuario } = require('./backend/services/Usuario.js')
-const { saveAjustesAppFile, getAjustesAppFile } = require('./backend/services/controladorArchivosSesion.js')
+import { app, BrowserWindow, ipcMain } from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import 'dotenv/config';
+
+// Definir __dirname para ESM
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+import { startServer } from './backend/server.js';
+import {
+    connectDB,
+    BorrarUsuarioActivo,
+    closeDB,
+    BorrarCuentaVC,
+    BorrarVC,
+    eliminarUsuariosBloqueados,
+    eliminarUsuariosSilenciados,
+    añadirUsuariosBloqueados,
+    añadirUsuariosSilenciados,
+    obtener_datos_chats,
+    limpiar_mensajes_chats_antiguos,
+    obtener_datos_chat_unico,
+    obtener_datos_usuario,
+    encontrar_usuario,
+    CREAR_CHAT_NUEVO
+} from "./backend/db/mongo.js";
+import {
+    autoLoginUsuario,
+    registerUsuario,
+    loginUsuario,
+    ValidarCodeRegistroUsuario,
+    ValidarCodeLogin,
+    cerrarSesionUsuario,
+    comprobar_contraseña_cuenta
+} from './backend/services/sesionUsuario.js';
+import {
+    getCorreoSesion,
+    getApodoSesion,
+    getFechaCreacionCuenta,
+    getFechaBloqueoApodo,
+    getFechaBloqueoCorreo,
+    getFechaBloqueoContraseña,
+    getUsuariosSilence,
+    getUsuariosBloqueados,
+    getListaChats,
+    getIDMongodbUsuario,
+    getIDAmigo,
+    getListaContactos
+} from './backend/STORAGE/Variables_sesion.js';
+import {
+    permitirCambioContraseñaUsuario,
+    ValidarCodeCambioDatosCuenta,
+    permitirCambioCorreoUsuario,
+    permitirCambioApodoUsuario
+} from './backend/services/Usuario.js';
+import {
+    saveAjustesAppFile,
+    getAjustesAppFile
+} from './backend/services/controladorArchivosSesion.js';
 
 let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
@@ -19,7 +70,7 @@ function createMainWindowHome(AutoLogin = false) {
         title: "RAVAGE",   // cambia el nombre de la ventana
         autoHideMenuBar: true, // oculta menú opciones nativo
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js'), // ruta absoluta
+            preload: path.join(__dirname, 'preload.cjs'), // ruta absoluta
             nodeIntegration: false,//evita que el render tenga acceso a require ...
             additionalArguments: [`--start=${AutoLogin}`] // argumentos iniciales para el preload
         },

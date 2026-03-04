@@ -111,7 +111,7 @@ const ConfirmacionCambioApodo = ({ apodo }) => {
         <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
     return { asunto: asunto, htmlContenido: htmlContenido }
 }
-module.exports = {
+export {
     ValidarCorreoEstructura,
     ConfirmacionCuentaCreadaEstructura,
     ValidarCuentaUsuario,
@@ -120,4 +120,4 @@ module.exports = {
     ConfirmacionCambioContraseña,
     ConfirmacionCambioCorreo,
     ConfirmacionCambioApodo
-}
+};

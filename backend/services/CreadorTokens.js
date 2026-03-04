@@ -1,12 +1,13 @@
-const jwt = require('jsonwebtoken');
-const { machineIdSync } = require('node-machine-id');
-const crypto = require("crypto")
+import jwt from 'jsonwebtoken';
+import pkgMachineId from 'node-machine-id';
+const { machineIdSync } = pkgMachineId;
+import crypto from 'crypto';
 const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;//codigo para crear jwt (un valor definido por mi)
 
 
 /*JWT */
 
-async function generarteToken(duracion = "cuenta") {
+export async function generarteToken(duracion = "cuenta") {
     const duraciones = {
         sesion: '7d',
         cuenta: '90m'
@@ -26,17 +27,11 @@ async function generarteToken(duracion = "cuenta") {
     return jwtToken;
 }
 
-async function validateToken(jwtToken) {
+export async function validateToken(jwtToken) {
     try {
         const decoded = jwt.verify(jwtToken, SECRET_KEY_JWT);
         return decoded;   // o true si prefieres booleano
     } catch {
         return null;
     }
-}
-
-
-module.exports = {
-    generarteToken,
-    validateToken
 }
