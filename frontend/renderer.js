@@ -724,7 +724,7 @@ const chat_componente_lista_structura_html = (datos_usar) => {
         else return `<<no encontrado>>`
     }
     function usuarios() {
-        if (datos_usar.usuarios.length > 2 && datos_usar.usuarios.length) return (`<div class="numero-integrantes-chat-lista"><span>${datos_usar.usuarios.length} integrantes</span></div>`)
+        if (datos_usar.usuarios.length > 2 && datos_usar.usuarios.length) return (`<div class="numero-integrantes-chat-lista"><span>${[...new Set(datos_usar?.usuarios)]?.length || 0} integrantes</span></div>`)
         else return ``
     }
     function ultima_vez() {
@@ -784,7 +784,7 @@ const chat_componente_lista_structura_html = (datos_usar) => {
 }
 
 const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
-    
+
     let html = ""
     const class_mensajes = ["soy-emisor", "soy-receptor"]
     // El emisor es un array, cojemos el primer integrante
@@ -816,11 +816,21 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
         html_emisor += nombre_a_mostrar + '</span></div>'
         return html_emisor
     }
+    function hora_mandado() {
+        const fecha = new Date(data.data);
+        const hora = fecha.toLocaleTimeString("es-ES", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        });
+        return `<div class="hora-mensaje-chat"><span>${hora}</span></div>`
+    }
     html += `
     <div class="mensaje-chat ${emisor_mensaje()}">
         ${await nombre_emisor()}
         <div class="asunto-mensaje-chat">${data.contenido[0].asunto}</div>
         ${data.contenido[0].id_file ? `<div class="file-mensaje-chat"data-id="${data.contenido[0].id_file}">${data.contenido[0].nombre}</div>` : ""}
+        ${hora_mandado()}
     </div>`
 
     return html
@@ -838,8 +848,33 @@ async function Crear_chat_html(datos, id_propio) {
         const mensajes_ordenados = [...datos.mensajes].sort((a, b) => {
             return new Date(a.data) - new Date(b.data)
         })
-
+        let fecha_ultimo;
         for (m of mensajes_ordenados) {
+            //comparar si son del mismo dia
+            const fecha_actual = new Date(m.data)
+            const fecha_comparar = new Date(fecha_ultimo)
+            const texto_mostrar_fecha_mensajes_bloque = (fecha_ultimo) => {
+                //mirar si es hoy
+                if (fecha_ultimo.toDateString() === new Date().toDateString()) return "Hoy"
+                //mirar si fue ayer
+                else if (fecha_ultimo.toDateString() === new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString()) return "Ayer"
+                //mirar si es de la misma semana
+                else if (fecha_ultimo.getDay() === new Date().getDay()) return fecha_ultimo.toLocaleString("es-ES", {
+                    weekday: "long"
+                })
+                // mirar si es del mismo mes y año
+                else if (fecha_ultimo.getMonth() === new Date().getMonth() && fecha_ultimo.getFullYear() === new Date().getFullYear()) {
+                    //devolver el dia del mes y nombre del dia de la semana
+                    return fecha_ultimo.toLocaleString("es-ES", {
+                        weekday: "long"
+                    }) + " " + fecha_ultimo.getDate() + " " + fecha_ultimo.getFullYear()
+                }
+                else return fecha_ultimo.toDateString()
+            }
+            if (fecha_actual.toDateString() !== fecha_comparar.toDateString() || !fecha_ultimo) {
+                html += `<div class="fecha-mensaje-chat"><span>${texto_mostrar_fecha_mensajes_bloque(fecha_actual)}</span></div>`
+            }
+            fecha_ultimo = m.data
             html += (await crear_mensaje_html(m, id_propio, nombres_contactos))
         }
 
@@ -874,13 +909,12 @@ async function mostrar_datos_chat_usaurios(e) {
     //TODO: MOSTRAR DATOS DEL USUARIO Y DEL CHAT
     const id = e.currentTarget.dataset.id || document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
     const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id)
-    console.log(info_chat)
     const infoSeccion = document.querySelector("#info-chat-seccion")
     //crear html de la seccion
     const nombre_chat = document.querySelector("#nombre-chat-nav span")?.textContent || "no encontrado";
     const añadido_nombre_chat = async () => {
-        if (info_chat?.grupo) {
-            return `<div>${info_chat?.usuarios.length} integrantes</div>`
+        if (info_chat?.grupo && info_chat?.usuarios) {
+            return `<div>${[...new Set(info_chat?.usuarios)]?.length || 0} integrantes</div>`
         } else {
             // Obtener el ID del usuario principal
             const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
@@ -937,7 +971,8 @@ async function mostrar_datos_chat_usaurios(e) {
 
         ${info_chat?.grupo ? await (async () => {
             const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-            const participantes_ids = info_chat.usuarios.filter(id => id !== id_mio)
+            let participantes_ids = [...new Set(info_chat.usuarios)]//quitar repetidos
+            participantes_ids = participantes_ids.filter(id => id !== id_mio)//quitar el id propio
 
             // Obtener datos de todos los participantes en paralelo
             const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id))
@@ -1076,7 +1111,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                     }
                 }
 
-                document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat)
+                document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
                 //eventos
                 document.querySelector("#nav-prinicpal-chat-usaurio")?.addEventListener("click", mostrar_datos_chat_usaurios)
 
