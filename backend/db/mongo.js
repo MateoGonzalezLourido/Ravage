@@ -808,11 +808,18 @@ async function obtener_datos_chats({ data = [], grupales = null, mensajes = true
             { _id: 1, mensajes: mensajes ? 1 : 0 }  // 0 = excluir
         );
         //pasar _id a string
-        return data_obtenida.map(el => ({
-            ...el.toObject?.() ?? el,
-            _id: el._id.toString(),
-            usuarios: el.usuarios.map(c => c.toString())
-        }));
+        return data_obtenida.map(el => {
+            const obj = el.toObject?.() ?? el;
+            return {
+                ...obj,
+                _id: obj._id.toString(),
+                usuarios: obj.usuarios.map(c => c.toString()),
+                mensajes: obj.mensajes?.map(m => ({
+                    ...m,
+                    emisor: m.emisor.map(e => e.toString())
+                })) || []
+            };
+        });
     } catch (e) {
         console.error(e)
         return []
@@ -829,7 +836,11 @@ async function obtener_datos_chat_unico(id) {
         return {
             ...obj,
             _id: obj._id.toString(),
-            usuarios: obj.usuarios.map(u => u.toString())
+            usuarios: obj.usuarios.map(u => u.toString()),
+            mensajes: obj.mensajes?.map(m => ({
+                ...m,
+                emisor: m.emisor.map(e => e.toString())
+            })) || []
         };
     } catch (e) {
         console.error(e)
@@ -945,6 +956,27 @@ async function AÑADIR_CONTACTO(id, nombre) {
         return false;
     }
 }
+
+//CHAT FUNCIONES INTERNAS
+async function ENVIAR_MENSAJE({ asunto, id_chat, id_emisor }) {
+    try {
+        const chat = await ChatsRavage.findOne({ _id: id_chat });
+        if (!chat) return false;
+        const usuario = await User.findOne({ _id: id_emisor });
+        if (!usuario) return false;
+        const mensaje = {
+            emisor: [id_emisor],
+            contenido: [{ asunto, nombre_file: "_archivo_", id_file: "" }],
+            data: new Date()
+        };
+        chat.mensajes.push(mensaje);
+        await chat.save();
+        return true;
+    } catch (e) {
+        console.error(e);
+        return false;
+    }
+}
 export {
     connectDB,
     closeDB,
@@ -984,5 +1016,6 @@ export {
     encontrar_usuario,
     CREAR_CHAT_NUEVO,
     obtener_datos_usuario,
-    BorrarCuentaVC
+    BorrarCuentaVC,
+    ENVIAR_MENSAJE
 };

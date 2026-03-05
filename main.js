@@ -23,7 +23,8 @@ import {
     obtener_datos_chat_unico,
     obtener_datos_usuario,
     encontrar_usuario,
-    CREAR_CHAT_NUEVO
+    CREAR_CHAT_NUEVO,
+    ENVIAR_MENSAJE
 } from "./backend/db/mongo.js";
 import {
     autoLoginUsuario,
@@ -302,4 +303,7 @@ ipcMain.handle("obtener-ajustes-app", () => {
 
 ipcMain.handle("guardar-ajustes-app", async (_, data) => {
     return await saveAjustesAppFile({ data })
+})
+ipcMain.handle("enviar-mensaje", async (_, { asunto, id_chat, id_emisor }) => {
+    return await ENVIAR_MENSAJE({ asunto, id_chat, id_emisor })
 })
