@@ -613,8 +613,8 @@ function desplegar_menu_añadir_chat({ e, mostrar = true }) {
         contactos_añadir = []
         actualizar_lista_contactos_añadir()
         document.querySelector("#texto-buscar-chat-añadir").value = ""
-        document.querySelector("#resultados-busqueda-usaurios").innerHTML = ""
-        document.querySelector("#contactos-añadidos-grupo").innerHTML = ""
+        document.querySelector("#resultados-busqueda-usaurios").innerHTML = "<span>*Sin resultados</span>"
+        document.querySelector("#contactos-añadidos-grupo").innerHTML = "<span>*Agregar usuarios para el chat</span>"
         document.querySelector("#nombre-chat-nuevo-crear").value = ""
     }
 }
