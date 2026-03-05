@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
+import { GridFSBucket } from "mongodb"
 import { compare, createHash, randomBytes } from "../utils/libs.js";
+
+import fs from "fs" //para subir archivos
+const uploadStream = bucket.openUploadStream("archivo.pdf");
 
 import {
     getIdDispositivo,
@@ -234,6 +238,10 @@ const EntradaSchema = new mongoose.Schema({
     tipo: { type: String, required: true },   // tipo de entrada, p.ej. "archivo", "mensaje"
     data: { type: mongoose.Schema.Types.Mixed, required: true } // cualquier estructura de datos
 })
+const ArchivoSchema = new mongoose.Schema({
+    nombre: { type: String, default: "_archivo_" },
+    id: { type: [mongoose.Schema.Types.ObjectId], default: [] } // array de ObjectId
+}, { _id: false });
 const ChatSchema = new mongoose.Schema({
     nombre: {//solo si es un grupo (si es de dos se coje el apodo que le tengas a ese usuario)
         type: String,
@@ -254,8 +262,10 @@ const ChatSchema = new mongoose.Schema({
                 contenido: {
                     type: [{
                         asunto: { type: String, default: "" },
-                        nombre_file: { type: String, default: "_archivo_" },
-                        id_file: { type: String, default: "" }
+                        archivos: {
+                            type: [ArchivoSchema]
+                        }
+
                     }]
                 },
                 data: { type: Date, default: Date.now }
@@ -278,6 +288,17 @@ const BuzonSchema = new mongoose.Schema({
     },
     entrada: [EntradaSchema]
 })
+//estructura para archivos usando gridfs
+const ArchivoSchemaGridfs = new mongoose.Schema({
+    filename: String,
+    gridfsId: mongoose.Types.ObjectId,
+    size: Number,
+    mimetype: String,
+    uploadedAt: {
+        type: Date,
+        default: Date.now
+    }
+})
 
 //expiracion codigos y tokens
 TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });//90minutos
@@ -296,6 +317,7 @@ const TokenDPC = mongoose.model("tokendpc", TokenDPCSchema, "tokendpc");
 const DispositivosBloqueados = mongoose.model("dpbloqueados", DPBLOQUEADOSchema, "dpbloqueados");
 const ChatsRavage = mongoose.model("chats", ChatSchema, "chats");
 const BuzonUsuarios = mongoose.model("buzonsusuarios", BuzonSchema, "buzonusuarios");
+const ArchivosChats = mongoose.model("archivoschats", ArchivoSchemaGridfs, "archivoschats");
 
 //conectar db
 async function connectDB() {
@@ -958,15 +980,48 @@ async function AÑADIR_CONTACTO(id, nombre) {
 }
 
 //CHAT FUNCIONES INTERNAS
-async function ENVIAR_MENSAJE({ asunto, id_chat, id_emisor }) {
+//TODO
+async function ENVIAR_MENSAJE({ asunto, archivos = [], id_chat, id_emisor }) {
+
     try {
+        //COMPROBACIONES
         const chat = await ChatsRavage.findOne({ _id: id_chat });
         if (!chat) return false;
         const usuario = await User.findOne({ _id: id_emisor });
         if (!usuario) return false;
+
+        //subir archivos si existen
+        const contenido_archivos = []
+        if (archivos.length > 0) {//hay archivos
+            //subir archivo (Mongo lo divide automáticamente en chunks.)loadStream(archivo.nombre
+            /*moongose schema(metada)->gridfs(chunks del archivo)->mongodb */
+            const bucket = new GridFSBucket(mongoose.connection.db, {
+                bucketName: "ArchivosChats"//nombre de la coleccion donde se guardaran los archivos
+            });
+
+            for (const archivo of archivos) {
+                const uploadStream = bucket.openUploadStream(archivo.nombre || "_archivo_");
+                const stream = fs.createReadStream(archivo.path);
+
+                const fileId = await new Promise((resolve, reject) => {
+
+                    stream.pipe(uploadStream)
+                        .on("error", reject)
+                        .on("finish", () => resolve(uploadStream.id));
+
+                });
+                contenido_archivos.push({
+                    nombre: archivo.nombre || "_archivo_",
+                    id: fileId ? fileId.toString() : ""
+                });
+            }
+
+        }
+
+
         const mensaje = {
             emisor: [id_emisor],
-            contenido: [{ asunto, nombre_file: "_archivo_", id_file: "" }],
+            contenido: [{ asunto, archivos: contenido_archivos }],
             data: new Date()
         };
         chat.mensajes.push(mensaje);
