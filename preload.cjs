@@ -140,6 +140,9 @@ contextBridge.exposeInMainWorld('chats', {
     },
     CREAR_CHAT_NUEVO: (ids, nombre) => {
         return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre)
+    },
+    ENVIAR_MENSAJE: ({ asunto, id_chat, id_emisor }) => {
+        return ipcRenderer.invoke("enviar-mensaje", { asunto, id_chat, id_emisor })
     }
 });
 

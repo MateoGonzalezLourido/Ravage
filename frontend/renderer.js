@@ -784,9 +784,12 @@ const chat_componente_lista_structura_html = (datos_usar) => {
 }
 
 const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
+    
     let html = ""
     const class_mensajes = ["soy-emisor", "soy-receptor"]
-    const propio = data.emisor == id_propio
+    // El emisor es un array, cojemos el primer integrante
+    const id_emisor = Array.isArray(data.emisor) ? data.emisor[0] : data.emisor
+    const propio = id_emisor == id_propio
 
     function emisor_mensaje() {
         if (propio) return class_mensajes[0]
@@ -796,7 +799,6 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
         if (propio) return ``
 
         let html_emisor = `<div class="nombre-mensaje-chat-usuario"><span>`
-        const id_emisor = data.emisor
         let nombre_a_mostrar = "Usuario"
 
         // Buscamos si el emisor está en nuestros contactos
@@ -817,8 +819,8 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
     html += `
     <div class="mensaje-chat ${emisor_mensaje()}">
         ${await nombre_emisor()}
-        <div class="asunto-mensaje-chat">${data.contenido.asunto}</div>
-        <div class="file-mensaje-chat"data-id="${data.contenido.id_file}">${data.contenido.nombre}</div>
+        <div class="asunto-mensaje-chat">${data.contenido[0].asunto}</div>
+        ${data.contenido[0].id_file ? `<div class="file-mensaje-chat"data-id="${data.contenido[0].id_file}">${data.contenido[0].nombre}</div>` : ""}
     </div>`
 
     return html
@@ -831,7 +833,13 @@ async function Crear_chat_html(datos, id_propio) {
     async function todo_chat() {
         let html = ""
         if (!datos?.mensajes) return html
-        for (m of datos.mensajes) {
+
+        // Ordenar mensajes por fecha (de más antiguo a más reciente)
+        const mensajes_ordenados = [...datos.mensajes].sort((a, b) => {
+            return new Date(a.data) - new Date(b.data)
+        })
+
+        for (m of mensajes_ordenados) {
             html += (await crear_mensaje_html(m, id_propio, nombres_contactos))
         }
 
@@ -853,7 +861,7 @@ async function Crear_chat_html(datos, id_propio) {
         <div id="bt-añadir-archivo-mensaje-escritura">        
             <img src="" alt="">
         </div>
-        <textarea placeholder="Escribe un mensaje"></textarea>
+        <textarea id="textarea-mensaje-escritura" placeholder="Escribe un mensaje"></textarea>
     </div>
     `
 
@@ -996,9 +1004,13 @@ async function ACTUALIZAR_LISTAS_CHAT() {
         const datos_chats_grupales = await window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
         const id_propio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
         //crear html lista chats
-        //TODO: ORDENAR LOS CHATS POR ULTIMO CAMBIO
+        // ORDENAR LOS CHATS POR ULTIMO CAMBIO (El más reciente arriba)
+        const lista_chats_ordenada = [...lista_chats].sort((a, b) => {
+            return new Date(b.ultimoCambio) - new Date(a.ultimoCambio)
+        })
+
         let html = ""
-        for (c of lista_chats) {
+        for (c of lista_chats_ordenada) {
             //HAY QUE MIRAR SI ES UN GRUPO, SI ES SE COJE EL NOMBRE DE CHATSRAVAGE, SI NO LOS ES SE BUSCA EL ID DEL OTRO USUARIO Y LUEGO EN CONTACTOS SE MIRA SI LO TENGO AGREGADO, SINO SE BUSCA ESE ID POR LA BASE DE DATOS DE USUARIO Y COJEMOS ESE APODO
             let nombre = ""
             //buscar el chat
@@ -1069,6 +1081,23 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 document.querySelector("#nav-prinicpal-chat-usaurio")?.addEventListener("click", mostrar_datos_chat_usaurios)
 
                 document.querySelector("#bt-crear-conexion-p2p")?.addEventListener("click", Comenzar_conexion_p2p)
+                document.querySelector("#textarea-mensaje-escritura")?.addEventListener("keypress", async (e) => {
+                    if (e.key == "Enter") {//TODO
+                        e.preventDefault() // Evitar salto de línea
+                        const mensaje = document.querySelector("#textarea-mensaje-escritura").value.trim()
+                        if (mensaje == "") return
+
+                        const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
+                        const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+
+                        const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, id_chat: id_chat, id_emisor: id_usuario })
+
+                        if (result) {//limpiar seccion mensaje escritura
+                            //TODO: MANDAR AL BUZON PARA QUE ESTE ACTUALICE EL CHAT (ASI EVITAMOS QUE MENSAJES QUE SE MANDARON SE MUESTREN DESPUES MIENTRAS NO SE REABRA EL CHAT)
+                            document.querySelector("#textarea-mensaje-escritura").value = ""
+                        }
+                    }
+                })
 
 
             })
