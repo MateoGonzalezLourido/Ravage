@@ -850,6 +850,7 @@ async function Crear_chat_html(datos, id_propio) {
         })
         let fecha_ultimo;
         for (m of mensajes_ordenados) {
+            //TODO: QUE AL DEJAR DE TENER ESTO DE LA FECHA EN LA PANTALLA APAREZCA FIXED ARRIBA DEL CHAT (LA FECHA QUE PERTEZCA AL BLOQUE QUE ESTAMOS VIENDO)
             //comparar si son del mismo dia
             const fecha_actual = new Date(m.data)
             const fecha_comparar = new Date(fecha_ultimo)
@@ -1112,6 +1113,36 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 }
 
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+                //crear observadores doom para el sistema de fecha de bloques mensajes
+                const elementos = document.querySelectorAll(".fecha-bloque-mensajes");
+                const fixed_text = "text-fecha-bloques-mensajes-fixed"
+                const observer = new IntersectionObserver((entries) => {
+
+                    entries.forEach(entry => {
+
+                        const html = entry.target.innerHTML;
+
+                        if (entry.isIntersecting) {
+                            // cuando se ve
+                            entry.target.classList.remove(fixed_text)
+                        } else {
+                            // cuando deja de verse (si no es hoy)
+                            if (!html.includes("Hoy")) mostrarFechaBloqueMensajes(html);
+                        }
+
+                    });
+
+                });
+                elementos.forEach(el => observer.observe(el));
+                function mostrarFechaBloqueMensajes(html) {
+                    const contenedor = document.querySelector("#chat-usuario");
+                    const hijo = document.createElement("div");
+                    const text = document.createElement("span")
+                    text.innerHTML = html
+                    hijo.appendChild(text)
+                    hijo.classList.add(fixed_text)
+                    contenedor.appendChild(hijo);
+                }
                 //eventos
                 document.querySelector("#nav-prinicpal-chat-usaurio")?.addEventListener("click", mostrar_datos_chat_usaurios)
 
