@@ -609,9 +609,13 @@ function desplegar_menu_añadir_chat({ e, mostrar = true }) {
     else {
         document.querySelector("#alineador-seccion-añadir-chat").classList.remove("flex-display")
         document.querySelector("#alineador-seccion-añadir-chat").classList.add("ocultar-display")
-
+        //limpiar datos y html
         contactos_añadir = []
         actualizar_lista_contactos_añadir()
+        document.querySelector("#texto-buscar-chat-añadir").value = ""
+        document.querySelector("#resultados-busqueda-usaurios").innerHTML = ""
+        document.querySelector("#contactos-añadidos-grupo").innerHTML = ""
+        document.querySelector("#nombre-chat-nuevo-crear").value = ""
     }
 }
 function actualizar_lista_contactos_añadir() {
