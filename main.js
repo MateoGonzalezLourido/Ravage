@@ -304,6 +304,6 @@ ipcMain.handle("obtener-ajustes-app", () => {
 ipcMain.handle("guardar-ajustes-app", async (_, data) => {
     return await saveAjustesAppFile({ data })
 })
-ipcMain.handle("enviar-mensaje", async (_, { asunto, id_chat, id_emisor }) => {
-    return await ENVIAR_MENSAJE({ asunto, id_chat, id_emisor })
+ipcMain.handle("enviar-mensaje", async (_, { asunto, archivos, id_chat, id_emisor }) => {
+    return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
 })

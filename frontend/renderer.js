@@ -1159,8 +1159,8 @@ async function ACTUALIZAR_LISTAS_CHAT() {
 
                         const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
                         const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-
-                        const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, id_chat: id_chat, id_emisor: id_usuario })
+                        const archivos = []//{path,nombre}
+                        const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos, id_chat: id_chat, id_emisor: id_usuario })
 
                         if (result) {//limpiar seccion mensaje escritura
                             //TODO: MANDAR AL BUZON PARA QUE ESTE ACTUALICE EL CHAT (ASI EVITAMOS QUE MENSAJES QUE SE MANDARON SE MUESTREN DESPUES MIENTRAS NO SE REABRA EL CHAT)
