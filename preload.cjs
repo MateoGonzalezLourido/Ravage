@@ -143,6 +143,9 @@ contextBridge.exposeInMainWorld('chats', {
     },
     ENVIAR_MENSAJE: ({ asunto, archivos, id_chat, id_emisor }) => {
         return ipcRenderer.invoke("enviar-mensaje", { asunto, archivos, id_chat, id_emisor })
+    },
+    SELECCIONAR_ARCHIVOS: () => {
+        return ipcRenderer.invoke("seleccionar-archivos")
     }
 });
 

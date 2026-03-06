@@ -1,9 +1,6 @@
 import mongoose from "mongoose";
 import { GridFSBucket } from "mongodb"
-import { compare, createHash, randomBytes } from "../utils/libs.js";
-
-import fs from "fs" //para subir archivos
-const uploadStream = bucket.openUploadStream("archivo.pdf");
+import { compare, createHash, randomBytes, fs } from "../utils/libs.js";
 
 import {
     getIdDispositivo,
@@ -998,10 +995,10 @@ async function ENVIAR_MENSAJE({ asunto, archivos = [], id_chat, id_emisor }) {
             const bucket = new GridFSBucket(mongoose.connection.db, {
                 bucketName: "ArchivosChats"//nombre de la coleccion donde se guardaran los archivos
             });
-
+            const nombre_defecto = "_archivo_.txt"
             for (const archivo of archivos) {
-                const uploadStream = bucket.openUploadStream(archivo.nombre || "_archivo_");
-                const stream = fs.createReadStream(archivo.path);
+                const uploadStream = bucket.openUploadStream((archivo.nombre + archivo.extension) || nombre_defecto);
+                const stream = fs.createReadStream(archivo.ruta);
 
                 const fileId = await new Promise((resolve, reject) => {
 
@@ -1011,7 +1008,7 @@ async function ENVIAR_MENSAJE({ asunto, archivos = [], id_chat, id_emisor }) {
 
                 });
                 contenido_archivos.push({
-                    nombre: archivo.nombre || "_archivo_",
+                    nombre: archivo.nombre || nombre_defecto,
                     id: fileId ? fileId.toString() : ""
                 });
             }

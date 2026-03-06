@@ -1,5 +1,5 @@
 let contactos_añadir = []//{id , nombre(apodo puesto por ti o apodo propio)}
-
+let archivos_mensaje = []//{ruta,nombre,extension}
 //ajustes
 function Todos_Los_Eventos_Funciones_Ajustes(e) {
     e.preventDefault()
@@ -841,6 +841,9 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
 }
 //TODO
 async function Crear_chat_html(datos, id_propio) {
+    //limpiar residuos de otros chats
+    archivos_mensaje = []
+
     let html = ""
     //nav principal
     const nombres_contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
@@ -1154,21 +1157,87 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 document.querySelector("#textarea-mensaje-escritura")?.addEventListener("keypress", async (e) => {
                     if (e.key == "Enter") {//TODO
                         e.preventDefault() // Evitar salto de línea
-                        const mensaje = document.querySelector("#textarea-mensaje-escritura").value.trim()
+                        const mensaje = document.querySelector("#textarea-mensaje-escritura")?.value.trim()
                         if (mensaje == "") return
 
                         const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
                         const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-                        const archivos = []//{path,nombre}
-                        const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos, id_chat: id_chat, id_emisor: id_usuario })
+                        const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
 
                         if (result) {//limpiar seccion mensaje escritura
                             //TODO: MANDAR AL BUZON PARA QUE ESTE ACTUALICE EL CHAT (ASI EVITAMOS QUE MENSAJES QUE SE MANDARON SE MUESTREN DESPUES MIENTRAS NO SE REABRA EL CHAT)
                             document.querySelector("#textarea-mensaje-escritura").value = ""
+                            archivos_mensaje = []
                         }
                     }
                 })
+                //guardar archivos(al hacer click mostrar una ventana para subir archivos)
+                document.querySelector("#bt-añadir-archivo-mensaje-escritura")?.addEventListener("click", async () => {
+                    //si existe cerrarla
+                    if (document.querySelectorAll(".ventana-archivos-mensaje").length > 0) {
+                        document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
+                        return;
+                    }
+                    //crear ventana
+                    function mostrar_lista_archivos(archivos) {
+                        const url_img_extensiones = {
+                            "png": "png.png"
+                        }
+                        let html = ``
+                        console.log(archivos)
+                        for (const archivo of archivos) {
+                            html += `<div class="ventana-archivos-mensaje-cuerpo-cuerpo-item">
+                            <div data-indice="${archivos.indexOf(archivo)}" class="ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre">
+                                <img draggable="false" src="./recursos/extensionesArchivos/${url_img_extensiones[archivo.extension?.toLowerCase()] || "cualquiera.svg"}">
+                                <span>${archivo.nombre}</span>
+                            </div>
+                        </div>`
+                        }
+                        return html
+                    }
+                    const ventana = document.createElement("div")
+                    ventana.className = "ventana-archivos-mensaje"
+                    ventana.innerHTML = `<div id="bt-cerrar-archivos-mensaje">
+                    <img src="./recursos/cruz.png" alt="cerrar">
+                    </div>
+                    <div class="ventana-archivos-mensaje-cuerpo">
+                        <div class="ventana-archivos-mensaje-cuerpo-header">
+                            <span>Archivos</span>
+                            <button id="bt-añadir-archivos-mensaje-escritura">Añadir</button>
+                        </div>
+                        <div class="ventana-archivos-mensaje-cuerpo-cuerpo">
+                            ${mostrar_lista_archivos(archivos_mensaje)}
+                        </div>
+                    </div>`
+                    document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
+                    //eventos
+                    //contextmenu de cada archivo
 
+                    //añadir archivos
+                    document.querySelector("#bt-añadir-archivos-mensaje-escritura").addEventListener("click", async () => {
+                        const archivos = await window.chats.SELECCIONAR_ARCHIVOS()
+                        //añadir archivos a la lista
+                        for (const archivo of archivos) {
+                            try {
+                                const estructura = archivo.split('\\')
+                                const nombre_extension = estructura[estructura.length - 1].split('.')
+                                archivos_mensaje.push({
+                                    nombre: nombre_extension[0],
+                                    extension: nombre_extension[1],
+                                    ruta: archivo
+                                })
+                            }
+                            catch (e) {//TODO: MOSTRAR ERROR PANTALLA
+                                console.error(e)
+                                window.pushNotificacion({
+                                    prioridad: 1,        // menor número = más importante
+                                    texto: `Error al añadir archivo${archivo.nombre + archivo.extension}\nRuta: ${archivo.ruta}`,
+                                    tipo: "error"      // "info", "error", "success"
+                                })
+                            }
+                        }
+                    })
+                })
 
             })
         })
