@@ -1,9 +1,8 @@
-import fs from "fs";
 import path from 'path';
 import { app } from 'electron';
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../db/mongo.js';
-import { randomBytes, createCipheriv, createDecipheriv } from '../utils/libs.js';
+import { randomBytes, createCipheriv, createDecipheriv,fs } from '../utils/libs.js';
 
 const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
 

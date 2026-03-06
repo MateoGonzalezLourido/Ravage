@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -306,4 +306,10 @@ ipcMain.handle("guardar-ajustes-app", async (_, data) => {
 })
 ipcMain.handle("enviar-mensaje", async (_, { asunto, archivos, id_chat, id_emisor }) => {
     return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
+})
+ipcMain.handle("seleccionar-archivos", async () => {
+    const { filePaths } = await dialog.showOpenDialog(winMain, {
+        properties: ["openFile", "multiSelections"]
+    })
+    return filePaths
 })
