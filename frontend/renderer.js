@@ -1191,7 +1191,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
                         const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                         const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
-console.log(result)
+                        console.log(result)
                         if (result) {//limpiar seccion mensaje escritura
                             //TODO: MANDAR AL BUZON PARA QUE ESTE ACTUALICE EL CHAT (ASI EVITAMOS QUE MENSAJES QUE SE MANDARON SE MUESTREN DESPUES MIENTRAS NO SE REABRA EL CHAT)
                             document.querySelector("#textarea-mensaje-escritura").value = ""
@@ -1373,3 +1373,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     /*TODO: obtener buzon y mostrar cambios en lista chats si hay(usando id del chat)  mostrar notificaciones de otras cosas */
 })
+
+//buzon API
+window.buzonAPI.onNuevaNotificacion((data) => {
+    console.log("Notificación recibida:", data);
+    // actualizar UI
+});

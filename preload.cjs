@@ -163,3 +163,9 @@ contextBridge.exposeInMainWorld('ajustes_app', {
         return ipcRenderer.invoke("guardar-ajustes-app", data)
     }
 });
+//socket buzon
+contextBridge.exposeInMainWorld("buzonAPI", {
+    onNuevaNotificacion: (callback) => {
+        ipcRenderer.on("nueva-notificacion", (event, data) => callback(data));
+    }
+});
