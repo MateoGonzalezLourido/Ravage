@@ -25,7 +25,7 @@ import {
     saveOmitirVerificacionCuentaFile,
     readFileSession,
     limpiarArchivosCompleto
-} from './controladorArchivosSesion.js';
+} from './controladorArchivos.js';
 import { enviarEmail, generarCodigoVerificacion } from './MENSAJERIA/Servicio_mensajeria_correo.js';
 import {
     ValidarCorreoEstructura,

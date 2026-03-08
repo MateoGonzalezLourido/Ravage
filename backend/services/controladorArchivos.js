@@ -1,8 +1,9 @@
 import path from 'path';
+import os from 'os'
 import { app } from 'electron';
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../db/mongo.js';
-import { randomBytes, createCipheriv, createDecipheriv,fs } from '../utils/libs.js';
+import { randomBytes, createCipheriv, createDecipheriv, fs } from '../utils/libs.js';
 
 const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
 
@@ -58,9 +59,16 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
     });
 }
 const AJUSTES_APP_DEFAULT = {
-    MSBienvenida: true
+    MSBienvenida: true,
+    URL_DESCARGA: path.join(app.getPath("downloads"))
 }
 async function saveAjustesAppFile({ data = {} }) {//guardar/ crear archivo
+    let data_usar = getAjustesAppFile()
+    for (const [key, value] of Object.entries(data)) {
+        if (data_usar[key]) {//si existe->actualizar
+            data_usar[key] = value
+        }
+    }
     //crear carpeta si no existe (apunta a la carpeta, no al archivo)
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
@@ -121,15 +129,22 @@ async function readFileSession(ruta, cifrado = true) {
     }
 }
 
-async function getAjustesAppFile() {
+async function getAjustesAppFile(nombre = null) {
     //si no existe, crearlo con valores por defecto
     if (!fs.existsSync(RTDF.ajustesAPP)) {
         await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT })
         return { ...AJUSTES_APP_DEFAULT }
     }
     try {
+        function conseguir_ajuste(){
+        
+                const obj = JSON.parse(raw)
+                if (!nombre) return obj
+                else return (obj[nombre] || { ...AJUSTES_APP_DEFAULT })
+            
+        }
         const raw = fs.readFileSync(RTDF.ajustesAPP, 'utf8')
-        return raw ? JSON.parse(raw) : { ...AJUSTES_APP_DEFAULT }
+        return (raw ? conseguir_ajuste (): { ...AJUSTES_APP_DEFAULT })
     } catch (e) {
         console.error('Error al leer ajustes de app:', e)
         return { ...AJUSTES_APP_DEFAULT }
