@@ -1,4 +1,4 @@
-import { BuzonUsuarios } from "./mongo.js"; // tu colección ya conectada
+import { BuzonUsuarios } from '../db/mongo.js'; // tu colección ya conectada
 
 export async function iniciarBuzon(io) {
     const changeStream = BuzonUsuarios.watch(); // observa todos los cambios
