@@ -60,12 +60,14 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar
 }
 const AJUSTES_APP_DEFAULT = {
     MSBienvenida: true,
-    URL_DESCARGA: path.join(app.getPath("downloads"))
+    URL_DESCARGA: app.getPath("downloads")
 }
+
 async function saveAjustesAppFile({ data = {} }) {//guardar/ crear archivo
-    let data_usar = getAjustesAppFile()
+    console.log(data)
+    let data_usar = await getAjustesAppFile()
     for (const [key, value] of Object.entries(data)) {
-        if (data_usar[key]) {//si existe->actualizar
+        if (data_usar[key] != undefined) {//si existe->actualizar
             data_usar[key] = value
         }
     }
@@ -136,15 +138,15 @@ async function getAjustesAppFile(nombre = null) {
         return { ...AJUSTES_APP_DEFAULT }
     }
     try {
-        function conseguir_ajuste(){
-        
-                const obj = JSON.parse(raw)
-                if (!nombre) return obj
-                else return (obj[nombre] || { ...AJUSTES_APP_DEFAULT })
-            
+        function conseguir_ajuste() {
+
+            const obj = JSON.parse(raw)
+            if (!nombre) return obj
+            else return (obj[nombre] || { ...AJUSTES_APP_DEFAULT[nombre] })
+
         }
         const raw = fs.readFileSync(RTDF.ajustesAPP, 'utf8')
-        return (raw ? conseguir_ajuste (): { ...AJUSTES_APP_DEFAULT })
+        return (raw ? conseguir_ajuste() : { ...AJUSTES_APP_DEFAULT })
     } catch (e) {
         console.error('Error al leer ajustes de app:', e)
         return { ...AJUSTES_APP_DEFAULT }
