@@ -986,10 +986,9 @@ async function AÑADIR_CONTACTO(id, nombre) {
 }
 
 //CHAT FUNCIONES INTERNAS
-//TODO
 async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }) {
     try {
-        //COMPROBACIONES
+        //COMPROBACIONES de si ese chat y usuario existe
         const chat = await ChatsRavage.findOne({ _id: id_chat });
         if (!chat) return false;
         const usuario = await User.findOne({ _id: id_emisor });
@@ -1004,12 +1003,13 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
                 bucketName: "ArchivosChats"//nombre de la coleccion donde se guardaran los archivos
             });
             const nombre_defecto = "_archivo_.txt"
-            for (const archivo of archivos) {
+            for (const archivo of archivos) {//subir todos los archivos
+                //decidir nombre archivo
                 let nombreCompletoUsar = nombre_defecto
                 if (archivo.nombre && archivo.extension) nombreCompletoUsar = archivo.nombre + "." + archivo.extension
-                const idArchivo = new ObjectId();
-                const uploadStream = bucket.openUploadStreamWithId(idArchivo, nombreCompletoUsar);
-
+                const idArchivo = new ObjectId();//id que vamos usar para identificar este archivo en chat, .file, .chunks
+                const uploadStream = bucket.openUploadStreamWithId(idArchivo, nombreCompletoUsar)//usar gridfs para subir el archivo
+                //subir el archivo usando fs para leerlo  y gridfs para dividirlo en chunks al subirlo a mongodb
                 await new Promise((resolve, reject) => {
                     fs.createReadStream(archivo.ruta)
                         .pipe(uploadStream)
@@ -1017,6 +1017,7 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
                         .on("finish", resolve);
 
                 });
+                //esto es necesario para el chat
                 contenido_archivos.push({
                     nombre: nombreCompletoUsar,
                     id: idArchivo.toHexString()
@@ -1024,13 +1025,13 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
             }
 
         }
-
+        //generar obj mensaje
         const mensaje = {
             emisor: id_emisor,
             contenido: [{ asunto, archivos: contenido_archivos }],
             data: new Date()
         };
-
+        //guardar en mongodb los cambios del chat
         chat.mensajes.push(mensaje);
         await chat.save();
         return true;
@@ -1044,10 +1045,10 @@ async function DESCARGAR_ARCHIVO(id, nombre) {
         const dir = path.dirname(rutaBase);//coje la carpeta de la ruta
         const nombre = path.basename(rutaBase, path.extname(rutaBase));//coje el nombre del archivo
         const ext = path.extname(rutaBase);//coje la extension del archivo
-
-        let nuevaRuta = rutaBase;
+        //generar ruta
+        let nuevaRuta = rutaBase;//ruta dada
         let contador = 1;
-
+        //mirar si actualizar
         while (fs.existsSync(nuevaRuta)) {//existe esa ruta??, si existe -> n++ y se comprueba otra vez, al terminar ese sera el nombre
             nuevaRuta = path.join(dir, `${nombre} (${contador})${ext}`);
             contador++;
@@ -1059,17 +1060,16 @@ async function DESCARGAR_ARCHIVO(id, nombre) {
         bucketName: "ArchivosChats"
     });
 
-    const downloadStream = bucket.openDownloadStream(new ObjectId(id));
+    const downloadStream = bucket.openDownloadStream(new ObjectId(id));//gridfs para descargar archivo
     const ruta_principal = await getAjustesAppFile("URL_DESCARGA");
-    console.log(ruta_principal);
-    // ruta_principal ya viene de getAjustesAppFile("URL_DESCARGA")
+    //mirar si existe esa ruta, si no existe se crea la carpeta que cotenga al archivo
     if (!fs.existsSync(ruta_principal)) {
         fs.mkdirSync(ruta_principal, { recursive: true }); // crea la carpeta y subcarpetas si hace falta
     }
-    const rutaCompleta = path.join(ruta_principal, nombre); // usar esta variable
-    let rutaFinal = generarRutaUnica(rutaCompleta);
-    const writeStream = fs.createWriteStream(rutaFinal);
-
+    const rutaCompleta = path.join(ruta_principal, nombre); //ruta principal
+    let rutaFinal = generarRutaUnica(rutaCompleta);//ruta que se usara (es para evitar que tenga el nombre de un archivo existente y lo borre)
+    const writeStream = fs.createWriteStream(rutaFinal);//escribir archivo con fs
+    //ejecutar acciones
     return new Promise((resolve, reject) => {
         downloadStream
             .pipe(writeStream)
