@@ -236,8 +236,8 @@ const EntradaSchema = new mongoose.Schema({
     data: { type: mongoose.Schema.Types.Mixed, required: true } // cualquier estructura de datos
 })
 const ArchivoSchema = new mongoose.Schema({
-    nombre: { type: String, default: "_archivo_" },
-    id: { type: [mongoose.Schema.Types.ObjectId], default: [] } // array de ObjectId
+    nombre: { type: String, default: "_archivo_.txt" },
+    id: { type: mongoose.Schema.Types.ObjectId, default: null }
 }, { _id: false });
 const ChatSchema = new mongoose.Schema({
     nombre: {//solo si es un grupo (si es de dos se coje el apodo que le tengas a ese usuario)
@@ -255,15 +255,16 @@ const ChatSchema = new mongoose.Schema({
     mensajes: {
         type: [
             {
-                emisor: { type: [mongoose.Schema.Types.ObjectId], required: true },
+                emisor: { type: mongoose.Schema.Types.ObjectId, required: true },
                 contenido: {
                     type: [{
                         asunto: { type: String, default: "" },
                         archivos: {
-                            type: [ArchivoSchema]
+                            type: [ArchivoSchema],
                         }
 
-                    }]
+                    }],
+                    default: []
                 },
                 data: { type: Date, default: Date.now }
             }
@@ -857,8 +858,8 @@ async function obtener_datos_chat_unico(id) {
             _id: obj._id.toString(),
             usuarios: obj.usuarios.map(u => u.toString()),
             mensajes: obj.mensajes?.map(m => ({
-                ...m,
-                emisor: m.emisor.map(e => e.toString())
+                ...m,//dejar tal cual
+                emisor: m.emisor.toString() || null//pasar id emisor a string
             })) || []
         };
     } catch (e) {
@@ -997,7 +998,8 @@ async function ENVIAR_MENSAJE({ asunto, archivos = [], id_chat, id_emisor }) {
             });
             const nombre_defecto = "_archivo_.txt"
             for (const archivo of archivos) {
-                const uploadStream = bucket.openUploadStream((archivo.nombre + archivo.extension) || nombre_defecto);
+                const nombreCompletoUsar = archivo.nombre + "." + archivo.extension
+                const uploadStream = bucket.openUploadStream(nombreCompletoUsar || nombre_defecto);
                 const stream = fs.createReadStream(archivo.ruta);
 
                 const fileId = await new Promise((resolve, reject) => {
@@ -1008,7 +1010,7 @@ async function ENVIAR_MENSAJE({ asunto, archivos = [], id_chat, id_emisor }) {
 
                 });
                 contenido_archivos.push({
-                    nombre: archivo.nombre || nombre_defecto,
+                    nombre: nombreCompletoUsar || nombre_defecto,
                     id: fileId ? fileId.toString() : ""
                 });
             }
