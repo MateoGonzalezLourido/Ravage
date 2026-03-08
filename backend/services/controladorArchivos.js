@@ -64,7 +64,6 @@ const AJUSTES_APP_DEFAULT = {
 }
 
 async function saveAjustesAppFile({ data = {} }) {//guardar/ crear archivo
-    console.log(data)
     let data_usar = await getAjustesAppFile()
     for (const [key, value] of Object.entries(data)) {
         if (data_usar[key] != undefined) {//si existe->actualizar

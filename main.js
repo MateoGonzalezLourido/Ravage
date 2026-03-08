@@ -60,7 +60,7 @@ import {
     saveAjustesAppFile,
     getAjustesAppFile
 } from './backend/services/controladorArchivos.js';
-
+import { iniciarBuzon } from './backend/services/buzon.js';
 let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
     winMain = new BrowserWindow({
@@ -96,8 +96,10 @@ if (!gotTheLock) {
     });
     // Ejecuta cuando Electron está listo
     app.whenReady().then(async () => {
-        await startServer() // iniciar servidor express
+        const io = await startServer() // iniciar servidor express
         await connectDB()
+        // iniciar buzón(asyncrono)
+        await iniciarBuzon(io);
         const AutoLogin = await autoLoginUsuario();//true, false
         createMainWindowHome(AutoLogin.success); // crear ventana
     })
@@ -314,6 +316,6 @@ ipcMain.handle("seleccionar-archivos", async () => {
     })
     return filePaths
 })
-ipcMain.handle("descargar-archivo", async (_, id,nombre) => {
-    return await DESCARGAR_ARCHIVO(id,nombre)
+ipcMain.handle("descargar-archivo", async (_, id, nombre) => {
+    return await DESCARGAR_ARCHIVO(id, nombre)
 })

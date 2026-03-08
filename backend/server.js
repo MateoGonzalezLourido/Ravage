@@ -1,21 +1,43 @@
-import express from 'express';
+import express from "express";
+import { Server } from "socket.io";
+import http from "http";
 
-let appServer; // para poder cerrar el server si quieres
+let appServer;
+let io;
 
 async function startServer() {
-    console.log('-Iniciando servidor...');
+    console.log("- Iniciando servidor...");
 
-    const app = express(); // <--- aquí defines app
+    const app = express();
     app.use(express.json());
 
-    const PORT = 3000;//puerto de escucha del servidor
-    //levantar servidor localhost
-    appServer = app.listen(PORT, () => console.log(`*Servidor Express en http://localhost:${PORT}`));
+    const PORT = 3000;
+
+    // crear HTTP server a partir de Express
+    const server = http.createServer(app);
+
+    // iniciar socket.io sobre el servidor HTTP
+    io = new Server(server, {
+        cors: {
+            origin: "*", // ajustar según frontend
+        },
+    });
+
+    // ejemplo de evento socket
+    io.on("connection", (socket) => {
+        console.log("Cliente conectado:", socket.id);
+        socket.on("mensaje", (msg) => console.log("Mensaje recibido:", msg));
+    });
+
+    // levantar server
+    appServer = server.listen(PORT, () =>
+        console.log(`*Servidor Express + Socket.IO en http://localhost:${PORT}`)
+    );
+    return io
 }
 
-// Función opcional para cerrar el servidor
 function stopServer() {
-    if (appServer) appServer.close(() => console.warn('*Servidor cerrado'));
+    if (appServer) appServer.close(() => console.warn("*Servidor cerrado"));
 }
 
-export { startServer, stopServer };
+export { startServer, stopServer, io };

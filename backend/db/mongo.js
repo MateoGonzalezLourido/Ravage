@@ -1118,5 +1118,6 @@ export {
     obtener_datos_usuario,
     BorrarCuentaVC,
     ENVIAR_MENSAJE,
-    DESCARGAR_ARCHIVO
+    DESCARGAR_ARCHIVO,
+    BuzonUsuarios
 };
