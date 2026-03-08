@@ -1180,16 +1180,19 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                     }
                     //crear ventana
                     function mostrar_lista_archivos(archivos) {
+                        //TODO:añadir imagenes
                         const url_img_extensiones = {
                             "png": "png.png"
                         }
                         let html = ``
-                        console.log(archivos)
+                        const img_defecto = "cualquiera.svg"
                         for (const archivo of archivos) {
+                            const img_usar = url_img_extensiones[archivo.extension?.toLowerCase()] || img_defecto
+                            const url_img = `./recursos/extensionesArchivos/${img_usar}`
                             html += `<div class="ventana-archivos-mensaje-cuerpo-cuerpo-item">
                             <div data-indice="${archivos.indexOf(archivo)}" class="ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre">
-                                <img draggable="false" src="./recursos/extensionesArchivos/${url_img_extensiones[archivo.extension?.toLowerCase()] || "cualquiera.svg"}">
-                                <span>${archivo.nombre}</span>
+                                <img draggable="false" src="${url_img}">
+                                <span>${img_usar == img_defecto ? archivo.nombre + "." + archivo.extension : archivo.nombre}</span>
                             </div>
                         </div>`
                         }
@@ -1204,18 +1207,52 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         <div class="ventana-archivos-mensaje-cuerpo-header">
                             <span>Archivos</span>
                             <button id="bt-añadir-archivos-mensaje-escritura">Añadir</button>
+                            <button id="bt-limpiar-archivos-mensaje-escritura">Limpiar</button>
                         </div>
                         <div class="ventana-archivos-mensaje-cuerpo-cuerpo">
                             ${mostrar_lista_archivos(archivos_mensaje)}
                         </div>
                     </div>`
                     document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
-                    //eventos
-                    //contextmenu de cada archivo
+                    //TODO:eventos
+                    //contextmenu de cada archivo(borrar, editar nombre/extension)
+                    document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-cuerpo-item").forEach(el => {
+                        el.addEventListener("click", (e) => {
+                            e.preventDefault()
+                            const indice = el.dataset.indice
+                            const archivo = archivos_mensaje[indice]
+                            if (!archivo) return;
+                            const menu = document.createElement("div")
+                            menu.className = "context-menu"
+                            menu.innerHTML = `
+                            <div class="context-menu-item" data-action="borrar">Borrar</div>
+                            <div class="context-menu-item" data-action="editar">Editar</div>
+                            `
+                            document.querySelector(".seccion-cuerpo-chat").appendChild(menu)
+                            menu.style.left = e.clientX + "px"
+                            menu.style.top = e.clientY + "px"
+                            menu.addEventListener("click", (e) => {
+                                const action = e.target.dataset.action
+                                if (action == "borrar") {
+                                    archivos_mensaje.splice(indice, 1)
+                                    document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = mostrar_lista_archivos(archivos_mensaje)
+                                }
+                                else if (action == "editar") {
+                                    //TODO:editar nombre/extension
+                                    //TODO:mostrar div con un span del nombre del archivo que se modifica y un input text para poner el nombre nuevo
+                                    const seccion_cambiar_nombre=document.createElement("div")
+                                    seccion_cambiar_nombre.className="seccion-cambiar-nombre-archivo-mensaje"
+                                    //TODO:si pulsa enter camibar nombre
+
+                                }
+                                menu.remove()
+                            })
+                        })
+                    })
 
                     //añadir archivos
                     document.querySelector("#bt-añadir-archivos-mensaje-escritura").addEventListener("click", async () => {
-                        const archivos = await window.chats.SELECCIONAR_ARCHIVOS()
+                        const archivos = await window.chats.SELECCIONAR_ARCHIVOS()//[ruta]
                         //añadir archivos a la lista
                         for (const archivo of archivos) {
                             try {
@@ -1236,6 +1273,14 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                                 })
                             }
                         }
+                        //actualizar vista seccion archivos
+                        document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = mostrar_lista_archivos(archivos_mensaje)
+                    })
+                    //limpiar arhivos
+                    document.querySelector("#bt-limpiar-archivos-mensaje-escritura").addEventListener("click",()=>{
+                        archivos_mensaje=[]//limpiar
+                        //actualziar seccion
+                        document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = mostrar_lista_archivos(archivos_mensaje)
                     })
                 })
 
