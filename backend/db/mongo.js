@@ -1040,15 +1040,15 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
     }
 }
 async function DESCARGAR_ARCHIVO(id, nombre) {
-    function generarRutaUnica(rutaBase) {
-        let dir = path.dirname(rutaBase);
-        let nombre = path.basename(rutaBase, path.extname(rutaBase));
-        let ext = path.extname(rutaBase);
+    function generarRutaUnica(rutaBase) {//esto cambia el nombre del archivo si ya existe ...(n)... , siendo n el numero de copias que ya existen de ese archivo
+        const dir = path.dirname(rutaBase);//coje la carpeta de la ruta
+        const nombre = path.basename(rutaBase, path.extname(rutaBase));//coje el nombre del archivo
+        const ext = path.extname(rutaBase);//coje la extension del archivo
 
         let nuevaRuta = rutaBase;
         let contador = 1;
 
-        while (fs.existsSync(nuevaRuta)) {
+        while (fs.existsSync(nuevaRuta)) {//existe esa ruta??, si existe -> n++ y se comprueba otra vez, al terminar ese sera el nombre
             nuevaRuta = path.join(dir, `${nombre} (${contador})${ext}`);
             contador++;
         }
@@ -1073,7 +1073,7 @@ async function DESCARGAR_ARCHIVO(id, nombre) {
     return new Promise((resolve, reject) => {
         downloadStream
             .pipe(writeStream)
-            .on("finish", () => resolve(rutaFinal)) // ✅ ahora sí existe
+            .on("finish", () => resolve(rutaFinal))
             .on("error", reject);
     });
 }
