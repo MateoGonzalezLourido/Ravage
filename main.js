@@ -24,7 +24,8 @@ import {
     obtener_datos_usuario,
     encontrar_usuario,
     CREAR_CHAT_NUEVO,
-    ENVIAR_MENSAJE
+    ENVIAR_MENSAJE,
+    DESCARGAR_ARCHIVO
 } from "./backend/db/mongo.js";
 import {
     autoLoginUsuario,
@@ -58,7 +59,7 @@ import {
 import {
     saveAjustesAppFile,
     getAjustesAppFile
-} from './backend/services/controladorArchivosSesion.js';
+} from './backend/services/controladorArchivos.js';
 
 let winMain;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
@@ -297,8 +298,8 @@ ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre) => {
 })
 
 //ajustes
-ipcMain.handle("obtener-ajustes-app", () => {
-    return getAjustesAppFile()
+ipcMain.handle("obtener-ajustes-app", (_, nombre) => {
+    return getAjustesAppFile(nombre)
 })
 
 ipcMain.handle("guardar-ajustes-app", async (_, data) => {
@@ -312,4 +313,7 @@ ipcMain.handle("seleccionar-archivos", async () => {
         properties: ["openFile", "multiSelections"]
     })
     return filePaths
+})
+ipcMain.handle("descargar-archivo", async (_, id,nombre) => {
+    return await DESCARGAR_ARCHIVO(id,nombre)
 })

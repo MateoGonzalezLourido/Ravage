@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
-import { GridFSBucket } from "mongodb"
+import { GridFSBucket, ObjectId } from "mongodb"
 import { compare, createHash, randomBytes, fs } from "../utils/libs.js";
+import path from 'path';
 
 import {
     getIdDispositivo,
@@ -16,7 +17,7 @@ import {
     getIDMongodbUsuario
 } from '../STORAGE/Variables_sesion.js';
 import { validateToken } from '../services/CreadorTokens.js';
-
+import { getAjustesAppFile } from '../services/controladorArchivos.js'
 //esquemas de datos
 //subesquemas
 const ChatUsuarioSchema = new mongoose.Schema({
@@ -237,7 +238,7 @@ const EntradaSchema = new mongoose.Schema({
 })
 const ArchivoSchema = new mongoose.Schema({
     nombre: { type: String, default: "_archivo_.txt" },
-    id: { type: mongoose.Schema.Types.ObjectId, default: null }
+    id: { type: mongoose.Schema.Types.ObjectId, required: true }
 }, { _id: false });
 const ChatSchema = new mongoose.Schema({
     nombre: {//solo si es un grupo (si es de dos se coje el apodo que le tengas a ese usuario)
@@ -851,15 +852,22 @@ async function obtener_datos_chat_unico(id) {
         //buscar los datos por mongodb
         let data_obtenida = await ChatsRavage.findById(id);
         if (!data_obtenida) return null;//chat no encontrado
-        const obj = data_obtenida.toObject?.() ?? data_obtenida;//si existe object() lo llama, sino data_obtenida ya es object
+        const obj = data_obtenida.toObject?.() ?? data_obtenida;
 
         return {
             ...obj,
-            _id: obj._id.toString(),
-            usuarios: obj.usuarios.map(u => u.toString()),
+            _id: obj._id?.toHexString(),
+            usuarios: obj.usuarios?.map(u => u.toHexString?.() || u.toString()) || [],
             mensajes: obj.mensajes?.map(m => ({
-                ...m,//dejar tal cual
-                emisor: m.emisor.toString() || null//pasar id emisor a string
+                ...m,
+                emisor: m.emisor?.toHexString?.() || m.emisor?.toString() || null,
+                contenido: m.contenido?.map(c => ({
+                    ...c,
+                    archivos: c.archivos?.map(a => ({
+                        ...a,
+                        id: a.id.toHexString()
+                    })) || []
+                })) || []
             })) || []
         };
     } catch (e) {
@@ -979,8 +987,7 @@ async function AÑADIR_CONTACTO(id, nombre) {
 
 //CHAT FUNCIONES INTERNAS
 //TODO
-async function ENVIAR_MENSAJE({ asunto, archivos = [], id_chat, id_emisor }) {
-
+async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }) {
     try {
         //COMPROBACIONES
         const chat = await ChatsRavage.findOne({ _id: id_chat });
@@ -998,31 +1005,32 @@ async function ENVIAR_MENSAJE({ asunto, archivos = [], id_chat, id_emisor }) {
             });
             const nombre_defecto = "_archivo_.txt"
             for (const archivo of archivos) {
-                const nombreCompletoUsar = archivo.nombre + "." + archivo.extension
-                const uploadStream = bucket.openUploadStream(nombreCompletoUsar || nombre_defecto);
-                const stream = fs.createReadStream(archivo.ruta);
+                let nombreCompletoUsar = nombre_defecto
+                if (archivo.nombre && archivo.extension) nombreCompletoUsar = archivo.nombre + "." + archivo.extension
+                const idArchivo = new ObjectId();
+                const uploadStream = bucket.openUploadStreamWithId(idArchivo, nombreCompletoUsar);
 
-                const fileId = await new Promise((resolve, reject) => {
-
-                    stream.pipe(uploadStream)
+                await new Promise((resolve, reject) => {
+                    fs.createReadStream(archivo.ruta)
+                        .pipe(uploadStream)
                         .on("error", reject)
-                        .on("finish", () => resolve(uploadStream.id));
+                        .on("finish", resolve);
 
                 });
                 contenido_archivos.push({
-                    nombre: nombreCompletoUsar || nombre_defecto,
-                    id: fileId ? fileId.toString() : ""
+                    nombre: nombreCompletoUsar,
+                    id: idArchivo.toHexString()
                 });
             }
 
         }
 
-
         const mensaje = {
-            emisor: [id_emisor],
+            emisor: id_emisor,
             contenido: [{ asunto, archivos: contenido_archivos }],
             data: new Date()
         };
+
         chat.mensajes.push(mensaje);
         await chat.save();
         return true;
@@ -1030,6 +1038,44 @@ async function ENVIAR_MENSAJE({ asunto, archivos = [], id_chat, id_emisor }) {
         console.error(e);
         return false;
     }
+}
+async function DESCARGAR_ARCHIVO(id, nombre) {
+    function generarRutaUnica(rutaBase) {
+        let dir = path.dirname(rutaBase);
+        let nombre = path.basename(rutaBase, path.extname(rutaBase));
+        let ext = path.extname(rutaBase);
+
+        let nuevaRuta = rutaBase;
+        let contador = 1;
+
+        while (fs.existsSync(nuevaRuta)) {
+            nuevaRuta = path.join(dir, `${nombre} (${contador})${ext}`);
+            contador++;
+        }
+
+        return nuevaRuta;
+    }
+    const bucket = new GridFSBucket(mongoose.connection.db, {
+        bucketName: "ArchivosChats"
+    });
+
+    const downloadStream = bucket.openDownloadStream(new ObjectId(id));
+    const ruta_principal = await getAjustesAppFile("URL_DESCARGA");
+    console.log(ruta_principal);
+    // ruta_principal ya viene de getAjustesAppFile("URL_DESCARGA")
+    if (!fs.existsSync(ruta_principal)) {
+        fs.mkdirSync(ruta_principal, { recursive: true }); // crea la carpeta y subcarpetas si hace falta
+    }
+    const rutaCompleta = path.join(ruta_principal, nombre); // usar esta variable
+    let rutaFinal = generarRutaUnica(rutaCompleta);
+    const writeStream = fs.createWriteStream(rutaFinal);
+
+    return new Promise((resolve, reject) => {
+        downloadStream
+            .pipe(writeStream)
+            .on("finish", () => resolve(rutaFinal)) // ✅ ahora sí existe
+            .on("error", reject);
+    });
 }
 export {
     connectDB,
@@ -1071,5 +1117,6 @@ export {
     CREAR_CHAT_NUEVO,
     obtener_datos_usuario,
     BorrarCuentaVC,
-    ENVIAR_MENSAJE
+    ENVIAR_MENSAJE,
+    DESCARGAR_ARCHIVO
 };

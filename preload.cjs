@@ -146,14 +146,18 @@ contextBridge.exposeInMainWorld('chats', {
     },
     SELECCIONAR_ARCHIVOS: () => {
         return ipcRenderer.invoke("seleccionar-archivos")
+    },
+    DESCARGAR_ARCHIVO: (id,nombre) => {
+        return ipcRenderer.invoke("descargar-archivo",id,nombre)
     }
+
 });
 
 // ─── AJUSTES DE LA APP ───────────────────────────────────────────────────────
 // Obtener y guardar ajustes de la app
 contextBridge.exposeInMainWorld('ajustes_app', {
-    OBTENER_AJUSTES_APP: () => {
-        return ipcRenderer.invoke("obtener-ajustes-app")
+    OBTENER_AJUSTES_APP: (nombre) => {
+        return ipcRenderer.invoke("obtener-ajustes-app", nombre)
     },
     GUARDAR_AJUSTES_APP: (data) => {
         return ipcRenderer.invoke("guardar-ajustes-app", data)
