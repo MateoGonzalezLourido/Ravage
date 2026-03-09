@@ -1336,23 +1336,25 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
     }
 }
 document.addEventListener("DOMContentLoaded", async () => {
+    //iniciar buzón(asyncrono)
+    window.buzonAPI.INICIAR_BUZON()
     //mensaje bienvenida
     (async () => {
         const [ajustes_app, apodo] = await Promise.all([
             window.ajustes_app.OBTENER_AJUSTES_APP("MSBienvenida"),
             window.cuenta_usuario.GET_APODO_SESION()
-        ])
-        if (ajustes_app.MSBienvenida) {
-            window.pushNotificacion({
-                prioridad: 0,        // menor número = más importante
-                texto: `Benvido ${apodo} `,
-                tipo: "info"      // "info", "error", "success"
-            })
-            //marcar como hecho para no volver a mostrarlo
-            ajustes_app.MSBienvenida = false
-            window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes_app)
-        }
-    })()
+            ])
+            if (ajustes_app.MSBienvenida) {
+                window.pushNotificacion({
+                    prioridad: 0,        // menor número = más importante
+                    texto: `Benvido ${apodo} `,
+                    tipo: "info"      // "info", "error", "success"
+                })
+                //marcar como hecho para no volver a mostrarlo
+                ajustes_app.MSBienvenida = false
+                window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes_app)
+            }
+        })()
 
     //ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
