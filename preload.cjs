@@ -165,10 +165,10 @@ contextBridge.exposeInMainWorld('ajustes_app', {
 });
 //socket buzon
 contextBridge.exposeInMainWorld("buzonAPI", {
-    INICIAR_BUZON: () => {
+    INICIAR_BUZON: () => {//iniciar el buzon(el socket ya esta hecho de antemano con el server)
         ipcRenderer.send("iniciar-buzon");
     },
-    onNuevaNotificacion: (callback) => {
+    onNuevaNotificacion: (callback) => {//esto es para enviar los cambios del socket(backend) al renderer(frontend)
         ipcRenderer.on("nueva-notificacion", (event, data) => callback(data));
     }
 });

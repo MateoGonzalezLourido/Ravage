@@ -6,7 +6,7 @@ import 'dotenv/config';
 
 // Definir __dirname para ESM
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
+let socket;
 import { startServer } from './backend/server.js';
 import {
     connectDB,
@@ -96,7 +96,7 @@ if (!gotTheLock) {
     });
     // Ejecuta cuando Electron está listo
     app.whenReady().then(async () => {
-        const io = await startServer() // iniciar servidor express
+         socket = await startServer() // iniciar servidor express
         await connectDB()
         const AutoLogin = await autoLoginUsuario();//true, false
         createMainWindowHome(AutoLogin.success); // crear ventana
@@ -322,5 +322,5 @@ ipcMain.on("iniciar-buzon", async () => {
     //hacer que el socket sea solo de este usuario
     socket.emit("identificar", getIDMongodbUsuario());
     // iniciar buzón(asyncrono)
-    iniciarBuzon(io);
+    await iniciarBuzon(socket);
 })
