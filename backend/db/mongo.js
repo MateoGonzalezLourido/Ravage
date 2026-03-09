@@ -275,16 +275,6 @@ const ChatSchema = new mongoose.Schema({
     fecha_creacion: { type: Date, default: Date.now }
 })
 const BuzonSchema = new mongoose.Schema({
-    correo: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        trim: true,
-        minlength: 2,
-        maxlength: 255
-    },
     entrada: [EntradaSchema]
 })
 //estructura para archivos usando gridfs

@@ -319,6 +319,8 @@ ipcMain.handle("descargar-archivo", async (_, id, nombre) => {
 })
 
 ipcMain.on("iniciar-buzon", async () => {
+    //hacer que el socket sea solo de este usuario
+    socket.emit("identificar", getIDMongodbUsuario());
     // iniciar buzón(asyncrono)
     iniciarBuzon(io);
 })

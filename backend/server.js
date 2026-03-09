@@ -16,6 +16,7 @@ async function startServer() {
     // crear HTTP server a partir de Express
     const server = http.createServer(app);
 
+    /*SOCKET.IO DEL BUZON DE USUARIO */
     // iniciar socket.io sobre el servidor HTTP
     io = new Server(server, {
         cors: {
@@ -23,10 +24,21 @@ async function startServer() {
         },
     });
 
-    // ejemplo de evento socket
+    //de evento socket
     io.on("connection", (socket) => {
+
         console.log("Cliente conectado:", socket.id);
-        socket.on("mensaje", (msg) => console.log("Mensaje recibido:", msg));
+
+        socket.on("identificar", (userId) => {
+            socket.join(userId);
+            socket.userId = userId;
+            console.log("Usuario conectado:", userId);
+        });
+
+        socket.on("disconnect", () => {
+            console.log("Usuario desconectado:", socket.userId);
+        });
+
     });
 
     // levantar server
