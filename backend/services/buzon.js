@@ -1,11 +1,14 @@
 import { BuzonUsuarios } from '../db/mongo.js'; // tu colección ya conectada
 //TODO: terminar
 export async function iniciarBuzon(io) {
-    const changeStream = BuzonUsuarios.watch(); // observa todos los cambios
+    const changeStream = BuzonUsuarios.watch();
 
     changeStream.on("change", (change) => {
-        console.log("Cambio detectado:", change);
-        io.emit("nueva-notificacion", change); // envía al renderer
+
+        const userId = change.documentKey._id;
+
+        io.to(userId).emit("nueva-notificacion");
+
     });
     changeStream.on("error", (err) => {
         console.error("Error en Change Stream:", err);
