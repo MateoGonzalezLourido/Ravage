@@ -1,5 +1,5 @@
 import { BuzonUsuarios } from '../db/mongo.js'; // tu colección ya conectada
-
+//TODO: terminar
 export async function iniciarBuzon(io) {
     const changeStream = BuzonUsuarios.watch(); // observa todos los cambios
 

@@ -98,8 +98,6 @@ if (!gotTheLock) {
     app.whenReady().then(async () => {
         const io = await startServer() // iniciar servidor express
         await connectDB()
-        // iniciar buzón(asyncrono)
-        await iniciarBuzon(io);
         const AutoLogin = await autoLoginUsuario();//true, false
         createMainWindowHome(AutoLogin.success); // crear ventana
     })
@@ -318,4 +316,9 @@ ipcMain.handle("seleccionar-archivos", async () => {
 })
 ipcMain.handle("descargar-archivo", async (_, id, nombre) => {
     return await DESCARGAR_ARCHIVO(id, nombre)
+})
+
+ipcMain.on("iniciar-buzon", async () => {
+    // iniciar buzón(asyncrono)
+    iniciarBuzon(io);
 })

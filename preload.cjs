@@ -147,8 +147,8 @@ contextBridge.exposeInMainWorld('chats', {
     SELECCIONAR_ARCHIVOS: () => {
         return ipcRenderer.invoke("seleccionar-archivos")
     },
-    DESCARGAR_ARCHIVO: (id,nombre) => {
-        return ipcRenderer.invoke("descargar-archivo",id,nombre)
+    DESCARGAR_ARCHIVO: (id, nombre) => {
+        return ipcRenderer.invoke("descargar-archivo", id, nombre)
     }
 
 });
@@ -165,6 +165,9 @@ contextBridge.exposeInMainWorld('ajustes_app', {
 });
 //socket buzon
 contextBridge.exposeInMainWorld("buzonAPI", {
+    INICIAR_BUZON: () => {
+        ipcRenderer.send("iniciar-buzon");
+    },
     onNuevaNotificacion: (callback) => {
         ipcRenderer.on("nueva-notificacion", (event, data) => callback(data));
     }
