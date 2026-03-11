@@ -904,7 +904,9 @@ async function Crear_chat_html(datos, id_propio) {
                     //devolver el dia del mes y nombre del dia de la semana
                     return fecha_ultimo.toLocaleString("es-ES", {
                         weekday: "long"
-                    }) + " " + fecha_ultimo.getDate() + " " + fecha_ultimo.getFullYear()
+                    }) + " " + fecha_ultimo.getDate() + ", " + fecha_ultimo.toLocaleString("es-ES", {
+                        month: "long"
+                    }) + " " + fecha_ultimo.getFullYear()
                 }
                 else return fecha_ultimo.toDateString()
             }
@@ -931,7 +933,7 @@ async function Crear_chat_html(datos, id_propio) {
 
     <div class="seccion-escritura-mensaje-chat">
         <div id="bt-añadir-archivo-mensaje-escritura">        
-            <img src="" alt="">
+            <img src="./recursos/carpeta.svg" alt="">
         </div>
         <textarea id="textarea-mensaje-escritura" placeholder="Escribe un mensaje"></textarea>
     </div>
