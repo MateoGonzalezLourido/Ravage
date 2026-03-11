@@ -1058,7 +1058,19 @@ async function mostrar_datos_chat_usaurios(e) {
     //mostrar seccion + cambiar css secciones
 
     if (infoSeccion) {
+        // Toggle the info section
         infoSeccion.classList.toggle("abierto")
+        // If it's now open, close the attachment menu if it exists (abruptly snap)
+        if (infoSeccion.classList.contains("abierto")) {
+            const ventanaArchivos = document.querySelector(".ventana-archivos-mensaje")
+            if (ventanaArchivos) {
+                // Snap close instantly without animation
+                ventanaArchivos.style.transition = "none"
+                ventanaArchivos.style.width = "0"
+                ventanaArchivos.classList.remove("abierto")
+                ventanaArchivos.remove()
+            }
+        }
     }
 }
 //TODO
@@ -1185,29 +1197,47 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 document.querySelector("#nav-prinicpal-chat-usaurio")?.addEventListener("click", mostrar_datos_chat_usaurios)
 
                 document.querySelector("#bt-crear-conexion-p2p")?.addEventListener("click", Comenzar_conexion_p2p)
-                document.querySelector("#textarea-mensaje-escritura")?.addEventListener("keypress", async (e) => {
-                    if (e.key == "Enter") {//TODO
-                        e.preventDefault() // Evitar salto de línea
-                        const mensaje = document.querySelector("#textarea-mensaje-escritura")?.value.trim()
-                        const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
-                        const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-                        const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
-                        console.log(result)
-                        if (result) {//limpiar seccion mensaje escritura
-                            //TODO: MANDAR AL BUZON PARA QUE ESTE ACTUALICE EL CHAT (ASI EVITAMOS QUE MENSAJES QUE SE MANDARON SE MUESTREN DESPUES MIENTRAS NO SE REABRA EL CHAT)
-                            document.querySelector("#textarea-mensaje-escritura").value = ""
-                            document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
-                            archivos_mensaje = []
-                            //reactualizar chat (render)
-                            Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: archivos_mensaje, fecha: new Date() })
+                //cambio altura del textarea del mensaje , segun lo grande que sea el mensaje, para facilitar su lectura y escritura
+                const textarea_msg = document.querySelector("#textarea-mensaje-escritura")
+                if (textarea_msg) {
+                    // Crecimiento dinámico
+                    textarea_msg.addEventListener("input", function () {
+                        this.style.height = "38px" // Vuelve al tamaño mínimo base para recalcular la caída recta
+                        this.style.height = (this.scrollHeight) + "px"
+                    })
+
+                    textarea_msg.addEventListener("keypress", async (e) => {
+                        // Enviar con Enter, pero permitir salto de línea con Shift+Enter
+                        if (e.key == "Enter" && !e.shiftKey) {
+                            e.preventDefault() // Evitar salto de línea artificial al enviar
+                            const mensaje = textarea_msg.value.trim()
+                            const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
+                            const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+
+                            // Si el mensaje está vacío y no hay archivos, evitar enviar nada
+                            if (!mensaje && archivos_mensaje.length === 0) return;
+
+                            const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
+                            console.log(result)
+                            if (result) {//limpiar seccion mensaje escritura
+                                //TODO: MANDAR AL BUZON PARA QUE ESTE ACTUALICE EL CHAT (ASI EVITAMOS QUE MENSAJES QUE SE MANDARON SE MUESTREN DESPUES MIENTRAS NO SE REABRA EL CHAT)
+                                textarea_msg.value = ""
+                                textarea_msg.style.height = "38px" // Restaurar tamaño original base
+                                document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
+                                archivos_mensaje = []
+                                //reactualizar chat (render)
+                                Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: archivos_mensaje, fecha: new Date() })
+                            }
                         }
-                    }
-                })
+                    })
+                }
                 //guardar archivos(al hacer click mostrar una ventana para subir archivos)
                 document.querySelector("#bt-añadir-archivo-mensaje-escritura")?.addEventListener("click", async () => {
-                    //si existe cerrarla
-                    if (document.querySelectorAll(".ventana-archivos-mensaje").length > 0) {
-                        document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
+                    //si existe cerrarla con animación
+                    const existente = document.querySelector(".ventana-archivos-mensaje")
+                    if (existente) {
+                        existente.classList.remove("abierto")
+                        setTimeout(() => existente.remove(), 310)
                         return;
                     }
                     //crear ventana
@@ -1216,31 +1246,74 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         for (const archivo of archivos) {
                             const { url, identificado } = url_icono_extension_img(archivo.extension)
 
-                            html += `<div class="ventana-archivos-mensaje-cuerpo-cuerpo-item">
-                            <div data-indice="${archivos.indexOf(archivo)}" class="ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre">
-                                <img draggable="false" src="${url}">
-                                    <span>${identificado ? archivo.nombre + "." + archivo.extension : archivo.nombre}</span>
+                            html += `
+                            <div class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-cuerpo-item">
+                                <div data-indice="${archivos.indexOf(archivo)}" class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
+                                        <span class="info-chat-participante-nombre">${identificado ? archivo.nombre + "." + archivo.extension : archivo.nombre}</span>
+                                    </div>
+                                </div>
                             </div>
-                            </div> `
+                            `
                         }
                         return html
                     }
                     const ventana = document.createElement("div")
                     ventana.className = "ventana-archivos-mensaje"
-                    ventana.innerHTML = `<div id = "bt-cerrar-archivos-mensaje">
-                    <img src="./recursos/cruz.png" alt="cerrar">
-                    </div>
-                    <div class="ventana-archivos-mensaje-cuerpo">
-                        <div class="ventana-archivos-mensaje-cuerpo-header">
-                            <span>Archivos</span>
-                            <button id="bt-añadir-archivos-mensaje-escritura">Añadir</button>
-                            <button id="bt-limpiar-archivos-mensaje-escritura">Limpiar</button>
+                    // HTML Structure mimicking #info-chat-seccion
+                    ventana.innerHTML = `
+                    <div class="info-chat-header">
+                        <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header">
+                            <img src="./recursos/cruz.png" alt="cerrar">
                         </div>
-                        <div class="ventana-archivos-mensaje-cuerpo-cuerpo">
+                       <div> <span>Archivos Adjuntos</span></div>
+                        <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos"title="añadir-archivo">
+                            <img src="./recursos/suma.png" alt="añadir">
+                        </div>
+                        <div  id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro">
+                            <img src="./recursos/escoba.png" alt="limpiar">
+                        </div>
+                    </div>
+                    
+                    <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
+                        <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-cuerpo">
                             ${mostrar_lista_archivos(archivos_mensaje)}
                         </div>
                     </div>`
+
+                    // Insertar en DOM con transición y ancho bloqueados en inline style
+                    ventana.style.transition = "none"
+                    ventana.style.width = "0"
                     document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
+
+                    // Cerrar el panel de info si está abierto (snap sin animación)
+                    const infoSeccion = document.querySelector("#info-chat-seccion")
+                    if (infoSeccion && infoSeccion.classList.contains("abierto")) {
+                        infoSeccion.style.transition = "none"
+                        infoSeccion.classList.remove("abierto")
+                        infoSeccion.style.width = "0"
+                        requestAnimationFrame(() => requestAnimationFrame(() => {
+                            infoSeccion.style.transition = ""
+                            infoSeccion.style.width = "" // Limpiar inline para que el CSS controle
+                        }))
+                    }
+
+                    // Doble rAF: el navegador pinta a width:0, luego borramos los
+                    // inline styles y añadimos .abierto para que la transición CSS anime a 350px
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            ventana.style.transition = ""
+                            ventana.style.width = ""  // CLAVE: limpiar inline, la clase .abierto ya define 350px
+                            ventana.classList.add("abierto")
+                        })
+                    })
+
+                    // Event to close this menu
+                    document.querySelector("#bt-cerrar-archivos-mensaje").addEventListener("click", () => {
+                        ventana.classList.remove("abierto")
+                        setTimeout(() => ventana.remove(), 310)
+                    })
                     //TODO:eventos
                     //contextmenu de cada archivo(borrar, editar nombre/extension)
                     document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-cuerpo-item").forEach(el => {
@@ -1330,7 +1403,6 @@ async function ACTUALIZAR_LISTAS_CHAT() {
         throw e
     }
 }
-//TODO: no llega al final
 function scroll_fin_chat() {
     document.querySelector("#cuerpo-mensajes-chat").scrollTo({
         top: document.querySelector("#cuerpo-mensajes-chat").scrollHeight,

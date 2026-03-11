@@ -1,0 +1,74 @@
+/* =========================================
+   SECCIÓN DE ARCHIVOS DEL CHAT (Detaillado)
+   ========================================= */
+.ventana-archivos-mensaje {
+    width: 0;
+    height: 100%;
+    background-color: var(--wa-panel-header-bg);
+    border-left: 1px solid var(--wa-border);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.ventana-archivos-mensaje.abierto {
+    width: 350px;
+}
+
+.bt-cerrar-archivos-header {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    margin-right: 12px;
+    transition: background-color 0.2s;
+}
+
+.bt-cerrar-archivos-header:hover {
+    background-color: var(--wa-list-item-hover);
+}
+
+.bt-cerrar-archivos-header img {
+    width: 18px;
+    height: 18px;
+    filter: invert(0.8);
+}
+
+.bt-accion-archivos {
+    width: 100%;
+    height: 40px;
+    background-color: var(--wa-panel-header-bg);
+    color: var(--wa-text-primary);
+    border: 1px solid var(--wa-border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.bt-accion-archivos:hover {
+    background-color: var(--wa-list-item-hover);
+    border-color: var(--wa-primary);
+}
+
+.bt-accion-archivos-peligro:hover {
+    border-color: #ff4d4f;
+    color: #ff4d4f;
+}
+
+.div-botones-archivos-header {
+    flex-shrink: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--wa-border);
+}

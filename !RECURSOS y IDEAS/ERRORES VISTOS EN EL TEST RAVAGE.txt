@@ -1,0 +1,7 @@
+*ERRORES VISTOS EN EL TEST RAVAGE
+
+-Al mandar mensje, la recargar de ese mensaje en el chat no muestra los files de ese mensaje
+
+-Los iconos del archivo están mal, siempre muestra el por defecto
+
+-El buzon se limpia mas de una vez (la priemra bien, la segunda dice que hubo fallo)
