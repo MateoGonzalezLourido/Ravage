@@ -1221,7 +1221,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .ventana-archivos-mensaje.abierto {
-    width: 420px; /* Wider than info panel (350px) */
+    width: 350px; /* Wider than info panel (350px) */
 }
 
 /* Override the generic info-chat-header inside archivos to be more compact */

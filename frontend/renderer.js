@@ -1077,6 +1077,19 @@ async function mostrar_datos_chat_usaurios(e) {
 function Comenzar_conexion_p2p(e) {
     e.preventDefault()
 }
+function cerrar_paneles_al_abrir_chat() {
+    // Cerrar #info-chat-seccion si está abierto
+    const infoSeccion = document.querySelector("#info-chat-seccion")
+    if (infoSeccion && infoSeccion.classList.contains("abierto")) {
+        infoSeccion.classList.remove("abierto")
+    }
+    // Cerrar .ventana-archivos-mensaje si está abierta
+    const ventanaArchivos = document.querySelector(".ventana-archivos-mensaje")
+    if (ventanaArchivos) {
+        ventanaArchivos.classList.remove("abierto")
+        setTimeout(() => ventanaArchivos.remove(), 310)
+    }
+}
 async function ACTUALIZAR_LISTAS_CHAT() {
     try {
         const [lista_chats, lista_contactos] = await Promise.all([
@@ -1161,6 +1174,8 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 }
 
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+                //cerrar paneles laterales si están abiertos
+                cerrar_paneles_al_abrir_chat()
                 //scroll al final
                 scroll_fin_chat()
                 //crear observadores doom para el sistema de fecha de bloques mensajes
