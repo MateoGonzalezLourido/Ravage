@@ -165,6 +165,9 @@ contextBridge.exposeInMainWorld('ajustes_app', {
 });
 //socket buzon
 contextBridge.exposeInMainWorld("buzonAPI", {
+    REVISAR_BUZON: () => {//iniciar el buzon(el socket ya esta hecho de antemano con el server)
+        return ipcRenderer.invoke("revisar-buzon");
+    },
     INICIAR_BUZON: () => {//iniciar el buzon(el socket ya esta hecho de antemano con el server)
         ipcRenderer.send("iniciar-buzon");
     },

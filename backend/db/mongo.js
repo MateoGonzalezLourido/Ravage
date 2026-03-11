@@ -235,7 +235,7 @@ const DPBLOQUEADOSchema = new mongoose.Schema({
 const EntradaSchema = new mongoose.Schema({
     tipo: { type: String, required: true },   // tipo de entrada, p.ej. "archivo", "mensaje"
     data: { type: mongoose.Schema.Types.Mixed, required: true } // cualquier estructura de datos
-})
+});
 const ArchivoSchema = new mongoose.Schema({
     nombre: { type: String, default: "_archivo_.txt" },
     id: { type: mongoose.Schema.Types.ObjectId, required: true }
@@ -979,9 +979,9 @@ async function AÑADIR_CONTACTO(id, nombre) {
 async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }) {
     try {
         //COMPROBACIONES de si ese chat y usuario existe
-        const chat = await ChatsRavage.findOne({ _id: id_chat });
+        const chat = await ChatsRavage.findById(id_chat);
         if (!chat) return false;
-        const usuario = await User.findOne({ _id: id_emisor });
+        const usuario = await User.findById(id_emisor);
         if (!usuario) return false;
 
         //subir archivos si existen
@@ -1024,6 +1024,10 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
         //guardar en mongodb los cambios del chat
         chat.mensajes.push(mensaje);
         await chat.save();
+        //cojer el id generado(actualziado automaticamente con save() en la variable local)
+        const mensajeID = chat.mensajes[chat.mensajes.length - 1]?._id
+        //mandar entradas a los buzones de los participantes de ese chat (async)
+        Añadir_Entrada_Buzon_Usuario({ ids: chat.usuarios?.filter(id => id !== id_emisor), tipo: 0, data: { id_chat: chat._id?.toHexString(), id_mensaje: mensajeID?.toHexString() } }).catch(e => console.error(e))
         return true;
     } catch (e) {
         console.error(e);
@@ -1067,6 +1071,71 @@ async function DESCARGAR_ARCHIVO(id, nombre) {
             .on("error", reject);
     });
 }
+//Buzon API
+async function Revisar_Buzon_Usuario() {
+    const userId = getIDMongodbUsuario()
+    try {
+        // Buscar documento por _id del usuario
+        const doc = await BuzonUsuarios.findById(userId).lean();
+        //limpiar buzon (si hay algo que limpiar)
+        if (doc?.entrada.length != 0) Limpiar_Buzon_Usuario().catch(err =>
+            console.error("Error al limpiar el buzon del usuario:", err)
+        )
+        // Retornar entradas si existen, o array vacío
+        return doc?.entrada || [];
+    } catch (err) {
+        console.error("Error al revisar el buzón del usuario:", err);
+        return [];
+    }
+}
+//TODO
+async function Limpiar_Buzon_Usuario() {
+    const userId = getIDMongodbUsuario()
+    try {
+        const r = await BuzonUsuarios.updateOne(
+            { _id: userId },
+            { $set: { entrada: [] } } // vacía el array
+        );
+        if (r.modifiedCount == 0) console.log(`No se ha encontrado el usuario ${userId} al limpiar el buzon`);
+        else console.log(`Buzón del usuario ${userId} limpio`);
+    } catch (err) {
+        console.error("Error al limpiar buzón del usuario:", err);
+    }
+}
+async function Añadir_Entrada_Buzon_Usuario({ ids = null, tipo, data }) {
+    /*tipo:
+    0:mensaje
+    */
+    //establecer usuarios mandar
+    const userId = !ids ? getIDMongodbUsuario() : ids
+    try {
+        //añadir entrada a todos los usuarios
+        const r = await BuzonUsuarios.updateMany(
+            { _id: { $in: ids } },
+            { $push: { entrada: { tipo, data } } },
+            { upsert: true } // crea el documento si no existe
+        );
+        if (r.modifiedCount == 0) console.log(`No se ha encontrado el usuario ${userId} al añadir entrada al buzon`);
+        else console.log(`Entrada añadida al buzón del usuario ${userId}`);
+    } catch (err) {
+        console.error("Error al añadir entrada al buzón:", err);
+    }
+}
+//*EXPERMIENTAL TEST:
+
+async function MONGO_TEST_BUZON() {
+    let userId = getIDMongodbUsuario()
+    let tipo = 0
+    let data = {
+        "mensaje": "esto es  una prueba de funcionamiento"
+    }
+    await BuzonUsuarios.updateOne(
+        { _id: userId },                   // el _id del usuario
+        { $push: { entrada: { tipo, data } } },
+        { upsert: true }                   // crea el documento si no existe
+    );
+}
+
 export {
     connectDB,
     closeDB,
@@ -1109,5 +1178,7 @@ export {
     BorrarCuentaVC,
     ENVIAR_MENSAJE,
     DESCARGAR_ARCHIVO,
-    BuzonUsuarios
+    BuzonUsuarios,
+    MONGO_TEST_BUZON,
+    Revisar_Buzon_Usuario
 };

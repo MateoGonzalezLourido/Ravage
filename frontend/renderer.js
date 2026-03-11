@@ -799,9 +799,8 @@ const chat_componente_lista_structura_html = (datos_usar) => {
 }
 
 const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
-
-    let html = ""
     const class_mensajes = ["soy-emisor", "soy-receptor"]
+    let html = ""
     // El emisor es un array, cojemos el primer integrante
     const id_emisor = Array.isArray(data.emisor) ? data.emisor[0] : data.emisor
     const propio = id_emisor == id_propio
@@ -1150,6 +1149,8 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 }
 
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+                //scroll al final
+                scroll_fin_chat()
                 //crear observadores doom para el sistema de fecha de bloques mensajes
                 const elementos = document.querySelectorAll(".fecha-bloque-mensajes");
                 const fixed_text = "text-fecha-bloques-mensajes-fixed"
@@ -1197,6 +1198,8 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                             document.querySelector("#textarea-mensaje-escritura").value = ""
                             document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
                             archivos_mensaje = []
+                            //reactualizar chat (render)
+                            Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: archivos_mensaje, fecha: new Date() })
                         }
                     }
                 })
@@ -1327,6 +1330,43 @@ async function ACTUALIZAR_LISTAS_CHAT() {
         throw e
     }
 }
+//TODO: no llega al final
+function scroll_fin_chat() {
+    document.querySelector("#cuerpo-mensajes-chat").scrollTo({
+        top: document.querySelector("#cuerpo-mensajes-chat").scrollHeight,
+        behavior: "smooth"
+    })
+}
+async function Actualizar_render_chat({ emisor, chat, mensaje, archivos, fecha }) {
+    //chat, emisor son ids
+    //el chat abierto es el del mensaje ?
+    if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
+        //obtener datos necesarios para crear html mensaje
+        const data = {
+            emisor: emisor,
+            data: fecha,
+            contenido: [{
+                asunto: mensaje,
+                archivos: archivos
+            }]
+        }
+        const [nombres_contactos, id_propio] = await Promise.all([
+            window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
+            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+        ])
+
+        //crear mensaje
+        const html = await crear_mensaje_html(data, id_propio, nombres_contactos)
+        //insertar mensaje al final del chat
+        document.querySelector("#cuerpo-mensajes-chat").insertAdjacentHTML("beforeend", html)
+        //scroll hasta abajo donde esta el mensaje
+        scroll_fin_chat()
+    }
+    else {
+        console.log("dasda")
+    }
+}
+
 async function INICIO_CHAT_MENU_PRINCIPAL() {
     try {
         await ACTUALIZAR_LISTAS_CHAT()
@@ -1336,12 +1376,6 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
     }
 }
 document.addEventListener("DOMContentLoaded", async () => {
-    //iniciar buzón(asyncrono)
-    try {
-        await window.buzonAPI.INICIAR_BUZON()
-    } catch (e) {
-        console.error(e)
-    }
     //mensaje bienvenida
     (async () => {
         const [ajustes_app, apodo] = await Promise.all([
@@ -1359,6 +1393,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes_app)
         }
     })()
+    //iniciar buzón(asyncrono)
+    try {
+        //TODO:mostrar un aviso de que se estan revisando buzon
+        const cambios = await window.buzonAPI.REVISAR_BUZON()
+        //TODO:MANDAR CAMBIOS A LAS FUNCIONES DEL BUZON
+        await window.buzonAPI.INICIAR_BUZON()
+        //TODO:cerrar aviso(si el usuario no lo hizo antes)
+    } catch (e) {
+        console.error(e)
+    }
+
+
 
     //ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
@@ -1378,10 +1424,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.querySelector("#bt-agregar-contacto-nuevo").addEventListener("click", crear_chat_nuevo)
 
     /*TODO: obtener buzon y mostrar cambios en lista chats si hay(usando id del chat)  mostrar notificaciones de otras cosas */
+    //buzon API
+    window.buzonAPI.onNuevaNotificacion((data) => {
+        console.log("Notificación recibida:", data.entrada);
+        // actualizar UI
+    });
+
+    function hacer_cambios_buzon() {
+
+    }
 })
 
-//buzon API
-window.buzonAPI.onNuevaNotificacion((data) => {
-    console.log("Notificación recibida:", data);
-    // actualizar UI
-});

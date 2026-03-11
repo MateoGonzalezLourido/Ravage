@@ -25,7 +25,9 @@ import {
     encontrar_usuario,
     CREAR_CHAT_NUEVO,
     ENVIAR_MENSAJE,
-    DESCARGAR_ARCHIVO
+    DESCARGAR_ARCHIVO,
+    MONGO_TEST_BUZON,
+    Revisar_Buzon_Usuario
 } from "./backend/db/mongo.js";
 import {
     autoLoginUsuario,
@@ -61,9 +63,9 @@ import {
     getAjustesAppFile
 } from './backend/services/controladorArchivos.js';
 import { iniciarBuzon } from './backend/services/buzon.js';
-let winMain;//variable que almacena la ventana
+let mainWindow;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
-    winMain = new BrowserWindow({
+    mainWindow = new BrowserWindow({
         show: false, // evita parpadeo
         width: 800,
         height: 600,
@@ -78,9 +80,9 @@ function createMainWindowHome(AutoLogin = false) {
         },
     })
 
-    winMain.maximize();      // maximiza la ventana
-    winMain.show();          // muestra la ventana
-    winMain.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html')) // carga frontend: (<ruta absoluta>/renderer/home.html)
+    mainWindow.maximize();      // maximiza la ventana
+    mainWindow.show();          // muestra la ventana
+    mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html')) // carga frontend: (<ruta absoluta>/renderer/home.html)
 }
 //evitar mas de una ventana/instancia
 const gotTheLock = app.requestSingleInstanceLock();
@@ -89,9 +91,9 @@ if (!gotTheLock) {
     app.quit();
 } else {
     app.on('second-instance', () => {
-        if (winMain) {
-            if (winMain.isMinimized()) winMain.restore();
-            winMain.focus();
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
         }
     });
     // Ejecuta cuando Electron está listo
@@ -125,13 +127,13 @@ app.on('window-all-closed', () => {
 // =============================================================================
 
 ipcMain.on("cambiar-pagina-soporte", () => {
-    winMain.setTitle("RAVAGE-Soporte")//cambiar titulo ventana
-    winMain.loadFile(path.join(__dirname, 'frontend', 'soporte', 'soporte.html')) // cargar nuevo frontend
+    mainWindow.setTitle("RAVAGE-Soporte")//cambiar titulo ventana
+    mainWindow.loadFile(path.join(__dirname, 'frontend', 'soporte', 'soporte.html')) // cargar nuevo frontend
 })
 
 ipcMain.on("cambiar-pagina-home", () => {
-    winMain.setTitle("RAVAGE-Home")//cambiar titulo ventana
-    winMain.loadFile(path.join(__dirname, 'frontend', 'home.html'))// cargar nuevo frontend
+    mainWindow.setTitle("RAVAGE-Home")//cambiar titulo ventana
+    mainWindow.loadFile(path.join(__dirname, 'frontend', 'home.html'))// cargar nuevo frontend
 })
 
 ipcMain.on("cambiar-pagina-log", () => {
@@ -309,7 +311,7 @@ ipcMain.handle("enviar-mensaje", async (_, { asunto, archivos, id_chat, id_emiso
     return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
 })
 ipcMain.handle("seleccionar-archivos", async () => {
-    const { filePaths } = await dialog.showOpenDialog(winMain, {
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
         properties: ["openFile", "multiSelections"]
     })
     return filePaths
@@ -318,9 +320,19 @@ ipcMain.handle("descargar-archivo", async (_, id, nombre) => {
     return await DESCARGAR_ARCHIVO(id, nombre)
 })
 
+ipcMain.handle("revisar-buzon", async () => {
+    return await Revisar_Buzon_Usuario()
+})
 ipcMain.on("iniciar-buzon", async () => {
+    const userId = getIDMongodbUsuario()
+    //mirar si hay cosas en el buzon
+    await Revisar_Buzon_Usuario()
+    //abrir socket del buzon de este usuario
     //hacer que el socket sea solo de este usuario
-    socket.emit("identificar", getIDMongodbUsuario());
+    socket.emit("identificar", userId);
     // iniciar buzón(asyncrono)
-    await iniciarBuzon(socket);
+    await iniciarBuzon(socket, mainWindow);
+
+    //*EXPERIEMNTAL:
+    await MONGO_TEST_BUZON()
 })
