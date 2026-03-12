@@ -647,16 +647,22 @@ function actualizar_lista_contactos_añadir() {
         document.querySelector("#bt-agregar-contacto-nuevo").innerHTML = "Agregar"
     }
 }
-const url_icono_extension_img = (extension) => {
-    //TODO:añadir imagenes
-    const url_img_extensiones = {
-        "png": "png.png"
+let _cache_img_extensiones = null
+async function url_icono_extension_img(extension) {
+    if (!_cache_img_extensiones) {
+        try {
+            const res = await fetch('./recursos/extensionesArchivos/img_extensiones.json')
+            _cache_img_extensiones = await res.json()
+        } catch (err) {
+            console.error("Error al cargar img_extensiones.json:", err)
+            _cache_img_extensiones = {}
+        }
     }
     const img_defecto = "cualquiera.svg"
-    const img_usar = url_img_extensiones[extension?.toLowerCase()] || img_defecto
+    const img_usar = _cache_img_extensiones[extension?.toLowerCase()] || img_defecto
     const url_img = `./recursos/extensionesArchivos/${img_usar}`
-    const identificado = img_usar == img_defecto
-    return { url: url_img, identificado: identificado }
+    const identificado = img_usar !== img_defecto
+    return [url_img, identificado]
 }
 function añadir_contacto_lista_añadir(e) {
     const id = e.target.dataset.id
@@ -843,13 +849,17 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
         });
         return `<div class="hora-mensaje-chat"><span>${hora}</span></div>`
     }
-    function archivos_mensaje() {
-        if (data.contenido[0].archivos?.length > 0) {
+    async function archivos_mensaje() {
+        if (data.contenido[0]?.archivos?.length > 0) {
             let html = `<div class="mensaje-div-archivos">`
-            for (const archivo of data.contenido[0].archivos) {
-                const { url, identificado } = url_icono_extension_img((archivo.nombre?.split("."))[1] || null)
+            for (const archivo of data.contenido[0]?.archivos) {
+                const extension = archivo?.extension ||  archivo.nombre?.includes(".") ? archivo.nombre.split(".").pop() : null
+                console.log("asa",archivo)
+                const [url, identificado] = await url_icono_extension_img(extension)
+                const nombre_mostrar = identificado ? (archivo.nombre?.includes(".") ? archivo.nombre.substring(0, archivo.nombre.lastIndexOf(".")) : archivo.nombre) : archivo.nombre
+                
                 html += `<div class="archivo-mensaje-div-archivos" data-id="${archivo.id}" data-nombre="${archivo.nombre}">
-                <div><img src="${url}"><span>${identificado ? (archivo.nombre?.split("."))[0] || "_archivo_.txt" : archivo.nombre}</span></div>
+                <div><img src="${url}"><span>${nombre_mostrar}</span></div>
                 </div> `
             }
             html += "</div>"
@@ -862,7 +872,7 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
         ${await nombre_emisor()}
         ${asunto_mensaje()}
         ${data.contenido[0].id_file ? `<div class="file-mensaje-chat"data-id="${data.contenido[0].id_file}">${data.contenido[0].nombre}</div>` : ""}
-        ${archivos_mensaje()}
+        ${await archivos_mensaje()}
         ${hora_mandado()}
     </div> `
 
@@ -1235,15 +1245,15 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                             if (!mensaje && archivos_mensaje.length === 0) return;
 
                             const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
-                            console.log(result)
                             if (result) {//limpiar seccion mensaje escritura
-                                //TODO: MANDAR AL BUZON PARA QUE ESTE ACTUALICE EL CHAT (ASI EVITAMOS QUE MENSAJES QUE SE MANDARON SE MUESTREN DESPUES MIENTRAS NO SE REABRA EL CHAT)
+                                const copia_archivos = archivos_mensaje 
+                                archivos_mensaje = []
                                 textarea_msg.value = ""
                                 textarea_msg.style.height = "38px" // Restaurar tamaño original base
                                 document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
-                                archivos_mensaje = []
+                                
                                 //reactualizar chat (render)
-                                Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: archivos_mensaje, fecha: new Date() })
+                                Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date() })
                             }
                         }
                     })
@@ -1258,17 +1268,17 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         return;
                     }
                     //crear ventana
-                    function mostrar_lista_archivos(archivos) {
+                    async function mostrar_lista_archivos(archivos) {
                         let html = ``
                         for (const archivo of archivos) {
-                            const { url, identificado } = url_icono_extension_img(archivo.extension)
+                            const [url, identificado] = await url_icono_extension_img(archivo.extension)
 
                             html += `
                             <div class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-cuerpo-item">
                                 <div data-indice="${archivos.indexOf(archivo)}" class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre">
                                     <div style="display: flex; align-items: center; gap: 10px;">
                                         <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
-                                        <span class="info-chat-participante-nombre">${identificado ? archivo.nombre + "." + archivo.extension : archivo.nombre}</span>
+                                        <span class="info-chat-participante-nombre">${identificado ? archivo.nombre : archivo.nombre + "." + archivo.extension}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1276,6 +1286,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         }
                         return html
                     }
+                    const html_lista_archivos = await mostrar_lista_archivos(archivos_mensaje)
                     const ventana = document.createElement("div")
                     ventana.className = "ventana-archivos-mensaje"
                     // HTML Structure mimicking #info-chat-seccion
@@ -1295,7 +1306,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                     
                     <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
                         <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-cuerpo">
-                            ${mostrar_lista_archivos(archivos_mensaje)}
+                            ${html_lista_archivos}
                         </div>
                     </div>`
 
@@ -1348,11 +1359,11 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                             document.querySelector(".seccion-cuerpo-chat").appendChild(menu)
                             menu.style.left = e.clientX + "px"
                             menu.style.top = e.clientY + "px"
-                            menu.addEventListener("click", (e) => {
+                            menu.addEventListener("click", async (e) => {
                                 const action = e.target.dataset.action
                                 if (action == "borrar") {
                                     archivos_mensaje.splice(indice, 1)
-                                    document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = mostrar_lista_archivos(archivos_mensaje)
+                                    document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
                                 }
                                 else if (action == "editar") {
                                     //TODO:editar nombre/extension
@@ -1391,13 +1402,13 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                             }
                         }
                         //actualizar vista seccion archivos
-                        document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = mostrar_lista_archivos(archivos_mensaje)
+                        document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
                     })
                     //limpiar arhivos
-                    document.querySelector("#bt-limpiar-archivos-mensaje-escritura").addEventListener("click", () => {
+                    document.querySelector("#bt-limpiar-archivos-mensaje-escritura").addEventListener("click", async () => {
                         archivos_mensaje = []//limpiar
                         //actualziar seccion
-                        document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = mostrar_lista_archivos(archivos_mensaje)
+                        document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
                     })
                 })
                 //descargar archivos mensaje
