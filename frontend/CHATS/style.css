@@ -34,7 +34,7 @@
 /* Message Bubble Container */
 .mensaje-chat {
     max-width: 75%;
-    min-width: 100px;
+    min-width: 65px;
     padding: 8px 12px;
     border-radius: 14px;
     position: relative;
