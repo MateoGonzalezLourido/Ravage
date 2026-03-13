@@ -1,5 +1,6 @@
 let contactos_añadir = []//{id , nombre(apodo puesto por ti o apodo propio)}
 let archivos_mensaje = []//{ruta,nombre,extension}
+let archivo_cambiando_nombre; //es para guardar el archivo que se esta editando ya
 //ajustes
 function Todos_Los_Eventos_Funciones_Ajustes(e) {
     e.preventDefault()
@@ -1124,6 +1125,7 @@ function cerrar_paneles_al_abrir_chat() {
 }
 async function ACTUALIZAR_LISTAS_CHAT() {
     try {
+        archivo_cambiando_nombre = null
         const [lista_chats, lista_contactos] = await Promise.all([
             window.chats.OBTENER_CHATS_USUARIO(),
             window.social_usuario.OBTENER_CONTACTOS_USUARIO()
@@ -1296,7 +1298,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                             html += `
                             <div class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-cuerpo-item">
                                 <div data-indice="${archivos.indexOf(archivo)}" class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
                                         <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
                                         <span class="info-chat-participante-nombre">${identificado ? archivo.nombre : archivo.nombre + "." + archivo.extension}</span>
                                     </div>
@@ -1315,7 +1317,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header">
                             <img src="./recursos/cruz.png" alt="cerrar">
                         </div>
-                       <div> <span>Archivos Adjuntos</span></div>
+                        <div> <span>Archivos Adjuntos</span></div>
                         <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos"title="añadir-archivo">
                             <img src="./recursos/suma.png" alt="añadir">
                         </div>
@@ -1362,36 +1364,109 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         ventana.classList.remove("abierto")
                         setTimeout(() => ventana.remove(), 310)
                     })
-                    //TODO:eventos
+                    //eventos
                     //contextmenu de cada archivo(borrar, editar nombre/extension)
-                    document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-cuerpo-item").forEach(el => {
+                    document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-cuerpo").forEach(el => {
                         el.addEventListener("click", (e) => {
                             e.preventDefault()
-                            const indice = el.dataset.indice
-                            const archivo = archivos_mensaje[indice]
-                            if (!archivo) return;
-                            const menu = document.createElement("div")
-                            menu.className = "context-menu"
-                            menu.innerHTML = `
-                                <div class="context-menu-item" data-action="borrar"> Borrar</div>
-                                    <div class="context-menu-item" data-action="editar">Editar</div>
-                            `
-                            document.querySelector(".seccion-cuerpo-chat").appendChild(menu)
-                            menu.style.left = e.clientX + "px"
-                            menu.style.top = e.clientY + "px"
-                            menu.addEventListener("click", async (e) => {
-                                const action = e.target.dataset.action
-                                if (action == "borrar") {
-                                    archivos_mensaje.splice(indice, 1)
-                                    document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
-                                }
-                                else if (action == "editar") {
-                                    //TODO:editar nombre/extension
-                                    //TODO:mostrar div con un span del nombre del archivo que se modifica y un input text para poner el nombre nuevo
-                                    const seccion_cambiar_nombre = document.createElement("div")
-                                    seccion_cambiar_nombre.className = "seccion-cambiar-nombre-archivo-mensaje"
-                                    //TODO:si pulsa enter camibar nombre
 
+                            // Obtener el item específico clicado para sacar su índice y el elemento del DOM
+                            const itemClicado = e.target.closest(".ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre")
+                            if (!itemClicado) return
+
+                            const indice = itemClicado.dataset.indice
+                            const archivo = archivos_mensaje[indice]
+
+                            if (!archivo) {
+                                //marcarlo en rojo para que el usuario vea que esta fallando ese archivo
+                                itemClicado.style.color = "orange"
+                                itemClicado.style.fontStyle = "italic"
+                                itemClicado.style.textDecoration = "line-through";
+                                return;
+                            }
+
+                            // Eliminar menú previo si existe para evitar duplicados
+                            document.querySelector(".context-menu")?.remove()
+
+                            const html_contextMenu = `
+                                <div class="context-menu" style="position: fixed; z-index: 1000;">
+                                    <div class="context-menu-item" data-action="borrar"> Borrar</div>
+                                    <div class="context-menu-item" data-action="editar">Editar</div>
+                                </div>
+                            `
+
+                            const ventanaContenedor = document.querySelector(".ventana-archivos-mensaje")
+                            ventanaContenedor.insertAdjacentHTML("beforeend", html_contextMenu)
+
+                            const menu = ventanaContenedor.querySelector(".context-menu")
+                            if (menu) {
+                                menu.style.left = e.clientX + "px"
+                                menu.style.top = e.clientY + "px"
+
+                                // Cerrar al hacer click fuera
+                                const cerrarMenuClickFuera = (event) => {
+                                    if (!menu.contains(event.target)) {
+                                        menu.remove()
+                                        document.removeEventListener("mousedown", cerrarMenuClickFuera)
+                                    }
+                                }
+                                document.addEventListener("mousedown", cerrarMenuClickFuera)
+                            }
+
+                            menu.addEventListener("click", (ev) => {
+                                const action = ev.target.dataset.action
+                                if (action === "borrar") {
+                                    //borar de la lista de datos
+                                    archivos_mensaje.splice(indice, 1)
+                                    //borrar del html (el item padre)
+                                    itemClicado.closest(".ventana-archivos-mensaje-cuerpo-cuerpo-item").remove()
+                                }
+                                else if (action === "editar") { //editar nombre/extension
+                                    const name_textarea_class = "seccion-cambiar-nombre-archivo-mensaje"
+
+                                    // Si ya hay uno editándose en otro lado, lo cerramos
+                                    if (archivo_cambiando_nombre) {
+                                        const prevTextarea = document.querySelector(`.${name_textarea_class}`)
+                                        if (prevTextarea) {
+                                            const nuevoNombre = prevTextarea.value.trim()
+                                            const prevIndice = archivo_cambiando_nombre.dataset.indice
+                                            if (archivos_mensaje[prevIndice]) archivos_mensaje[prevIndice].nombre = nuevoNombre
+
+                                            const span = archivo_cambiando_nombre.querySelector("span")
+                                            if (span) {
+                                                span.innerHTML = nuevoNombre
+                                                span.style.display = "flex"
+                                            }
+                                            prevTextarea.remove()
+                                        }
+                                    }
+
+                                    // Guardar el item actual que se está editando
+                                    archivo_cambiando_nombre = itemClicado
+
+                                    const spanActual = itemClicado.querySelector("span")
+                                    if (spanActual) spanActual.style.display = "none"
+
+                                    const textarea = document.createElement("textarea")
+                                    textarea.className = name_textarea_class
+                                    textarea.value = archivo.nombre
+                                    itemClicado.querySelector(".contenido-item-archivo-lista").appendChild(textarea)
+                                    textarea.focus()
+
+                                    textarea.addEventListener("keypress", (event) => {
+                                        if (event.key == "Enter" && !event.shiftKey) {
+                                            event.preventDefault()
+                                            let nombre_nuevo = textarea.value.trim()
+                                            archivo.nombre = nombre_nuevo
+
+                                            if (spanActual) {
+                                                spanActual.innerHTML = nombre_nuevo
+                                                spanActual.style.display = "flex"
+                                            }
+                                            textarea.remove()
+                                            archivo_cambiando_nombre = null
+                                        }
+                                    })
                                 }
                                 menu.remove()
                             })

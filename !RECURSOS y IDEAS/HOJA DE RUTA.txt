@@ -1,0 +1,20 @@
+1ºBorrar y cambiar nombre archivos subidos para mandar
+
+2ºAñadir y eliminar usuarios de chats
+
+3ºTerminar buzon
+
+4ºHacer las plantillas para usar servidor localhost http, https y servidor gratis railway
+
+5ºTerminar tablas de base de datos y reajustarlas-> + refactorizar codigo que necesite
+
+6ºAñadir todas las verificaciones de seguridad de la app
+
+7ºClean code y optimizaciones ... -> sacarlo al github publico
+
+8ºAñadir todas las funciones de la app (bloqueos, silencioas, ajustes, no mostrar correo...)
+
+9ºTerminar TODOS
+
+10ºmejorar app, experiencia usuario ... (opcional)
+

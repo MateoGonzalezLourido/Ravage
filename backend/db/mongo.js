@@ -1034,7 +1034,7 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
         return false;
     }
 }
-async function obtener_datos_mensaje(id_chat,id_mensaje) {
+async function obtener_datos_mensaje(id_chat, id_mensaje) {
     try {
         const chat = await ChatsRavage.findById(id_chat);
         if (!chat) return null;
@@ -1137,20 +1137,7 @@ async function Añadir_Entrada_Buzon_Usuario({ ids = null, tipo, data }) {
         console.error("Error al añadir entrada al buzón:", err);
     }
 }
-//*EXPERMIENTAL TEST:
 
-async function MONGO_TEST_BUZON() {
-    let userId = getIDMongodbUsuario()
-    let tipo = 0
-    let data = {
-        "mensaje": "esto es  una prueba de funcionamiento"
-    }
-    await BuzonUsuarios.updateOne(
-        { _id: userId },                   // el _id del usuario
-        { $push: { entrada: { tipo, data } } },
-        { upsert: true }                   // crea el documento si no existe
-    );
-}
 
 export {
     connectDB,
@@ -1195,7 +1182,6 @@ export {
     ENVIAR_MENSAJE,
     DESCARGAR_ARCHIVO,
     BuzonUsuarios,
-    MONGO_TEST_BUZON,
     Revisar_Buzon_Usuario,
     obtener_datos_mensaje
 };
