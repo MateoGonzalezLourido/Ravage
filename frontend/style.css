@@ -1309,3 +1309,45 @@ input[type="number"]::-webkit-outer-spin-button {
     font-size: 13px;
     font-weight: 500;
 }
+
+/* Barra de sincronización */
+.sync-mailbox-bar {
+    position: fixed;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--wa-primary);
+    color: white;
+    padding: 8px 24px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+    pointer-events: none;
+    margin-top: -60px;
+}
+
+.sync-mailbox-bar.visible {
+    opacity: 1;
+    margin-top: 0;
+}
+
+.sync-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2.5px solid rgba(255, 255, 255, 0.3);
+    border-top: 2.5px solid white;
+    border-radius: 50%;
+    animation: spin-sync 0.8s linear infinite;
+}
+
+@keyframes spin-sync {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
