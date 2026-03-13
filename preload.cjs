@@ -149,7 +149,11 @@ contextBridge.exposeInMainWorld('chats', {
     },
     DESCARGAR_ARCHIVO: (id, nombre) => {
         return ipcRenderer.invoke("descargar-archivo", id, nombre)
+    },
+    OBTENER_DATOS_MENSAJE: (id_chat, id_mensaje) => {
+        return ipcRenderer.invoke("obtener-datos-mensaje", id_chat, id_mensaje)
     }
+
 
 });
 

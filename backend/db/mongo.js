@@ -1034,6 +1034,22 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
         return false;
     }
 }
+async function obtener_datos_mensaje(id_chat,id_mensaje) {
+    try {
+        const chat = await ChatsRavage.findById(id_chat);
+        if (!chat) return null;
+        const mensaje = chat.mensajes.find(mensaje => mensaje._id.toHexString() === id_mensaje);
+        if (!mensaje) return null;
+        return {
+            emisor: mensaje.emisor,
+            contenido: mensaje.contenido,
+            data: mensaje.data
+        };
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+}
 async function DESCARGAR_ARCHIVO(id, nombre) {
     function generarRutaUnica(rutaBase) {//esto cambia el nombre del archivo si ya existe ...(n)... , siendo n el numero de copias que ya existen de ese archivo
         const dir = path.dirname(rutaBase);//coje la carpeta de la ruta
@@ -1180,5 +1196,6 @@ export {
     DESCARGAR_ARCHIVO,
     BuzonUsuarios,
     MONGO_TEST_BUZON,
-    Revisar_Buzon_Usuario
+    Revisar_Buzon_Usuario,
+    obtener_datos_mensaje
 };

@@ -1,7 +1,14 @@
 /*ESTE CODIGO PRIMERAMENTE FUE HECHO POR MI, PERO AL QUERER HACER UNA COSA PARA UN SLEEP CANCELABLE ME PUSE CON CHATGPT PARA VER COMO SE HACIA BIEN Y DESPUES DE MANDARLE SUS PROPIOS CODIGOS 10VECES HASTA QUE EL DECIDIERA QUE LOS HIZO BIEN ACABO RESULTANDO EN ESTO. LA COSA ES QUE ESTE CODIGO NO LO VOY A REVISAR QUE ES TARDE YA. SI VEO QUE NO FUNCIONA ENTRARÉ A CAMBIARLO Y QUITARE ESTE TEXTACO.
 FECHA:05/02/2026. BY:MATEO WITH CHATGPT *^____^*
 */
+/*Como generar una notificacion-> 
 
+window.pushNotificacion({
+    prioridad: 0, // menor número = más importante
+    texto: `Nuevo mensaje de ${nombre}`,
+    tipo: "info" // "info", "error", "success"
+})
+*/
 // ── Iconos por tipo ──────────────────────────────────────────────────────────
 const NOTI_ICONOS = {
     error: '✕',

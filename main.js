@@ -27,7 +27,8 @@ import {
     ENVIAR_MENSAJE,
     DESCARGAR_ARCHIVO,
     MONGO_TEST_BUZON,
-    Revisar_Buzon_Usuario
+    Revisar_Buzon_Usuario,
+    obtener_datos_mensaje
 } from "./backend/db/mongo.js";
 import {
     autoLoginUsuario,
@@ -335,4 +336,8 @@ ipcMain.on("iniciar-buzon", async () => {
 
     //*EXPERIEMNTAL:
     await MONGO_TEST_BUZON()
+})
+
+ipcMain.handle("obtener-datos-mensaje", async (_, id_chat, id_mensaje) => {
+    return await obtener_datos_mensaje(id_chat, id_mensaje)
 })
