@@ -274,7 +274,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                         document.querySelector("#form-validation-correo-ajustes-datos-cuenta").addEventListener("submit", form_validar_correo_ajustes_datos_cuenta)
 
                     }
-                    else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+                    else {// MOSTRAR MENSAJE DE CAUSA DE FALLO
                         document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
                         bloquear_span_cambio_contraseña = false
 
@@ -291,11 +291,11 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             document.querySelector("#form-cambio-contraseña").addEventListener("submit", form_cambio_contraseña)
         }
         else {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+            //Mostrar notificacion aviso bloqueo temporal activo
             bloquear_span_cambio_contraseña = true
             console.log("Debes esperar a que termine el bloqueo")
             window.pushNotificacion({
-                prioridad: 0,        // menor número = más importante
+                prioridad: 1,        // menor número = más importante
                 texto: `Cambiaste de contraseña hace poco \nEsperar: 24h desde la última vez`,
                 tipo: "error"      // "info", "error", "success"
             })
@@ -307,7 +307,13 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
     async function funcion_cambiar_apodo(e) {
         e.preventDefault()
         if (bloquear_span_cambio_apodo) {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+            //Mostrar notificacion aviso bloqueo temporal activo
+            console.log("Debes esperar a que termine el bloqueo")
+            window.pushNotificacion({
+                prioridad: 1,        // menor número = más importante
+                texto: `Cambiaste de apodo hace poco \nEsperar: 1h desde la última vez`,
+                tipo: "error"      // "info", "error", "success"
+            })
             return;
         }
         let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "apodo" })
@@ -344,8 +350,13 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                         document.querySelector("#form-cambio-apodo").removeEventListener("submit", funcion_cambiar_apodo)
 
                         result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(apodo, null, "apodo")
-                        if (!result) {//TODO:notificar:cambiar contraseña error
-                            console.log("no se pudo cambiar")
+                        if (!result) {//notificar:cambiar contraseña error
+                            console.log("no se pudo cambiar el apodo")
+                            window.pushNotificacion({
+                                prioridad: 0,        // menor número = más importante
+                                texto: `No se pudo cambiar el apodo`,
+                                tipo: "error"      // "info", "error", "success"
+                            })
                         }
                         cambiar_menu_inicio_apodo()
                         bloquear_span_cambio_apodo = true
@@ -360,7 +371,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                         document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.add("ocultar-display")
 
                     }
-                    else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+                    else {// MOSTRAR MENSAJE DE CAUSA DE FALLO
                         bloquear_span_cambio_apodo = false
 
                         console.error("FALLO AL CAMBIAR EL APODO")
@@ -375,7 +386,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             document.querySelector("#form-cambio-apodo").addEventListener("submit", form_cambio_apodo)
         }
         else {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+            //Mostrar notificacion aviso bloqueo temporal activo
             bloquear_span_cambio_contraseña = true
             console.log("Debes esperar a que termine el bloqueo")
             window.pushNotificacion({
@@ -386,12 +397,17 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
         }
     }
     document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo)
-    //TODO:mostrar menu cambiar correo
+    //mostrar menu cambiar correo
     let bloquear_span_cambio_correo = false
     async function funcion_cambiar_correo(e) {
         e.preventDefault()
         if (bloquear_span_cambio_correo) {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+            //Mostrar notificacion aviso bloqueo temporal activo
+            window.pushNotificacion({
+                prioridad: 1,        // menor número = más importante
+                texto: `Cambiaste de correo hace poco \nEsperar: 72h desde la última vez`,
+                tipo: "error"      // "info", "error", "success"
+            })
             return;
         }
         let result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "correo" })
@@ -452,13 +468,13 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                             e.preventDefault()
                             const code = document.querySelector("#bt-code-introducir-datos-cuenta").value
                             result = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(correo_nuevo, code, "correo")
-                            if (!result) {//TODO:notificar:cambiar contraseña error
+                            if (!result) {//notificar:cambiar contraseña error
                                 console.log("no se pudo cambiar")
                             }
                             bloquear_span_cambio_correo = true
                             //cambiar a la pagina de log-sesion
                             window.pushNotificacion({
-                                prioridad: 0,        // menor número = más importante
+                                prioridad: 1,        // menor número = más importante
                                 texto: `Correo cambiado`,
                                 tipo: "succes"      // "info", "error", "success"
                             })
@@ -467,7 +483,7 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
                         document.querySelector("#form-validation-correo-ajustes-datos-cuenta").addEventListener("submit", form_validar_correo_ajustes_datos_cuenta)
 
                     }
-                    else {//TODO: MOSTRAR MENSAJE DE CAUSA DE FALLO
+                    else {// MOSTRAR MENSAJE DE CAUSA DE FALLO
                         document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd").removeEventListener("click", bt_cerrar_menu)
                         bloquear_span_cambio_correo = false
 
@@ -484,12 +500,13 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             document.querySelector("#form-cambio-correo").addEventListener("submit", form_cambio_correo)
         }
         else {
-            //TODO: MOSTRAR NOTIFICACION: "Debes esperar 24h desde la última vez para vovler a cambiar la contraseña"
+            //Mostrar notificacion aviso bloqueo temporal activo
+
             bloquear_span_cambio_correo = true
             console.log("Debes esperar a que termine el bloqueo")
             window.pushNotificacion({
-                prioridad: 0,        // menor número = más importante
-                texto: `Cambiaste de correo hace poco \nEsperar: 24h desde la última vez`,
+                prioridad: 1,        // menor número = más importante
+                texto: `Cambiaste de correo hace poco \nEsperar: 72h desde la última vez`,
                 tipo: "error"      // "info", "error", "success"
             })
         }
@@ -735,7 +752,12 @@ async function crear_chat_nuevo(e) {
         desplegar_menu_añadir_chat({ e, mostrar: false })
         await ACTUALIZAR_LISTAS_CHAT()
     } else {
-        //TODO: AVISAR error al crear chat / contacto
+        //AVISAR error al crear chat / contacto
+        window.pushNotificacion({
+            prioridad: 1,        // menor número = más importante
+            texto: `Error al crear chat`,
+            tipo: "error"      // "info", "error", "success"
+        })
     }
 
 }
@@ -895,7 +917,7 @@ async function Crear_chat_html(datos, id_propio) {
         })
         let fecha_ultimo;
         for (m of mensajes_ordenados) {
-            //TODO: QUE AL DEJAR DE TENER ESTO DE LA FECHA EN LA PANTALLA APAREZCA FIXED ARRIBA DEL CHAT (LA FECHA QUE PERTEZCA AL BLOQUE QUE ESTAMOS VIENDO)
+            //QUE AL DEJAR DE TENER ESTO DE LA FECHA EN LA PANTALLA APAREZCA FIXED ARRIBA DEL CHAT (LA FECHA QUE PERTEZCA AL BLOQUE QUE ESTAMOS VIENDO)
             //comparar si son del mismo dia
             const fecha_actual = new Date(m.data)
             const fecha_comparar = new Date(fecha_ultimo)
@@ -951,10 +973,9 @@ async function Crear_chat_html(datos, id_propio) {
     return html
 }
 
-//TODO
 async function mostrar_datos_chat_usaurios(e) {
     e.preventDefault()
-    //TODO: MOSTRAR DATOS DEL USUARIO Y DEL CHAT
+    // MOSTRAR DATOS DEL USUARIO Y DEL CHAT
     const id = e.currentTarget.dataset.id || document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
     const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id)
     const infoSeccion = document.querySelector("#info-chat-seccion")
@@ -1155,7 +1176,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
         document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
             componente.addEventListener("click", async (e) => {
                 e.preventDefault()
-                //TODO: OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
+                // OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
                 const id = e.currentTarget.dataset.id
                 //obtener info de ese chat
                 //TODO: AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
@@ -1391,7 +1412,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                                     ruta: archivo
                                 })
                             }
-                            catch (e) {//TODO: MOSTRAR ERROR PANTALLA
+                            catch (e) {// MOSTRAR ERROR PANTALLA
                                 console.error(e)
                                 window.pushNotificacion({
                                     prioridad: 1,        // menor número = más importante
@@ -1414,12 +1435,16 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 document.querySelectorAll(".archivo-mensaje-div-archivos").forEach(el => {
                     el.addEventListener("click", async (e) => {
                         e.preventDefault()
-                        //TODO: COJER ID DEL ARCHIVO, PEDIR A MONGO LOS DATOS DE ESE ARCHIVO Y GUARDARLO EN LA UBICACION ESTABLECIDA
+                        // COJER ID DEL ARCHIVO, PEDIR A MONGO LOS DATOS DE ESE ARCHIVO Y GUARDARLO EN LA UBICACION ESTABLECIDA
                         const id_archivo = el.dataset.id
                         const nombre_archivo = el.dataset.nombre
                         const resultado = await window.chats.DESCARGAR_ARCHIVO(id_archivo, nombre_archivo)
-                        if (!resultado) {//TODO: fallo al descargar:notificar
-
+                        if (!resultado) {// fallo al descargar:notificar
+                            window.pushNotificacion({
+                                prioridad: 1,        // menor número = más importante
+                                texto: `Fallo al cargar archivo: ${nombre_archivo}`,
+                                tipo: "error"      // "info", "error", "success"
+                            })
                         }
                     })
                 })
@@ -1494,11 +1519,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     })()
     //iniciar buzón(asyncrono)
     try {
-        //TODO:mostrar un aviso de que se estan revisando buzon
+        // Preparar aviso de sincronización
+        const syncBar = document.createElement("div")
+        syncBar.className = "sync-mailbox-bar"
+        syncBar.innerHTML = `<div class="sync-spinner"></div><span>Sincronizando buzón...</span>`
+
+        // Solo mostrar si tarda más de 1 segundo (evita parpadeos en cargas rápidas)
+        const mostrarSync = setTimeout(() => {
+            document.body.appendChild(syncBar)
+            requestAnimationFrame(() => syncBar.classList.add("visible"))
+        }, 1000)
+
         const cambios = await window.buzonAPI.REVISAR_BUZON()
-        //TODO:MANDAR CAMBIOS A LAS FUNCIONES DEL BUZON
         await window.buzonAPI.INICIAR_BUZON()
-        //TODO:cerrar aviso(si el usuario no lo hizo antes)
+
+        // Cancelar el temporizador o cerrar la barra si llegó a mostrarse
+        clearTimeout(mostrarSync)
+        if (syncBar.parentNode) {
+            syncBar.classList.remove("visible")
+            setTimeout(() => syncBar.remove(), 450)
+        }
     } catch (e) {
         console.error(e)
     }
@@ -1540,7 +1580,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             sino mostrar notificacion e icono en el componente de la lista de chats de ese chat */
             /*entrada= { tipo, data: { id_chat, id_mensaje }}*/
             if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.chat) {
-                //TODO:buscar datos de ese mensaje
                 const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(entrada.chat, entrada.data.id_mensaje)
                 //actualizar chat
                 Actualizar_render_chat({
@@ -1552,7 +1591,6 @@ document.addEventListener("DOMContentLoaded", async () => {
                 })
             }
             else {
-                //TODO:mostrar notificacion e icono en el componente de la lista de chats de ese chat
                 //cojer nombre del chat
                 for (const chatC of document.querySelectorAll(".chat-componente-lista-chats")) {
                     if (chatC.dataset.id == entrada.chat) {
