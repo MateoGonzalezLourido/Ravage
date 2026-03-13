@@ -2,3 +2,7 @@
 
 
 -El buzon se limpia mas de una vez (la priemra bien, la segunda dice que hubo fallo)
+
+-En el chat tras mandar o recibir un archivo (cuando se actualiza el chat), los iconos de archivos siempre son el por defecto. 
+
+-En la seccion de archivos hay un problema con archivos no identificados porque se mandan como archivos sin extension (por lo demas se guarda y descarga el contenido correctamente)
