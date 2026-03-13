@@ -853,11 +853,10 @@ const crear_mensaje_html = async (data, id_propio, nombres_contactos) => {
         if (data.contenido[0]?.archivos?.length > 0) {
             let html = `<div class="mensaje-div-archivos">`
             for (const archivo of data.contenido[0]?.archivos) {
-                const extension = archivo?.extension ||  archivo.nombre?.includes(".") ? archivo.nombre.split(".").pop() : null
-                console.log("asa",archivo)
+                const extension = archivo?.extension || archivo.nombre?.includes(".") ? archivo.nombre.split(".").pop() : null
                 const [url, identificado] = await url_icono_extension_img(extension)
                 const nombre_mostrar = identificado ? (archivo.nombre?.includes(".") ? archivo.nombre.substring(0, archivo.nombre.lastIndexOf(".")) : archivo.nombre) : archivo.nombre
-                
+
                 html += `<div class="archivo-mensaje-div-archivos" data-id="${archivo.id}" data-nombre="${archivo.nombre}">
                 <div><img src="${url}"><span>${nombre_mostrar}</span></div>
                 </div> `
@@ -1246,12 +1245,12 @@ async function ACTUALIZAR_LISTAS_CHAT() {
 
                             const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
                             if (result) {//limpiar seccion mensaje escritura
-                                const copia_archivos = archivos_mensaje 
+                                const copia_archivos = archivos_mensaje
                                 archivos_mensaje = []
                                 textarea_msg.value = ""
                                 textarea_msg.style.height = "38px" // Restaurar tamaño original base
                                 document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
-                                
+
                                 //reactualizar chat (render)
                                 Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date() })
                             }
@@ -1510,7 +1509,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
     //chat
     INICIO_CHAT_MENU_PRINCIPAL()
-    //TODO: PROMISE_ALL PARA OBETENER LOS CONTACTOS/CHATS Y TODA LA INFORMACION ENECESARIA DE LOS ESTOS Y PARA OBTENER LOS IDS NOMBRES FECHAS... DE LOS ARCHIVOS MANDADOS POR LOS CHATS; TAMBIEN HAY QUE MIRAR EL BUZON Y VER NOVEDADES TIENE (CHATS SIN LEER...)COMPROBAR SI LA APLICACION ESTA ACTUALIZADA; LAS NOTIFICACIONES/CHATS... DEBEN TENER EN CUENTA LOS AJUSTES DEL USUARIO, LA PRIVACIDAD, SI SE HAN BLOQUEADO CHATS NO TENERLOS EN CUENTA...
+
     //añadir chat
     document.querySelector("#bt-añadir-chat").addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
     document.querySelector("#bt-cerrar-menu-añadir-chats").addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: false }))
@@ -1523,15 +1522,142 @@ document.addEventListener("DOMContentLoaded", async () => {
     })
     document.querySelector("#bt-agregar-contacto-nuevo").addEventListener("click", crear_chat_nuevo)
 
-    /*TODO: obtener buzon y mostrar cambios en lista chats si hay(usando id del chat)  mostrar notificaciones de otras cosas */
     //buzon API
-    window.buzonAPI.onNuevaNotificacion((data) => {
+    window.buzonAPI.onNuevaNotificacion(async (data) => {
         console.log("Notificación recibida:", data.entrada);
-        // actualizar UI
+        //realizar cambios en la app segun la entrada del buzon
+        for (const entrada of data.entrada) {
+            await hacer_cambios_buzon(entrada)
+        }
     });
+    //realizar cambios en la app segun la entrada del buzon
+    async function hacer_cambios_buzon(entrada) {
+        //TODO: CAMBIO DE NOMBRE CHATGRUPO, AÑADIDO USUARIO A UN GRUPO, ELIMINADO USUARIO DE UN CHAT, MENSAJE ACTUALIZAR APP
+        const tp = entrada.tipo
+        if (tp === 0) { //mensaje chat
+            /*Mirar si el usuario tiene abierto ese chat:
+            si es asi actualizar chat
+            sino mostrar notificacion e icono en el componente de la lista de chats de ese chat */
+            /*entrada= { tipo, data: { id_chat, id_mensaje }}*/
+            if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.chat) {
+                //TODO:buscar datos de ese mensaje
+                const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(entrada.chat, entrada.data.id_mensaje)
+                //actualizar chat
+                Actualizar_render_chat({
+                    emisor: respuesta.emisor,
+                    chat: entrada.chat,
+                    mensaje: respuesta.contenido.asunto,
+                    archivos: respuesta.contenido.archivos,
+                    fecha: respuesta.data
+                })
+            }
+            else {
+                //TODO:mostrar notificacion e icono en el componente de la lista de chats de ese chat
+                //cojer nombre del chat
+                for (const chatC of document.querySelectorAll(".chat-componente-lista-chats")) {
+                    if (chatC.dataset.id == entrada.chat) {
+                        const nombre = chatC.querySelector(".nombre-chat-lista-componente span").textContent
+                        //refrescar componente chat
+                        refrescar_componente_lista_chats(entrada.chat, chatC, true)
 
-    function hacer_cambios_buzon() {
+                        //notificacion
+                        window.pushNotificacion({
+                            prioridad: 0, // menor número = más importante
+                            texto: `Nuevo mensaje de ${nombre}`,
+                            tipo: "info" // "info", "error", "success"
+                        })
+                    }
+                }
+            }
+        }
+        else if (tp === 1) {//cambio nombre chat
 
+        }
+        else if (tp === 2) {//usuario añadido grupo
+
+        }
+        else if (tp === 3) {//chat nuevo
+            //actualizar componentes lista
+            await ACTUALIZAR_LISTAS_CHAT()
+            //notificacion
+            window.pushNotificacion({
+                prioridad: 0, // menor número = más importante
+                texto: `Te has unido a un nuevo chat`,
+                tipo: "info" // "info", "error", "success"
+            })
+        }
+        else if (tp === 4) {//quitado de un chat
+
+        }
+        else if (tp === 5) {//actualizar app
+
+        }
     }
 })
 
+//TODO: REVISAR SI ESTA FUNCION PUEDE UTILIZAR UNA FUNCION PARA GENERAR LOS DATOS PARA CREAR EL HML, YA QUE EN OTRAS PARTES DEL CODIGO SE HACEN COSAS SIMIALRES
+async function refrescar_componente_lista_chats(id_chat, componente, notificacion) {
+    try {
+        // Obtener datos globales del chat (nombre, usuarios, etc)
+        // El usuario pide usar obtener_datos_chats (vía bridge OBTENER_DATOS_CHATS_GRUPALES)
+        const [info_chats, lista_usuario, id_propio, lista_contactos] = await Promise.all([
+            window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: [{ id: id_chat }], grupales: null, mensajes: false }),
+            window.chats.OBTENER_CHATS_USUARIO(),
+            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
+            window.social_usuario.OBTENER_CONTACTOS_USUARIO()
+        ])
+
+        const info_chat = info_chats[0]
+        if (!info_chat) return
+
+        // Obtener la entrada específica de este chat para el usuario (ultimoCambio, ultimomensaje)
+        const chat_usuario = lista_usuario.find(c => (c.id || c._id) == id_chat)
+
+        // Calcular el nombre (extraído de ACTUALIZAR_LISTAS_CHAT)
+        let nombre = ""
+        if (info_chat.grupo) {
+            nombre = info_chat.nombre
+        } else {
+            const id_otro = info_chat.usuarios.find(x => x != id_propio)
+            if (!id_otro) {
+                nombre = "<<error integrantes>>"
+            } else {
+                const indice_contacto = lista_contactos.findIndex(x => x.id == id_otro)
+                if (indice_contacto == -1) {
+                    const datos_externos = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_otro, "apodo")
+                    nombre = "~" + (datos_externos?.apodo || "no encontrado")
+                } else {
+                    nombre = lista_contactos[indice_contacto].apodo
+                }
+            }
+        }
+
+        // Construir objeto de datos para la estructura HTML
+        const datos_usar = {
+            id: id_chat,
+            ultimoCambio: chat_usuario?.ultimoCambio,
+            usuarios: info_chat.usuarios,
+            nombre: nombre,
+            ultimomensaje: chat_usuario?.ultimomensaje
+        }
+
+        // Generar el nuevo HTML
+        const html_nuevo = chat_componente_lista_structura_html(datos_usar)
+
+        // Actualizar el componente existente sin perder la referencia (para no perder el event listener)
+        const tempDiv = document.createElement("div")
+        tempDiv.innerHTML = html_nuevo
+        const contenido_nuevo = tempDiv.firstElementChild.innerHTML
+
+        componente.innerHTML = contenido_nuevo
+
+        // Si hay notificación, podemos añadir una clase visual (ej: brillo o punto azul)
+        if (notificacion) {
+            componente.classList.add("nuevo-mensaje-notificacion")
+            // Opcional: quitar la clase tras unos segundos o al hacer click
+        }
+
+    } catch (e) {
+        console.error("Error al refrescar componente de chat:", e)
+    }
+}
