@@ -3,6 +3,7 @@ import fs from 'fs';
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import os from 'os';
 
 // Electron
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
@@ -12,6 +13,15 @@ import { hash, compare } from 'bcryptjs';
 import pkgMachineId from 'node-machine-id';
 import { sign, verify } from 'jsonwebtoken';
 import 'dotenv/config';
+
+// Mongoose & MongoDB
+import mongoose from 'mongoose';
+import { GridFSBucket, ObjectId } from 'mongodb';
+
+// Express, HTTP & Socket.IO
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
 
 // Funciones extraídas
 const { machineIdSync } = pkgMachineId;
@@ -44,4 +54,13 @@ export {
     //Path
     __dirname,
     __filename,
+    // Mongoose & MongoDB
+    mongoose,
+    GridFSBucket,
+    ObjectId,
+    // Express, HTTP & Socket.IO
+    express,
+    http,
+    Server,
+    os
 };
