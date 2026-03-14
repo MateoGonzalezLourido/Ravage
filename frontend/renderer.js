@@ -1077,7 +1077,7 @@ async function mostrar_datos_chat_usaurios(e) {
             participantes_datos.forEach(p => {
                 if (p) {
                     lista_html += `
-                    <div class="info-chat-participante-item">
+                    <div class="info-chat-participante-item" data-id="${p.id}">
                         <div class="info-chat-participante-info">
                             <span class="info-chat-participante-nombre">${p.apodo || "Sin apodo"}</span>
                             <span class="info-chat-participante-correo">${p.correo || ""}</span>
@@ -1109,6 +1109,56 @@ async function mostrar_datos_chat_usaurios(e) {
         desplegar_menu_añadir_chat({ mostrar: true, id_chat: id_chat })
 
     })
+    // Eventos de los participantes
+    for (const item of document.querySelectorAll(".info-chat-participante-item")) {
+        item.addEventListener("click", async (e) => {
+            e.preventDefault()
+            const id = e.currentTarget.dataset.id
+            //si es el propio usuario-> no mostrar menu contextual
+            if (await Es_usuario_Sesion(id)) return;
+
+            //menu contextual participantes
+            //TODO: AÑADIR BLOQUEAR USUARIO + SILENCIAR USUARIO
+            const html_contextMenu = `
+                                    <div class="context-menu context-menu-participantes" style="position: fixed; z-index: 1000;">
+                                        <div class="context-menu-item" data-action="expulsar">Expulsar</div>
+                                        ${await Es_Contacto_Usuario(id) ? `<div class="context-menu-item" data-action="añadir-contacto">Añadir Contacto</div>` : ``}
+                                    </div>
+                                `
+
+            const ventanaContenedor = document.querySelector(".info-chat-cuerpo")
+            ventanaContenedor.insertAdjacentHTML("beforeend", html_contextMenu)
+
+            const menu = ventanaContenedor.querySelector(".context-menu")
+            if (menu) {
+                menu.style.left = e.clientX + "px"
+                menu.style.top = e.clientY + "px"
+
+                // Cerrar al hacer click fuera
+                const cerrarMenuClickFuera = (event) => {
+                    if (!menu.contains(event.target)) {
+                        menu.remove()
+                        document.removeEventListener("mousedown", cerrarMenuClickFuera)
+                    }
+                }
+                document.addEventListener("mousedown", cerrarMenuClickFuera)
+            }
+
+            menu.addEventListener("click", async (ev) => {
+                const action = ev.target.dataset.action
+                if (action === "expulsar") {
+                    const resultado = await Expulsar_Usuario_Chat(id, id_chat)
+                    if (resultado) {
+                        //TODO: actualizar seccion info chat
+
+                    }
+                }
+                else if (action === "añadir-contacto") { //editar nombre/extension
+
+                }
+            })
+        })
+    }
     //mostrar seccion + cambiar css secciones
 
     if (infoSeccion) {
@@ -1559,7 +1609,7 @@ function scroll_fin_chat() {
         behavior: "smooth"
     })
 }
-async function Actualizar_render_chat({ emisor, chat, mensaje, archivos, fecha }) {
+async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {} }) {
     //chat, emisor son ids
     //el chat abierto es el del mensaje ?
     if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
@@ -1705,6 +1755,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     }
                 }
             }
+
         }
         else if (tp === 1) {// añadido en un chat existente
             //actualizar componentes lista
@@ -1729,6 +1780,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                     tipo: "info" // "info", "error", "success"
                 })
             }
+            //actualizar chat
+            Actualizar_render_chat({
+                emisor: entrada.data.emisor,
+                chat: entrada.data.chat,
+                fecha: entrada.data.data,
+                especial: 1,
+                data: entrada.data
+            })
         }
         else if (tp === 2) {//chat nuevo
             //actualizar componentes lista
@@ -1746,8 +1805,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         else if (tp === 3) {//cambio nombre chat
 
         }
-        else if (tp === 4) {//quitado de un chat
+        else if (tp === 4) {//expulsado de un chat
+            if (await Es_usuario_Sesion(entrada.data.expulsado)) {
 
+            }
+            else {
+
+            }
+            //actualizar chat
+            Actualizar_render_chat({
+                emisor: entrada.data.emisor,
+                chat: entrada.data.chat,
+                fecha: entrada.data.data,
+                especial: 1,
+                data: entrada.data
+            })
         }
         else if (tp === 5) {//actualizar app
 
@@ -1756,7 +1828,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 })
 
 //TODO: REVISAR SI ESTA FUNCION PUEDE UTILIZAR UNA FUNCION PARA GENERAR LOS DATOS PARA CREAR EL HML, YA QUE EN OTRAS PARTES DEL CODIGO SE HACEN COSAS SIMIALRES
-async function refrescar_componente_lista_chats(id_chat, componente, notificacion) {
+async function refrescar_componente_lista_chats(id_chat, componente, notificacion = false) {
     try {
         // Obtener datos globales del chat (nombre, usuarios, etc)
         // El usuario pide usar obtener_datos_chats (vía bridge OBTENER_DATOS_CHATS_GRUPALES)
@@ -1834,4 +1906,19 @@ async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true }) {
 
 
     return null
+}
+
+//COMPROBAR SI ES UN CONTACTO DEL USUARIO
+async function Es_Contacto_Usuario(usuario_comprobar) {
+    //obtener contactos usuario
+    const contactos = await window.cuenta_usuario.OBTENER_CONTACTOS_USUARIO()
+    return contactos.includes(usuario_comprobar)
+}
+//COMPROBAR SI ES EL USUARIO DE LA SESION
+async function Es_usuario_Sesion(usuario_comprobar) {
+    const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+    return usuario_comprobar === id_mio
+}
+async function Expulsar_Usuario_Chat(id_usuario, id_chat) {
+    await window.chats.EXPULSAR_USUARIO_CHAT(id_usuario, id_chat)
 }
