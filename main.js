@@ -98,7 +98,7 @@ if (!gotTheLock) {
     });
     // Ejecuta cuando Electron está listo
     app.whenReady().then(async () => {
-         socket = await startServer() // iniciar servidor express
+        socket = await startServer() // iniciar servidor express
         await connectDB()
         const AutoLogin = await autoLoginUsuario();//true, false
         createMainWindowHome(AutoLogin.success); // crear ventana
@@ -287,16 +287,16 @@ ipcMain.handle("obtener-datos-chats-grupales-usuario", async (_, { data, grupale
     return await obtener_datos_chats({ data, grupales, mensajes })
 })
 
-ipcMain.handle("obtener-datos-chat-unico-usuario", async (_, id) => {
-    return await obtener_datos_chat_unico(id)
+ipcMain.handle("obtener-datos-chat-unico-usuario", async (_, id, datos_buscar) => {
+    return await obtener_datos_chat_unico(id, datos_buscar)
 })
 
 ipcMain.on("limpiar-chats-antiguos-mensajes", async (_, chatIds) => {
     await limpiar_mensajes_chats_antiguos(chatIds)
 })
 
-ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre) => {
-    return await CREAR_CHAT_NUEVO(ids, nombre)
+ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre, id_chat) => {
+    return await CREAR_CHAT_NUEVO(ids, nombre, id_chat)
 })
 
 //ajustes
