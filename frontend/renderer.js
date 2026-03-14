@@ -1077,7 +1077,7 @@ async function mostrar_datos_chat_usaurios(e) {
             participantes_datos.forEach(p => {
                 if (p) {
                     lista_html += `
-                    <div class="info-chat-participante-item" data-id="${p.id}">
+                    <div class="info-chat-participante-item" data-id="${p.id}"data-idamigo="${p.idamigo}">
                         <div class="info-chat-participante-info">
                             <span class="info-chat-participante-nombre">${p.apodo || "Sin apodo"}</span>
                             <span class="info-chat-participante-correo">${p.correo || ""}</span>
@@ -1154,7 +1154,12 @@ async function mostrar_datos_chat_usaurios(e) {
                     }
                 }
                 else if (action === "añadir-contacto") { //editar nombre/extension
-
+                    //comprobar si ya es contacto
+                    const es_contacto = await Es_Contacto_Usuario(id)
+                    if (es_contacto) return;
+                    const idamigo = ev.target.closest(".info-chat-participante-item").dataset.idamigo
+                    //TODO: Comprobar si es valido el idamigo
+                    await Añadir_Contacto(idamigo)
                 }
             })
         })
