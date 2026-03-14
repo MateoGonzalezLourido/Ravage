@@ -1,7 +1,7 @@
+//importar librerias
 import mongoose from "mongoose";
 import { GridFSBucket, ObjectId } from "mongodb"
-import { compare, createHash, randomBytes, fs } from "../utils/libs.js";
-import path from 'path';
+import { compare, createHash, randomBytes, fs, path } from "../utils/libs.js";
 
 import {
     getIdDispositivo,
