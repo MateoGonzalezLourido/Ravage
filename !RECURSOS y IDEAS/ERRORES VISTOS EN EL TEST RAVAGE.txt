@@ -5,4 +5,8 @@
 
 -En el chat tras mandar o recibir un archivo (cuando se actualiza el chat), los iconos de archivos siempre son el por defecto. 
 
--En la seccion de archivos hay un problema con archivos no identificados porque se mandan como archivos sin extension (por lo demas se guarda y descarga el contenido correctamente)
+-En la seccion de archivos hay un problema con archivos que usan punto en el nombre, este lo identifica como extension (hay que añadir un sistema al identificar extension que solo tenga en cuenta el ultimo punto y que no tenga en cuenta puntos en medio del nombre)
+
+-No se actualizan los data-indice al borrar un archivo
+
+-No aparece la extension del archivo al editar el nombre de un archivo (textarea), tampoco despues de editar el nombre y actualizarlo en el span ; pero si actualizas la lista por completo si aparece la extension

@@ -1420,6 +1420,14 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                                     archivos_mensaje.splice(indice, 1)
                                     //borrar del html (el item padre)
                                     itemClicado.closest(".ventana-archivos-mensaje-cuerpo-cuerpo-item").remove()
+                                    //actualizar indices
+                                    let indice_actual = -1
+                                    for (el_item of document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre")) {
+                                        indice_actual++
+                                        if (indice_actual >= indice) {
+                                            el_item.dataset.indice = indice_actual
+                                        }
+                                    }
                                 }
                                 else if (action === "editar") { //editar nombre/extension
                                     const name_textarea_class = "seccion-cambiar-nombre-archivo-mensaje"
