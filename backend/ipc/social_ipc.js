@@ -6,7 +6,7 @@ import {
     eliminarUsuariosBloqueados,
     añadirUsuariosSilenciados,
     eliminarUsuariosSilenciados
-} from '../db/mongo.js';
+} from '../repositories/UserRepository.js';
 import {
     getListaContactos,
     getUsuariosBloqueados,

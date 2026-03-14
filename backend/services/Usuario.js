@@ -1,14 +1,9 @@
 import { hash, compare, machineIdSync } from '../utils/libs.js';
 
-import {
-    User,
-    InsertarDatosCuentaVC,
-    DatosCuentaVC,
-    BorrarDatosCuentaVC,
-    cambiarContraseñaUsuario,
-    cambiarCorreoUsuario,
-    cambiarApodoUsuario
-} from '../db/mongo.js';
+import { User } from '../models/User.js';
+import { DatosCuentaVC } from '../models/Security.js';
+import { InsertarDatosCuentaVC, BorrarDatosCuentaVC } from '../repositories/SecurityRepository.js';
+import { cambiarContraseñaUsuario, cambiarCorreoUsuario, cambiarApodoUsuario } from '../repositories/UserRepository.js';
 import {
     getCorreoSesion,
     getApodoSesion,

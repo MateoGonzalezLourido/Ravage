@@ -1,4 +1,4 @@
-import { BuzonUsuarios } from '../db/mongo.js'; // tu colección ya conectada
+import { BuzonUsuarios } from '../models/Buzon.js';
 //TODO: terminar
 export async function iniciarBuzon(io, mainWindow) {
     console.log("buzon iniciado")

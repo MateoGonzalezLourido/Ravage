@@ -3,17 +3,19 @@ import {
     getListaChats,
     getIDMongodbUsuario
 } from '../STORAGE/Variables_sesion.js';
-import {
-    obtener_datos_chats,
-    limpiar_mensajes_chats_antiguos,
-    obtener_datos_chat_unico,
+import { 
+    obtener_datos_chats, 
+    obtener_datos_chat_unico, 
     CREAR_CHAT_NUEVO,
-    ENVIAR_MENSAJE,
-    DESCARGAR_ARCHIVO,
-    Revisar_Buzon_Usuario,
-    obtener_datos_mensaje,
-    expulsar_usuario_chat
-} from '../db/mongo.js';
+    expulsar_usuario_chat 
+} from '../repositories/ChatRepository.js';
+import { 
+    ENVIAR_MENSAJE, 
+    DESCARGAR_ARCHIVO, 
+    limpiar_mensajes_chats_antiguos, 
+    obtener_datos_mensaje 
+} from '../repositories/MessageRepository.js';
+import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js';
 import { iniciarBuzon } from '../services/buzon.js';
 

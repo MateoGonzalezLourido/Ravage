@@ -1,6 +1,6 @@
 import { randomBytes, createCipheriv, createDecipheriv, fs, path, os, app } from '../utils/libs.js';
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
-import { ActualizarSecretKeyUsuario } from '../db/mongo.js';
+import { ActualizarSecretKeyUsuario } from '../repositories/UserRepository.js';
 
 const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
 
