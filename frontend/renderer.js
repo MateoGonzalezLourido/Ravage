@@ -756,25 +756,6 @@ async function crear_chat_nuevo(e) {
 
     //sacar el id del usuario
     const ids = []
-
-    for (i of contactos_añadir) ids.push(i.id)
-    contactos_añadir = []
-    //TODO: MIRAR SI ES UN NOMBRE VALIDO
-    //crear chat y esperar resultado
-    const resultado = await window.chats.CREAR_CHAT_NUEVO(ids, nombre, id_chat)
-    //TODO: actualizar html + mandar actualizaciones a los buzones de todos los ids (hacer esta parte asincrona sin await)
-    if (resultado) {
-        desplegar_menu_añadir_chat({ e, mostrar: false })
-        if (!id_chat) await ACTUALIZAR_LISTAS_CHAT()
-    } else {
-        //AVISAR error al crear chat / contacto
-        window.pushNotificacion({
-            prioridad: 1,        // menor número = más importante
-            texto: id_chat ? `Error al añadir usuario al chat` : `Error al crear chat`,
-            tipo: "error"      // "info", "error", "success"
-        })
-    }
-
 }
 const chat_componente_lista_structura_html = (datos_usar) => {
     function nombre() {

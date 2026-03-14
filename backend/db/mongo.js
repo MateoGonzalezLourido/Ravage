@@ -1,7 +1,5 @@
 //importar librerias
-import mongoose from "mongoose";
-import { GridFSBucket, ObjectId } from "mongodb"
-import { compare, createHash, randomBytes, fs, path } from "../utils/libs.js";
+import { mongoose, GridFSBucket, ObjectId, compare, createHash, randomBytes, fs, path } from "../utils/libs.js";
 
 import {
     getIdDispositivo,
@@ -240,8 +238,24 @@ const ArchivoSchema = new mongoose.Schema({
     nombre: { type: String, default: "_archivo_.txt" },
     id: { type: mongoose.Schema.Types.ObjectId, required: true }
 }, { _id: false });
+const MessageSchema = new mongoose.Schema({
+    id_chat: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    emisor: { type: mongoose.Schema.Types.ObjectId, required: true },
+    contenido: {
+        type: [{
+            asunto: { type: String, default: "" },
+            archivos: {
+                type: [ArchivoSchema],
+            }
+        }],
+        default: []
+    },
+    data: { type: Date, default: Date.now },
+    especial: { type: mongoose.Schema.Types.Mixed, default: null }
+});
+
 const ChatSchema = new mongoose.Schema({
-    nombre: {//solo si es un grupo (si es de dos se coje el apodo que le tengas a ese usuario)
+    nombre: {
         type: String,
         default: ""
     },
@@ -252,25 +266,6 @@ const ChatSchema = new mongoose.Schema({
     grupo: {
         type: Boolean,
         default: false
-    },
-    mensajes: {
-        type: [
-            {
-                emisor: { type: mongoose.Schema.Types.ObjectId, required: true },
-                contenido: {
-                    type: [{
-                        asunto: { type: String, default: "" },
-                        archivos: {
-                            type: [ArchivoSchema],
-                        }
-                    }],
-                    default: []
-                },
-                data: { type: Date, default: Date.now },
-                especial: { type: mongoose.Schema.Types.Mixed, default: null }
-            }
-        ],
-        default: []
     },
     fecha_creacion: { type: Date, default: Date.now }
 })
@@ -305,6 +300,7 @@ const TokenVC = mongoose.model("tokenvcv", TokenSchema, "tokenvcv");
 const TokenDPC = mongoose.model("tokendpc", TokenDPCSchema, "tokendpc");
 const DispositivosBloqueados = mongoose.model("dpbloqueados", DPBLOQUEADOSchema, "dpbloqueados");
 const ChatsRavage = mongoose.model("chats", ChatSchema, "chats");
+const MessagesRavage = mongoose.model("messages", MessageSchema, "messages");
 const BuzonUsuarios = mongoose.model("buzonsusuarios", BuzonSchema, "buzonusuarios");
 const ArchivosChats = mongoose.model("archivoschats", ArchivoSchemaGridfs, "archivoschats");
 
@@ -788,13 +784,8 @@ async function limpiar_mensajes_chats_antiguos(data) {
     const haceUnAno = new Date();
     haceUnAno.setFullYear(haceUnAno.getFullYear() - 1);
     try {//como es asincrono siempre y no tiene nada que ocurra posterior no romperia si falla
-        const r = await ChatsRavage.updateMany(
-            { _id: { $in: chatIds } }, // solo esos chats del usuario
-            {
-                $pull: {
-                    mensajes: { data: { $lt: haceUnAno } } // elimina mensajes antiguos
-                }
-            }
+        const r = await MessagesRavage.deleteMany(
+            { id_chat: { $in: chatIds }, data: { $lt: haceUnAno } }
         );
         if (r.matchedCount === 0) return false; // correo no encontrado
         return true
@@ -817,8 +808,15 @@ async function obtener_datos_chats({ data = [], grupales = null, mensajes = true
         //buscar los datos por mongodb
         const data_obtenida = await ChatsRavage.find(
             { _id: { $in: chatIds } },//filtro(todos los chatsid)
-            { _id: 1, mensajes: mensajes ? 1 : 0 }  // 0 = excluir
+            { _id: 1 }
         ).lean();
+
+        if (mensajes) {
+            // Fetch messages separately for each chat
+            for (let chat of data_obtenida) {
+                chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: 1 }).lean();
+            }
+        }
 
         //pasar ids mongodb a string
         return data_obtenida.map(convertirObjectId);
@@ -890,24 +888,17 @@ async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null) {
         );
 
         //añadir mensajes de usuarios añadidos al chat
-        await ChatsRavage.updateOne(
-            { _id: id_chat },
-            {
-                $push: {
-                    mensajes: {
-                        $each: ids_añadir.map(id => ({
-                            emisor: id_propio,
-                            especial: {
-                                tipo: 0,
-                                emisor: id_propio,
-                                añadido: id
-                            }
-                        }))
-                    }
-                }
+        const specialMessages = ids_añadir.map(id => ({
+            id_chat: id_chat,
+            emisor: id_propio,
+            especial: {
+                tipo: 0,
+                emisor: id_propio,
+                añadido: id
             }
-        );
-        const mensajeID = chat.mensajes[chat.mensajes.length - 1]?._id
+        }));
+        const msgs = await MessagesRavage.insertMany(specialMessages);
+        const mensajeID = msgs[msgs.length - 1]?._id;
 
         const ids_mandar_mensaje = [...chat.usuarios, ...ids_añadir].filter(x => x != id_propio)
         //mandar aviso al buzon
@@ -1068,15 +1059,15 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
         }
         //generar obj mensaje
         const mensaje = {
+            id_chat: id_chat,
             emisor: id_emisor,
             contenido: [{ asunto, archivos: contenido_archivos }],
             data: new Date()
         };
-        //guardar en mongodb los cambios del chat
-        chat.mensajes.push(mensaje);
-        await chat.save();
+        //guardar en mongodb los cambios del chat (Message collection)
+        const nuevoMensaje = await MessagesRavage.create(mensaje);
 
-        //actualizar chats usuarios
+        //actualizar metadata en chats usuarios (asincrono)
         (async () => {
             await User.updateMany(
                 { _id: { $in: chat.usuarios } },
@@ -1094,10 +1085,8 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
             );
         })()
 
-        //cojer el id generado(actualziado automaticamente con save() en la variable local)
-        const mensajeID = chat.mensajes[chat.mensajes.length - 1]?._id
         //mandar entradas a los buzones de los participantes de ese chat (async)
-        Añadir_Entrada_Buzon_Usuario({ ids: chat.usuarios?.filter(id => id !== id_emisor), tipo: 0, data: { id_chat: chat._id?.toHexString(), id_mensaje: mensajeID?.toHexString() } }).catch(e => console.error(e))
+        Añadir_Entrada_Buzon_Usuario({ ids: chat.usuarios?.filter(id => id !== id_emisor), tipo: 0, data: { id_chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() } }).catch(e => console.error(e))
         return true;
     } catch (e) {
         console.error(e);
@@ -1106,9 +1095,7 @@ async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }
 }
 async function obtener_datos_mensaje(id_chat, id_mensaje) {
     try {
-        const chat = await ChatsRavage.findById(id_chat);
-        if (!chat) return null;
-        const mensaje = chat.mensajes.find(mensaje => mensaje._id.toHexString() === id_mensaje);
+        const mensaje = await MessagesRavage.findOne({ id_chat: id_chat, _id: id_mensaje }).lean();
         if (!mensaje) return null;
         return {
             emisor: mensaje.emisor,
@@ -1221,36 +1208,34 @@ async function expulsar_usuario_chat(id_usuario, id_chat) {
         //eliminar usuario del chat
         chat.usuarios = chat.usuarios.filter(usuario => usuario.toHexString() != id_usuario);
 
-        //Actualizar chat
-        const mensaje = {
-            emisor: id_emisor,
-            contenido: [{ asunto, archivos: contenido_archivos }],
-            data: new Date()
-        };
-        //guardar en mongodb los cambios del chat
-        chat.mensajes.push(mensaje);
-        //mandar entrada buzon usuarios chat + usuario    
-        await chat.save();
-        //añadir mensajes de usuarios añadidos al chat
-        await ChatsRavage.updateOne(
-            { _id: id_chat },
+        //Actualizar chat metadata
+        await User.updateMany(
+            { _id: { $in: chat.usuarios } },
             {
-                $push: {
-                    mensajes: {
-                        $each: [({
-                            emisor: id_propio,
-                            especial: {
-                                tipo: 1,
-                                emisor: id_propio,
-                                expulsado: id_usuario
-                            }
-                        })]
-                    }
+                $set: {
+                    "chats.$[chat].ultimoCambio": new Date(),
+                    "chats.$[chat].ultimomensaje": "Usuario expulsado"
                 }
+            },
+            {
+                arrayFilters: [
+                    { "chat.id": chat._id?.toHexString() }
+                ]
             }
         );
-        //cojer el id generado(actualziado automaticamente con save() en la variable local)
-        const mensajeID = chat.mensajes[chat.mensajes.length - 1]?._id
+
+        //añadir mensaje de expulsion
+        const msgExpulsion = await MessagesRavage.create({
+            id_chat: id_chat,
+            emisor: id_propio, // id_propio should be defined here, similar to CREAR_CHAT_NUEVO
+            especial: {
+                tipo: 1,
+                emisor: id_propio,
+                expulsado: id_usuario
+            }
+        });
+
+        const mensajeID = msgExpulsion._id;
 
         Añadir_Entrada_Buzon_Usuario({ ids: chat.usuarios, tipo: 4, data: { chat: id_chat, expulsado: id_usuario, id_mensaje: mensajeID?.toHexString(), mensaje: mensajeID, emisor: id_propio } }).catch(e => console.error(e))
 
