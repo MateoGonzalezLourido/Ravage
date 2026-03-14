@@ -152,6 +152,9 @@ contextBridge.exposeInMainWorld('chats', {
     },
     OBTENER_DATOS_MENSAJE: (id_chat, id_mensaje) => {
         return ipcRenderer.invoke("obtener-datos-mensaje", id_chat, id_mensaje)
+    },
+    EXPULSAR_USUARIO_CHAT: (id_usuario, id_chat) => {
+        return ipcRenderer.invoke("expulsar-usuario-chat", id_usuario, id_chat)
     }
 
 

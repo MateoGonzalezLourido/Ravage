@@ -27,7 +27,8 @@ import {
     ENVIAR_MENSAJE,
     DESCARGAR_ARCHIVO,
     Revisar_Buzon_Usuario,
-    obtener_datos_mensaje
+    obtener_datos_mensaje,
+    expulsar_usuario_chat
 } from "./backend/db/mongo.js";
 import {
     autoLoginUsuario,
@@ -337,4 +338,7 @@ ipcMain.on("iniciar-buzon", async () => {
 
 ipcMain.handle("obtener-datos-mensaje", async (_, id_chat, id_mensaje) => {
     return await obtener_datos_mensaje(id_chat, id_mensaje)
+})
+ipcMain.handle("expulsar-usuario-chat", async (_, id_usuario, id_chat) => {
+    return await expulsar_usuario_chat(id_usuario, id_chat)
 })
