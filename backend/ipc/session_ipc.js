@@ -7,10 +7,7 @@ import {
     cerrarSesionUsuario,
     comprobar_contraseña_cuenta
 } from '../services/sesionUsuario.js';
-import {
-    BorrarVC,
-    BorrarCuentaVC
-} from '../db/mongo.js';
+import { BorrarVC, BorrarCuentaVC } from '../repositories/SecurityRepository.js';
 import {
     getCorreoSesion,
     getApodoSesion,

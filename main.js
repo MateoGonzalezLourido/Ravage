@@ -5,7 +5,8 @@ import { app, BrowserWindow, ipcMain, path, __fileURLToPath, __dirname } from '.
 import 'dotenv/config';
 
 import { startServer } from './backend/server.js';
-import { connectDB, BorrarUsuarioActivo, closeDB } from "./backend/db/mongo.js";
+import { connectDB, closeDB } from "./backend/db/mongo.js";
+import { BorrarUsuarioActivo } from "./backend/repositories/UserRepository.js";
 import { autoLoginUsuario } from './backend/services/sesionUsuario.js';
 
 // Import modular IPC handlers

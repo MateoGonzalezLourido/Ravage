@@ -1,24 +1,7 @@
-import {
-    InsertarUsuario,
-    LoginUsuarioDB,
-    User,
-    ValidationCode,
-    LimpiarJWTUsuario,
-    BorrarVC,
-    InsertarVC,
-    InsertarCuentaVC,
-    BorrarCuentaVC,
-    ActualizarUsuarioActivo,
-    CuentaValidationCode,
-    BorrarUsuarioActivo,
-    AñadirJWTUsuario,
-    AñadirJWTUsuarioVC,
-    LimpiarJWTUsuarioVC,
-    TokenVC,
-    TokenSession,
-    TokenDPC,
-    DispositivosBloqueados
-} from '../db/mongo.js';
+import { User, ActiveUser } from '../models/User.js';
+import { ValidationCode, CuentaValidationCode, TokenVC, TokenSession, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
+import { LoginUsuarioDB, InsertarUsuario, ActualizarUsuarioActivo, BorrarUsuarioActivo } from '../repositories/UserRepository.js';
+import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC } from '../repositories/SecurityRepository.js';
 import {
     saveSessionFile,
     clearFileSession,
