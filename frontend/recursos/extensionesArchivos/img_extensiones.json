@@ -1,4 +1,20 @@
 {
     "png": "png.png",
-    "pdf": "pdf.png"
+    "pdf": "pdf.png",
+    "json": "json.png",
+    "txt": "txt.png",
+    "svg": "svg.png",
+    "exe": "exe.png",
+    "jpg": "jpg.png",
+    "js": "js.svg",
+    "m4a": "m4a.png",
+    "md": "md.png",
+    "mp3": "mp3.png",
+    "mp4": "mp4.png",
+    "rust": "rust.png",
+    "html": "html.svg",
+    "css": "css.svg",
+    "c": "c.svg",
+    "cpp": "cpp.svg",
+    "cs": "cs.svg"
 }
