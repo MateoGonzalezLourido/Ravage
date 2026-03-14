@@ -1,12 +1,9 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import 'dotenv/config';
+/*Importar funciones y lirberias */
 
-// Definir __dirname para ESM
-const __dirname = dirname(fileURLToPath(import.meta.url));
-let socket;
+import { app, BrowserWindow, ipcMain, dialog, path, __fileURLToPath, __dirname } from './backend/utils/libs.js';
+// carga variables de entorno
+import 'dotenv/config';//es global, una vez importado no hace falta hacerlo mas en todo el proyectoF
+
 import { startServer } from './backend/server.js';
 import {
     connectDB,
@@ -64,6 +61,8 @@ import {
     getAjustesAppFile
 } from './backend/services/controladorArchivos.js';
 import { iniciarBuzon } from './backend/services/buzon.js';
+
+let socket;
 let mainWindow;//variable que almacena la ventana
 function createMainWindowHome(AutoLogin = false) {
     mainWindow = new BrowserWindow({

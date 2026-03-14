@@ -1,13 +1,24 @@
-import bcryptjs from 'bcryptjs';
+// Node nativo
+import fs from 'fs';
+import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Electron
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+
+// Dependencias externas
+import { hash, compare } from 'bcryptjs';
 import pkgMachineId from 'node-machine-id';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
-import fs from "fs" //para subir archivos
-// Extracting specific functions from CJS modules (extra optimizacion)
+import { sign, verify } from 'jsonwebtoken';
+import 'dotenv/config';
+
+// Funciones extraídas
 const { machineIdSync } = pkgMachineId;
-const { sign, verify } = jwt;
-const { hash, compare } = bcryptjs;
-const { createHash, randomBytes, createCipheriv, createDecipheriv } = crypto;
+
+// Opcional: definir __dirname en ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export {
     // Bcrypt
@@ -24,5 +35,13 @@ export {
     createCipheriv,
     createDecipheriv,
     //node 
-    fs
+    fs,
+    //Electron
+    app,
+    BrowserWindow,
+    ipcMain,
+    dialog,
+    //Path
+    __dirname,
+    __filename,
 };

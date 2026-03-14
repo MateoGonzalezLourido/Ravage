@@ -5,6 +5,7 @@
   OBLIGATORIAMENTE DEBE SER UN CJS (CommonJS)
 */
 
+//por precaucion es mejor usar require(temas de soporte del preload) y no mover estas improtaciones de aqui (porque es muy probable que cargue antes que lib.js)
 const { contextBridge, ipcRenderer } = require('electron');
 
 const startArg = process.argv.find(a => a.startsWith('--start='));
