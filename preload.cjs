@@ -132,14 +132,14 @@ contextBridge.exposeInMainWorld('chats', {
     OBTENER_DATOS_CHATS_GRUPALES: ({ data, grupales, mensajes }) => {
         return ipcRenderer.invoke("obtener-datos-chats-grupales-usuario", { data, grupales, mensajes })
     },
-    OBTENER_DATOS_CHAT_UNICO: (id) => {
-        return ipcRenderer.invoke("obtener-datos-chat-unico-usuario", id)
+    OBTENER_DATOS_CHAT_UNICO: (id, datos_buscar = null) => {
+        return ipcRenderer.invoke("obtener-datos-chat-unico-usuario", id, datos_buscar)
     },
     LIMPIAR_MENSAJES_CHATS_ANTIGUOS: (chatIds) => {
         ipcRenderer.send("limpiar-chats-antiguos-mensajes", chatIds)
     },
-    CREAR_CHAT_NUEVO: (ids, nombre) => {
-        return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre)
+    CREAR_CHAT_NUEVO: (ids, nombre, id_chat) => {
+        return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre, id_chat = null)
     },
     ENVIAR_MENSAJE: ({ asunto, archivos, id_chat, id_emisor }) => {
         return ipcRenderer.invoke("enviar-mensaje", { asunto, archivos, id_chat, id_emisor })

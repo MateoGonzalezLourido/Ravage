@@ -810,18 +810,23 @@ input[type="number"]::-webkit-outer-spin-button {
    ========================================= */
 #nav-prinicpal-chat-usaurio {
     width: calc(100% - 24px);
-    margin: 12px auto 4px auto; /* Centered, decoupled from borders */
-    height: 52px; /* Slightly taller for breathing room */
+    margin: 12px auto 4px auto;
+    /* Centered, decoupled from borders */
+    height: 52px;
+    /* Slightly taller for breathing room */
     background-color: var(--wa-panel-header-bg);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 6px 16px;
     box-sizing: border-box;
-    border: 1px solid var(--wa-border); /* Subtle border instead of just bottom */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Floating shadow effect */
+    border: 1px solid var(--wa-border);
+    /* Subtle border instead of just bottom */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    /* Floating shadow effect */
     z-index: 10;
-    border-radius: 14px; /* Fully rounded on all corners */
+    border-radius: 14px;
+    /* Fully rounded on all corners */
     cursor: pointer;
     transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -879,10 +884,12 @@ input[type="number"]::-webkit-outer-spin-button {
     margin: 8px auto 16px auto;
     min-height: 54px;
     height: auto;
-    flex-shrink: 0; /* Prevents the container from being squished by flex column */
+    flex-shrink: 0;
+    /* Prevents the container from being squished by flex column */
     background-color: var(--wa-panel-header-bg);
     display: flex;
-    align-items: flex-end; /* Bottom alignment so attachment button stays down */
+    align-items: flex-end;
+    /* Bottom alignment so attachment button stays down */
     padding: 8px 14px;
     box-sizing: border-box;
     z-index: 10;
@@ -943,15 +950,18 @@ input[type="number"]::-webkit-outer-spin-button {
     width: 6px;
     border-radius: 8px;
 }
+
 .seccion-escritura-mensaje-chat textarea::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.15);
     border-radius: 10px;
     /* Margin technique to add padding to thumb inside textarea */
-    border: 2px solid var(--wa-message-in); 
+    border: 2px solid var(--wa-message-in);
 }
+
 .seccion-escritura-mensaje-chat textarea::-webkit-scrollbar-thumb:hover {
     background-color: rgba(255, 255, 255, 0.25);
 }
+
 .seccion-escritura-mensaje-chat textarea::-webkit-scrollbar-track {
     background: transparent;
     padding: 2px;
@@ -1005,7 +1015,8 @@ input[type="number"]::-webkit-outer-spin-button {
     background-color: var(--wa-panel-header-bg);
     border-bottom: 1px solid var(--wa-border);
     flex-shrink: 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); /* Subtle shadow for depth */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    /* Subtle shadow for depth */
 }
 
 #bt-cerrar-info-chat,
@@ -1024,7 +1035,8 @@ input[type="number"]::-webkit-outer-spin-button {
 #bt-cerrar-info-chat:hover,
 .bt-cerrar-archivos-header:hover {
     background-color: var(--wa-list-item-hover);
-    transform: scale(1.05); /* Slight pop effect */
+    transform: scale(1.05);
+    /* Slight pop effect */
 }
 
 #bt-cerrar-info-chat img,
@@ -1032,7 +1044,8 @@ input[type="number"]::-webkit-outer-spin-button {
     width: 20px;
     height: 20px;
     filter: invert(0.8);
-    opacity: 0.85; /* Soften the icon slightly */
+    opacity: 0.85;
+    /* Soften the icon slightly */
 }
 
 .info-chat-header span {
@@ -1109,7 +1122,8 @@ input[type="number"]::-webkit-outer-spin-button {
 .bt-accion-archivos {
     width: 100%;
     height: 48px;
-    background-color: var(--wa-message-in); /* Makes it look like a floating card */
+    background-color: var(--wa-message-in);
+    /* Makes it look like a floating card */
     color: var(--wa-text-primary);
     border: 1px solid transparent;
     border-radius: 12px;
@@ -1157,8 +1171,29 @@ input[type="number"]::-webkit-outer-spin-button {
     display: flex;
     flex-direction: column;
     gap: 12px;
+
 }
 
+.info-chat-lista-titulo {
+    display: flex;
+    flex-direction: row;
+}
+.info-chat-lista-titulo div{
+    width: min-content;
+    margin-left: 10px;
+    width: 15px;
+    height: 15px;
+    border-radius: 100%;
+    background-color: var(--wa-message-in);
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.info-chat-lista-titulo div:hover {
+    background-color: var(--wa-list-item-hover);
+}
 .info-chat-lista-titulo {
     font-size: 12px;
     text-transform: uppercase;
@@ -1222,24 +1257,26 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .ventana-archivos-mensaje.abierto {
-    width: 350px; /* Wider than info panel (350px) */
+    width: 350px;
+    /* Wider than info panel (350px) */
 }
 
 /* Override the generic info-chat-header inside archivos to be more compact */
 .ventana-archivos-mensaje .info-chat-header {
     height: 54px;
     padding: 0 12px;
-    gap: 4px; /* Spacing between the icon buttons */
+    gap: 4px;
+    /* Spacing between the icon buttons */
 }
 
 /* Wrapper del título - ocupa el espacio central y empuja los botones a la derecha */
-.ventana-archivos-mensaje .info-chat-header > div:has(span) {
+.ventana-archivos-mensaje .info-chat-header>div:has(span) {
     flex-grow: 1;
     display: flex;
     align-items: center;
 }
 
-.ventana-archivos-mensaje .info-chat-header > div:has(span) span {
+.ventana-archivos-mensaje .info-chat-header>div:has(span) span {
     font-size: 14px;
     font-weight: 600;
     color: var(--wa-text-primary);
@@ -1250,7 +1287,8 @@ input[type="number"]::-webkit-outer-spin-button {
 .ventana-archivos-mensaje .bt-accion-archivos {
     width: 34px;
     height: 34px;
-    min-width: 34px;  /* Prevent flex-squeeze */
+    min-width: 34px;
+    /* Prevent flex-squeeze */
     padding: 0;
     border-radius: 50%;
     background-color: transparent;
@@ -1301,9 +1339,11 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 6px;
     cursor: pointer;
 }
-.ventana-archivos-mensaje .info-chat-participante-item img{
+
+.ventana-archivos-mensaje .info-chat-participante-item img {
     user-select: none;
 }
+
 /* File name compact */
 .ventana-archivos-mensaje .info-chat-participante-nombre {
     font-size: 13px;
@@ -1348,6 +1388,11 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 @keyframes spin-sync {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }

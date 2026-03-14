@@ -263,11 +263,11 @@ const ChatSchema = new mongoose.Schema({
                         archivos: {
                             type: [ArchivoSchema],
                         }
-
                     }],
                     default: []
                 },
-                data: { type: Date, default: Date.now }
+                data: { type: Date, default: Date.now },
+                especial: { type: mongoose.Schema.Types.Mixed, default: null }
             }
         ],
         default: []
@@ -805,6 +805,7 @@ async function limpiar_mensajes_chats_antiguos(data) {
 }
 async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
     try {
+
         //sacar los ids
         const chatIds = data
             .filter(c => grupales === null || c.grupo === grupales)
@@ -814,61 +815,121 @@ async function obtener_datos_chats({ data = [], grupales = null, mensajes = true
         if (chatIds.length === 0) return []
 
         //buscar los datos por mongodb
-        let data_obtenida = await ChatsRavage.find(
+        const data_obtenida = await ChatsRavage.find(
             { _id: { $in: chatIds } },//filtro(todos los chatsid)
             { _id: 1, mensajes: mensajes ? 1 : 0 }  // 0 = excluir
-        );
-        //pasar _id a string
-        return data_obtenida.map(el => {
-            const obj = el.toObject?.() ?? el;
-            return {
-                ...obj,
-                _id: obj._id.toString(),
-                usuarios: obj.usuarios.map(c => c.toString()),
-                mensajes: obj.mensajes?.map(m => ({
-                    ...m,
-                    emisor: m.emisor.map(e => e.toString())
-                })) || []
-            };
-        });
+        ).lean();
+
+        //pasar ids mongodb a string
+        return data_obtenida.map(convertirObjectId);
     } catch (e) {
         console.error(e)
         return []
     }
 }
-//funcion muy parecida a la de obtener varios chats ,pero optimizada y funciona distinto
-async function obtener_datos_chat_unico(id) {
-    try {
-        //buscar los datos por mongodb
-        let data_obtenida = await ChatsRavage.findById(id);
-        if (!data_obtenida) return null;//chat no encontrado
-        const obj = data_obtenida.toObject?.() ?? data_obtenida;
 
-        return {
-            ...obj,
-            _id: obj._id?.toHexString(),
-            usuarios: obj.usuarios?.map(u => u.toHexString?.() || u.toString()) || [],
-            mensajes: obj.mensajes?.map(m => ({
-                ...m,
-                emisor: m.emisor?.toHexString?.() || m.emisor?.toString() || null,
-                contenido: m.contenido?.map(c => ({
-                    ...c,
-                    archivos: c.archivos?.map(a => ({
-                        ...a,
-                        id: a.id.toHexString()
-                    })) || []
-                })) || []
-            })) || []
-        };
+//transformar ObjectId a string, debe ser recursivo debido a que hay que mirar todos los niveles en los datos
+function convertirObjectId(v) {
+    //transformar idmongodb a string
+    if (v instanceof ObjectId) return v.toString();
+    //transformar arrays (niveles inferiores)
+    if (Array.isArray(v)) return v.map(convertirObjectId);
+    //transformar objetos (niveles inferiores)
+    if (v && typeof v === "object") {
+        for (const k in v) v[k] = convertirObjectId(v[k]);
+    }
+
+    return v;
+}
+
+//funcion muy parecida a la de obtener varios chats ,pero optimizada y funciona distinto
+async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
+    try {
+        if (!id_chat || !mongoose.Types.ObjectId.isValid(id_chat)) {
+            console.error("id invalido", id_chat)
+            return null;
+        }
+
+        const projection = datos_buscar
+            ? { [datos_buscar]: 1, _id: 0 }
+            : { _id: 0 };
+
+        const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
+        if (!data_obtenida) return null;
+
+        return convertirObjectId(data_obtenida);
     } catch (e) {
         console.error(e)
         return null
     }
 }
-async function CREAR_CHAT_NUEVO(ids = null, nombre = "") {//tu no vas dentro de esos ids, debes añadirlo
-    if (!ids || ids.length === 0) return null;
+async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null) {
+    //tu no vas dentro de esos ids, debes añadirlo
+    if (!ids || ids.length === 0) return false;
 
     const id_propio = getIDMongodbUsuario();
+
+    //añadir usuario a un chat existente??
+    if (id_chat) {
+        //el chat nunca sera un grupo
+        const chat = await ChatsRavage.findById(id_chat);
+        if (!chat || chat?.grupo) return false;
+
+        //añadir usuario al chat
+        //eliminar ids que ya existen
+        const ids_añadir = ids.filter(id => !chat.usuarios.includes(id));
+        if (ids_añadir.length === 0) return false;
+        //actualizar chat
+        await ChatsRavage.updateOne(
+            { _id: id_chat },
+            {
+                $addToSet: {
+                    usuarios: { $each: ids_añadir }
+                }
+            }
+        );
+        //actualizar chats de todos los integrantes
+        await User.updateMany(
+            { _id: { $in: ids_añadir } },
+            {
+                $addToSet: {
+                    chats: {
+                        id: id_chat,
+                        nombre: chat.nombre,
+                        grupo: chat.grupo,
+                        ultimoCambio: new Date(),
+                        ultimomensaje: `Bienvenido😀`
+                    }
+                }
+            }
+        );
+        //añadir mensajes de usuarios añadidos al chat
+        await ChatsRavage.updateOne(
+            { _id: id_chat },
+            {
+                $push: {
+                    mensajes: {
+                        $each: ids_añadir.map(id => ({
+                            emisor: id_propio,
+                            especial: {
+                                tipo: 0,
+                                emisor: id_propio,
+                                añadido: id
+                            }
+                        }))
+                    }
+                }
+            }
+        );
+        const ids_mandar_mensaje = [...chat.usuarios, ...ids_añadir].filter(x => x != id_propio)
+        //mandar aviso al buzon
+        for (const id_añadido of ids_mandar_mensaje) {
+            Añadir_Entrada_Buzon_Usuario({ ids: id_añadido, tipo: 1, data: { chat: id_chat, emisor: id_propio, añadido: id_añadido } })
+        }
+
+        return true;
+    }
+    //crear chat nuevo
     const grupo = ids.length !== 1;
     const ids_añadir = [...ids, id_propio];
 
@@ -902,6 +963,8 @@ async function CREAR_CHAT_NUEVO(ids = null, nombre = "") {//tu no vas dentro de 
         if (ids.length === 1) {
             await AÑADIR_CONTACTO(ids[0], nombre);
         }
+        //mandar aviso a todos los usuarios del chat nuevo
+        Añadir_Entrada_Buzon_Usuario({ ids: ids_añadir, tipo: 2, data: { creador: id_propio, id_chat: datos_chat._id } })
 
         return datos_chat; // devolver chat creado
 
@@ -1119,15 +1182,19 @@ async function Limpiar_Buzon_Usuario() {
     }
 }
 async function Añadir_Entrada_Buzon_Usuario({ ids = null, tipo, data }) {
+    //ids: usuarios a quien añadirle esa entrada
     /*tipo:
     0:mensaje
+    1:usuario añadido en un chat existente
+    2:chat nuevo creado (al que te has unido)
     */
+    //data: los datos que necesite esa entrada
     //establecer usuarios mandar
-    const userId = !ids ? getIDMongodbUsuario() : ids
+    const userId = ids ? ids : getIDMongodbUsuario()
     try {
         //añadir entrada a todos los usuarios
         const r = await BuzonUsuarios.updateMany(
-            { _id: { $in: ids } },
+            { _id: { $in: userId } },
             { $push: { entrada: { tipo, data } } },
             { upsert: true } // crea el documento si no existe
         );
