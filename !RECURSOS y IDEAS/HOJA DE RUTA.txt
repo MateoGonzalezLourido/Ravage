@@ -1,8 +1,8 @@
-1ºBorrar y cambiar nombre archivos subidos para mandar
+1ºBorrar y cambiar nombre archivos subidos para mandar *->arreglar errores + añadir iconos extensiones
 
-2ºAñadir y eliminar usuarios de chats
+2ºAñadir y eliminar usuarios de chats *->fase de testing
 
-3ºTerminar buzon
+3ºTerminar buzon *->en desarrollo
 
 4ºHacer las plantillas para usar servidor localhost http, https y servidor gratis railway
 
@@ -16,5 +16,5 @@
 
 9ºTerminar TODOS
 
-10ºmejorar app, experiencia usuario ... (opcional)
+10ºmejorar app, experiencia usuario ... (opcional, sin definir)
 
