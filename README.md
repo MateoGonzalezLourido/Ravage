@@ -1,4 +1,4 @@
-# Ravage (Alpha)
+# Ravage (Alpha) *Este README esta desactualizado
 
 Aplicación de transferencia de archivos P2P entre ordenadores usando SFTP. Diseñada específicamente para usuarios de la FIC que deseen participar en su uso o desarrollo.
 
