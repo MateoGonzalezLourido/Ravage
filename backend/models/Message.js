@@ -17,6 +17,11 @@ const MessageSchema = new mongoose.Schema({
         }],
         default: []
     },
+    encriptado: {
+        iv: String,
+        tag: String,
+        data: String // Contenido cifrado (JSON stringified content)
+    },
     data: { type: Date, default: Date.now },
     especial: { type: mongoose.Schema.Types.Mixed, default: null }
 });

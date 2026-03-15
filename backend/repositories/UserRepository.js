@@ -59,7 +59,7 @@ export async function LoginUsuarioDB({ correo = null, contraseña = null, token 
     }
 }
 
-export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, secretKey, idamigo }) {
+export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, secretKey, idamigo, publicKey = "" }) {
     try {
         const sKey = secretKey || randomBytes(32).toString("hex");
         const idAmigo = idamigo || randomBytes(5).toString("hex").toUpperCase();
@@ -69,7 +69,8 @@ export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, 
             correo,
             contrasena: contraseña,
             secretKey: sKey,
-            idamigo: idAmigo
+            idamigo: idAmigo,
+            publicKey: publicKey
         });
         return true;
     } catch (e) {
