@@ -108,14 +108,11 @@ export async function DESCARGAR_ARCHIVO(id, nombre) {
     });
     const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(id));
     const { getAjustesAppFile } = await import('../services/controladorArchivos.js');
-    const ruta_principal = await getAjustesAppFile("URL_DESCARGA");
-
-    if (!fs.existsSync(ruta_principal)) {
-        fs.mkdirSync(ruta_principal, { recursive: true });
-    }
-
     const { join, dirname, basename, extname } = await import('path');
-    const rutaCompleta = join(ruta_principal, nombre);
+    
+    const ruta_principal = await getAjustesAppFile("URL_DESCARGA");
+    const safeName = basename(nombre);
+    const rutaCompleta = join(ruta_principal, safeName);
 
     function generarRutaUnica(rutaBase) {
         const dir = dirname(rutaBase);

@@ -70,7 +70,7 @@ export async function AñadirJWTUsuarioVC(correo, token = "") {
     await TokenVC.create({
         correo,
         token: tokenhash,
-        expira: new Date(Date.now()),
+        expira: new Date(Date.now() + (90 * 60 * 1000)),
         id_dp: deviceId
     });
 }

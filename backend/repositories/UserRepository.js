@@ -20,32 +20,36 @@ import {
 export async function LoginUsuarioDB({ correo = null, contraseña = null, token = null, id_dp = null, bloqueada = false }) {
     try {
         if (token && correo && id_dp) {
-            let token_valido = validateToken(token);
+            const correoStr = String(correo);
+            const tokenStr = String(token);
+            const idDpStr = String(id_dp);
+
+            let token_valido = validateToken(tokenStr);
             if (!token_valido) {
-                // Note: LimpiarJWTUsuario should be in SecurityRepository
-                // We will import it or move it later. For now, let's keep the logic.
-                const tokenhash = createHash("sha256").update(token).digest("hex");
-                await TokenSession.deleteMany({ correo, token: tokenhash });
+                const tokenhash = createHash("sha256").update(tokenStr).digest("hex");
+                await TokenSession.deleteMany({ correo: correoStr, token: tokenhash });
                 return { success: false };
             }
 
-            const tokenhash = createHash("sha256").update(token).digest("hex");
-            const token_datos = await TokenSession.exists({ correo, token: tokenhash, id_dp });
+            const tokenhash = createHash("sha256").update(tokenStr).digest("hex");
+            const token_datos = await TokenSession.exists({ correo: correoStr, token: tokenhash, id_dp: idDpStr });
 
             if (!token_datos) return { success: false };
 
-            const usuario_datos = await User.findOne({ correo, bloqueada });
+            const usuario_datos = await User.findOne({ correo: correoStr, bloqueada }).lean();
             if (!usuario_datos) return { success: false };
             
             return { success: true, data: usuario_datos };
         }
 
         if (!correo || !contraseña) return { success: false };
+        const correoStr = String(correo);
+        const contraseñaStr = String(contraseña);
 
-        const usuario_datos = await User.findOne({ correo, bloqueada });
+        const usuario_datos = await User.findOne({ correo: correoStr, bloqueada }).lean();
         if (!usuario_datos) return { success: false };
 
-        const ok = await compare(contraseña, usuario_datos.contrasena);
+        const ok = await compare(contraseñaStr, usuario_datos.contrasena);
         if (!ok) return { success: false };
 
         return { success: true, data: usuario_datos };
@@ -176,14 +180,15 @@ export async function cambiarCorreoUsuario(correo) {
 
 export async function cambiarApodoUsuario(apodo) {
     const correo = getCorreoSesion();
-    const fecha_bloqueo = new Date(Date.now() + (24 * 60 * 20 * 1000));
+    const apodoStr = String(apodo);
+    const fecha_bloqueo = new Date(Date.now() + (24 * 60 * 60 * 1000));
     try {
         const r = await User.updateOne(
             { correo },
-            { $set: { apodo, exp_bloq_apodo: fecha_bloqueo } }
+            { $set: { apodo: apodoStr, exp_bloq_apodo: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
-        setApodoSesion(apodo);
+        setApodoSesion(apodoStr);
         setFechaBloqueoApodo(fecha_bloqueo);
         return true;
     } catch (e) {

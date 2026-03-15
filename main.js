@@ -31,6 +31,8 @@ function createMainWindowHome(AutoLogin = false) {
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
             nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
             additionalArguments: [`--start=${AutoLogin}`]
         },
     });
