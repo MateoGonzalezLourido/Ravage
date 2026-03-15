@@ -26,9 +26,9 @@ function Todos_Los_Eventos_Funciones_Ajustes(e) {
             document.querySelector("#text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${apodo}</font>`
             document.querySelector("#text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${correo}</font>`
             document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${fecha_creacion}`
-            if (fecha_bloqueo_apodo != "") document.querySelector("#bt-fecha-bloqueo-apodo").innerHTML = `*Bloqueado: ${fecha_bloqueo_apodo}h`
-            if (fecha_bloqueo_correo != "") document.querySelector("#bt-fecha-bloqueo-correo").innerHTML = `*Bloqueado: ${fecha_bloqueo_correo}h`
-            if (fecha_bloqueo_contraseña != "") document.querySelector("#bt-fecha-bloqueo-contraseña").innerHTML = `*Bloqueado: ${fecha_bloqueo_contraseña}h`
+            if (fecha_bloqueo_apodo != "") document.querySelector("#bt-fecha-bloqueo-apodo").innerHTML = `*Bloqueado: ${fecha_bloqueo_apodo}`
+            if (fecha_bloqueo_correo != "") document.querySelector("#bt-fecha-bloqueo-correo").innerHTML = `*Bloqueado: ${fecha_bloqueo_correo}`
+            if (fecha_bloqueo_contraseña != "") document.querySelector("#bt-fecha-bloqueo-contraseña").innerHTML = `*Bloqueado: ${fecha_bloqueo_contraseña}`
         }
         else {
             document.querySelector("#cuerpo-ajustes-cuenta").classList.remove("flex-display")
@@ -644,7 +644,7 @@ function actualizar_lista_contactos_añadir() {
     function crear_eventos() {
         document.querySelectorAll(".componente-lista-contactos-añadidos-chat-crear").forEach((c) => {
             c.addEventListener("click", (e) => {
-                const id = e.target.dataset.id
+                const id = e.currentTarget.dataset.id
                 quitar_contacto_lista_añadir(id)
             })
         })
@@ -687,8 +687,8 @@ async function url_icono_extension_img(extension) {
     return [url_img, identificado]
 }
 function añadir_contacto_lista_añadir(e) {
-    const id = e.target.dataset.id
-    const nombre = e.target.dataset.nombre
+    const id = e.currentTarget.dataset.id
+    const nombre = e.currentTarget.dataset.nombre
     if (contactos_añadir.findIndex(x => x.id == id) == -1) {
         contactos_añadir.push({ id, nombre })
         actualizar_lista_contactos_añadir()
@@ -742,9 +742,17 @@ async function buscar_ususario_añadir_chat(e) {
 async function crear_chat_nuevo(e) {
     e.preventDefault()
     //hay usuarios para crear chat??
-    if (contactos_añadir.length == 0) return null
+    if (contactos_añadir.length == 0) {
+        window.pushNotificacion({
+            prioridad: 2,
+            texto: "Debes añadir al menos un contacto para crear un chat",
+            tipo: "error"
+        })
+        return null
+    }
 
-    const id_chat = document.querySelector("#bt-agregar-contacto-nuevo")?.dataset.id_chat || null
+    let id_chat = document.querySelector("#bt-agregar-contacto-nuevo")?.dataset.id_chat || null
+    if (id_chat === "null") id_chat = null
 
     //nombre del chat
     let nombre = document.querySelector("#nombre-chat-nuevo-crear").value.trim()
@@ -754,8 +762,39 @@ async function crear_chat_nuevo(e) {
         nombre = contactos_añadir[0].nombre
     }
 
-    //sacar el id del usuario
-    const ids = []
+    //sacar el id de los usuarios, asegurando que son válidos
+    const ids = contactos_añadir
+        .map(c => c.id)
+        .filter(id => id && id !== "null" && id !== "undefined");
+
+    if (ids.length === 0) {
+        console.warn("No hay IDs de contacto válidos para crear el chat");
+        return null;
+    }
+
+    try {
+        console.log("Creando chat con IDs:", ids, "Nombre:", nombre, "ID Chat (añadir):", id_chat)
+        const result = await window.chats.CREAR_CHAT_NUEVO(ids, nombre, id_chat)
+        if (result) {
+            console.log("Chat creado/actualizado con éxito:", result)
+            desplegar_menu_añadir_chat({ mostrar: false })
+            await ACTUALIZAR_LISTAS_CHAT()
+            window.pushNotificacion({
+                prioridad: 1,
+                texto: id_chat ? "Usuarios añadidos al chat" : "Chat creado con éxito",
+                tipo: "success"
+            })
+        } else {
+            console.warn("La creación del chat no devolvió un resultado positivo")
+        }
+    } catch (err) {
+        console.error("Error al crear chat:", err)
+        window.pushNotificacion({
+            prioridad: 0,
+            texto: "Error al crear el chat. Consulta la consola para más detalles.",
+            tipo: "error"
+        })
+    }
 }
 const chat_componente_lista_structura_html = (datos_usar) => {
     function nombre() {
@@ -938,7 +977,7 @@ async function Crear_chat_html(datos, id_propio) {
                 else return fecha_ultimo.toDateString()
             }
             if (fecha_actual.toDateString() !== fecha_comparar.toDateString() || !fecha_ultimo) {
-                html += `<div class="fecha-mensaje-chat"> <span>${texto_mostrar_fecha_mensajes_bloque(fecha_actual)}</span></div> `
+                html += `<div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(fecha_actual)}</span></div> `
             }
             fecha_ultimo = m.data
             html += (await crear_mensaje_html(m, id_propio, nombres_contactos))
@@ -1080,7 +1119,6 @@ async function mostrar_datos_chat_usaurios(e) {
     })
 
     document.querySelector("#bt-ver-archivos-chat")?.addEventListener("click", () => {
-        console.log("Abriendo archivos del chat:", id_chat)
         // TODO: Implementar el menú de archivos mandados
     })
 
@@ -1198,7 +1236,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
             //HAY QUE MIRAR SI ES UN GRUPO, SI ES SE COJE EL NOMBRE DE CHATSRAVAGE, SI NO LOS ES SE BUSCA EL ID DEL OTRO USUARIO Y LUEGO EN CONTACTOS SE MIRA SI LO TENGO AGREGADO, SINO SE BUSCA ESE ID POR LA BASE DE DATOS DE USUARIO Y COJEMOS ESE APODO
             let nombre = ""
             //buscar el chat
-            const indice_chat = datos_chats_grupales.findIndex(x => x.id == c._id)
+            const indice_chat = datos_chats_grupales.findIndex(x => x.id == c.id)
             if (indice_chat == -1) throw "ESTE CHAT NO EXISTE EN DB"
             if (c.grupo) {//cojer el nombre del chat
                 nombre = datos_chats_grupales[indice_chat].nombre
@@ -1269,30 +1307,35 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 const elementos = document.querySelectorAll(".fecha-bloque-mensajes");
                 const fixed_text = "text-fecha-bloques-mensajes-fixed"
                 const observer = new IntersectionObserver((entries) => {
-
                     entries.forEach(entry => {
-
-                        const html = entry.target.innerHTML;
-
+                        const html = entry.target.querySelector("span")?.innerHTML || entry.target.innerHTML;
                         if (entry.isIntersecting) {
-                            // cuando se ve
-                            entry.target.classList.remove(fixed_text)
+                            // Si el bloque es visible, quitamos el flotante que coincida con su texto
+                            const flotantes = document.querySelectorAll(`.${fixed_text}`);
+                            flotantes.forEach(f => {
+                                if (f.querySelector("span")?.innerHTML === html) f.remove();
+                            });
                         } else {
-                            // cuando deja de verse (si no es hoy)
-                            if (!html.includes("Hoy")) mostrarFechaBloqueMensajes(html);
+                            // Cuando el bloque deja de verse por arriba (boundingClientRect.top < 0)
+                            if (entry.boundingClientRect.top < 0 && !html.includes("Hoy")) {
+                                mostrarFechaBloqueMensajes(html);
+                            }
                         }
-
                     });
-
-                });
+                }, { threshold: [0, 1] });
+                
                 elementos.forEach(el => observer.observe(el));
+                
                 function mostrarFechaBloqueMensajes(html) {
                     const contenedor = document.querySelector("#chat-usuario");
+                    // Evitar duplicados del mismo texto
+                    if (Array.from(document.querySelectorAll(`.${fixed_text} span`)).some(s => s.innerHTML === html)) return;
+                    
                     const hijo = document.createElement("div");
-                    const text = document.createElement("span")
-                    text.innerHTML = html
-                    hijo.appendChild(text)
-                    hijo.classList.add(fixed_text)
+                    const text = document.createElement("span");
+                    text.innerHTML = html;
+                    hijo.appendChild(text);
+                    hijo.classList.add(fixed_text);
                     contenedor.appendChild(hijo);
                 }
                 //eventos
@@ -1792,11 +1835,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         }
         else if (tp === 4) {//expulsado de un chat
-            if (await Es_usuario_Sesion(entrada.data.expulsado)) {
+            const expulsadoId = entrada.data.expulsado;
+            const isMe = await Es_usuario_Sesion(expulsadoId);
+            const nombreExpulsado = isMe ? "Te" : await Encontrar_Nombre_Chat_Usuario({ id_buscar: expulsadoId });
+            const chatNombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat });
 
-            }
-            else {
-
+            if (isMe) {
+                await ACTUALIZAR_LISTAS_CHAT();
+                if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
+                    document.querySelector("#chat-usuario").innerHTML = "";
+                }
+                window.pushNotificacion({
+                    prioridad: 0,
+                    texto: `Has sido expulsado del chat ${chatNombre || ""}`,
+                    tipo: "error"
+                });
+            } else {
+                window.pushNotificacion({
+                    prioridad: 1,
+                    texto: `${nombreExpulsado} ha sido expulsado del chat ${chatNombre || ""}`,
+                    tipo: "info"
+                });
             }
             //actualizar chat
             Actualizar_render_chat({
@@ -1897,7 +1956,7 @@ async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true }) {
 //COMPROBAR SI ES UN CONTACTO DEL USUARIO
 async function Es_Contacto_Usuario(usuario_comprobar) {
     //obtener contactos usuario
-    const contactos = await window.cuenta_usuario.OBTENER_CONTACTOS_USUARIO()
+    const contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
     return contactos.includes(usuario_comprobar)
 }
 //COMPROBAR SI ES EL USUARIO DE LA SESION

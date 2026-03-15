@@ -2,29 +2,21 @@ import { ChatsRavage } from '../models/Chat.js';
 import { User } from '../models/User.js';
 import { MessagesRavage } from '../models/Message.js';
 import { mongoose, ObjectId } from '../utils/libs.js';
+import { convertirObjectId } from '../utils/conversores.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
-
-function convertirObjectId(v) {
-    if (v instanceof ObjectId) return v.toString();
-    if (Array.isArray(v)) return v.map(convertirObjectId);
-    if (v && typeof v === "object") {
-        for (const k in v) v[k] = convertirObjectId(v[k]);
-    }
-    return v;
-}
 
 export async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
     try {
         const chatIds = data
             .filter(c => grupales === null || c.grupo === grupales)
-            .map(c => c.id);
+            .map(c => c.id || c._id)
+            .filter(id => id && id !== "null" && id !== "undefined" && mongoose.Types.ObjectId.isValid(id));
 
         if (chatIds.length === 0) return [];
 
         const data_obtenida = await ChatsRavage.find(
-            { _id: { $in: chatIds } },
-            { _id: 1 }
+            { _id: { $in: chatIds } }
         ).lean();
 
         if (mensajes) {
@@ -45,11 +37,18 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
         if (!id_chat || !mongoose.Types.ObjectId.isValid(id_chat)) return null;
 
         const projection = datos_buscar
-            ? { [datos_buscar]: 1, _id: 0 }
-            : { _id: 0 };
+            ? { [datos_buscar]: 1 }
+            : {};
 
         const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
         if (!data_obtenida) return null;
+
+        // Si no se pide un dato específico, buscar también los mensajes
+        if (!datos_buscar) {
+            data_obtenida.mensajes = await MessagesRavage.find({ 
+                id_chat: new mongoose.Types.ObjectId(id_chat) 
+            }).sort({ data: 1 }).lean();
+        }
 
         return convertirObjectId(data_obtenida);
     } catch (e) {
@@ -62,71 +61,118 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null) 
     if (!ids || ids.length === 0) return false;
     const id_propio = getIDMongodbUsuario();
 
-    if (id_chat) {
-        const chat = await ChatsRavage.findById(id_chat);
-        if (!chat || chat?.grupo) return false;
+    // Limpiar id_chat por si viene "null" como string
+    let chatIdLimpio = id_chat;
+    if (chatIdLimpio === "null" || chatIdLimpio === "undefined" || chatIdLimpio === "") chatIdLimpio = null;
+    
+    // Validar si es un ObjectId real
+    const esIdentificadorValido = chatIdLimpio && mongoose.Types.ObjectId.isValid(chatIdLimpio);
 
-        const ids_añadir = ids.filter(id => !chat.usuarios.includes(id));
-        if (ids_añadir.length === 0) return false;
+    if (esIdentificadorValido) {
+        const chat = await ChatsRavage.findById(chatIdLimpio);
+        if (!chat) return false;
+
+        const ids_añadir = ids.filter(id => !chat.usuarios.some(uid => uid.toString() === id.toString()));
+        if (ids_añadir.length === 0) return true; // Ya estaban todos
 
         await ChatsRavage.updateOne(
-            { _id: id_chat },
-            { $addToSet: { usuarios: { $each: ids_añadir } } }
+            { _id: chatIdLimpio },
+            { $addToSet: { usuarios: { $each: ids_añadir.map(id => new mongoose.Types.ObjectId(id)) } } }
         );
 
-        const specialMessages = ids_añadir.map(id => ({
-            id_chat: id_chat,
-            emisor: id_propio,
-            especial: { tipo: 0, emisor: id_propio, añadido: id }
-        }));
-        const msgs = await MessagesRavage.insertMany(specialMessages);
-        const mensajeID = msgs[msgs.length - 1]?._id;
+        // Actualizar a los usuarios existentes (y nuevos) en su lista de chats (User.chats)
+        // Esto es importante para que se actualice el ultimoCambio
+        const ids_totales = [...chat.usuarios, ...ids_añadir];
+        await User.updateMany(
+            { _id: { $in: ids_totales } },
+            {
+                $set: {
+                    "chats.$[chat].ultimoCambio": new Date(),
+                    "chats.$[chat].ultimomensaje": "Añadido nuevo usuario"
+                }
+            },
+            { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(chatIdLimpio) }] }
+        );
 
-        const ids_mandar_mensaje = [...chat.usuarios, ...ids_añadir].filter(x => x != id_propio);
-        for (const id_destinatario of ids_mandar_mensaje) {
-            Añadir_Entrada_Buzon_Usuario({ 
-                ids: id_destinatario, 
-                tipo: 1, 
-                data: { chat: id_chat, emisor: id_propio, añadido: id_destinatario, mensaje: mensajeID } 
-            }).catch(e => console.error(e));
+        // Si algún usuario nuevo no tenía el chat en su lista, hay que añadírselo
+        for (const id_nuevo of ids_añadir) {
+            await User.updateOne(
+                { _id: id_nuevo, "chats.id": { $ne: new mongoose.Types.ObjectId(chatIdLimpio) } },
+                {
+                    $push: {
+                        chats: {
+                            id: new mongoose.Types.ObjectId(chatIdLimpio),
+                            nombre: chat.nombre,
+                            grupo: chat.grupo,
+                            ultimoCambio: new Date(),
+                            ultimomensaje: "Bienvenido al chat"
+                        }
+                    }
+                }
+            );
         }
+
+        const msgEspecial = await MessagesRavage.create({
+            id_chat: chatIdLimpio,
+            emisor: id_propio,
+            especial: { tipo: 0, emisor: id_propio, añadido: ids_añadir[0] }
+        });
+
+        const ids_notificar = ids_totales.filter(x => x.toString() !== id_propio.toString());
+        Añadir_Entrada_Buzon_Usuario({ 
+            ids: ids_notificar, 
+            tipo: 1, 
+            data: { 
+                chat: chatIdLimpio, 
+                emisor: id_propio, 
+                usuarios: ids_añadir, 
+                añadido: ids_añadir[0], 
+                mensaje: msgEspecial._id 
+            } 
+        }).catch(e => console.error(e));
 
         return true;
     }
 
-    const grupo = ids.length !== 1;
+    // CREAR CHAT NUEVO
+    const grupo = ids.length !== 1 || nombre !== "";
     const ids_total = [...ids, id_propio];
     let datos_chat;
 
     try {
         datos_chat = await ChatsRavage.create({
-            nombre: grupo ? nombre : "",
-            usuarios: ids_total,
+            nombre: grupo ? (nombre || "Grupo sin nombre") : "",
+            usuarios: ids_total.map(id => new mongoose.Types.ObjectId(id)),
             grupo
         });
 
         await User.updateMany(
             { _id: { $in: ids_total } },
             {
-                $addToSet: {
+                $push: {
                     chats: {
                         id: datos_chat._id,
                         nombre: datos_chat.nombre,
                         grupo: datos_chat.grupo,
                         ultimoCambio: new Date(),
-                        ultimomensaje: "Bienvenido😀"
+                        ultimomensaje: "Chat recién creado"
                     }
                 }
             }
         );
 
+        if (!grupo) {
+            const { AÑADIR_CONTACTO } = await import('./UserRepository.js');
+            await AÑADIR_CONTACTO(ids[0], nombre);
+        }
+
         Añadir_Entrada_Buzon_Usuario({ 
-            ids: ids_total, 
+            ids: ids_total.filter(id => id.toString() !== id_propio.toString()), 
             tipo: 2, 
-            data: { creador: id_propio, id_chat: datos_chat._id } 
+            data: { creador: id_propio, chat: datos_chat._id } 
         }).catch(e => console.error(e));
 
-        return datos_chat;
+        return convertirObjectId(datos_chat.toObject());
     } catch (e) {
         if (datos_chat?._id) await ChatsRavage.deleteOne({ _id: datos_chat._id });
         throw e;
@@ -141,17 +187,28 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
         const existe = chat.usuarios.some(usuario => usuario.toHexString() === id_usuario);
         if (!existe) return false;
 
-        chat.usuarios = chat.usuarios.filter(usuario => usuario.toHexString() != id_usuario);
+        // Actualizar la lista de usuarios en el chat (MongoDB)
+        await ChatsRavage.updateOne(
+            { _id: id_chat },
+            { $pull: { usuarios: new mongoose.Types.ObjectId(id_usuario) } }
+        );
 
+        // Actualizar a los demás usuarios para que vean "Usuario expulsado"
         await User.updateMany(
-            { _id: { $in: chat.usuarios } },
+            { _id: { $in: chat.usuarios.filter(u => u.toHexString() !== id_usuario) } },
             {
                 $set: {
                     "chats.$[chat].ultimoCambio": new Date(),
                     "chats.$[chat].ultimomensaje": "Usuario expulsado"
                 }
             },
-            { arrayFilters: [{ "chat.id": chat._id?.toHexString() }] }
+            { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }] }
+        );
+
+        // Quitarle el chat al usuario expulsado
+        await User.updateOne(
+            { _id: id_usuario },
+            { $pull: { chats: { id: new mongoose.Types.ObjectId(id_chat) } } }
         );
 
         const msgExpulsion = await MessagesRavage.create({

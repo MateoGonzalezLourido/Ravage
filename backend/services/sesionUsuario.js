@@ -31,20 +31,10 @@ function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
     storage.setFechaBloqueoApodo(!limpiar ? data.exp_bloq_apodo : null)
     storage.setFechaBloqueoCorreo(!limpiar ? data.exp_bloq_correo : null)
     storage.setFechaBloqueoContraseña(!limpiar ? data.exp_bloq_contrasena : null)
-    storage.setUsuariosSilence(!limpiar ? String(data.users_silence) : [])
-    storage.setUsuariosBloqueados(!limpiar ? String(data.users_bloq) : [])
+    storage.setUsuariosSilence(!limpiar ? data.users_silence : []);
+    storage.setUsuariosBloqueados(!limpiar ? data.users_bloq : []);
     storage.setIdDispositivo(!limpiar ? String(machineIdSync()) : null)
     storage.setSecretKEY(!limpiar ? data.secretKey : null)
-    storage.setListaChats(
-        !limpiar
-            ? data.chats.map(c => ({
-                id: c.id.toString(),          // ObjectId -> string
-                apodo: c.apodo || "",         // evitar undefined
-                grupo: !!c.grupo,             // boolean
-                ultimoCambio: new Date(c.ultimoCambio).toISOString() // Date -> string ISO
-            }))
-            : []
-    );
     storage.setListaChats(
         !limpiar
             ? data.chats.map(c => ({

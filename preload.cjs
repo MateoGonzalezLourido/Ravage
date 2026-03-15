@@ -139,8 +139,8 @@ contextBridge.exposeInMainWorld('chats', {
     LIMPIAR_MENSAJES_CHATS_ANTIGUOS: (chatIds) => {
         ipcRenderer.send("limpiar-chats-antiguos-mensajes", chatIds)
     },
-    CREAR_CHAT_NUEVO: (ids, nombre, id_chat) => {
-        return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre, id_chat = null)
+    CREAR_CHAT_NUEVO: (ids, nombre, id_chat = null) => {
+        return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre, id_chat)
     },
     ENVIAR_MENSAJE: ({ asunto, archivos, id_chat, id_emisor }) => {
         return ipcRenderer.invoke("enviar-mensaje", { asunto, archivos, id_chat, id_emisor })

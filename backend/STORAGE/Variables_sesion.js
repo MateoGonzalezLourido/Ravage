@@ -32,39 +32,69 @@ export const setFechaCreacionCuenta = (fecha = null) => {
 };
 export const getFechaCreacionCuenta = () => FechaCreacionCuenta;
 export const setFechaBloqueoApodo = (fecha) => {
-    if (!fecha) FechaBloqueoApodo = "";
+    if (!fecha) {
+        FechaBloqueoApodo = "";
+        return;
+    }
 
     const ahora = new Date();
-    const d = new Date(fecha); // Date de Mongo
+    const d = new Date(fecha); 
 
-    const msRestantes = d - ahora;          // diferencia en ms
-    const horasRestantes = Math.max(0, Math.floor(msRestantes / (1000 * 60 * 60)));
+    const msRestantes = d - ahora;
+    if (msRestantes <= 0) {
+        FechaBloqueoApodo = "";
+        return;
+    }
 
-    FechaBloqueoApodo = horasRestantes;
+    const horas = Math.floor(msRestantes / (1000 * 60 * 60));
+    const minutos = Math.floor((msRestantes % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (horas > 0) FechaBloqueoApodo = `${horas}h ${minutos}m`;
+    else FechaBloqueoApodo = `${minutos}m`;
 };
 export const getFechaBloqueoApodo = () => FechaBloqueoApodo;
 export const setFechaBloqueoCorreo = (fecha) => {
-    if (!fecha) FechaBloqueoCorreo = "";
+    if (!fecha) {
+        FechaBloqueoCorreo = "";
+        return;
+    }
 
     const ahora = new Date();
-    const d = new Date(fecha); // Date de Mongo
+    const d = new Date(fecha); 
 
-    const msRestantes = d - ahora;          // diferencia en ms
-    const horasRestantes = Math.max(0, Math.floor(msRestantes / (1000 * 60 * 60)));
+    const msRestantes = d - ahora;
+    if (msRestantes <= 0) {
+        FechaBloqueoCorreo = "";
+        return;
+    }
 
-    FechaBloqueoCorreo = horasRestantes;
+    const horas = Math.floor(msRestantes / (1000 * 60 * 60));
+    const minutos = Math.floor((msRestantes % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (horas > 0) FechaBloqueoCorreo = `${horas}h ${minutos}m`;
+    else FechaBloqueoCorreo = `${minutos}m`;
 };
 export const getFechaBloqueoCorreo = () => FechaBloqueoCorreo;
 export const setFechaBloqueoContraseña = (fecha) => {
-    if (!fecha) FechaBloqueoContraseña = "";
+    if (!fecha) {
+        FechaBloqueoContraseña = "";
+        return;
+    }
 
     const ahora = new Date();
-    const d = new Date(fecha); // Date de Mongo
+    const d = new Date(fecha); 
 
-    const msRestantes = d - ahora;          // diferencia en ms
-    const horasRestantes = Math.max(0, Math.floor(msRestantes / (1000 * 60 * 60)));
+    const msRestantes = d - ahora;
+    if (msRestantes <= 0) {
+        FechaBloqueoContraseña = "";
+        return;
+    }
 
-    FechaBloqueoContraseña = horasRestantes;
+    const horas = Math.floor(msRestantes / (1000 * 60 * 60));
+    const minutos = Math.floor((msRestantes % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (horas > 0) FechaBloqueoContraseña = `${horas}h ${minutos}m`;
+    else FechaBloqueoContraseña = `${minutos}m`;
 };
 export const getFechaBloqueoContraseña = () => FechaBloqueoContraseña;
 

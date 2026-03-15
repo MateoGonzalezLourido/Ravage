@@ -8,7 +8,13 @@ import {
     getUsuariosBloqueados, 
     getUsuariosSilence, 
     setUsuariosBloqueados, 
-    setUsuariosSilence 
+    setUsuariosSilence,
+    setFechaBloqueoContraseña,
+    setFechaBloqueoCorreo,
+    setFechaBloqueoApodo,
+    setApodoSesion,
+    setCorreoSesion,
+    getIDMongodbUsuario
 } from '../STORAGE/Variables_sesion.js';
 
 export async function LoginUsuarioDB({ correo = null, contraseña = null, token = null, id_dp = null, bloqueada = false }) {
@@ -51,12 +57,15 @@ export async function LoginUsuarioDB({ correo = null, contraseña = null, token 
 
 export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, secretKey, idamigo }) {
     try {
+        const sKey = secretKey || randomBytes(32).toString("hex");
+        const idAmigo = idamigo || randomBytes(5).toString("hex").toUpperCase();
+        
         await User.create({
             apodo,
             correo,
             contrasena: contraseña,
-            secretKey,
-            idamigo
+            secretKey: sKey,
+            idamigo: idAmigo
         });
         return true;
     } catch (e) {
@@ -85,12 +94,14 @@ export async function BorrarUsuarioActivo() {
     await ActiveUser.deleteOne({ id_dp: deviceId });
 }
 
-export async function añadirUsuariosBloqueados(id, apodo) {
+export async function añadirUsuariosBloqueados(id) {
     const correo = getCorreoSesion();
-    let lista_bloqueados = getUsuariosBloqueados();
-    if (lista_bloqueados.some(sub => sub.includes(id))) return false;
+    let lista_bloqueados = getUsuariosBloqueados(); // Esta lista ya debería tener solo IDs (strings o ObjectIds)
+    const idStr = id.toString();
+    
+    if (lista_bloqueados.some(bid => bid.toString() === idStr)) return false;
 
-    lista_bloqueados.push([id, apodo]);
+    lista_bloqueados.push(new mongoose.Types.ObjectId(idStr));
 
     try {
         const r = await User.updateOne(
@@ -109,7 +120,8 @@ export async function añadirUsuariosBloqueados(id, apodo) {
 export async function eliminarUsuariosBloqueados(id) {
     const correo = getCorreoSesion();
     let lista_bloqueados = getUsuariosBloqueados();
-    const index = lista_bloqueados.findIndex(sub => sub.includes(id));
+    const idStr = id.toString();
+    const index = lista_bloqueados.findIndex(bid => bid.toString() === idStr);
     if (index === -1) return false;
 
     lista_bloqueados.splice(index, 1);
@@ -198,7 +210,12 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
     const datos_buscar = datos_usar || "correo apodo visible idamigo";
     const usuario = await User.findById(id, datos_buscar).lean();
     if (!usuario) return null;
-    return { ...usuario, _id: usuario._id?.toString() };
+    const result = { ...usuario };
+    if (result._id) {
+        result.id = result._id.toString();
+        result._id = result.id;
+    }
+    return result;
 }
 
 export async function encontrar_usuario(texto, correo = false) {
@@ -238,7 +255,8 @@ export async function AÑADIR_CONTACTO(id, nombre) {
 export async function eliminarUsuariosSilenciados(id) {
     const correo = getCorreoSesion();
     let lista_silenciados = getUsuariosSilence();
-    const index = lista_silenciados.findIndex(sub => sub.includes(id));
+    const idStr = id.toString();
+    const index = lista_silenciados.findIndex(sid => sid.toString() === idStr);
     if (index === -1) return false;
 
     lista_silenciados.splice(index, 1);
@@ -253,12 +271,13 @@ export async function eliminarUsuariosSilenciados(id) {
     }
 }
 
-export async function añadirUsuariosSilenciados(id, apodo) {
+export async function añadirUsuariosSilenciados(id) {
     const correo = getCorreoSesion();
     let lista_silenciados = getUsuariosSilence();
-    if (lista_silenciados.some(sub => sub.includes(id))) return false;
+    const idStr = id.toString();
+    if (lista_silenciados.some(sid => sid.toString() === idStr)) return false;
 
-    lista_silenciados.push([id, apodo]);
+    lista_silenciados.push(new mongoose.Types.ObjectId(idStr));
     try {
         const r = await User.updateOne({ correo }, { $set: { users_silence: lista_silenciados } });
         if (r.matchedCount === 0) return false;
