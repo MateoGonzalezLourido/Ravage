@@ -18,6 +18,7 @@ import {
 import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js';
 import { iniciarBuzon } from '../services/buzon.js';
+const authorizedPaths = new Set();
 
 export function registerChatHandlers(mainWindow, socket) {
     ipcMain.handle("obtener-chats-usuario", () => {
@@ -48,15 +49,23 @@ export function registerChatHandlers(mainWindow, socket) {
         return await saveAjustesAppFile({ data })
     })
 
-    ipcMain.handle("enviar-mensaje", async (_, { asunto, archivos, id_chat, id_emisor }) => {
-        return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
-    })
-
     ipcMain.handle("seleccionar-archivos", async () => {
         const { filePaths } = await dialog.showOpenDialog(mainWindow, {
             properties: ["openFile", "multiSelections"]
         })
+        filePaths.forEach(p => authorizedPaths.add(p))
         return filePaths
+    })
+
+    ipcMain.handle("enviar-mensaje", async (_, { asunto, archivos, id_chat, id_emisor }) => {
+        // Validar que todas las rutas hayan sido autorizadas por el diálogo
+        for (const arc of archivos) {
+            if (!authorizedPaths.has(arc.ruta)) {
+                console.error("Acceso a ruta no autorizada bloqueado:", arc.ruta);
+                throw new Error("Unauthorized path access");
+            }
+        }
+        return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
     })
 
     ipcMain.handle("descargar-archivo", async (_, id, nombre) => {

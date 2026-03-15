@@ -19,6 +19,7 @@ import {
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, compare, createHash, machineIdSync } from '../utils/libs.js';
+import validator from 'validator';
 
 let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
@@ -62,10 +63,14 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     //verificar si estan todos los datos
     if (!data || (!data.username || !data.token)) {
         console.error("*Autologin: datos de fichero no validos")
-        return { success: false }; //fichero vacio o faltan datos
+        return { success: false }; 
     }
+    
+    const username = String(data.username);
+    const token = String(data.token);
+
     //comprobacion inicial de si es un correo
-    const VCorreo = comprobaciones_Correo(data.username)
+    const VCorreo = comprobaciones_Correo(username)
     if (!VCorreo.success) {//no es valido
         console.error("*Autologin: correo no valido")
         clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
@@ -115,40 +120,41 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
 
-    if (!correo || !password) {
-        bloquear_accion = false
-        return { success: false, message: "Faltan datos para registrar el usuario" }
-    }
+    const correoStr = String(correo).toLowerCase();
+    const passwordStr = String(password);
+    const apodoStr = String(apodo);
+
     //comprobacion inicial de si es un correo
-    const resultado = comprobaciones_Correo(correo)
+    const resultado = comprobaciones_Correo(correoStr)
     if (!resultado.success) {
         bloquear_accion = false
         return { success: false, message: resultado.message }
     }
     //verificar si no existe un usuario igual
-    const existe = await User.exists({ correo });
+    const existe = await User.exists({ correo: correoStr });
     if (existe) {
         bloquear_accion = false
         return { success: false, message: "Correo ya registrado" };
     }
     //guardar vairables para pasarlas a la validacion por correo
-    contraseña_hashed = await hash(password, saltos_contraseña);//contraseña hasheada
-    const apodo_valido = comprobar_apodo(apodo)
+    contraseña_hashed = await hash(passwordStr, saltos_contraseña);//contraseña hasheada
+    const apodo_valido = comprobar_apodo(apodoStr)
     if (!apodo_valido.success) {
         bloquear_accion = false
         return { success: false, message: apodo_valido.message }
     }
-    apodo_usuario = apodo
+    apodo_usuario = apodoStr;
+    const correo_uso = correoStr;
 
     //crear verificacion por codigo de correo
     const code_generado = String(generarCodigoVerificacion())
     //generar correo
-    const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodo, code: code_generado })
+    const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado })
     //insertar codigo en mongodb
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-    InsertarVC({ correo: correo, code: code_generado, id: deviceId })
+    const deviceId = String(machineIdSync()); 
+    InsertarVC({ correo: correoStr, code: code_generado, id: deviceId })
     //enviar correo
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+    enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido })
 
     //intentos para poder poner el codigo correcto de verificacion
     intentos_codigo_validacion = n_intentos_codigo_validacion
@@ -160,6 +166,9 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
 
+    const codeStr = String(code);
+    const correoStr = String(correo);
+
     intentos_codigo_validacion--
     //verificar si ya habia cabado los intentos
     if (intentos_codigo_validacion < 0) {
@@ -167,27 +176,27 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         return { success: false, message: "Fallo al crear el usuario:intentos acabados" }
     }
     //mirar si es codigo valido
-    if (code.length > 6) {
+    if (codeStr.length > 6) {
         bloquear_accion = false
         return { success: false, message: "Código muy largo" }
     }
-    if (isNaN(Number(code))) {
+    if (validator.isNumeric(codeStr) === false) {
         bloquear_accion = false
         return { success: false, message: "Código no numérico" }
     }
     //cojer el ultimo codigo generado
-    const codehash = createHash("sha256").update(code).digest("hex");//crear hash del code
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+    const codehash = createHash("sha256").update(codeStr).digest("hex");
+    const deviceId = String(machineIdSync()); 
 
-    const code_db = await ValidationCode.exists({ correo, code: codehash, id_dp: deviceId })
-    if (!code_db) {//no hay codes
+    const code_db = await ValidationCode.exists({ correo: correoStr, code: codehash, id_dp: deviceId })
+    if (!code_db) {
         contraseña_hashed = null;
         apodo_usuario = null;
         bloquear_accion = false
         return { success: false, message: "Fallo al crear el usuario: no existe ese código" };
     }
     //crear nueva cuenta de usuario
-    const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correo });
+    const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correoStr });
     if (!nuevoUsuario) {//error
         BorrarVC(correo)//borrar codigos
         contraseña_hashed = null;
@@ -211,29 +220,32 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
 
+    const usernameStr = String(username).toLowerCase();
+    const contraseñaStr = String(contraseña);
+
     //limpiar cosas del registro si hubiese
-    if (apodo_usuario || apodo_usuario) {
+    if (apodo_usuario) {
         contraseña_hashed = null;
         apodo_usuario = null;
     }
     //comprobacion inicial de si es un correo
-    const resultado = comprobaciones_Correo(username)
+    const resultado = comprobaciones_Correo(usernameStr)
     if (!resultado.success) {
         bloquear_accion = false
         return { success: false, message: resultado.message }
     }
     //comprobar si este dp no esta bloqueado
-    const deviceId = String(machineIdSync());// por defecto devuelve un hash único de la máquina
-    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo: username, id_dp: deviceId })
+    const deviceId = String(machineIdSync());
+    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo: usernameStr, id_dp: deviceId })
     if (dp_bloqueado_db) {
         bloquear_accion = false
         return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
     }
     //iniciar sesion
-    const usuario_data = await LoginUsuarioDB({ correo: username, contraseña: contraseña })
+    const usuario_data = await LoginUsuarioDB({ correo: usernameStr, contraseña: contraseñaStr })
     if (!usuario_data || !usuario_data.success) {
         bloquear_accion = false
-        clearFileSession('sessionFile');// datos incorrectos → limpiar sesión
+        clearFileSession('sessionFile');
         return { success: false, message: 'Usuario no encontrado' }
     }
     //dispositivo confianza
@@ -376,33 +388,41 @@ async function cerrarSesionUsuario(correo) {
 
 //TODO: añadir mas verificaciones
 function comprobaciones_Correo(correo) {
-    let success = true;
-    let message = "Username válido";
-    //validaciones
-    if (/[A-Z]/.test(correo)) { success = false; message = "El correo no puede contener mayúsculas"; }
-    else if (correo.indexOf("@") == -1) { success = false; message = "No es un correo"; }
+    if (typeof correo !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
+    
+    if (!validator.isEmail(correo)) {
+        return { success: false, message: "Correo electrónico no válido" };
+    }
+    
+    if (/[A-Z]/.test(correo)) {
+        return { success: false, message: "El correo debe estar en minúsculas" };
+    }
 
-    //resultado
-    return { success: success, message: message }
+    return { success: true, message: "Correo válido" };
 }
-//TODO: añadir mas verificaciones
+
 function comprobar_apodo(apodo) {
-    let success = true;
-    let message = "Username válido";
-    //validaciones
-    // solo letras, números, guion y guion bajo
-    if (!(/^[a-zA-Z0-9_-]+$/.test(apodo))) { success = false; message = "Apodo: solo letras, números, guión y guión bajo"; }
+    if (typeof apodo !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
 
-    //resultado
-    return { success: success, message: message }
+    if (!validator.isAlphanumeric(apodo, 'es-ES', { ignore: '_-' })) {
+        return { success: false, message: "Apodo: solo letras, números, guión y guión bajo" };
+    }
+    
+    if (apodo.length < 3 || apodo.length > 20) {
+        return { success: false, message: "Apodo: debe tener entre 3 y 20 caracteres" };
+    }
+
+    return { success: true, message: "Apodo válido" };
 }
-//TODO: añadir mas verificaciones
-function comprobarContrasenaValidaciones(contraseña) {
-    let success = true;
-    let message = "Username válido";
-    //validaciones
 
-    return { success: success, message: message }
+function comprobarContrasenaValidaciones(contraseña) {
+    if (typeof contraseña !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
+    
+    if (contraseña.length < 8) {
+        return { success: false, message: "La contraseña debe tener al menos 8 caracteres" };
+    }
+
+    return { success: true, message: "Contraseña válida" };
 }
 async function comprobar_contraseña_cuenta(contraseña) {
     const correo = storage.getCorreoSesion()
