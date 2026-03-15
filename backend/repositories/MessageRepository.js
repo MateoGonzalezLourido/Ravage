@@ -2,6 +2,7 @@ import { MessagesRavage } from '../models/Message.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { User } from '../models/User.js';
 import { mongoose, GridFSBucket, ObjectId, fs } from '../utils/libs.js';
+import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 
 export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }) {
@@ -36,8 +37,8 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         }
 
         const mensaje = {
-            id_chat,
-            emisor: id_emisor,
+            id_chat: new mongoose.Types.ObjectId(id_chat),
+            emisor: new mongoose.Types.ObjectId(id_emisor),
             contenido: [{ asunto, archivos: contenido_archivos }],
             data: new Date()
         };
@@ -54,15 +55,15 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                     }
                 },
                 {
-                    arrayFilters: [{ "chat.id": chat._id?.toHexString() }]
+                    arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }]
                 }
             );
         })();
 
         Añadir_Entrada_Buzon_Usuario({ 
-            ids: chat.usuarios?.filter(id => id !== id_emisor), 
+            ids: chat.usuarios?.filter(id => id.toString() !== id_emisor.toString()), 
             tipo: 0, 
-            data: { id_chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() } 
+            data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() } 
         }).catch(e => console.error(e));
 
         return true;
@@ -76,7 +77,7 @@ export async function obtener_datos_mensaje(id_chat, id_mensaje) {
     try {
         const mensaje = await MessagesRavage.findOne({ id_chat, _id: id_mensaje }).lean();
         if (!mensaje) return null;
-        return mensaje;
+        return convertirObjectId(mensaje);
     } catch (e) {
         console.error(e);
         return null;
@@ -98,10 +99,14 @@ export async function limpiar_mensajes_chats_antiguos(chatIdsRaw) {
 }
 
 export async function DESCARGAR_ARCHIVO(id, nombre) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        console.error("ID de archivo no válido:", id);
+        return false;
+    }
     const bucket = new GridFSBucket(mongoose.connection.db, {
         bucketName: "ArchivosChats"
     });
-    const downloadStream = bucket.openDownloadStream(new ObjectId(id));
+    const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(id));
     const { getAjustesAppFile } = await import('../services/controladorArchivos.js');
     const ruta_principal = await getAjustesAppFile("URL_DESCARGA");
 

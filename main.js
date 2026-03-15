@@ -1,6 +1,8 @@
-/*Importar funciones y lirberias */
+import { app, BrowserWindow, ipcMain, path } from './backend/utils/libs.js';
+import { fileURLToPath } from 'url';
 
-import { app, BrowserWindow, ipcMain, path, __fileURLToPath, __dirname } from './backend/utils/libs.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 // carga variables de entorno
 import 'dotenv/config';
 

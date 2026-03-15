@@ -1,6 +1,6 @@
 // Node nativo
 import fs from 'fs';
-import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
+import { createHash, randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
@@ -11,7 +11,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 // Dependencias externas
 import { hash, compare } from 'bcryptjs';
 import pkgMachineId from 'node-machine-id';
-import { sign, verify } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 
 // Mongoose & MongoDB
@@ -25,10 +25,11 @@ import { Server } from 'socket.io';
 
 // Funciones extraídas
 const { machineIdSync } = pkgMachineId;
-
+const { sign, verify } = jwt;
 // Opcional: definir __dirname en ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 
 export {
     // Bcrypt
@@ -45,6 +46,7 @@ export {
     createCipheriv,
     createDecipheriv,
     //node 
+    path,
     fs,
     //Electron
     app,

@@ -12,3 +12,8 @@
 -No aparece la extension del archivo al editar el nombre de un archivo (textarea), tampoco despues de editar el nombre y actualizarlo en el span ; pero si actualizas la lista por completo si aparece la extension
 
 -Sin hacer el soporte a los mensajes especiales en mostrar mensajes
+
+-Arreglar el problema de que no se puede expulsar->fallos en mongodb
+
+-Arreglar que no aparece la fecha de bloque de mensajes flotante
+

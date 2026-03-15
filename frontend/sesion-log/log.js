@@ -44,7 +44,7 @@ async function form_validar_correo(e) {
             mostrar_menu_validation_code(false)
             await window.paginas_app.CAMBIAR_PAGINA_HOME()//mandar al home
 
-            document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", () => {
+            document.querySelector("#bt-volver-login-confirmacion-cuenta").addEventListener("click", (e) => {
                 e.preventDefault()
                 mostrar_menu_sesion(false)
                 window.sesion_usuario.BORRAR_CODES_VALIDACION_CORREO(username_g)
@@ -119,12 +119,14 @@ function mostrar_menu_cuenta_creada(accion) {
 
 document.addEventListener("DOMContentLoaded", () => {
     //cambiar login a registro
-    document.querySelector("#bt-cambiar-registro").addEventListener("click", () => {
+    document.querySelector("#bt-cambiar-registro").addEventListener("click", (e) => {
+        e.preventDefault()
         mostrar_menu_log(false)
         mostrar_menu_reg(true)
     })
     //cambiar registro a login
-    document.querySelector("#bt-cambiar-login").addEventListener("click", () => {
+    document.querySelector("#bt-cambiar-login").addEventListener("click", (e) => {
+        e.preventDefault()
         mostrar_menu_reg(false)
         mostrar_menu_log(true)
     })
@@ -163,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#text-error-form-causa-login").classList.add("flex-display")
         }
     })
-    document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", () => {
+    document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", (e) => {
         e.preventDefault()
         mostrar_menu_validation_code(false)
         mostrar_menu_reg(false)
