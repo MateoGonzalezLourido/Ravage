@@ -15,7 +15,8 @@ const RTDF = {
     omitirVerificacionCuentaFile: path.join(ruta_app_data, name_carpeta, 'auto_login.json'),
     dispositivoConfianza: path.join(ruta_app_data, name_carpeta, 'dp_confi.json'),
     ajustesAPP: path.join(ruta_app_data, name_carpeta, 'ajustes_app.json'),
-    infoAPP: path.join(ruta_app_data, name_carpeta, 'info_app.json')
+    infoAPP: path.join(ruta_app_data, name_carpeta, 'info_app.json'),
+    identity: path.join(ruta_app_data, name_carpeta, 'identity.json')
 }
 //guardar archivos
 async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
@@ -95,7 +96,7 @@ async function readFileSession(ruta, cifrado = true) {
         const raw = JSON.parse(rawstr);
         //pasarlo a json usable
         let secretKey = getSecretKEY()
-        if (ruta == 'sessionFile') {//especial
+        if (ruta == 'sessionFile' || ruta == 'identity') {//especial
             secretKey = SECRET_KEY_COKKIE
         }
         else {//por defecto

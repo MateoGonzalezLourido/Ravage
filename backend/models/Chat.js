@@ -13,6 +13,10 @@ const ChatSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    claves_cifradas: [{
+        usuario_id: mongoose.Schema.Types.ObjectId,
+        clave_envuelta: String // ChatKey cifrada con la RSA pública del usuario
+    }],
     fecha_creacion: { type: Date, default: Date.now }
 });
 

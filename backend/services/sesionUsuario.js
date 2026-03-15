@@ -20,6 +20,7 @@ import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, compare, createHash, machineIdSync } from '../utils/libs.js';
 import validator from 'validator';
+import { generarLlavesRSA } from './cryptoService.js';
 
 let IntervalTimerUsuarioActivo;
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
@@ -112,6 +113,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
 let contraseña_hashed;
 let apodo_usuario;
 let mantener_sesion_iniciada_usuario;
+let identity_keys; // Temporal para guardar las llaves generadas durante el registro
 const n_intentos_codigo_validacion = 5;
 let intentos_codigo_validacion = n_intentos_codigo_validacion;
 let bloquear_accion = false
@@ -145,6 +147,9 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     }
     apodo_usuario = apodoStr;
     const correo_uso = correoStr;
+
+    // Generar llaves de identidad para E2EE
+    identity_keys = generarLlavesRSA();
 
     //crear verificacion por codigo de correo
     const code_generado = String(generarCodigoVerificacion())
@@ -196,22 +201,34 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         return { success: false, message: "Fallo al crear el usuario: no existe ese código" };
     }
     //crear nueva cuenta de usuario
-    const nuevoUsuario = await InsertarUsuario({ apodo: apodo_usuario, contraseña: contraseña_hashed, correo: correoStr });
+    const nuevoUsuario = await InsertarUsuario({ 
+        apodo: apodo_usuario, 
+        contraseña: contraseña_hashed, 
+        correo: correoStr,
+        publicKey: identity_keys?.publicKey || ""
+    });
     if (!nuevoUsuario) {//error
-        BorrarVC(correo)//borrar codigos
+        BorrarVC(correoStr)//borrar codigos
         contraseña_hashed = null;
         apodo_usuario = null;
+        identity_keys = null;
         bloquear_accion = false
         return { success: false, message: "Fallo al crear el usuario" }
+    }
+
+    //guardar llave privada localmente
+    if (identity_keys) {
+        await saveIdentityFile({ privateKey: identity_keys.privateKey });
     }
 
     //mandar correo confirmando creacion de cuenta
     const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo_usuario })
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
     //limpiar datos 
-    BorrarVC(correo)
+    BorrarVC(correoStr)
     apodo_usuario = null;
     contraseña_hashed = null;
+    identity_keys = null;
     bloquear_accion = false
     return { success: true };
 }
