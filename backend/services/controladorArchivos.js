@@ -189,6 +189,17 @@ async function CifrarDatosArchivos(data, especial) {
     };
 }
 
+/**
+ * Guarda la llave privada de identidad del usuario cifrada localmente.
+ * Se cifra con el SECRET_KEY_COKKIE para que sea persistente y segura.
+ */
+async function saveIdentityFile({ privateKey }) {
+    const data = await CifrarDatosArchivos({ privateKey }, 'sessionFile')
+    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
+    // Usar writeFileSync para asegurar que se guarda antes de continuar el flujo
+    fs.writeFileSync(RTDF.identity, JSON.stringify(data), "utf8");
+}
+
 export {
     saveSessionFile,
     clearFileSession,
@@ -197,5 +208,6 @@ export {
     saveDispositivoConfianzaFile,
     limpiarArchivosCompleto,
     saveAjustesAppFile,
-    getAjustesAppFile
+    getAjustesAppFile,
+    saveIdentityFile
 };

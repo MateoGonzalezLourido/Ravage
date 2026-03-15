@@ -7,7 +7,10 @@ import {
     clearFileSession,
     saveOmitirVerificacionCuentaFile,
     readFileSession,
-    limpiarArchivosCompleto
+    limpiarArchivosCompleto,
+    saveAjustesAppFile,
+    getAjustesAppFile,
+    saveIdentityFile
 } from './controladorArchivos.js';
 import { enviarEmail, generarCodigoVerificacion } from './MENSAJERIA/Servicio_mensajeria_correo.js';
 import {
