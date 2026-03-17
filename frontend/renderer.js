@@ -1015,7 +1015,7 @@ async function mostrar_datos_chat_usaurios(e) {
     //crear html de la seccion
     const nombre_chat = document.querySelector("#nombre-chat-nav span")?.textContent || "no encontrado";
     const añadido_nombre_chat = async () => {
-        if (info_chat?.grupo && info_chat?.usuarios) {
+        if (info_chat?.usuarios?.length > 2) {
             return `<div> ${[...new Set(info_chat?.usuarios)]?.length || 0} integrantes</div> `
         } else {
             // Obtener el ID del usuario principal
@@ -1072,14 +1072,12 @@ async function mostrar_datos_chat_usaurios(e) {
             </button>
         </div>
 
-        ${info_chat?.grupo ? await (async () => {
+        ${(info_chat?.usuarios?.length >= 2) ? await (async () => {
             const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
             let participantes_ids = [...new Set(info_chat.usuarios)]//quitar repetidos
             participantes_ids = participantes_ids.filter(id => id !== id_mio)//quitar el id propio
 
             // Obtener datos de todos los participantes en paralelo
-            //TODO: SI NO TIENE HABILITADO EL CORREO NO TRAERLO (cada usuario)
-            //TODO: OPTIMIZAR DATOS QUE SE NECESITAN TRAER (solo apodo, correo?,idamigo)
             const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id))
             const participantes_datos = await Promise.all(participantes_promesas)
 
@@ -1233,35 +1231,11 @@ async function ACTUALIZAR_LISTAS_CHAT() {
 
         let html = ""
         for (c of lista_chats_ordenada) {
-            //HAY QUE MIRAR SI ES UN GRUPO, SI ES SE COJE EL NOMBRE DE CHATSRAVAGE, SI NO LOS ES SE BUSCA EL ID DEL OTRO USUARIO Y LUEGO EN CONTACTOS SE MIRA SI LO TENGO AGREGADO, SINO SE BUSCA ESE ID POR LA BASE DE DATOS DE USUARIO Y COJEMOS ESE APODO
-            let nombre = ""
-            //buscar el chat
-            const indice_chat = datos_chats_grupales.findIndex(x => x.id == c.id)
-            if (indice_chat == -1) throw "ESTE CHAT NO EXISTE EN DB"
-            if (c.grupo) {//cojer el nombre del chat
-                nombre = datos_chats_grupales[indice_chat].nombre
-            } else {//buscar en contactos o usuarios
-                //para esto ha que buscar el chat, sacar al otro usuarioF (contacto) y buscar su nombre en nuestros contactos (si no lo tenemos de contacto ponemos el nombre que este use)
-
-                const usuario_buscar = datos_chats_grupales[indice_chat].usuarios.filter(x => x != id_propio)
-                //asi solo deberia quedar un id
-                if (!usuario_buscar || usuario_buscar.length !== 1) {
-                    throw "ERROR AL ENCONTRAR NOMBRE DEL CHAT"
-                }
-                //buscar en contactos para ver si le tenemos nombre propio
-                const indice_contacto = lista_contactos.findIndex(x => x.id == usuario_buscar[0])
-                if (indice_contacto == -1) {//buscar por usuarios para cojer el apodo que el usuario tiene
-                    const nombre_usuario = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(usuario_buscar[0], "apodo")
-                    if (nombre_usuario) nombre = "~" + nombre_usuario.apodo
-                    else throw "USUARIO NO ENCONTRADO"
-                }
-                else {//buscar el apodo que tenemos
-                    nombre = lista_contactos[indice_contacto].apodo
-                }
-
-            }
+            // El nombre ya viene resuelto por el backend (incluyendo ~ si es necesario)
+            const nombre = datos_chats_grupales[c.id]?.nombre || "Chat sin nombre"
             //nombre, usuarios, ultima_vez ,_id CHAT
-            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: datos_chats_grupales[indice_chat].usuarios, nombre: nombre, ultimomensaje: c.ultimomensaje }
+            //TODO: ARREGLAR ESTO, VARIABLES NO EXISTEN
+            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: datos_chats_grupales[c.id].usuarios, nombre: nombre, ultimomensaje: c.ultimomensaje }
             html += chat_componente_lista_structura_html(datos_usar)
         }
         document.querySelector("#lista-chats-componentes").innerHTML = html
@@ -1278,25 +1252,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                     window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                 ])
 
-                //*obtener el nombre del chat (la dificultad es que puede sser grupo o no, y puede ser contacto o no)
-                if (datos_chat && !datos_chat.grupo) {
-                    const nombres_contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
-                    const otros_usuarios = (datos_chat.usuarios || []).filter(x => x != id_usuario)
-                    const id_buscar = otros_usuarios[0] // Tomamos el primer ID (string) del filtro
-
-                    if (id_buscar) {
-                        const indice = nombres_contactos.findIndex(x => x.id == id_buscar)
-                        if (indice == -1) {
-                            // Obtener datos del usuario externo de forma segura
-                            const data_usuarios_externo = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
-                            // Si no existe el objeto o el apodo, usamos el valor por defecto
-                            datos_chat.nombre = "~" + (data_usuarios_externo?.apodo || "<usuario no encontrado>")
-                        }
-                        else {
-                            datos_chat.nombre = nombres_contactos[indice].apodo // Usar el apodo guardado en contactos
-                        }
-                    }
-                }
+                // El nombre ya viene resuelto por el backend
                 datos_chat._id = id
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
                 //cerrar paneles laterales si están abiertos
@@ -1890,31 +1846,12 @@ async function refrescar_componente_lista_chats(id_chat, componente, notificacio
         // Obtener la entrada específica de este chat para el usuario (ultimoCambio, ultimomensaje)
         const chat_usuario = lista_usuario.find(c => (c.id || c._id) == id_chat)
 
-        // Calcular el nombre (extraído de ACTUALIZAR_LISTAS_CHAT)
-        let nombre = ""
-        if (info_chat.grupo) {
-            nombre = info_chat.nombre
-        } else {
-            const id_otro = info_chat.usuarios.find(x => x != id_propio)
-            if (!id_otro) {
-                nombre = "<<error integrantes>>"
-            } else {
-                const indice_contacto = lista_contactos.findIndex(x => x.id == id_otro)
-                if (indice_contacto == -1) {
-                    const datos_externos = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_otro, "apodo")
-                    nombre = "~" + (datos_externos?.apodo || "no encontrado")
-                } else {
-                    nombre = lista_contactos[indice_contacto].apodo
-                }
-            }
-        }
-
         // Construir objeto de datos para la estructura HTML
         const datos_usar = {
             id: id_chat,
             ultimoCambio: chat_usuario?.ultimoCambio,
             usuarios: info_chat.usuarios,
-            nombre: nombre,
+            nombre: info_chat.nombre, // Ya viene resuelto por el backend
             ultimomensaje: chat_usuario?.ultimomensaje
         }
 

@@ -56,7 +56,8 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
             }
         }
 
-        return data_obtenida.map(convertirObjectId);
+        const data_con_nombres = await resolverNombresChats(data_obtenida);
+        return data_con_nombres.map(convertirObjectId);
     } catch (e) {
         console.error(e);
         return [];
@@ -105,7 +106,8 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
             }
         }
 
-        return convertirObjectId(data_obtenida);
+        const [data_con_nombre] = await resolverNombresChats([data_obtenida]);
+        return convertirObjectId(data_con_nombre);
     } catch (e) {
         console.error(e);
         return null;
@@ -189,8 +191,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null) 
         return true;
     }
 
-    // CREAR CHAT NUEVO
-    const grupo = ids.length !== 1 || nombre !== "";
+    // CREAR CHAT NUEVO (Todos los chats se consideran expansibles/grupos)
     const ids_total = [...ids, id_propio];
     
     // E2EE: Generar ChatKey única para este chat
@@ -212,9 +213,9 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null) 
 
     try {
         datos_chat = await ChatsRavage.create({
-            nombre: grupo ? (nombre || "Grupo sin nombre") : "",
+            nombre: nombre || "", // Si está vacío, se resolverá dinámicamente al leer
             usuarios: ids_total.map(id => new mongoose.Types.ObjectId(id)),
-            grupo,
+            grupo: true, // Siempre true para permitir expansión inmediata
             claves_cifradas
         });
 
@@ -233,9 +234,9 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null) 
             }
         );
 
-        if (!grupo) {
+        if (ids.length === 1) { // Si hablas con una persona por primera vez, asegurar contacto
             const { AÑADIR_CONTACTO } = await import('./UserRepository.js');
-            await AÑADIR_CONTACTO(ids[0], nombre);
+            await AÑADIR_CONTACTO(ids[0], ""); // Añadir sin apodo definido para usar el global
         }
 
         Añadir_Entrada_Buzon_Usuario({ 
@@ -300,4 +301,61 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
         console.error(e);
         return false;
     }
+}
+
+/**
+ * Resuelve los nombres de visualización para una lista de chats.
+ * Si el chat no tiene nombre y tiene 2 usuarios, busca el apodo en contactos o el global.
+ */
+async function resolverNombresChats(chats) {
+    if (!chats || chats.length === 0) return chats;
+    
+    const id_propio = getIDMongodbUsuario();
+    const usuario_actual = await User.findById(id_propio, "contactos").lean();
+    if (!usuario_actual) return chats;
+
+    const ids_otros_necesarios = new Set();
+    
+    // Identificar chats que necesitan resolución de nombre
+    chats.forEach(chat => {
+        if (!chat.nombre && chat.usuarios.length === 2) {
+            const id_otro = chat.usuarios.find(u => u.toString() !== id_propio.toString());
+            if (id_otro) ids_otros_necesarios.add(id_otro.toString());
+        }
+    });
+
+    // Cargar apodos globales de los que no están en contactos o por si acaso
+    let globales = {};
+    if (ids_otros_necesarios.size > 0) {
+        const users = await User.find({ _id: { $in: Array.from(ids_otros_necesarios) } }, "apodo").lean();
+        users.forEach(u => globales[u._id.toString()] = u.apodo);
+    }
+
+    // Aplicar nombres
+    return chats.map(chat => {
+        if (!chat.nombre) {
+            if (chat.usuarios.length === 2) {
+                const id_otro = chat.usuarios.find(u => u.toString() !== id_propio.toString());
+                if (id_otro) {
+                    const id_otro_str = id_otro.toString();
+                    const contacto = usuario_actual.contactos.find(c => c.id.toString() === id_otro_str);
+                    
+                    if (contacto && contacto.apodo) {
+                        chat.nombre = contacto.apodo;
+                    } else if (globales[id_otro_str]) {
+                        chat.nombre = "~" + globales[id_otro_str];
+                    } else {
+                        chat.nombre = "Usuario Ravage";
+                    }
+                } else {
+                    chat.nombre = "Chat vacío";
+                }
+            } else if (chat.usuarios.length > 2) {
+                chat.nombre = "Grupo sin nombre";
+            } else {
+                chat.nombre = "Chat personal";
+            }
+        }
+        return chat;
+    });
 }
