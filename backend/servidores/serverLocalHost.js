@@ -1,4 +1,4 @@
-import { express, Server, http } from "./utils/libs.js";
+import { express, Server, http } from "../utils/libs.js";
 
 let appServer;
 let io;
