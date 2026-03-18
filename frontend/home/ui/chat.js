@@ -2,7 +2,7 @@ const nombre_defecto = "~no encontrado~"
 
 export const chat_componente_lista_estructura_html = (datos_usar) => {
     //recuperar nombre del chat
-    const nombre = (datos_usar) => { datos_usar?.nombre || `<<no encontrado>>` }
+    const nombre = (datos_usar) => { return datos_usar?.nombre || `<<no encontrado>>` }
     //recuperar numero de integrantes
     const usuarios = (datos_usar) => {
         if (datos_usar.usuarios.length > 2 && datos_usar.usuarios.length) return (`<div class="numero-integrantes-chat-lista"><span>${[...new Set(datos_usar?.usuarios)]?.length || 0} integrantes</span></div>`)
@@ -75,10 +75,10 @@ export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], prop
     const asunto_mensaje = (asunto) => {
         return asunto ? `<div class="asunto-mensaje-chat">${asunto}</div> ` : ``
     }
-    const nombre_emisor = (nombre_emisor, propio) => {
+    const nombre_emisor_mensaje = (nombre, propio) => {
         if (propio) return ``
 
-        return `<div class="nombre-mensaje-chat-usuario"><span>${nombre_emisor}</span></div>`
+        return `<div class="nombre-mensaje-chat-usuario"><span>${nombre}</span></div>`
     }
     const hora_mandado = (fecha) => {
         const fechaTraducida = new Date(fecha);
@@ -109,7 +109,7 @@ export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], prop
 
     return (`
     <div class="mensaje-chat ${emisor_mensaje(propio)}">
-        ${nombre_emisor(nombre_emisor, propio)}
+        ${nombre_emisor_mensaje(nombre_emisor, propio)}
         ${asunto_mensaje(asunto)}
         ${await archivos_mensaje(archivos)}
         ${hora_mandado(fecha)}
@@ -139,8 +139,7 @@ export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, 
 }
 
 export async function Crear_chat_html(datos, id_propio) {
-    //limpiar residuos de otros chats
-    archivos_mensaje = []
+    
     const [nombre_chat, contactos] = await Promise.all([
         Encontrar_Nombre_Chat_Usuario({ id_buscar: datos?._id, grupal: true }),
         window.social_usuario.OBTENER_CONTACTOS_USUARIO()
@@ -158,7 +157,7 @@ export async function Crear_chat_html(datos, id_propio) {
             return new Date(a.data) - new Date(b.data)
         })
         let fecha_ultimo;//para guardar la fecha del ultimo mensaje procesado, para los bloques de fechas de mensajes
-        for (m of mensajes_ordenados) {
+        for (const m of mensajes_ordenados) {
             //TODO:QUE AL DEJAR DE TENER ESTO DE LA FECHA EN LA PANTALLA APAREZCA FIXED ARRIBA DEL CHAT (LA FECHA QUE PERTEZCA AL BLOQUE QUE ESTAMOS VIENDO)
             //comparar si son del mismo dia
             const fecha_actual = new Date(m.data)
@@ -209,7 +208,7 @@ export async function Crear_chat_html(datos, id_propio) {
 
     <div class="seccion-escritura-mensaje-chat">
         <div id="bt-añadir-archivo-mensaje-escritura">        
-            <img src="./recursos/carpeta.svg" alt="">
+            <img src="../recursos/carpeta.svg" alt="">
         </div>
         <textarea id="textarea-mensaje-escritura" placeholder="Escribe un mensaje"></textarea>
     </div>
@@ -238,7 +237,7 @@ export async function mostrar_datos_chat_usaurios(e) {
     let html = `
     <div class="info-chat-header">
         <div id="bt-cerrar-info-chat">
-            <img src="./recursos/cruz.png" alt="cerrar">
+            <img src="../recursos/cruz.png" alt="cerrar">
         </div>
         <span>Información del chat</span>
     </div>
