@@ -1,4 +1,4 @@
-import { randomBytes, createCipheriv, createDecipheriv, fs, path, os, app } from '../utils/libs.js';
+import { randomBytes, createCipheriv, createDecipheriv, fs, path, app } from '../utils/libs.js';
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../repositories/UserRepository.js';
 
