@@ -656,24 +656,29 @@ async function ACTUALIZAR_LISTAS_CHAT() {
         ])
 
         //crear html lista chats
+        const map_grupales = {}
+        if (Array.isArray(datos_chats_grupales)) {
+            datos_chats_grupales.forEach(chat => {
+                if (chat) map_grupales[chat.id || chat._id] = chat
+            })
+        }
 
         // ORDENAR LOS CHATS POR ULTIMO CAMBIO (El más reciente arriba)
         const lista_chats_ordenada = [...lista_chats].sort((a, b) => {
             return new Date(b.ultimoCambio) - new Date(a.ultimoCambio)
         })
 
-        let html = ""
-        for (c of lista_chats_ordenada) {
-            // El nombre ya viene resuelto por el backend (incluyendo ~ si es necesario)
-            const nombre = datos_chats_grupales[c.id]?.nombre || "Chat sin nombre"
-            //nombre, usuarios, ultima_vez ,_id CHAT
-            //TODO: ARREGLAR ESTO, VARIABLES NO EXISTEN
-            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: datos_chats_grupales[c.id].usuarios, nombre: nombre, ultimomensaje: c.ultimomensaje }
+        const html = lista_chats_ordenada
+            .map(c => {
+                const chatEx = map_grupales[c.id] || {}
+                const nombre = chatEx.nombre || "Chat sin nombre"
+                const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre: nombre, ultimomensaje: c.ultimomensaje }
+                return chat_componente_lista_estructura_html(datos_usar)
+            })
+            .join("")
 
-            html += chat_componente_lista_estructura_html(datos_usar)
-        }
         document.querySelector("#lista-chats-componentes").innerHTML = html
-
+        
         //eventos doom
         document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
             componente.addEventListener("click", async (e) => {
@@ -689,6 +694,8 @@ async function ACTUALIZAR_LISTAS_CHAT() {
 
                 // El nombre ya viene resuelto por el backend
                 datos_chat._id = id
+                //limpiar residuos de otros chats
+                archivos_mensaje = []
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
                 //cerrar paneles laterales si están abiertos
                 cerrar_paneles_al_abrir_chat()

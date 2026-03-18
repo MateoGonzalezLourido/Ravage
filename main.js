@@ -6,7 +6,7 @@ const __dirname = path.dirname(__filename);
 // carga variables de entorno
 import 'dotenv/config';
 
-import { startServer } from './backend/server.js';
+import { startServer } from './backend/servidores/serverLocalHost.js';
 import { connectDB, closeDB } from "./backend/db/mongo.js";
 import { BorrarUsuarioActivo } from "./backend/repositories/UserRepository.js";
 import { autoLoginUsuario } from './backend/services/sesionUsuario.js';
@@ -88,5 +88,5 @@ ipcMain.on("cambiar-pagina-soporte", () => {
 
 ipcMain.on("cambiar-pagina-home", () => {
     mainWindow.setTitle("RAVAGE-Home");
-    mainWindow.loadFile(path.join(__dirname, 'frontend', 'home.html'));
+    mainWindow.loadFile(path.join(__dirname, 'frontend','home', 'home.html'));
 });

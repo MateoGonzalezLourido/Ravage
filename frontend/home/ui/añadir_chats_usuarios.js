@@ -74,7 +74,7 @@ function actualizar_lista_usuarios_añadir({ id, nombre, conjunto = null }) {
 
     const clase_span_lista_contactos_añadidos = ".span-text-contactos-añadir"
     const $lista_contactos_añadir = document.querySelector("#contactos-añadidos-grupo")
-    const $span_text_contactos_añadidos = $lista_contactos_añadir?.querySelector(clase_span_lista_contactos_añadidos)
+    const $span_text_contactos_añadidos = $lista_contactos_añadir?.querySelector(clase_span_lista_contactos_añadidos) || null
     const $bt_agregar_contacto_nuevo = document.querySelector("#bt-agregar-contacto-nuevo")
 
     if (conjunto) {
@@ -87,7 +87,7 @@ function actualizar_lista_usuarios_añadir({ id, nombre, conjunto = null }) {
     }
     else {
         //si es la primera vez vaciar
-        $span_text_contactos_añadir?.innerHTML = ""
+        if ($span_text_contactos_añadidos) $span_text_contactos_añadidos.innerHTML = ""
         //añadir contacto a la lista
         if (id && nombre) {
             $lista_contactos_añadir.innerHTML += `<div class="${clase_cp_lista_contactos_añadidos}" data-id="${id}">${nombre}</div>`
@@ -118,7 +118,7 @@ function actualizar_lista_usuarios_añadir({ id, nombre, conjunto = null }) {
 
 function actualizar_cache_listas_usuarios_añadir(data) {
     const MAX_CONTACTOS_CACHE = 5000//limitar cache
-    
+
     if (_cache_lista_usuarios_añadir != data && data.length <= MAX_CONTACTOS_CACHE) _cache_lista_usuarios_añadir = data
     else if (_cache_lista_usuarios_añadir != data) _cache_lista_usuarios_añadir = null//si la cache supera el limite es inutil guardar los datos, mejor limpiarla y esperar a que baje al limite
 }
