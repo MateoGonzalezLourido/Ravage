@@ -1,5 +1,4 @@
 import { generateKeyPairSync, publicEncrypt, privateDecrypt, createCipheriv, createDecipheriv, randomBytes, diffieHellman } from 'crypto';
-import { mongoose } from '../utils/libs.js';
 
 /**
  * Servicio de Criptografía para E2EE
