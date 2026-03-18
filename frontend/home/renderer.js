@@ -1,7 +1,7 @@
 //importar componentes js
 import { desplegar_menu_añadir_chat } from './ui/añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './ui/url_icono_extensiones_archivos.js'
-import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios } from './ui/chat.js'
+import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario } from './ui/chat.js'
 
 let archivos_mensaje = []//{ruta,nombre,extension}
 let archivo_cambiando_nombre; //es para guardar el archivo que se esta editando ya
@@ -1042,22 +1042,17 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
     //chat, emisor son ids
     //el chat abierto es el del mensaje ?
     if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
-        //obtener datos necesarios para crear html mensaje
-        const data = {
-            emisor: emisor,
-            data: fecha,
-            contenido: [{
-                asunto: mensaje,
-                archivos: archivos
-            }]
-        }
         const [nombres_contactos, id_propio] = await Promise.all([
             window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
             window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
         ])
 
+        const id_emisor = Array.isArray(emisor) ? emisor[0] : emisor
+        const propio = id_emisor == id_propio
+        const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos })
+
         //crear mensaje
-        const html = await crear_mensaje_html(data, id_propio, nombres_contactos)
+        const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor)
         //insertar mensaje al final del chat
         document.querySelector("#cuerpo-mensajes-chat").insertAdjacentHTML("beforeend", html)
         //scroll hasta abajo donde esta el mensaje
@@ -1134,14 +1129,12 @@ async function Es_usuario_Sesion(usuario_comprobar) {
 //realizar cambios en la app segun la entrada del buzon
 async function hacer_cambios_buzon(entrada) {
     //TODO: CAMBIO DE NOMBRE CHATGRUPO, AÑADIDO USUARIO A UN GRUPO, ELIMINADO USUARIO DE UN CHAT, MENSAJE ACTUALIZAR APP
-    const tp = entrada.tipo
-    console.log(tp)
+    const tp = Number(entrada.tipo)
     if (tp === 0) { //mensaje chat
         /*Mirar si el usuario tiene abierto ese chat:
         si es asi actualizar chat
         sino mostrar notificacion e icono en el componente de la lista de chats de ese chat */
         /*entrada= { tipo, data: { id_chat, id_mensaje }}*/
-        console.log("dasdas")
         if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
             const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(entrada.data.chat, entrada.data.id_mensaje)
             console.log([entrada, respuesta])
@@ -1150,8 +1143,8 @@ async function hacer_cambios_buzon(entrada) {
             Actualizar_render_chat({
                 emisor: respuesta.emisor,
                 chat: entrada.data.chat,
-                mensaje: respuesta.contenido.asunto,
-                archivos: respuesta.contenido.archivos,
+                mensaje: respuesta.contenido?.[0]?.asunto || "",
+                archivos: respuesta.contenido?.[0]?.archivos || [],
                 fecha: respuesta.data
             })
         }
