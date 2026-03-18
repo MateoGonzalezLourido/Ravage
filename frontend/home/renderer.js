@@ -1135,13 +1135,17 @@ async function Es_usuario_Sesion(usuario_comprobar) {
 async function hacer_cambios_buzon(entrada) {
     //TODO: CAMBIO DE NOMBRE CHATGRUPO, AÑADIDO USUARIO A UN GRUPO, ELIMINADO USUARIO DE UN CHAT, MENSAJE ACTUALIZAR APP
     const tp = entrada.tipo
+    console.log(tp)
     if (tp === 0) { //mensaje chat
         /*Mirar si el usuario tiene abierto ese chat:
         si es asi actualizar chat
         sino mostrar notificacion e icono en el componente de la lista de chats de ese chat */
         /*entrada= { tipo, data: { id_chat, id_mensaje }}*/
+        console.log("dasdas")
         if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
             const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(entrada.data.chat, entrada.data.id_mensaje)
+            console.log([entrada, respuesta])
+
             //actualizar chat
             Actualizar_render_chat({
                 emisor: respuesta.emisor,
