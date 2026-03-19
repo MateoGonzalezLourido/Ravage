@@ -175,6 +175,11 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         }
 
         // 3+ participantes o solicitud aceptada: añadir directamente
+        // Verificar si es admin (solo los admins pueden añadir a grupos de >2 personas)
+        if (chat.usuarios.length > 2 && !chat.admins.some(a => a.toString() === id_propio.toString())) {
+            return false;
+        }
+
         await ChatsRavage.updateOne(
             { _id: chatIdLimpio },
             { $addToSet: { usuarios: { $each: ids_añadir.map(id => new mongoose.Types.ObjectId(id)) } } }
@@ -257,6 +262,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         datos_chat = await ChatsRavage.create({
             nombre: nombre || "", // Si está vacío, se resolverá dinámicamente al leer
             usuarios: ids_total.map(id => new mongoose.Types.ObjectId(id)),
+            admins: ids_total.length === 2 ? ids_total.map(id => new mongoose.Types.ObjectId(id)) : [new mongoose.Types.ObjectId(id_propio)],
             grupo: true, // Siempre true para permitir expansión inmediata
             claves_cifradas
         });
@@ -301,6 +307,9 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
         const id_propio = getIDMongodbUsuario();
         const existe = chat.usuarios.some(usuario => usuario.toHexString() === id_usuario);
         if (!existe) return false;
+        
+        // Solo un admin puede expulsar
+        if (!chat.admins.some(a => a.toString() === id_propio.toString())) return false;
 
         // Actualizar la lista de usuarios en el chat (MongoDB)
         await ChatsRavage.updateOne(
@@ -461,4 +470,63 @@ async function resolverNombresChats(chats) {
         }
         return chat;
     });
+}
+
+export async function HACER_ADMIN_CHAT(id_chat, id_usuario) {
+    try {
+        const chat = await ChatsRavage.findById(id_chat);
+        if (!chat) return false;
+        const id_propio = getIDMongodbUsuario();
+        
+        // Verificar permisos
+        if (!chat.admins.some(a => a.toString() === id_propio.toString())) return false;
+        // Verificar que el usuario está en el chat
+        if (!chat.usuarios.some(u => u.toString() === id_usuario)) return false;
+
+        await ChatsRavage.updateOne(
+            { _id: id_chat },
+            { $addToSet: { admins: new mongoose.Types.ObjectId(id_usuario) } }
+        );
+
+        // Notificar a todos por buzón (ej: actualización silenciosa o notificación)
+        // Tipo 5: actualizar chat info silencioso o mensaje al buzón (reciclo tipo 5 para actualizar app u organizo otro o dejo sin notificacion global)
+        // El cliente actualizará localmente, pero por si acaso, puedes mandar un buzon para que los demas rendericen el cambio.
+        Añadir_Entrada_Buzon_Usuario({
+            ids: chat.usuarios.filter(u => u.toString() !== id_propio.toString()),
+            tipo: 5, // reutilizar tipo 5 (actualizar app/chat_info) para que re-soliciten datos. o crear lógica front.
+            data: { chat: id_chat, accion: "nuevo_admin", usuario: id_usuario }
+        }).catch(e => console.error(e));
+
+        return true;
+    } catch (e) {
+        console.error(e);
+        return false;
+    }
+}
+
+export async function QUITAR_ADMIN_CHAT(id_chat, id_usuario) {
+    try {
+        const chat = await ChatsRavage.findById(id_chat);
+        if (!chat) return false;
+        const id_propio = getIDMongodbUsuario();
+        
+        // Verificar permisos
+        if (!chat.admins.some(a => a.toString() === id_propio.toString())) return false;
+
+        await ChatsRavage.updateOne(
+            { _id: id_chat },
+            { $pull: { admins: new mongoose.Types.ObjectId(id_usuario) } }
+        );
+
+        Añadir_Entrada_Buzon_Usuario({
+            ids: chat.usuarios.filter(u => u.toString() !== id_propio.toString()),
+            tipo: 5, 
+            data: { chat: id_chat, accion: "quitar_admin", usuario: id_usuario }
+        }).catch(e => console.error(e));
+
+        return true;
+    } catch (e) {
+        console.error(e);
+        return false;
+    }
 }

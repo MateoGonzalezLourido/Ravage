@@ -66,7 +66,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
 
     return html
 }
-export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], propio = false, nombre_emisor) => {
+export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false) => {
     const class_mensajes = ["soy-emisor", "soy-receptor"]
 
     //funciones de componentes
@@ -76,10 +76,10 @@ export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], prop
     const asunto_mensaje = (asunto) => {
         return asunto ? `<div class="asunto-mensaje-chat">${asunto}</div> ` : ``
     }
-    const nombre_emisor_mensaje = (nombre, propio) => {
+    const nombre_emisor_mensaje = (nombre, propio, esAdmin) => {
         if (propio) return ``
 
-        return `<div class="nombre-mensaje-chat-usuario"><span>${nombre}</span></div>`
+        return `<div class="nombre-mensaje-chat-usuario"><span>${nombre}${esAdmin ? " <span style='font-size: 0.9em; opacity: 0.7;'>·Admin</span>" : ""}</span></div>`
     }
     const hora_mandado = (fecha) => {
         const fechaTraducida = new Date(fecha);
@@ -110,7 +110,7 @@ export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], prop
 
     return (`
     <div class="mensaje-chat ${emisor_mensaje(propio)}">
-        ${nombre_emisor_mensaje(nombre_emisor, propio)}
+        ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin)}
         ${asunto_mensaje(asunto)}
         ${await archivos_mensaje(archivos)}
         ${hora_mandado(fecha)}
@@ -265,7 +265,8 @@ export async function Crear_chat_html(datos, id_propio) {
             const asunto = m?.contenido[0]?.asunto || ""
             const fecha = m.data
             const archivos = m?.contenido[0]?.archivos || []
-            html += (await crear_mensaje_html(fecha, asunto, archivos, propio, nombre))
+            const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor?.toString())
+            html += (await crear_mensaje_html(fecha, asunto, archivos, propio, nombre, esAdmin))
         }
 
         return html
@@ -359,6 +360,7 @@ export async function mostrar_datos_chat_usaurios(e) {
                     <div class="info-chat-participante-info">
                         <span class="info-chat-participante-nombre">Tú</span>
                         <span class="info-chat-participante-correo">${await window.cuenta_usuario.OBTENER_CORREO_USUARIO()}</span>
+                        ${info_chat.admins?.includes(id_mio) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
                     </div>
                 </div>
             `
@@ -369,6 +371,7 @@ export async function mostrar_datos_chat_usaurios(e) {
                         <div class="info-chat-participante-info">
                             <span class="info-chat-participante-nombre">${p.apodo || "Sin apodo"}</span>
                             <span class="info-chat-participante-correo">${p.correo || ""}</span>
+                            ${info_chat.admins?.includes(p.id) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
                         </div>
                     </div>
                     `
@@ -405,13 +408,28 @@ export async function mostrar_datos_chat_usaurios(e) {
             if (await Es_usuario_Sesion(id)) return;
 
             //menu contextual participantes
-            //TODO: AÑADIR BLOQUEAR USUARIO + SILENCIAR USUARIO
-            const html_contextMenu = `
+            const soyAdmin = info_chat.admins?.includes(await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO());
+            const targetEsAdmin = info_chat.admins?.includes(id);
+
+            let html_contextMenu = `
                                     <div class="context-menu context-menu-participantes" style="position: fixed; z-index: 1000;">
-                                        <div class="context-menu-item" data-action="expulsar">Expulsar</div>
                                         ${await Es_Contacto_Usuario(id) ? `<div class="context-menu-item" data-action="añadir-contacto">Añadir Contacto</div>` : ``}
                                     </div>
                                 `
+            // Inyectar opciones de admin
+            const divContent = [];
+            if (soyAdmin) {
+                divContent.push(`<div class="context-menu-item" data-action="expulsar">Expulsar</div>`);
+                if (targetEsAdmin) {
+                    divContent.push(`<div class="context-menu-item" data-action="quitar-admin">Quitar Admin</div>`);
+                } else {
+                    divContent.push(`<div class="context-menu-item" data-action="hacer-admin">Hacer Admin</div>`);
+                }
+            }
+
+            if (divContent.length > 0) {
+                 html_contextMenu = html_contextMenu.replace('</div>\n                                `', `${divContent.join('')}\n                                    </div>\n                                `);
+            }
 
             const ventanaContenedor = document.querySelector(".info-chat-cuerpo")
             ventanaContenedor.insertAdjacentHTML("beforeend", html_contextMenu)
@@ -434,10 +452,22 @@ export async function mostrar_datos_chat_usaurios(e) {
             menu.addEventListener("click", async (ev) => {
                 const action = ev.target.dataset.action
                 if (action === "expulsar") {
-                    const resultado = await Expulsar_Usuario_Chat(id, id_chat)
+                    const resultado = await window.chats.EXPULSAR_USUARIO_CHAT(id, id_chat)
                     if (resultado) {
-                        //TODO: actualizar seccion info chat
-
+                        // actualizar seccion info chat
+                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => {} })
+                    }
+                }
+                else if (action === "hacer-admin") {
+                    const resultado = await window.chats.HACER_ADMIN_CHAT(id_chat, id);
+                    if (resultado) {
+                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => {} })
+                    }
+                }
+                else if (action === "quitar-admin") {
+                    const resultado = await window.chats.QUITAR_ADMIN_CHAT(id_chat, id);
+                    if (resultado) {
+                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => {} })
                     }
                 }
                 else if (action === "añadir-contacto") { //editar nombre/extension

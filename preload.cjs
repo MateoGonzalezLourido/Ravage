@@ -159,6 +159,12 @@ contextBridge.exposeInMainWorld('chats', {
     },
     RESPONDER_SOLICITUD_AÑADIR: (id_chat, id_mensaje, aceptar) => {
         return ipcRenderer.invoke("responder-solicitud-añadir", id_chat, id_mensaje, aceptar)
+    },
+    HACER_ADMIN_CHAT: (id_chat, id_usuario) => {
+        return ipcRenderer.invoke("hacer-admin-chat", id_chat, id_usuario)
+    },
+    QUITAR_ADMIN_CHAT: (id_chat, id_usuario) => {
+        return ipcRenderer.invoke("quitar-admin-chat", id_chat, id_usuario)
     }
 
 
