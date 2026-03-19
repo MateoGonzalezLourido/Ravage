@@ -9,7 +9,7 @@ import os from 'os';
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 
 // Dependencias externas
-import { hash, compare } from 'bcryptjs';
+import { hash, compare } from 'bcrypt';
 import pkgMachineId from 'node-machine-id';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
