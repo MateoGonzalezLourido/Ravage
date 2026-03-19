@@ -8,7 +8,9 @@ import {
     obtener_datos_chat_unico, 
     CREAR_CHAT_NUEVO,
     expulsar_usuario_chat,
-    RESPONDER_SOLICITUD_AÑADIR
+    RESPONDER_SOLICITUD_AÑADIR,
+    HACER_ADMIN_CHAT,
+    QUITAR_ADMIN_CHAT
 } from '../repositories/ChatRepository.js';
 import { 
     ENVIAR_MENSAJE, 
@@ -94,5 +96,13 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("expulsar-usuario-chat", async (_, id_usuario, id_chat) => {
         return await expulsar_usuario_chat(id_usuario, id_chat)
+    })
+
+    ipcMain.handle("hacer-admin-chat", async (_, id_chat, id_usuario) => {
+        return await HACER_ADMIN_CHAT(id_chat, id_usuario)
+    })
+
+    ipcMain.handle("quitar-admin-chat", async (_, id_chat, id_usuario) => {
+        return await QUITAR_ADMIN_CHAT(id_chat, id_usuario)
     })
 }

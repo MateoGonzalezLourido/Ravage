@@ -9,6 +9,10 @@ const ChatSchema = new mongoose.Schema({
         type: [mongoose.Schema.Types.ObjectId],
         default: []
     },
+    admins: {
+        type: [mongoose.Schema.Types.ObjectId],
+        default: []
+    },
     grupo: {
         type: Boolean,
         default: false

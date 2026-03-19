@@ -1091,8 +1091,12 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
         const propio = id_emisor == id_propio
         const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos })
 
+        // Verificar si el emisor es admin en este chat (solo para grupos > 2)
+        const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(chat);
+        const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.includes(id_emisor?.toString());
+
         //crear mensaje
-        const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor)
+        const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
         //insertar mensaje al final del chat
         document.querySelector("#cuerpo-mensajes-chat").insertAdjacentHTML("beforeend", html)
         //scroll hasta abajo donde esta el mensaje
