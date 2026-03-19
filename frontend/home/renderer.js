@@ -808,7 +808,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                                 document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
 
                                 //reactualizar chat (render)
-                                Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date() })
+                                Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date().toISOString() })
                             }
                         }
                     })

@@ -54,8 +54,8 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
         menu_añadir_chat.classList.add("ocultar-display")
 
         //limpiar datos y html
-        contactos_añadir = []
-        actualizar_lista_usuarios_añadir()
+        actualizar_cache_listas_usuarios_añadir(null)
+        actualizar_lista_usuarios_añadir({ conjunto: [] })
         $inputBuscar.value = ""
         $resultados.innerHTML = "<span>*Sin resultados</span>"
         $contactosGrupo.innerHTML = "<span>*Agregar usuarios para el chat</span>"
