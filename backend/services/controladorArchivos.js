@@ -25,43 +25,63 @@ async function saveSessionFile({ username, token = "" }) {//guardar/ crear archi
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
-    fs.writeFile(RTDF.sessionFile, JSON.stringify(data), "utf8", (err) => {
-        if (err) {//si falla, limpiar si existe
-            clearFileSession('sessionFile')
-            console.error("Error al guardar sesión:", err);
-        }
-    });
+    try {
+    fs.writeFileSync(
+        RTDF.sessionFile,
+        JSON.stringify(data, null, 2),
+        { encoding: "utf8" }
+    )
+} catch (err) {
+    clearFileSession('sessionFile')
+    console.error("Error al guardar sesión:", err)
+}
 }
 async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//guardar/ crear archivo
     const data = await CifrarDatosArchivos({ username, token })
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
-    fs.writeFile(RTDF.omitirVerificacionCuentaFile, JSON.stringify(data), "utf8", (err) => {
-        if (err) {//si falla, limpiar si existe
-            clearFileSession("omitirVerificacionCuentaFile")
-            console.error("Error al guardar autoverifiacion de cuenta:", err);
-        }
-    });
+    try{
+        fs.writeFileSync(
+    RTDF.omitirVerificacionCuentaFile,
+    JSON.stringify(data, null, 2),
+    { encoding: "utf8" }
+    )
+}catch(err){
+    clearFileSession("omitirVerificacionCuentaFile")
+    console.error("Error al guardar autoverificación de cuenta:", err);
+}
 }
 async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar/ crear archivo
     const data = await CifrarDatosArchivos({ username, token })
     //crear carpeta si no existe
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
-    fs.writeFile(RTDF.dispositivoConfianza, JSON.stringify(data), "utf8", (err) => {
-        if (err) {//si falla, limpiar si existe
-            clearFileSession('dispositivoConfianza')
-            console.error("Error al guardar dispositibvo de confianza:", err);
-        }
-    });
+    try{
+        fs.writeFileSync(
+        RTDF.dispositivoConfianza,
+        JSON.stringify(data, null, 2),
+        { encoding: "utf8" }
+    )
+}catch(err){
+                clearFileSession('dispositivoConfianza')
+                console.error("Error al guardar dispositivo de confianza:", err);
+            }
+        
 }
 const AJUSTES_APP_DEFAULT = {
     MSBienvenida: true,
     URL_DESCARGA: app.getPath("downloads")
 }
 
-async function saveAjustesAppFile({ data = {} }) {//guardar/ crear archivo
+async function saveAjustesAppFile({ data = {}, create = false }) {//guardar/ crear archivo
+    if (create) {
+        if (!fs.existsSync(RTDF.sessionDir)) {
+            fs.mkdirSync(RTDF.sessionDir, { recursive: true })
+        }
+        fs.writeFileSync(RTDF.ajustesAPP, JSON.stringify(data, null, 2),    { encoding: "utf8" })
+        return
+    }
     let data_usar = await getAjustesAppFile()
     for (const [key, value] of Object.entries(data)) {
         if (data_usar[key] != undefined) {//si existe->actualizar
@@ -71,18 +91,20 @@ async function saveAjustesAppFile({ data = {} }) {//guardar/ crear archivo
     //crear carpeta si no existe (apunta a la carpeta, no al archivo)
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     //sobrescribir/crear archivo con los datos
-    fs.writeFile(RTDF.ajustesAPP, JSON.stringify(data), "utf8", (err) => {
-        if (err) {
-            console.error("Error al guardar ajustes de app:", err);
-        }
-    });
+    try{
+        fs.writeFileSync(RTDF.ajustesAPP, JSON.stringify(data,null,2),     { encoding: "utf8" }
+)
+    }catch(err){
+        console.error("Error al guardar ajustes de app:", err);
+    }
 }
 //leer archivos
 async function readFileSession(ruta, cifrado = true) {
     try {
         //para archivos sin cifrado .json
         if (!cifrado) {
-            const raw = fs.readFileSync(RTDF[ruta], 'utf8')
+            const raw = fs.readFileSync(RTDF[ruta],     { encoding: "utf8" }
+)
             if (!raw) return null
             return JSON.parse(raw)
         }
@@ -91,7 +113,8 @@ async function readFileSession(ruta, cifrado = true) {
         //si no existe el archivo?
         if (!fs.existsSync(RTDF[ruta])) return null;
         //leer el archivo
-        const rawstr = fs.readFileSync(RTDF[ruta], 'utf8');
+        const rawstr = fs.readFileSync(RTDF[ruta],     { encoding: "utf8" }
+);
         if (!rawstr) return null;//no recupero nada
         const raw = JSON.parse(rawstr);
         //pasarlo a json usable
@@ -131,7 +154,7 @@ async function readFileSession(ruta, cifrado = true) {
 async function getAjustesAppFile(nombre = null) {
     //si no existe, crearlo con valores por defecto
     if (!fs.existsSync(RTDF.ajustesAPP)) {
-        await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT })
+        await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT, create: true })
         return { ...AJUSTES_APP_DEFAULT }
     }
     try {
@@ -142,7 +165,8 @@ async function getAjustesAppFile(nombre = null) {
             else return (obj[nombre] || { ...AJUSTES_APP_DEFAULT[nombre] })
 
         }
-        const raw = fs.readFileSync(RTDF.ajustesAPP, 'utf8')
+        const raw = fs.readFileSync(RTDF.ajustesAPP,     { encoding: "utf8" }
+)
         return (raw ? conseguir_ajuste() : { ...AJUSTES_APP_DEFAULT })
     } catch (e) {
         console.error('Error al leer ajustes de app:', e)
@@ -197,7 +221,8 @@ async function saveIdentityFile({ privateKey }) {
     const data = await CifrarDatosArchivos({ privateKey }, 'sessionFile')
     if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
     // Usar writeFileSync para asegurar que se guarda antes de continuar el flujo
-    fs.writeFileSync(RTDF.identity, JSON.stringify(data), "utf8");
+    fs.writeFileSync(RTDF.identity, JSON.stringify(data,null,2),     { encoding: "utf8" }
+);
 }
 
 export {
