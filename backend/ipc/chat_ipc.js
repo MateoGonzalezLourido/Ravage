@@ -7,7 +7,8 @@ import {
     obtener_datos_chats, 
     obtener_datos_chat_unico, 
     CREAR_CHAT_NUEVO,
-    expulsar_usuario_chat 
+    expulsar_usuario_chat,
+    RESPONDER_SOLICITUD_AÑADIR
 } from '../repositories/ChatRepository.js';
 import { 
     ENVIAR_MENSAJE, 
@@ -37,8 +38,12 @@ export function registerChatHandlers(mainWindow, socket) {
         await limpiar_mensajes_chats_antiguos(chatIds)
     })
 
-    ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre, id_chat) => {
-        return await CREAR_CHAT_NUEVO(ids, nombre, id_chat)
+    ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre, id_chat, solicitudAceptada) => {
+        return await CREAR_CHAT_NUEVO(ids, nombre, id_chat, solicitudAceptada)
+    })
+
+    ipcMain.handle("responder-solicitud-añadir", async (_, id_chat, id_mensaje, aceptar) => {
+        return await RESPONDER_SOLICITUD_AÑADIR(id_chat, id_mensaje, aceptar)
     })
 
     ipcMain.handle("obtener-ajustes-app", (_, nombre) => {

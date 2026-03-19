@@ -186,6 +186,37 @@ export async function Crear_chat_html(datos, id_propio) {
                 html += `<div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(fecha_actual)}</span></div> `
             }
             fecha_ultimo = m.data
+            
+            // Manejar mensajes especiales de solicitud (tipo 2: solicitud añadir usuario)
+            if (m.especial && m.especial.tipo === 2) {
+                const nombre_emisor_sol = await Encontrar_Nombre_Chat_Usuario({ id_buscar: m.especial.emisor, grupal: false, contactos: contactos })
+                const nombre_candidato = await Encontrar_Nombre_Chat_Usuario({ id_buscar: m.especial.candidato, grupal: false, contactos: contactos })
+                const estado = m.especial.estado || "pendiente"
+                const esSolicitante = m.especial.emisor == id_propio
+                const id_mensaje = m._id || m.id
+
+                let contenido_solicitud = ""
+                if (estado === "pendiente") {
+                    if (esSolicitante) {
+                        contenido_solicitud = `<span>Has solicitado añadir a <b>${nombre_candidato}</b>. Esperando confirmación...</span>`
+                    } else {
+                        contenido_solicitud = `
+                            <span><b>${nombre_emisor_sol}</b> quiere añadir a <b>${nombre_candidato}</b> al chat</span>
+                            <div class="solicitud-botones">
+                                <button class="bt-solicitud-aceptar" data-chat="${datos._id}" data-mensaje="${id_mensaje}">Aceptar</button>
+                                <button class="bt-solicitud-rechazar" data-chat="${datos._id}" data-mensaje="${id_mensaje}">Rechazar</button>
+                            </div>`
+                    }
+                } else if (estado === "aceptada") {
+                    contenido_solicitud = `<span><b>${nombre_candidato}</b> fue añadido al chat</span>`
+                } else if (estado === "rechazada") {
+                    contenido_solicitud = `<span>Solicitud para añadir a <b>${nombre_candidato}</b> fue rechazada</span>`
+                }
+
+                html += `<div class="mensaje-especial mensaje-solicitud-añadir estado-${estado}">${contenido_solicitud}</div>`
+                continue
+            }
+
             const id_emisor = Array.isArray(m.emisor) ? m.emisor[0] : m.emisor
             const nombre = Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: contactos })
             const propio = id_emisor == id_propio
