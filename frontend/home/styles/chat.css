@@ -31,6 +31,13 @@
     background: transparent;
 }
 
+/* Day Block Container */
+.bloque-dia-chat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
 /* Message Bubble Container */
 .mensaje-chat {
     max-width: 75%;
@@ -137,29 +144,12 @@
     font-weight: 500;
     margin: 20px 0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    z-index: 1;
+    z-index: 10;
     text-transform: capitalize;
+    position: sticky;
+    top: 10px;
 }
 
-/* Fixed Date element at top */
-.text-fecha-bloques-mensajes-fixed {
-    user-select: none;
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(32, 44, 51, 0.9);
-    backdrop-filter: blur(8px);
-    color: var(--wa-text-secondary);
-    padding: 6px 16px;
-    border-radius: 16px;
-    font-size: 13px;
-    font-weight: 500;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    z-index: 20;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
 
 /* Files / Attachments styling inside messages */
 .file-mensaje-chat, 

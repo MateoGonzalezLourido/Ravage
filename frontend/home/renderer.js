@@ -1,7 +1,7 @@
 //importar componentes js
 import { desplegar_menu_añadir_chat } from './ui/añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './ui/url_icono_extensiones_archivos.js'
-import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario } from './ui/chat.js'
+import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario,Es_usuario_Sesion, texto_mostrar_fecha_mensajes_bloque } from './ui/chat.js'
 
 let archivos_mensaje = []//{ruta,nombre,extension}
 let archivo_cambiando_nombre; //es para guardar el archivo que se esta editando ya
@@ -741,42 +741,6 @@ async function ACTUALIZAR_LISTAS_CHAT() {
 
                 //scroll al final
                 scroll_fin_chat()
-                //TODO::crear observadores doom para el sistema de fecha de bloques mensajes
-                const elementos = document.querySelectorAll(".fecha-bloque-mensajes");
-                const fixed_text = "text-fecha-bloques-mensajes-fixed"
-                const observer = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        const html = entry.target.querySelector("span")?.innerHTML || entry.target.innerHTML;
-                        if (entry.isIntersecting) {
-                            // Si el bloque es visible, quitamos el flotante que coincida con su texto
-                            const flotantes = document.querySelectorAll(`.${fixed_text}`);
-                            flotantes.forEach(f => {
-                                if (f.querySelector("span")?.innerHTML === html) f.remove();
-                            });
-                        } else {
-                            // Cuando el bloque deja de verse por arriba (boundingClientRect.top < 0)
-                            if (entry.boundingClientRect.top < 0 && !html.includes("Hoy")) {
-                                mostrarFechaBloqueMensajes(html);
-                            }
-                        }
-                    });
-                }, { threshold: [0, 1] });
-
-                elementos.forEach(el => observer.observe(el));
-
-                function mostrarFechaBloqueMensajes(html) {
-                    const contenedor = document.querySelector("#chat-usuario");
-                    // Evitar duplicados del mismo texto
-                    if (Array.from(document.querySelectorAll(`.${fixed_text} span`)).some(s => s.innerHTML === html)) return;
-
-                    const hijo = document.createElement("div");
-                    const text = document.createElement("span");
-                    text.innerHTML = html;
-                    hijo.appendChild(text);
-                    hijo.classList.add(fixed_text);
-                    contenedor.appendChild(hijo);
-                }
-
                 //otros eventos
                 document.querySelector("#nav-prinicpal-chat-usaurio")?.addEventListener("click", mostrar_datos_chat_usaurios)
                 //cambio altura del textarea del mensaje , segun lo grande que sea el mensaje, para facilitar su lectura y escritura
@@ -1097,9 +1061,26 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
 
         //crear mensaje
         const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
-        //insertar mensaje al final del chat
-        document.querySelector("#cuerpo-mensajes-chat").insertAdjacentHTML("beforeend", html)
-        //scroll hasta abajo donde esta el mensaje
+        
+        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        const lastBlock = chatContainer.querySelector(".bloque-dia-chat:last-child");
+        const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
+
+        let lastBlockDateText = lastBlock ? lastBlock.querySelector(".fecha-bloque-mensajes span")?.innerHTML : null;
+        
+        if (!lastBlock || lastBlockDateText !== fechaActualText) {
+            // crear nuevo bloque  y añadir ahi
+            const nuevoBloqueHTML = `
+                <div class="bloque-dia-chat">
+                    <div class="fecha-bloque-mensajes"><span>${fechaActualText}</span></div>
+                    ${html}
+                </div>
+            `;
+            chatContainer.insertAdjacentHTML("beforeend", nuevoBloqueHTML);
+        } else {
+            // añadir mensaje al bloque ya existente
+            lastBlock.insertAdjacentHTML("beforeend", html);
+        }
         scroll_fin_chat()
     }
     else {
@@ -1163,11 +1144,7 @@ async function refrescar_componente_lista_chats(id_chat, componente, notificacio
     }
 }
 
-//COMPROBAR SI ES EL USUARIO DE LA SESION
-async function Es_usuario_Sesion(usuario_comprobar) {
-    const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-    return usuario_comprobar === id_mio
-}
+
 
 //buzon api
 //realizar cambios en la app segun la entrada del buzon

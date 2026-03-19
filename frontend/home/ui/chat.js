@@ -1,6 +1,27 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 const nombre_defecto = "~no encontrado~"
 
+export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
+    //mirar si es hoy
+    if (fecha_param.toDateString() === new Date().toDateString()) return "Hoy"
+    //mirar si fue ayer
+    else if (fecha_param.toDateString() === new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString()) return "Ayer"
+    //mirar si es de la misma semana
+    else if (fecha_param.getDay() === new Date().getDay() && (Date.now() - fecha_param.getTime() < 7 * 24 * 60 * 60 * 1000)) return fecha_param.toLocaleString("es-ES", {
+        weekday: "long"
+    })
+    // mirar si es del mismo mes y año
+    else if (fecha_param.getMonth() === new Date().getMonth() && fecha_param.getFullYear() === new Date().getFullYear()) {
+        //devolver el dia del mes y nombre del dia de la semana
+        return fecha_param.toLocaleString("es-ES", {
+            weekday: "long"
+        }) + " " + fecha_param.getDate() + ", " + fecha_param.toLocaleString("es-ES", {
+            month: "long"
+        }) + " " + fecha_param.getFullYear()
+    }
+    else return fecha_param.toDateString()
+}
+
 export const chat_componente_lista_estructura_html = (datos_usar) => {
     //recuperar nombre del chat
     const nombre = (datos_usar) => { return datos_usar?.nombre || `<<no encontrado>>` }
@@ -158,32 +179,18 @@ export async function Crear_chat_html(datos, id_propio) {
             return new Date(a.data) - new Date(b.data)
         })
         let fecha_ultimo;//para guardar la fecha del ultimo mensaje procesado, para los bloques de fechas de mensajes
+        let primer_dia = true;
         for (const m of mensajes_ordenados) {
-            //TODO:QUE AL DEJAR DE TENER ESTO DE LA FECHA EN LA PANTALLA APAREZCA FIXED ARRIBA DEL CHAT (LA FECHA QUE PERTEZCA AL BLOQUE QUE ESTAMOS VIENDO)
             //comparar si son del mismo dia
             const fecha_actual = new Date(m.data)
             const fecha_comparar = new Date(fecha_ultimo)
-            const texto_mostrar_fecha_mensajes_bloque = (fecha_ultimo) => {
-                //mirar si es hoy
-                if (fecha_ultimo.toDateString() === new Date().toDateString()) return "Hoy"
-                //mirar si fue ayer
-                else if (fecha_ultimo.toDateString() === new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString()) return "Ayer"
-                //mirar si es de la misma semana
-                else if (fecha_ultimo.getDay() === new Date().getDay()) return fecha_ultimo.toLocaleString("es-ES", {
-                    weekday: "long"
-                })
-                // mirar si es del mismo mes y año
-                else if (fecha_ultimo.getMonth() === new Date().getMonth() && fecha_ultimo.getFullYear() === new Date().getFullYear()) {
-                    //devolver el dia del mes y nombre del dia de la semana
-                    return fecha_ultimo.toLocaleString("es-ES", {
-                        weekday: "long"
-                    }) + " " + fecha_ultimo.getDate() + ", " + fecha_ultimo.toLocaleString("es-ES", {
-                        month: "long"
-                    }) + " " + fecha_ultimo.getFullYear()
-                }
-                else return fecha_ultimo.toDateString()
-            }
+            
             if (fecha_actual.toDateString() !== fecha_comparar.toDateString() || !fecha_ultimo) {
+                if (!primer_dia) {
+                    html += `</div>`
+                }
+                primer_dia = false;
+                html += `<div class="bloque-dia-chat">`
                 html += `<div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(fecha_actual)}</span></div> `
             }
             fecha_ultimo = m.data
@@ -267,6 +274,10 @@ export async function Crear_chat_html(datos, id_propio) {
             const archivos = m?.contenido[0]?.archivos || []
             const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor?.toString())
             html += (await crear_mensaje_html(fecha, asunto, archivos, propio, nombre, esAdmin))
+        }
+
+        if (!primer_dia) {
+            html += `</div>`
         }
 
         return html
@@ -507,4 +518,9 @@ async function Es_Contacto_Usuario(usuario_comprobar) {
     //obtener contactos usuario
     const contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
     return contactos.includes(usuario_comprobar)
+}
+//COMPROBAR SI ES EL USUARIO DE LA SESION
+export async function Es_usuario_Sesion(usuario_comprobar) {
+    const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+    return usuario_comprobar === id_mio
 }
