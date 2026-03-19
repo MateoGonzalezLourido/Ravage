@@ -214,20 +214,41 @@
     margin: 10px 0;
     max-width: 80%;
     animation: fadeIn 0.3s ease forwards;
-}
-
-/* Solicitud de añadir usuario */
-.mensaje-solicitud-añadir {
-    background: rgba(32, 44, 51, 0.9);
+    background: rgba(32, 44, 51, 0.85);
     backdrop-filter: blur(8px);
     color: var(--wa-text-secondary);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
-.mensaje-solicitud-añadir b {
+.mensaje-especial b {
     color: #53bdeb;
     font-weight: 600;
+}
+
+.icono-especial {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* tipo 0: usuario añadido */
+.mensaje-especial-añadido {
+    border-color: rgba(0, 168, 132, 0.25);
+}
+
+/* tipo 1: usuario expulsado */
+.mensaje-especial-expulsado {
+    border-color: rgba(229, 54, 18, 0.25);
+}
+
+/* Solicitud de añadir usuario (tipo 2) */
+.mensaje-solicitud-añadir {
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .mensaje-solicitud-añadir.estado-pendiente {
