@@ -812,14 +812,14 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                     ventana.innerHTML = `
                     <div class="info-chat-header">
                         <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header">
-                            <img src="./recursos/cruz.png" alt="cerrar">
+                            <img src="../recursos/cruz.png" alt="cerrar">
                         </div>
                         <div> <span>Archivos Adjuntos</span></div>
                         <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos"title="añadir-archivo">
-                            <img src="./recursos/suma.png" alt="añadir">
+                            <img src="../recursos/suma.png" alt="añadir">
                         </div>
                         <div  id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro">
-                            <img src="./recursos/escoba.png" alt="limpiar">
+                            <img src="../recursos/escoba.png" alt="limpiar">
                         </div>
                     </div>
                     

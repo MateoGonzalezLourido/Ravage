@@ -12,8 +12,8 @@ Si no existe icono para esa extension la url sera la de "cualquiera.svg"(icono p
 let _cache_img_extensiones = null
 export async function url_icono_extension_img(extension) {
     //variables principales
-    const carpetaPrincipal = './recursos/extensionesArchivos'
-    const archivoJSON = 'img_extensiones.json'
+    const carpetaPrincipal = new URL('../../recursos/extensionesArchivos', import.meta.url).href;
+    const archivoJSON = 'img_extensiones.json';
     const img_defecto = "cualquiera.svg"
 
     //ocasiones que daria problemas o siempre devolveria el icono por defecto

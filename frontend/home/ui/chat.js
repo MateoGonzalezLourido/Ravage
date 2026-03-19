@@ -1,4 +1,5 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
+import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 const nombre_defecto = "~no encontrado~"
 
 export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
@@ -161,7 +162,7 @@ export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, 
 }
 
 export async function Crear_chat_html(datos, id_propio) {
-    
+
     const [nombre_chat, contactos] = await Promise.all([
         Encontrar_Nombre_Chat_Usuario({ id_buscar: datos?._id, grupal: true }),
         window.social_usuario.OBTENER_CONTACTOS_USUARIO()
@@ -184,7 +185,7 @@ export async function Crear_chat_html(datos, id_propio) {
             //comparar si son del mismo dia
             const fecha_actual = new Date(m.data)
             const fecha_comparar = new Date(fecha_ultimo)
-            
+
             if (fecha_actual.toDateString() !== fecha_comparar.toDateString() || !fecha_ultimo) {
                 if (!primer_dia) {
                     html += `</div>`
@@ -194,7 +195,7 @@ export async function Crear_chat_html(datos, id_propio) {
                 html += `<div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(fecha_actual)}</span></div> `
             }
             fecha_ultimo = m.data
-            
+
             // Manejar mensajes especiales (sistema)
             if (m.especial && m.especial.tipo !== undefined) {
                 const tipo = m.especial.tipo
@@ -439,7 +440,7 @@ export async function mostrar_datos_chat_usaurios(e) {
             }
 
             if (divContent.length > 0) {
-                 html_contextMenu = html_contextMenu.replace('</div>\n                                `', `${divContent.join('')}\n                                    </div>\n                                `);
+                html_contextMenu = html_contextMenu.replace('</div>\n                                `', `${divContent.join('')}\n                                    </div>\n                                `);
             }
 
             const ventanaContenedor = document.querySelector(".info-chat-cuerpo")
@@ -466,19 +467,19 @@ export async function mostrar_datos_chat_usaurios(e) {
                     const resultado = await window.chats.EXPULSAR_USUARIO_CHAT(id, id_chat)
                     if (resultado) {
                         // actualizar seccion info chat
-                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => {} })
+                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
                     }
                 }
                 else if (action === "hacer-admin") {
                     const resultado = await window.chats.HACER_ADMIN_CHAT(id_chat, id);
                     if (resultado) {
-                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => {} })
+                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
                     }
                 }
                 else if (action === "quitar-admin") {
                     const resultado = await window.chats.QUITAR_ADMIN_CHAT(id_chat, id);
                     if (resultado) {
-                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => {} })
+                        mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
                     }
                 }
                 else if (action === "añadir-contacto") { //editar nombre/extension
