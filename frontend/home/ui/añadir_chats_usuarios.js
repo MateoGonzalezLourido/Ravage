@@ -238,12 +238,21 @@ async function crear_chat_nuevo(e) {
             //actualizar html
             desplegar_menu_añadir_chat({ mostrar: false })
             await ACTUALIZAR_LISTAS_CHAT()
-            //notificacion al usuario
-            window.pushNotificacion({
-                prioridad: 1,
-                texto: id_chat ? "Usuarios añadidos al chat" : "Chat creado con éxito",
-                tipo: "success"
-            })
+
+            // Verificar si fue una solicitud (chat de 2 personas)
+            if (result.solicitud) {
+                window.pushNotificacion({
+                    prioridad: 1,
+                    texto: "Solicitud enviada al otro participante del chat",
+                    tipo: "info"
+                })
+            } else {
+                window.pushNotificacion({
+                    prioridad: 1,
+                    texto: id_chat ? "Usuarios añadidos al chat" : "Chat creado con éxito",
+                    tipo: "success"
+                })
+            }
         } else {
             console.warn("Fallo al crear chat/añadir usuarios")
             window.pushNotificacion({

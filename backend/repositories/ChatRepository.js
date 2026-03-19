@@ -114,7 +114,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
     }
 }
 
-export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null) {
+export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, solicitudAceptada = false) {
     if (!ids || ids.length === 0) return false;
     const id_propio = getIDMongodbUsuario();
 
@@ -132,13 +132,55 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null) 
         const ids_añadir = ids.filter(id => !chat.usuarios.some(uid => uid.toString() === id.toString()));
         if (ids_añadir.length === 0) return true; // Ya estaban todos
 
+        // Si el chat tiene exactamente 2 participantes y NO viene de una solicitud aceptada,
+        // crear un mensaje especial de solicitud en vez de añadir directamente.
+        if (chat.usuarios.length === 2 && !solicitudAceptada) {
+            const msgSolicitud = await MessagesRavage.create({
+                id_chat: chatIdLimpio,
+                emisor: id_propio,
+                especial: {
+                    tipo: 2,
+                    emisor: id_propio,
+                    candidato: ids_añadir[0],
+                    estado: "pendiente"
+                }
+            });
+
+            // Actualizar ultimoCambio para que el chat suba en la lista
+            await User.updateMany(
+                { _id: { $in: chat.usuarios } },
+                {
+                    $set: {
+                        "chats.$[chat].ultimoCambio": new Date(),
+                        "chats.$[chat].ultimomensaje": "Solicitud: añadir usuario"
+                    }
+                },
+                { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(chatIdLimpio) }] }
+            );
+
+            // Notificar al otro participante
+            const ids_notificar = chat.usuarios.filter(x => x.toString() !== id_propio.toString());
+            Añadir_Entrada_Buzon_Usuario({
+                ids: ids_notificar,
+                tipo: 6, // tipo 6 = solicitud añadir usuario
+                data: {
+                    chat: chatIdLimpio,
+                    emisor: id_propio,
+                    candidato: ids_añadir[0],
+                    mensaje: msgSolicitud._id
+                }
+            }).catch(e => console.error(e));
+
+            return { solicitud: true, mensaje_id: msgSolicitud._id };
+        }
+
+        // 3+ participantes o solicitud aceptada: añadir directamente
         await ChatsRavage.updateOne(
             { _id: chatIdLimpio },
             { $addToSet: { usuarios: { $each: ids_añadir.map(id => new mongoose.Types.ObjectId(id)) } } }
         );
 
         // Actualizar a los usuarios existentes (y nuevos) en su lista de chats (User.chats)
-        // Esto es importante para que se actualice el ultimoCambio
         const ids_totales = [...chat.usuarios, ...ids_añadir];
         await User.updateMany(
             { _id: { $in: ids_totales } },
@@ -300,6 +342,67 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
     } catch (e) {
         console.error(e);
         return false;
+    }
+}
+
+/**
+ * Responder a una solicitud de añadir usuario a un chat de 2 personas.
+ * @param {string} id_chat - ID del chat
+ * @param {string} id_mensaje - ID del mensaje especial de solicitud
+ * @param {boolean} aceptar - true para aceptar, false para rechazar
+ */
+export async function RESPONDER_SOLICITUD_AÑADIR(id_chat, id_mensaje, aceptar) {
+    try {
+        const id_propio = getIDMongodbUsuario();
+        const chat = await ChatsRavage.findById(id_chat);
+        if (!chat) return { success: false, message: "Chat no encontrado" };
+
+        // Verificar que el usuario es miembro del chat
+        if (!chat.usuarios.some(u => u.toString() === id_propio.toString())) {
+            return { success: false, message: "No eres miembro de este chat" };
+        }
+
+        // Buscar el mensaje de solicitud
+        const mensaje = await MessagesRavage.findOne({ _id: id_mensaje, id_chat: new mongoose.Types.ObjectId(id_chat) });
+        if (!mensaje || !mensaje.especial || mensaje.especial.tipo !== 2) {
+            return { success: false, message: "Solicitud no encontrada" };
+        }
+        if (mensaje.especial.estado !== "pendiente") {
+            return { success: false, message: "Esta solicitud ya fue respondida" };
+        }
+
+        // Actualizar el estado de la solicitud
+        const nuevoEstado = aceptar ? "aceptada" : "rechazada";
+        await MessagesRavage.updateOne(
+            { _id: id_mensaje },
+            { $set: { "especial.estado": nuevoEstado } }
+        );
+
+        if (aceptar) {
+            // Añadir al usuario pasando solicitudAceptada = true para saltar la comprobación
+            const candidato_id = mensaje.especial.candidato.toString();
+            await CREAR_CHAT_NUEVO([candidato_id], "", id_chat, true);
+        }
+
+        // Notificar al otro participante (el que hizo la solicitud)
+        const emisor_solicitud = mensaje.especial.emisor.toString();
+        if (emisor_solicitud !== id_propio.toString()) {
+            Añadir_Entrada_Buzon_Usuario({
+                ids: [emisor_solicitud],
+                tipo: 7, // tipo 7 = respuesta a solicitud
+                data: {
+                    chat: id_chat,
+                    mensaje: id_mensaje,
+                    aceptada: aceptar,
+                    respondido_por: id_propio
+                }
+            }).catch(e => console.error(e));
+        }
+
+        return { success: true, aceptada: aceptar };
+    } catch (e) {
+        console.error("Error en RESPONDER_SOLICITUD_AÑADIR:", e);
+        return { success: false, message: "Error interno" };
     }
 }
 

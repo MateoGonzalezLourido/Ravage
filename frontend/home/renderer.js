@@ -699,6 +699,46 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
                 //cerrar paneles laterales si están abiertos
                 cerrar_paneles_al_abrir_chat()
+
+                // Eventos de botones de solicitud (añadir usuario a chat de 2)
+                document.querySelectorAll(".bt-solicitud-aceptar, .bt-solicitud-rechazar").forEach(btn => {
+                    btn.addEventListener("click", async (ev) => {
+                        ev.preventDefault()
+                        const id_chat_sol = ev.target.dataset.chat
+                        const id_mensaje_sol = ev.target.dataset.mensaje
+                        const aceptar = ev.target.classList.contains("bt-solicitud-aceptar")
+
+                        // Deshabilitar botones para evitar doble click
+                        const contenedor_botones = ev.target.closest(".solicitud-botones")
+                        if (contenedor_botones) contenedor_botones.querySelectorAll("button").forEach(b => b.disabled = true)
+
+                        const resultado = await window.chats.RESPONDER_SOLICITUD_AÑADIR(id_chat_sol, id_mensaje_sol, aceptar)
+                        if (resultado?.success) {
+                            window.pushNotificacion({
+                                prioridad: 1,
+                                texto: aceptar ? "Usuario añadido al chat" : "Solicitud rechazada",
+                                tipo: aceptar ? "success" : "info"
+                            })
+                            // Recargar el chat y la lista
+                            await ACTUALIZAR_LISTAS_CHAT()
+                            const [datos_chat_nuevo, id_usr] = await Promise.all([
+                                window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_sol),
+                                window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+                            ])
+                            datos_chat_nuevo._id = id_chat_sol
+                            document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat_nuevo, id_usr)
+                        } else {
+                            window.pushNotificacion({
+                                prioridad: 0,
+                                texto: resultado?.message || "Error al procesar la solicitud",
+                                tipo: "error"
+                            })
+                            // Rehabilitar botones
+                            if (contenedor_botones) contenedor_botones.querySelectorAll("button").forEach(b => b.disabled = false)
+                        }
+                    })
+                })
+
                 //scroll al final
                 scroll_fin_chat()
                 //TODO::crear observadores doom para el sistema de fecha de bloques mensajes
