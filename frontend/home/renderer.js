@@ -158,7 +158,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                                 document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
 
                                 //reactualizar chat (render)
-                                Actualizar_render_chat({ emisor: id_usuario, chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date().toISOString() })
+                                await Actualizar_render_chat({ emisor: id_usuario.toString(), chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date().toISOString() })
                             }
                         }
                     })
@@ -437,13 +437,13 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
             window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
         ])
 
-        const id_emisor = Array.isArray(emisor) ? emisor[0] : emisor
-        const propio = id_emisor == id_propio
+        const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
+        const propio = id_emisor == id_propio.toString()
         const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos })
 
         // Verificar si el emisor es admin en este chat (solo para grupos > 2)
         const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(chat);
-        const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.includes(id_emisor?.toString());
+        const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(admin_id => admin_id.toString() === id_emisor.toString());
 
         //crear mensaje
         const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
@@ -547,7 +547,7 @@ async function hacer_cambios_buzon(entrada) {
             console.log([entrada, respuesta])
 
             //actualizar chat
-            Actualizar_render_chat({
+            await Actualizar_render_chat({
                 emisor: respuesta.emisor,
                 chat: entrada.data.chat,
                 mensaje: respuesta.contenido?.[0]?.asunto || "",
@@ -572,7 +572,6 @@ async function hacer_cambios_buzon(entrada) {
                 }
             }
         }
-
     }
     else if (tp === 1) {// añadido en un chat existente
         //actualizar componentes lista
@@ -598,7 +597,7 @@ async function hacer_cambios_buzon(entrada) {
             })
         }
         //actualizar chat
-        Actualizar_render_chat({
+        await Actualizar_render_chat({
             emisor: entrada.data.emisor,
             chat: entrada.data.chat,
             fecha: entrada.data.data,
@@ -646,7 +645,7 @@ async function hacer_cambios_buzon(entrada) {
             });
         }
         //actualizar chat
-        Actualizar_render_chat({
+        await Actualizar_render_chat({
             emisor: entrada.data.emisor,
             chat: entrada.data.chat,
             fecha: entrada.data.data,
