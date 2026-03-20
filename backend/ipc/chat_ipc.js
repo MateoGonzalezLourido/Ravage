@@ -48,8 +48,8 @@ export function registerChatHandlers(mainWindow, socket) {
         return await RESPONDER_SOLICITUD_AÑADIR(id_chat, id_mensaje, aceptar)
     })
 
-    ipcMain.handle("obtener-ajustes-app", (_, nombre) => {
-        return getAjustesAppFile(nombre)
+    ipcMain.handle("obtener-ajustes-app", async (_, nombre) => {
+        return await getAjustesAppFile(nombre)
     })
 
     ipcMain.handle("guardar-ajustes-app", async (_, data) => {
