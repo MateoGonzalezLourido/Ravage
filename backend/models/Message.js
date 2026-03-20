@@ -32,8 +32,13 @@ const MessageSchema = new mongoose.Schema({
         data: String // Contenido cifrado (JSON stringified content)
     },
     data: { type: Date, default: Date.now },
-    especial: { type: mongoose.Schema.Types.Mixed, default: null }
+    especial: { type: mongoose.Schema.Types.Mixed, default: null },
+    ratchet_info: {
+        iteration: { type: Number, default: 0 },
+        chain_id: { type: String, default: null } // Opcional, por si se reinicia la cadena
+    }
 });
+
 
 const ArchivoSchemaGridfs = new mongoose.Schema({
     filename: { type: EncryptedDataSchema, default: null },

@@ -1,4 +1,5 @@
-import { generateKeyPairSync, publicEncrypt, privateDecrypt, createCipheriv, createDecipheriv, randomBytes, diffieHellman, createHash } from 'crypto';
+import { generateKeyPairSync, publicEncrypt, privateDecrypt, createCipheriv, createDecipheriv, randomBytes, diffieHellman, createHash, createHmac } from 'crypto';
+
 
 let systemKey = null;
 function getSystemKey() {
@@ -141,3 +142,23 @@ export function crearDecipherStream(key, iv, tag) {
     decipher.setAuthTag(tag);
     return decipher;
 }
+
+/**
+ * Avanza la cadena de claves (Sender Key Ratchet).
+ * Retorna { messageKey, nextChainKey }.
+ */
+export function ratchetChainKey(chainKeyHex) {
+    const chainKey = Buffer.from(chainKeyHex, 'hex');
+    
+    // MK = HMAC-SHA256(CK, 0x01)
+    const messageKey = createHmac('sha256', chainKey).update(Buffer.from([0x01])).digest();
+    
+    // NextCK = HMAC-SHA256(CK, 0x02)
+    const nextChainKey = createHmac('sha256', chainKey).update(Buffer.from([0x02])).digest();
+    
+    return {
+        messageKey: messageKey,
+        nextChainKey: nextChainKey.toString('hex')
+    };
+}
+

@@ -6,7 +6,7 @@ import { convertirObjectId } from '../utils/conversores.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { randomBytes } from 'crypto';
-import { cifrarConPublica, descifrarConPrivada, descifrarContenido, encriptarDatosSistema, desencriptarDatosSistema } from '../services/cryptoService.js';
+import { descifrarListaMensajes } from '../services/messageCryptoService.js';
 import { readFileSession } from '../services/controladorArchivos.js';
 
 
@@ -29,31 +29,7 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
 
             for (let chat of data_obtenida) {
                 chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: 1 }).lean();
-
-                // Intentar descifrar mensajes si hay llave disponible
-                if (chat.claves_cifradas && identity_data?.privateKey) {
-                    const clave_obj = chat.claves_cifradas.find(c => c.usuario_id.toString() === id_propio.toString());
-                    if (clave_obj) {
-                        try {
-                            const chatKeyHex = descifrarConPrivada(clave_obj.clave_envuelta, identity_data.privateKey);
-                            const chatKey = Buffer.from(chatKeyHex, 'hex');
-
-                            chat.mensajes = chat.mensajes.map(m => {
-                                if (m.encriptado && m.encriptado.data) {
-                                    try {
-                                        const decrypted = descifrarContenido(m.encriptado, chatKey);
-                                        m.contenido = JSON.parse(decrypted);
-                                    } catch (err) {
-                                        m.contenido = [{ asunto: "[Error al descifrar]", archivos: [] }];
-                                    }
-                                }
-                                return m;
-                            });
-                        } catch (e) {
-                            console.error("Error al obtener ChatKey para el chat:", chat._id);
-                        }
-                    }
-                }
+                await descifrarListaMensajes(chat.mensajes, chat);
             }
         }
 
@@ -82,29 +58,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
                 id_chat: new mongoose.Types.ObjectId(id_chat) 
             }).sort({ data: 1 }).lean();
 
-            // Descifrar mensajes (sección repetida para chat único, se podría modularizar)
-            const id_propio = getIDMongodbUsuario();
-            const identity_data = await readFileSession('identity');
-            if (data_obtenida.claves_cifradas && identity_data?.privateKey) {
-                const clave_obj = data_obtenida.claves_cifradas.find(c => c.usuario_id.toString() === id_propio.toString());
-                if (clave_obj) {
-                    try {
-                        const chatKeyHex = descifrarConPrivada(clave_obj.clave_envuelta, identity_data.privateKey);
-                        const chatKey = Buffer.from(chatKeyHex, 'hex');
-                        data_obtenida.mensajes = data_obtenida.mensajes.map(m => {
-                            if (m.encriptado && m.encriptado.data) {
-                                try {
-                                    const decrypted = descifrarContenido(m.encriptado, chatKey);
-                                    m.contenido = JSON.parse(decrypted);
-                                } catch (err) {
-                                    m.contenido = [{ asunto: "[Error al descifrar]", archivos: [] }];
-                                }
-                            }
-                            return m;
-                        });
-                    } catch (e) { }
-                }
-            }
+            await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
         }
 
         const [data_con_nombre] = await resolverNombresChats([data_obtenida]);
@@ -242,31 +196,36 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     // CREAR CHAT NUEVO (Todos los chats se consideran expansibles/grupos)
     const ids_total = [...ids, id_propio];
     
-    // E2EE: Generar ChatKey única para este chat
-    const chatKeyBuffer = randomBytes(32);
-    const chatKeyHex = chatKeyBuffer.toString('hex');
+    // Preparar ratchet_keys iniciales (Sender Key por usuario)
+    const ratchet_keys = [];
+    const usuarios_data = await User.find({ _id: { $in: ids_total } }, "_id publicKey").lean();
 
-    // Obtener llaves públicas de los participantes
-    const usuarios = await User.find({ _id: { $in: ids_total } }, "_id publicKey").lean();
-    
-    const claves_cifradas = usuarios.map(u => {
-        if (!u.publicKey) return null; // Fallback para usuarios antiguos
-        return {
-            usuario_id: u._id,
-            clave_envuelta: cifrarConPublica(chatKeyHex, u.publicKey)
-        };
-    }).filter(x => x !== null);
+    for (const emisor of usuarios_data) {
+        const chainKey = randomBytes(32).toString('hex');
+        
+        for (const receptor of usuarios_data) {
+            if (!receptor.publicKey) continue;
+            
+            ratchet_keys.push({
+                emisor_id: emisor._id,
+                receptor_id: receptor._id,
+                clave_envuelta: cifrarConPublica(chainKey, receptor.publicKey),
+                counter: 0
+            });
+        }
+    }
 
     let datos_chat;
 
     try {
         datos_chat = await ChatsRavage.create({
-            nombre: nombre ? encriptarDatosSistema(nombre) : null, // Encriptar nombre si se proporciona
+            nombre: nombre ? encriptarDatosSistema(nombre) : null,
             usuarios: ids_total.map(id => new mongoose.Types.ObjectId(id)),
             admins: ids_total.length === 2 ? ids_total.map(id => new mongoose.Types.ObjectId(id)) : [new mongoose.Types.ObjectId(id_propio)],
-            grupo: true, // Siempre true para permitir expansión inmediata
-            claves_cifradas
+            grupo: true,
+            ratchet_keys
         });
+
 
         await User.updateMany(
             { _id: { $in: ids_total } },
@@ -537,3 +496,55 @@ export async function QUITAR_ADMIN_CHAT(id_chat, id_usuario) {
         return false;
     }
 }
+
+
+/**
+ * Rotación completa de la Sender Key para un emisor específico en un chat.
+ */
+export async function rotarClavesChat(id_chat, id_emisor) {
+    try {
+        const { ChatsRavage } = await import('../models/Chat.js');
+        const { User } = await import('../models/User.js');
+        const { randomBytes } = await import('../utils/libs.js');
+        const { cifrarConPublica } = await import('../services/cryptoService.js');
+
+        const chat = await ChatsRavage.findById(id_chat);
+        if (!chat) return false;
+
+        const newChainKey = randomBytes(32).toString('hex');
+        const usuarios_data = await User.find({ _id: { $in: chat.usuarios } }, "_id publicKey").lean();
+
+        const updates = [];
+        for (const receptor of usuarios_data) {
+            if (!receptor.publicKey) continue;
+            
+            updates.push({
+                emisor_id: id_emisor,
+                receptor_id: receptor._id,
+                clave_envuelta: cifrarConPublica(newChainKey, receptor.publicKey),
+                counter: 0
+            });
+        }
+
+        // Reemplazar todas las entradas de este emisor en el array ratchet_keys
+        await ChatsRavage.updateOne(
+            { _id: id_chat },
+            { 
+                $pull: { ratchet_keys: { emisor_id: id_emisor } }
+            }
+        );
+
+        await ChatsRavage.updateOne(
+            { _id: id_chat },
+            { 
+                $push: { ratchet_keys: { $each: updates } }
+            }
+        );
+
+        return true;
+    } catch (e) {
+        console.error("Error al rotar claves del chat:", e);
+        return false;
+    }
+}
+
