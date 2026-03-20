@@ -17,10 +17,10 @@ try {
     ipcMain = electron.ipcMain;
     dialog = electron.dialog;
 } catch (e) {
-    app = { getPath: () => '/tmp', on: () => {} };
-    BrowserWindow = class {};
-    ipcMain = { on: () => {}, handle: () => {} };
-    dialog = { showOpenDialog: () => {}, showSaveDialog: () => {} };
+    app = { getPath: () => '/tmp', on: () => { }, emit: () => { }, quit: () => { } };
+    BrowserWindow = class { };
+    ipcMain = { on: () => { }, handle: () => { } };
+    dialog = { showOpenDialog: () => { }, showSaveDialog: () => { } };
 }
 
 
@@ -86,3 +86,5 @@ export {
     //validacion datos
     validator
 };
+
+

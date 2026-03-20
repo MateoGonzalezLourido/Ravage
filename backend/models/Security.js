@@ -1,30 +1,26 @@
 import { mongoose } from '../utils/libs.js';
 
+const EncryptedDataSchema = new mongoose.Schema({
+    data: { type: String, required: true },
+    iv: { type: String, required: true },
+    tag: { type: String, required: true }
+}, { _id: false });
+
 const ValidationCodeSchema = new mongoose.Schema({
     code: {
         type: String,
         required: true,
         maxlength: 64 // SHA256 length
     },
-    correo: {
-        type: String,
-        required: true,
-        lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    },
+    correo: { type: EncryptedDataSchema, required: true },
+    correo_hash: { type: String, required: true, index: true },
     expira: {
         type: Date,
         default: () => new Date()
     },
-    id_dp: {
-        type: String,
-        required: true,
-        default: ""
-    },
-    data: { // Data transitoria (hash, apodo, etc.)
-        type: Object,
-        default: {}
-    }
+    id_dp: { type: EncryptedDataSchema, required: true },
+    id_dp_hash: { type: String, required: true, index: true },
+    data: { type: EncryptedDataSchema, default: null }
 });
 
 const DatosCuentaValidationCodeSchema = new mongoose.Schema({
@@ -32,12 +28,8 @@ const DatosCuentaValidationCodeSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    correo: {
-        type: String,
-        required: true,
-        lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    },
+    correo: { type: EncryptedDataSchema, required: true },
+    correo_hash: { type: String, required: true, index: true },
     tipo: {
         type: String,
         required: true,
@@ -47,24 +39,14 @@ const DatosCuentaValidationCodeSchema = new mongoose.Schema({
         type: Date,
         default: () => new Date()
     },
-    id_dp: {
-        type: String,
-        required: true,
-        default: ""
-    },
-    data: { // Data transitoria
-        type: Object,
-        default: {}
-    }
+    id_dp: { type: EncryptedDataSchema, required: true },
+    id_dp_hash: { type: String, required: true, index: true },
+    data: { type: EncryptedDataSchema, default: null }
 });
 
 const TokenSchema = new mongoose.Schema({
-    correo: {
-        type: String,
-        required: true,
-        lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    },
+    correo: { type: EncryptedDataSchema, required: true },
+    correo_hash: { type: String, required: true, index: true },
     token: {
         type: String,
         required: true,
@@ -74,45 +56,30 @@ const TokenSchema = new mongoose.Schema({
         type: Date,
         default: () => new Date()
     },
-    id_dp: {
-        type: String,
-        required: true,
-        default: ""
-    }
+    id_dp: { type: EncryptedDataSchema, required: true },
+    id_dp_hash: { type: String, required: true, index: true }
 });
 
 const TokenDPCSchema = new mongoose.Schema({
-    correo: {
-        type: String,
-        required: true,
-        lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    },
+    correo: { type: EncryptedDataSchema, required: true },
+    correo_hash: { type: String, required: true, index: true },
     token: {
         type: String,
         required: true,
         default: ""
     },
-    id_dp: {
-        type: String,
-        required: true,
-        default: ""
-    }
+    id_dp: { type: EncryptedDataSchema, required: true },
+    id_dp_hash: { type: String, required: true, index: true }
 });
 
 const DPBLOQUEADOSchema = new mongoose.Schema({
-    correo: {
-        type: String,
-        required: true,
-        lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    },
-    id_dp: {
-        type: String,
-        required: true,
-        default: ""
-    }
+    correo: { type: EncryptedDataSchema, required: true },
+    correo_hash: { type: String, required: true, index: true },
+    id_dp: { type: EncryptedDataSchema, required: true },
+    id_dp_hash: { type: String, required: true, index: true }
 });
+
+
 
 TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });
 ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });

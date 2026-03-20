@@ -20,7 +20,8 @@ import {
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, createHash, machineIdSync } from '../utils/libs.js';
-import { generarLlavesRSA } from './cryptoService.js';
+import { generarLlavesRSA, hashDatosSistema } from './cryptoService.js';
+
 import {
     comprobarContrasenaValidaciones,
     comprobar_apodo,
@@ -80,7 +81,7 @@ async function autoLoginUsuario() {
 
     // Comprobar si este dispositivo no esta bloqueado
     const deviceId = String(machineIdSync());
-    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo: username, id_dp: deviceId });
+    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo_hash: hashDatosSistema(username), id_dp_hash: hashDatosSistema(deviceId) });
     if (dp_bloqueado_db) {
         await limpiarArchivosCompleto();
         return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' };
@@ -118,7 +119,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
         return { success: false, message: resultado.message }
     }
     //verificar si no existe un usuario igual
-    const existe = await User.exists({ correo: correoStr });
+    const existe = await User.exists({ correo_hash: hashDatosSistema(correoStr) });
     if (existe) {
         return { success: false, message: "Correo ya registrado" };
     }
@@ -242,7 +243,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     //comprobar si este dp no esta bloqueado
     const deviceId = String(machineIdSync());
-    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo: usernameStr, id_dp: deviceId })
+    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo_hash: hashDatosSistema(usernameStr), id_dp_hash: hashDatosSistema(deviceId) })
     if (dp_bloqueado_db) {
         return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
     }
@@ -260,7 +261,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     else {
         const tokenhash = createHash("sha256").update(dp_confianza_data.token).digest("hex");
-        dp_confianza = await TokenDPC.exists({ correo: username, token: tokenhash, id_dp: deviceId })
+        dp_confianza = await TokenDPC.exists({ correo_hash: hashDatosSistema(username), token: tokenhash, id_dp_hash: hashDatosSistema(deviceId) })
     }
     //autovalidacion del codigo de verificacion de cuenta por token
     const data_autoverificacion = !dp_confianza ? await readFileSession("omitirVerificacionCuentaFile") : ""
@@ -270,7 +271,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         if (valido) {
             //validar token con mongodb
             const tokenhash = createHash("sha256").update(data_autoverificacion.token).digest("hex");
-            const token_datos = await TokenVC.exists({ correo: usuario_data.data.correo, token: tokenhash, id_dp: deviceId })
+            const token_datos = await TokenVC.exists({ correo_hash: hashDatosSistema(usuario_data.data.correo), token: tokenhash, id_dp_hash: hashDatosSistema(deviceId) })
 
             if (!token_datos) await clearFileSession('omitirVerificacionCuentaFile');
             else autoverificacion = true
