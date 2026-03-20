@@ -1,9 +1,9 @@
 import { BuzonUsuarios } from '../models/Buzon.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
+import { encriptarDatosSistema, desencriptarDatosSistema } from '../services/cryptoService.js';
 
 export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data = null }) {
     if (!ids || ids.length === 0) return;
-    const id_propio = getIDMongodbUsuario();
     const lista_ids = Array.isArray(ids) ? ids : [ids];
 
     try {
@@ -11,7 +11,7 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
             { _id: { $in: lista_ids } },
             {
                 $push: {
-                    entrada: { tipo, data }
+                    entrada: { tipo, data: encriptarDatosSistema(data) }
                 }
             },
             { upsert: true }
@@ -29,7 +29,11 @@ export async function Revisar_Buzon_Usuario() {
         const buzon = await BuzonUsuarios.findById(userId);
         if (!buzon || buzon.entrada.length === 0) return [];
         
-        const entradas = [...buzon.entrada];
+        const entradas = buzon.entrada.map(ent => ({
+            tipo: ent.tipo,
+            data: ent.data ? desencriptarDatosSistema(ent.data) : null
+        }));
+
         await BuzonUsuarios.updateOne(
             { _id: userId },
             { $set: { entrada: [] } }
@@ -40,3 +44,4 @@ export async function Revisar_Buzon_Usuario() {
         return [];
     }
 }
+

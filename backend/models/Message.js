@@ -1,7 +1,13 @@
 import { mongoose } from '../utils/libs.js';
 
+const EncryptedDataSchema = new mongoose.Schema({
+    data: { type: String, required: true },
+    iv: { type: String, required: true },
+    tag: { type: String, required: true }
+}, { _id: false });
+
 const ArchivoSchema = new mongoose.Schema({
-    nombre: { type: String, default: "_archivo_.txt", maxlength: 255 },
+    nombre: { type: EncryptedDataSchema, default: null },
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
     iv: String,
     tag: String
@@ -12,13 +18,14 @@ const MessageSchema = new mongoose.Schema({
     emisor: { type: mongoose.Schema.Types.ObjectId, required: true },
     contenido: {
         type: [{
-            asunto: { type: String, default: "", maxlength: 1000 },
+            asunto: { type: EncryptedDataSchema, default: null },
             archivos: {
                 type: [ArchivoSchema],
             }
         }],
         default: []
     },
+
     encriptado: {
         iv: String,
         tag: String,
@@ -29,7 +36,8 @@ const MessageSchema = new mongoose.Schema({
 });
 
 const ArchivoSchemaGridfs = new mongoose.Schema({
-    filename: { type: String, maxlength: 255 },
+    filename: { type: EncryptedDataSchema, default: null },
+
     gridfsId: mongoose.Types.ObjectId,
     size: Number,
     mimetype: String,

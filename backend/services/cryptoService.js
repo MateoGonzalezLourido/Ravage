@@ -1,6 +1,16 @@
 import { generateKeyPairSync, publicEncrypt, privateDecrypt, createCipheriv, createDecipheriv, randomBytes, diffieHellman, createHash } from 'crypto';
 
-const SYSTEM_KEY = Buffer.from(process.env.INTERNAL_ENCRYPTION_KEY, 'hex');
+let systemKey = null;
+function getSystemKey() {
+    if (!systemKey) {
+        if (!process.env.INTERNAL_ENCRYPTION_KEY) {
+            throw new Error("INTERNAL_ENCRYPTION_KEY not set in process.env");
+        }
+        systemKey = Buffer.from(process.env.INTERNAL_ENCRYPTION_KEY, 'hex');
+    }
+    return systemKey;
+}
+
 
 /**
  * Encripta datos del sistema usando la llave interna (AES-256-GCM).
@@ -8,7 +18,7 @@ const SYSTEM_KEY = Buffer.from(process.env.INTERNAL_ENCRYPTION_KEY, 'hex');
 export function encriptarDatosSistema(datos) {
     if (!datos) return null;
     const iv = randomBytes(12);
-    const cipher = createCipheriv('aes-256-gcm', SYSTEM_KEY, iv);
+    const cipher = createCipheriv('aes-256-gcm', getSystemKey(), iv);
     
     let encrypted = cipher.update(typeof datos === 'string' ? datos : JSON.stringify(datos), 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -24,9 +34,9 @@ export function encriptarDatosSistema(datos) {
  * Desencripta datos del sistema usando la llave interna.
  */
 export function desencriptarDatosSistema(encriptado) {
-    if (!encriptado || !encriptado.data || !encriptado.iv || !encriptado.tag) return null;
+    if (!encriptado || typeof encriptado !== 'object' || !encriptado.data || !encriptado.iv || !encriptado.tag) return encriptado;
     try {
-        const decipher = createDecipheriv('aes-256-gcm', SYSTEM_KEY, Buffer.from(encriptado.iv, 'hex'));
+        const decipher = createDecipheriv('aes-256-gcm', getSystemKey(), Buffer.from(encriptado.iv, 'hex'));
         decipher.setAuthTag(Buffer.from(encriptado.tag, 'hex'));
         
         let decrypted = decipher.update(encriptado.data, 'hex', 'utf8');
@@ -34,9 +44,10 @@ export function desencriptarDatosSistema(encriptado) {
         return decrypted;
     } catch (e) {
         console.error("Error al desencriptar datos del sistema:", e);
-        return null;
+        return encriptado; // Devolver original en caso de fallo crítico de desencriptado (opcional, pero más estable para la UI)
     }
 }
+
 
 /**
  * Genera un hash SHA-256 para búsquedas deterministas.

@@ -6,8 +6,9 @@ import { convertirObjectId } from '../utils/conversores.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { randomBytes } from 'crypto';
-import { cifrarConPublica, descifrarConPrivada, descifrarContenido } from '../services/cryptoService.js';
+import { cifrarConPublica, descifrarConPrivada, descifrarContenido, encriptarDatosSistema, desencriptarDatosSistema } from '../services/cryptoService.js';
 import { readFileSession } from '../services/controladorArchivos.js';
+
 
 export async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
     try {
@@ -260,7 +261,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
 
     try {
         datos_chat = await ChatsRavage.create({
-            nombre: nombre || "", // Si está vacío, se resolverá dinámicamente al leer
+            nombre: nombre ? encriptarDatosSistema(nombre) : null, // Encriptar nombre si se proporciona
             usuarios: ids_total.map(id => new mongoose.Types.ObjectId(id)),
             admins: ids_total.length === 2 ? ids_total.map(id => new mongoose.Types.ObjectId(id)) : [new mongoose.Types.ObjectId(id_propio)],
             grupo: true, // Siempre true para permitir expansión inmediata
@@ -276,11 +277,12 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
                         nombre: datos_chat.nombre,
                         grupo: datos_chat.grupo,
                         ultimoCambio: new Date(),
-                        ultimomensaje: "Chat recién creado"
+                        ultimomensaje: encriptarDatosSistema("Chat recién creado")
                     }
                 }
             }
         );
+
 
         if (ids.length === 1) { // Si hablas con una persona por primera vez, asegurar contacto
             const { AÑADIR_CONTACTO } = await import('./UserRepository.js');
@@ -445,6 +447,11 @@ async function resolverNombresChats(chats) {
 
     // Aplicar nombres
     return chats.map(chat => {
+        // Desencriptar el nombre si existe
+        if (chat.nombre && typeof chat.nombre === 'object' && chat.nombre.data) {
+            chat.nombre = desencriptarDatosSistema(chat.nombre);
+        }
+
         if (!chat.nombre) {
             if (chat.usuarios.length === 2) {
                 const id_otro = chat.usuarios.find(u => u.toString() !== id_propio.toString());

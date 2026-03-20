@@ -1,12 +1,12 @@
 import { MessagesRavage } from '../models/Message.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { User } from '../models/User.js';
-import { mongoose, GridFSBucket, ObjectId, fs } from '../utils/libs.js';
+import { mongoose, GridFSBucket, ObjectId, fs, randomBytes } from '../utils/libs.js';
 import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
-import { cifrarContenido, descifrarConPrivada, descifrarContenido, crearCipherStream, crearDecipherStream, randomBytes } from '../services/cryptoService.js';
-import { readFileSession } from '../services/controladorArchivos.js';
-import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
+import { cifrarContenido, descifrarConPrivada, descifrarContenido, crearCipherStream, crearDecipherStream, encriptarDatosSistema, desencriptarDatosSistema } from '../services/cryptoService.js';
+
+
 
 export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }) {
     try {
@@ -58,7 +58,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 });
 
                 contenido_archivos.push({
-                    nombre: nombreCompletoUsar,
+                    nombre: encriptarDatosSistema(nombreCompletoUsar),
                     id: idArchivo.toHexString(),
                     iv: iv.toString('hex'),
                     tag: cipherStream.getAuthTag().toString('hex')
@@ -93,7 +93,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 {
                     $set: {
                         "chats.$[chat].ultimoCambio": new Date(),
-                        "chats.$[chat].ultimomensaje": asunto
+                        "chats.$[chat].ultimomensaje": encriptarDatosSistema(asunto)
                     }
                 },
                 {
@@ -170,21 +170,43 @@ export function descifrarListaMensajes(mensajes, chatKey) {
                 
                 // Si es el nuevo formato (objeto)
                 if (data && !Array.isArray(data)) {
-                    m.contenido = [{ asunto: data.asunto, archivos: data.archivos }];
+                    m.contenido = [{ 
+                        asunto: data.asunto, 
+                        archivos: data.archivos.map(a => ({
+                            ...a,
+                            nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
+                        }))
+                    }];
                     m.emisor = data.emisor;
                     m.data = data.data;
                 } else {
                     // Formato antiguo (array)
-                    m.contenido = data;
+                    m.contenido = data.map(c => ({
+                        asunto: (c.asunto && typeof c.asunto === 'object') ? desencriptarDatosSistema(c.asunto) : c.asunto,
+                        archivos: c.archivos.map(a => ({
+                            ...a,
+                            nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
+                        }))
+                    }));
                 }
             } catch (err) {
                 console.error("Error descifrando mensaje individual:", err);
                 m.contenido = [{ asunto: "[Error al descifrar]", archivos: [] }];
             }
+        } else if (m.contenido && m.contenido.length > 0) {
+            // Mensaje no E2EE pero con metadatos posiblemente encriptados por el sistema
+            m.contenido = m.contenido.map(c => ({
+                asunto: (c.asunto && typeof c.asunto === 'object') ? desencriptarDatosSistema(c.asunto) : c.asunto,
+                archivos: c.archivos.map(a => ({
+                    ...a,
+                    nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
+                }))
+            }));
         }
         return m;
     });
 }
+
 
 export async function limpiar_mensajes_chats_antiguos(chatIdsRaw) {
     const chatIds = chatIdsRaw.map(c => c.id);

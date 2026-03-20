@@ -1,4 +1,6 @@
 import { hash, compare, machineIdSync } from '../utils/libs.js';
+import { hashDatosSistema, desencriptarDatosSistema } from './cryptoService.js';
+
 
 import { User } from '../models/User.js';
 import { DatosCuentaVC } from '../models/Security.js';
@@ -38,71 +40,76 @@ async function permitirCambioContraseñaUsuario(contraseña = null) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
     const correo = getCorreoSesion()
-    //sin data solo mandar si no hay bloqueador de tiempo
+    
+    // Si no se proporciona contraseña, solo verificar si el usuario puede realizar la acción (bloqueo por tiempo)
     if (!contraseña) {
-        const data_usuario = (await User.find({ correo: correo }))[0]
-        if (!data_usuario || (!data_usuario.exp_bloq_contrasena)) {
-            bloquear_accion = false
-            return { success: false, message: "Usuario no encontrado" }
+        const data_usuario = await User.findOne({ correo_hash: hashDatosSistema(correo) });
+        if (!data_usuario) {
+            bloquear_accion = false;
+            return { success: false, message: "Usuario no encontrado" };
         }
-        if (new Date(data_usuario.exp_bloq_contrasena) >= new Date()) {
-            bloquear_accion = false
-            return { success: false, message: "Tiempo de bloqueo no cumplido" }
+        if (data_usuario.exp_bloq_contrasena && new Date(data_usuario.exp_bloq_contrasena) >= new Date()) {
+            bloquear_accion = false;
+            return { success: false, message: "Tiempo de bloqueo no cumplido" };
         }
-        bloquear_accion = false
-        return { success: true }
+        bloquear_accion = false;
+        return { success: true };
     }
 
-    //comprobar contraseña
-    let result = comprobarContrasenaValidaciones(contraseña)
+    // Comprobar formato de la nueva contraseña
+    let result = comprobarContrasenaValidaciones(contraseña);
     if (!result.success) {
-        bloquear_accion = false
-        return { success: false, message: result.message }
+        bloquear_accion = false;
+        return { success: false, message: result.message };
     }
-    //tiempo de bloqueo expirado?
-    const data_usuario = (await User.find({ correo: correo }))[0]
-    if (!data_usuario || (!data_usuario.exp_bloq_contrasena)) {
-        bloquear_accion = false
-        return { success: false, message: "Usuario no encontrado" }
+
+    // Verificar bloqueo y contraseña actual
+    const data_usuario = await User.findOne({ correo_hash: hashDatosSistema(correo) });
+    if (!data_usuario) {
+        bloquear_accion = false;
+        return { success: false, message: "Usuario no encontrado" };
     }
-    //comprobacion de seguridad
-    if (new Date(data_usuario.exp_bloq_contrasena) >= new Date()) {
-        bloquear_accion = false
-        return { success: false, message: "Tiempo de bloqueo no cumplido" }
+
+    if (data_usuario.exp_bloq_contrasena && new Date(data_usuario.exp_bloq_contrasena) >= new Date()) {
+        bloquear_accion = false;
+        return { success: false, message: "Tiempo de bloqueo no cumplido" };
     }
-    const iguales = await compare(contraseña, data_usuario.contrasena)
+
+    const iguales = await compare(contraseña, data_usuario.contrasena);
     if (iguales) {
-        bloquear_accion = false
-        return { success: false, message: "La contraseña es la misma" }
+        bloquear_accion = false;
+        return { success: false, message: "La contraseña es la misma" };
     }
-    const apodo = getApodoSesion()
-    //todo correcto, mandar correo con codigo
-    const code_generado = String(generarCodigoVerificacion())
-    const hashed_ValidationCode = await hash(code_generado, saltos_code)
-    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "contraseña" })
-    //insertar codigo en mongodb
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-    InsertarDatosCuentaVC({ correo: correo, code: hashed_ValidationCode, id: deviceId, tipo: "contraseña" })
-    //mandar correo
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    //intentos para poder poner el codigo correcto de verificacion
-    intentos_codigo_validacion = n_intentos_codigo_validacion
-    bloquear_accion = false
-    return { success: true }
+
+    const apodo = getApodoSesion();
+    const code_generado = String(generarCodigoVerificacion());
+    const hashed_ValidationCode = await hash(code_generado, saltos_code);
+    const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "contraseña" });
+    
+    const deviceId = String(machineIdSync());
+    InsertarDatosCuentaVC({ correo: correo, code: hashed_ValidationCode, id: deviceId, tipo: "contraseña" });
+    
+    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
+    
+    intentos_codigo_validacion = n_intentos_codigo_validacion;
+    bloquear_accion = false;
+    return { success: true };
 }
+
 //TODO: ARREGLAR ESTE
 async function permitirCambioCorreoUsuario(correo = null) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
     const correo_viejo = getCorreoSesion()
-    //sin data solo mandar si no hay bloqueador de tiempo
+    
+    // Si no se proporciona correo, solo verificar si el usuario puede realizar la acción
     if (!correo) {
-        const data_usuario = (await User.find({ correo: correo_viejo }))[0]
-        if (!data_usuario || (!data_usuario.exp_bloq_correo)) {
+        const data_usuario = await User.findOne({ correo_hash: hashDatosSistema(correo_viejo) })
+        if (!data_usuario) {
             bloquear_accion = false
             return { success: false, message: "Usuario no encontrado" }
         }
-        if (new Date(data_usuario.exp_bloq_correo) >= new Date()) {
+        if (data_usuario.exp_bloq_correo && new Date(data_usuario.exp_bloq_correo) >= new Date()) {
             bloquear_accion = false
             return { success: false, message: "Tiempo de bloqueo no cumplido" }
         }
@@ -110,44 +117,46 @@ async function permitirCambioCorreoUsuario(correo = null) {
         return { success: true }
     }
 
-    //comprobar contraseña
+    // Comprobar formato del nuevo correo
     let result = comprobaciones_Correo(correo)
     if (!result.success) {
         bloquear_accion = false
         return { success: false, message: result.message }
     }
-    //tiempo de bloqueo expirado?
-    const data_usuario = (await User.find({ correo: correo_viejo }))[0]
-    if (!data_usuario || (!data_usuario.exp_bloq_correo)) {
+
+    // Verificar bloqueo, correo actual y existencia del nuevo correo
+    const data_usuario = await User.findOne({ correo_hash: hashDatosSistema(correo_viejo) })
+    if (!data_usuario) {
         bloquear_accion = false
         return { success: false, message: "Usuario no encontrado" }
     }
-    //comprobacion de seguridad
-    if (new Date(data_usuario.exp_bloq_correo) >= new Date()) {
+
+    if (data_usuario.exp_bloq_correo && new Date(data_usuario.exp_bloq_correo) >= new Date()) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
-    if (data_usuario.correo == correo) {
+
+    if (desencriptarDatosSistema(data_usuario.correo) == correo) {
         bloquear_accion = false
-        return { success: false, message: "El correo es el mismo" }
+        return { success: false, message: "El correo es the mismo" }
     }
-    //ya existe alguien con ese correo? 
-    const data_usuario2 = await User.exists({ correo: correo })
+
+    const data_usuario2 = await User.exists({ correo_hash: hashDatosSistema(correo) })
     if (data_usuario2) {
         bloquear_accion = false
         return { success: false, message: "Usuario ya existente" }
     }
+
     const apodo = getApodoSesion()
-    //todo correcto, mandar correo con codigo
     const code_generado = String(generarCodigoVerificacion())
     const hashed_ValidationCode = await hash(code_generado, saltos_code)
     const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "correo" })
-    //insertar codigo en mongodb
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+    
+    const deviceId = String(machineIdSync());
     InsertarDatosCuentaVC({ correo: correo_viejo, code: hashed_ValidationCode, id: deviceId, tipo: "correo" })
-    //mandar correo
+    
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    //intentos para poder poner el codigo correcto de verificacion
+    
     intentos_codigo_validacion = n_intentos_codigo_validacion
     bloquear_accion = false
     return { success: true }
@@ -157,44 +166,47 @@ async function permitirCambioApodoUsuario(apodo = null) {
     bloquear_accion = true
 
     const correo = getCorreoSesion()
-    //sin data solo mandar si no hay bloqueador de tiempo
+    // Si no se proporciona apodo, solo verificar si el usuario puede realizar la acción
     if (!apodo) {
-        const data_usuario = (await User.find({ correo: correo }))[0]
-        if (!data_usuario || (!data_usuario.exp_bloq_apodo)) {
+        const data_usuario = await User.findOne({ correo_hash: hashDatosSistema(correo) })
+
+        if (!data_usuario) {
             bloquear_accion = false
             return { success: false, message: "Usuario no encontrado" }
         }
-        if (new Date(data_usuario.exp_bloq_apodo) >= new Date()) {
+        if (data_usuario.exp_bloq_apodo && new Date(data_usuario.exp_bloq_apodo) >= new Date()) {
             bloquear_accion = false
             return { success: false, message: "Tiempo de bloqueo no cumplido" }
         }
         bloquear_accion = false
         return { success: true }
     }
-    //comprobar contraseña
 
-    //comprobar contraseña
+    // Comprobar formato del nuevo apodo
     let result = comprobar_apodo(apodo)
     if (!result.success) {
         bloquear_accion = false
         return { success: false, message: result.message }
     }
-    //tiempo de bloqueo expirado?
-    const data_usuario = (await User.find({ correo: correo }))[0]
-    if (!data_usuario || (!data_usuario.exp_bloq_apodo)) {
+
+    // Verificar bloqueo y apodo actual
+    const data_usuario = await User.findOne({ correo_hash: hashDatosSistema(correo) })
+    if (!data_usuario) {
         bloquear_accion = false
         return { success: false, message: "Usuario no encontrado" }
     }
-    //comprobacion de seguridad
-    if (new Date(data_usuario.exp_bloq_apodo) >= new Date()) {
+
+    if (data_usuario.exp_bloq_apodo && new Date(data_usuario.exp_bloq_apodo) >= new Date()) {
         bloquear_accion = false
         return { success: false, message: "Tiempo de bloqueo no cumplido" }
     }
-    if (data_usuario.apodo == apodo) {
+
+    if (desencriptarDatosSistema(data_usuario.apodo) == apodo) {
         bloquear_accion = false
         return { success: false, message: "El apodo es el mismo" }
     }
-    //*EN ESTE NO SE MANDA CORREO DE VERIFICACION
+
+    // En este no se manda correo de verificación
     bloquear_accion = false
     return { success: true }
 }
@@ -216,14 +228,15 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
             return { success: false, message: VCodigo.message }
         }
         //cojer el ultimo codigo generado
-        let code_db = (await DatosCuentaVC.find({ correo: correo, tipo: tipo }).sort({ expira: -1 }).limit(1))[0];
-        if (!code_db || code_db == [] || code_db.length == 0) {//no hay codes
+        let code_db = await DatosCuentaVC.findOne({ correo_hash: hashDatosSistema(correo), tipo: tipo }).sort({ expira: -1 }).lean();
+        if (!code_db) {
             bloquear_accion = false
             return { success: false, message: "Fallo al cambiar datos: no hay codigos" };
         }
-        const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
+        const deviceId = String(machineIdSync());
+        const id_dp_desencriptado = desencriptarDatosSistema(code_db.id_dp);
 
-        if (deviceId !== code_db.id_dp && (code_db.id_dp != "")) {//no son el mismo dispositivo
+        if (deviceId !== id_dp_desencriptado && (id_dp_desencriptado != "")) {
             bloquear_accion = false
             return { success: false, message: "Fallo al cambiar datos: este codigo no pertenece a este dispositivo" };
         }

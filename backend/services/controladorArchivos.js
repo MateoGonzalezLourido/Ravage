@@ -6,8 +6,8 @@ const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
 const algorithm = "aes-256-gcm";
 
 // Rutas estandarizadas
-const ruta_app_data = app.getPath('userData');
 const name_carpeta = '.APP_DATA';
+const ruta_app_data = app ? app.getPath('userData') : path.join(process.cwd(), '.test_data');
 
 const RTDF = {
     sessionDir: path.join(ruta_app_data, name_carpeta),
@@ -18,6 +18,7 @@ const RTDF = {
     infoAPP: path.join(ruta_app_data, name_carpeta, 'info_app.json'),
     identity: path.join(ruta_app_data, name_carpeta, 'identity.json')
 };
+
 
 // --- UTILIDADES INTERNAS REUTILIZABLES ---
 
@@ -74,8 +75,9 @@ async function saveIdentityFile({ privateKey }) {
 
 const AJUSTES_APP_DEFAULT = {
     MSBienvenida: true,
-    URL_DESCARGA: app.getPath("downloads")
+    URL_DESCARGA: app ? app.getPath("downloads") : path.join(process.cwd(), 'downloads')
 };
+
 
 async function saveAjustesAppFile({ data = {}, create = false }) {
     await asegurarCarpeta();
