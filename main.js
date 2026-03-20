@@ -8,7 +8,6 @@ import 'dotenv/config';
 
 import { startServer } from './backend/servidores/serverLocalHost.js';
 import { connectDB, closeDB } from "./backend/db/mongo.js";
-import { BorrarUsuarioActivo } from "./backend/repositories/UserRepository.js";
 import { autoLoginUsuario } from './backend/services/sesionUsuario.js';
 
 // Import modular IPC handlers
@@ -69,7 +68,6 @@ if (!gotTheLock) {
 
 app.on('before-quit', async (e) => {
     try {
-        await BorrarUsuarioActivo();
         await closeDB();
     } catch (err) {
         console.error(err);

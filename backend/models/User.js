@@ -100,25 +100,4 @@ const UserSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-const ActiveUserSchema = new mongoose.Schema({
-    correo: {
-        type: String,
-        required: true,
-        lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    },
-    expira: {
-        type: Date,
-        default: () => new Date()
-    },
-    id_dp: {
-        type: String,
-        required: true,
-        default: "",
-    }
-});
-
-ActiveUserSchema.index({ expira: 1 }, { expireAfterSeconds: 5 * 60 });
-
 export const User = mongoose.model("User", UserSchema, "usuarios");
-export const ActiveUser = mongoose.model("ActiveUser", ActiveUserSchema, "usuariosactivos");
