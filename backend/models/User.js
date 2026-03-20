@@ -1,37 +1,38 @@
 import { mongoose } from '../utils/libs.js';
 
+const EncryptedDataSchema = new mongoose.Schema({
+    data: { type: String, required: true },
+    iv: { type: String, required: true },
+    tag: { type: String, required: true }
+}, { _id: false });
+
 const ChatUsuarioSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
     grupo: { type: Boolean, default: false },
     ultimoCambio: { type: Date, default: Date.now },
-    ultimomensaje: { type: String, default: "" },
+    ultimomensaje: { type: EncryptedDataSchema, default: null },
     fijado: { type: Boolean, default: false }
 }, { _id: false });
 
 const ContactoUsuarioSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    apodo: { type: String, default: "", maxlength: 30 }
+    apodo: { type: EncryptedDataSchema, default: null }
 }, { _id: false });
 
 const UserSchema = new mongoose.Schema({
     apodo: {
-        type: String,
-        required: true,
-        minlength: 3,
-        maxlength: 20,
-        trim: true,
-        default: "Usuario",
-        match: /^[a-zA-Z0-9_-]+$/
+        type: EncryptedDataSchema,
+        required: true
     },
     correo: {
+        type: EncryptedDataSchema,
+        required: true
+    },
+    correo_hash: {
         type: String,
         required: true,
         unique: true,
-        lowercase: true,
-        match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        trim: true,
-        minlength: 2,
-        maxlength: 255
+        index: true
     },
     contrasena: {
         type: String,
@@ -84,11 +85,14 @@ const UserSchema = new mongoose.Schema({
         default: false
     },
     idamigo: {
+        type: EncryptedDataSchema,
+        required: true
+    },
+    idamigo_hash: {
         type: String,
-        default: "",
         required: true,
         unique: true,
-        maxlength: 10
+        index: true
     },
     secretKey: {
         type: String,
@@ -100,5 +104,6 @@ const UserSchema = new mongoose.Schema({
     },
     createdAt: { type: Date, default: Date.now }
 });
+
 
 export const User = mongoose.model("User", UserSchema, "usuarios");

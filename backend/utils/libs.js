@@ -7,7 +7,22 @@ import { fileURLToPath } from 'url';
 import os from 'os';
 
 // Electron
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+let app, BrowserWindow, ipcMain, dialog;
+try {
+    // Intentar importar electron solo si estamos en un proceso de Electron
+    // Si falla (por ejemplo, ejecutando con node puro), usamos mocks
+    const electron = await import('electron');
+    app = electron.app;
+    BrowserWindow = electron.BrowserWindow;
+    ipcMain = electron.ipcMain;
+    dialog = electron.dialog;
+} catch (e) {
+    app = { getPath: () => '/tmp', on: () => {} };
+    BrowserWindow = class {};
+    ipcMain = { on: () => {}, handle: () => {} };
+    dialog = { showOpenDialog: () => {}, showSaveDialog: () => {} };
+}
+
 
 // Dependencias externas
 import { hash, compare } from 'bcrypt';
