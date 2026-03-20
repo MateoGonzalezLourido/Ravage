@@ -77,7 +77,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     const VCorreo = comprobaciones_Correo(username)
     if (!VCorreo.success) {//no es valido
         console.error("*Autologin: correo no valido")
-        clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
+        await clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
         return { success: false }
     }
     //comprobar si este dp no esta bloqueado
@@ -85,7 +85,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     const dp_bloqueado_db = await DispositivosBloqueados.find({ correo: data.username, id_dp: deviceId }).limit(1)
     if (dp_bloqueado_db && (dp_bloqueado_db.length != 0)) {
         bloquear_accion = false
-        limpiarArchivosCompleto()
+        await limpiarArchivosCompleto()
         return { success: false, message: '*ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
     }
     // verificar si esa cuenta sigue existiendo en la base de datos
@@ -102,7 +102,7 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
     }
     else {//no se ha encontrado el usuario
         LimpiarJWTUsuario(data.username, data.token)//limpiar token de mongodb
-        clearFileSession('sessionFile'); // datos incorrectos → limpiar sesión
+        await clearFileSession('sessionFile'); // datos incorrectos → limpiar sesión
         console.error("Error en auto login: no existe este usuario o los datos estan mal")
         return { success: false };
     }
@@ -261,14 +261,14 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     const usuario_data = await LoginUsuarioDB({ correo: usernameStr, contraseña: contraseñaStr })
     if (!usuario_data || !usuario_data.success) {
         bloquear_accion = false
-        clearFileSession('sessionFile');
+        await clearFileSession('sessionFile');
         return { success: false, message: 'Usuario no encontrado' }
     }
     //dispositivo confianza
     const dp_confianza_data = await readFileSession('dispositivoConfianza')
     let dp_confianza = false
     if (!dp_confianza_data || (dp_confianza_data != "" && !validateToken(dp_confianza_data.token))) {
-        clearFileSession('dispositivoConfianza')
+        await clearFileSession('dispositivoConfianza');
     }
     else {
         const tokenhash = createHash("sha256").update(dp_confianza_data.token).digest("hex");
@@ -284,12 +284,12 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
             const tokenhash = createHash("sha256").update(data_autoverificacion.token).digest("hex");
             const token_datos = await TokenVC.exists({ correo: usuario_data.data.correo, token: tokenhash, id_dp: deviceId })
 
-            if (!token_datos) clearFileSession('omitirVerificacionCuentaFile');
+            if (!token_datos) await clearFileSession('omitirVerificacionCuentaFile');
             else autoverificacion = true
 
         }
         else {//limpiar archivo y token
-            clearFileSession('omitirVerificacionCuentaFile');
+            await clearFileSession('omitirVerificacionCuentaFile');
             LimpiarJWTUsuarioVC(username, data_autoverificacion.token)
         }
     }
@@ -300,7 +300,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         (async () => {
             if (mantener_sesion_iniciada) {
                 const token = await generarteToken('sesion');
-                saveSessionFile({ username: usuario_data.data.correo, token: token })//guardar sesion en fichero local
+                await saveSessionFile({ username: usuario_data.data.correo, token: token })//guardar sesion en fichero local
                 await AñadirJWTUsuario(usuario_data.data.correo, token)//guardar en mongodb
             }
         })();
@@ -353,14 +353,14 @@ async function ValidarCodeLogin({ correo, code }) {
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
             const token = await generarteToken('sesion');
-            saveSessionFile({ username: correo, token: token })//guardar sesion en fichero local
+            await saveSessionFile({ username: correo, token: token })//guardar sesion en fichero local
             await AñadirJWTUsuario(correo, token)//guardar en mongodb
         }
     })();
     //guardar auto verificacion de cuenta en fichero local
     (async () => {
         const token = await generarteToken('cuenta');
-        saveOmitirVerificacionCuentaFile({ username: correo, token: token })
+        await saveOmitirVerificacionCuentaFile({ username: correo, token: token })
         await AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
     })();
     //borrar codigos
@@ -377,7 +377,7 @@ async function cerrarSesionUsuario(correo) {
     //cojer datos del archivo de sesion para borrar el token
     const data = await readFileSession('sessionFile')
     //limpiar archivo de sesion
-    clearFileSession('sessionFile');
+    await clearFileSession('sessionFile');
     //si existe ese archivo limpiar token
     if (data) LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
     //limpiar datos

@@ -3,11 +3,11 @@ import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../repositories/UserRepository.js';
 
 const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
-
-//rutas
-const ruta_app_data = app.getPath('userData')
-const name_carpeta = '.APP_DATA'
 const algorithm = "aes-256-gcm";
+
+// Rutas estandarizadas
+const ruta_app_data = app.getPath('userData');
+const name_carpeta = '.APP_DATA';
 
 const RTDF = {
     sessionDir: path.join(ruta_app_data, name_carpeta),
@@ -17,125 +17,113 @@ const RTDF = {
     ajustesAPP: path.join(ruta_app_data, name_carpeta, 'ajustes_app.json'),
     infoAPP: path.join(ruta_app_data, name_carpeta, 'info_app.json'),
     identity: path.join(ruta_app_data, name_carpeta, 'identity.json')
-}
-//guardar archivos
-async function saveSessionFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = await CifrarDatosArchivos({ username, token }, 'sessionFile')
-    //semiencriptar username
-    //crear carpeta si no existe
-    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
-    //sobrescribir/crear archivo con los datos
+};
+
+// --- UTILIDADES INTERNAS REUTILIZABLES ---
+
+/**
+ * Asegura que el directorio de datos existe de forma asíncrona.
+ */
+async function asegurarCarpeta() {
     try {
-    fs.writeFileSync(
-        RTDF.sessionFile,
-        JSON.stringify(data, null, 2),
-        { encoding: "utf8" }
-    )
-} catch (err) {
-    clearFileSession('sessionFile')
-    console.error("Error al guardar sesión:", err)
+        if (!fs.existsSync(RTDF.sessionDir)) {
+            await fs.promises.mkdir(RTDF.sessionDir, { recursive: true });
+        }
+    } catch (err) {
+        console.error("Error al crear directorio de datos:", err);
+    }
 }
+
+/**
+ * Función genérica para guardar datos cifrados en disco.
+ */
+async function guardarArchivoGenerico(rutaKey, data, especial = false) {
+    await asegurarCarpeta();
+    try {
+        const dataFinal = await CifrarDatosArchivos(data, especial);
+        await fs.promises.writeFile(
+            RTDF[rutaKey],
+            JSON.stringify(dataFinal, null, 2),
+            { encoding: "utf8" }
+        );
+    } catch (err) {
+        console.error(`Error al guardar en ${rutaKey}:`, err);
+        // Solo limpiar si es un error crítico de corrupción (archivo ilegible),
+        // pero no por errores temporales de permisos.
+        if (err.code !== 'EACCES') await clearFileSession(rutaKey);
+    }
 }
-async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = await CifrarDatosArchivos({ username, token })
-    //crear carpeta si no existe
-    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
-    //sobrescribir/crear archivo con los datos
-    try{
-        fs.writeFileSync(
-    RTDF.omitirVerificacionCuentaFile,
-    JSON.stringify(data, null, 2),
-    { encoding: "utf8" }
-    )
-}catch(err){
-    clearFileSession("omitirVerificacionCuentaFile")
-    console.error("Error al guardar autoverificación de cuenta:", err);
+
+// --- FUNCIONES PÚBLICAS REFACTOREADAS ---
+
+async function saveSessionFile({ username, token = "" }) {
+    await guardarArchivoGenerico('sessionFile', { username, token }, 'sessionFile');
 }
+
+async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {
+    await guardarArchivoGenerico('omitirVerificacionCuentaFile', { username, token });
 }
-async function saveDispositivoConfianzaFile({ username, token = "" }) {//guardar/ crear archivo
-    const data = await CifrarDatosArchivos({ username, token })
-    //crear carpeta si no existe
-    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
-    //sobrescribir/crear archivo con los datos
-    try{
-        fs.writeFileSync(
-        RTDF.dispositivoConfianza,
-        JSON.stringify(data, null, 2),
-        { encoding: "utf8" }
-    )
-}catch(err){
-                clearFileSession('dispositivoConfianza')
-                console.error("Error al guardar dispositivo de confianza:", err);
-            }
-        
+
+async function saveDispositivoConfianzaFile({ username, token = "" }) {
+    await guardarArchivoGenerico('dispositivoConfianza', { username, token });
 }
+
+async function saveIdentityFile({ privateKey }) {
+    await guardarArchivoGenerico('identity', { privateKey }, 'sessionFile');
+}
+
 const AJUSTES_APP_DEFAULT = {
     MSBienvenida: true,
     URL_DESCARGA: app.getPath("downloads")
-}
+};
 
-async function saveAjustesAppFile({ data = {}, create = false }) {//guardar/ crear archivo
-    if (create) {
-        if (!fs.existsSync(RTDF.sessionDir)) {
-            fs.mkdirSync(RTDF.sessionDir, { recursive: true })
-        }
-        fs.writeFileSync(RTDF.ajustesAPP, JSON.stringify(data, null, 2),    { encoding: "utf8" })
-        return
+async function saveAjustesAppFile({ data = {}, create = false }) {
+    await asegurarCarpeta();
+    let data_usar = create ? AJUSTES_APP_DEFAULT : await getAjustesAppFile();
+    
+    if (!create) {
+        // Combinar datos actuales con los nuevos
+        data_usar = { ...data_usar, ...data };
     }
-    let data_usar = await getAjustesAppFile()
-    for (const [key, value] of Object.entries(data)) {
-        if (data_usar[key] != undefined) {//si existe->actualizar
-            data_usar[key] = value
-        }
-    }
-    //crear carpeta si no existe (apunta a la carpeta, no al archivo)
-    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
-    //sobrescribir/crear archivo con los datos
-    try{
-        fs.writeFileSync(RTDF.ajustesAPP, JSON.stringify(data,null,2),     { encoding: "utf8" }
-)
-    }catch(err){
+
+    try {
+        await fs.promises.writeFile(
+            RTDF.ajustesAPP, 
+            JSON.stringify(data_usar, null, 2), 
+            { encoding: "utf8" }
+        );
+    } catch (err) {
         console.error("Error al guardar ajustes de app:", err);
     }
 }
-//leer archivos
-async function readFileSession(ruta, cifrado = true) {
+
+async function readFileSession(rutaKey, cifrado = true) {
+    const filePath = RTDF[rutaKey];
+    if (!filePath || !fs.existsSync(filePath)) return null;
+
     try {
-        //para archivos sin cifrado .json
-        if (!cifrado) {
-            const raw = fs.readFileSync(RTDF[ruta],     { encoding: "utf8" }
-)
-            if (!raw) return null
-            return JSON.parse(raw)
-        }
-        //*para archivos con cifrado .json
-
-        //si no existe el archivo?
-        if (!fs.existsSync(RTDF[ruta])) return null;
-        //leer el archivo
-        const rawstr = fs.readFileSync(RTDF[ruta],     { encoding: "utf8" }
-);
-        if (!rawstr) return null;//no recupero nada
+        const rawstr = await fs.promises.readFile(filePath, { encoding: "utf8" });
+        if (!rawstr) return null;
+        
         const raw = JSON.parse(rawstr);
-        //pasarlo a json usable
-        let secretKey = getSecretKEY()
-        if (ruta == 'sessionFile' || ruta == 'identity') {//especial
-            secretKey = SECRET_KEY_COKKIE
-        }
-        else {//por defecto
-            secretKey = getSecretKEY()
-            if (!secretKey) {
-                await ActualizarSecretKeyUsuario()
-                return null
+        if (!cifrado) return raw;
+
+        // Determinar la clave secreta a usar
+        let secretKey;
+        if (rutaKey === 'sessionFile' || rutaKey === 'identity') {
+            secretKey = SECRET_KEY_COKKIE;
+        } else {
+            const currentKey = getSecretKEY();
+            if (!currentKey) {
+                await ActualizarSecretKeyUsuario();
+                return null;
             }
-            secretKey = Buffer.from(secretKey, "hex")
+            secretKey = currentKey;
         }
 
-        const decipher = createDecipheriv(
-            algorithm,
-            secretKey,
-            Buffer.from(raw.iv, "hex")
-        );
+        const finalKey = Buffer.isBuffer(secretKey) ? secretKey : Buffer.from(secretKey, "hex");
+        
+        const decipher = createDecipheriv(algorithm, finalKey, Buffer.from(raw.iv, "hex"));
         decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
 
         const decrypted = Buffer.concat([
@@ -145,84 +133,72 @@ async function readFileSession(ruta, cifrado = true) {
 
         return JSON.parse(decrypted.toString());
     } catch (e) {
-        console.error(e)
-
-        return null
+        console.error(`Error al leer archivo ${rutaKey}:`, e);
+        return null;
     }
 }
 
 async function getAjustesAppFile(nombre = null) {
-    //si no existe, crearlo con valores por defecto
     if (!fs.existsSync(RTDF.ajustesAPP)) {
-        await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT, create: true })
-        return { ...AJUSTES_APP_DEFAULT }
+        await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT, create: true });
+        return nombre ? AJUSTES_APP_DEFAULT[nombre] : { ...AJUSTES_APP_DEFAULT };
     }
+
     try {
-        function conseguir_ajuste() {
-
-            const obj = JSON.parse(raw)
-            if (!nombre) return obj
-            else return (obj[nombre] || { ...AJUSTES_APP_DEFAULT[nombre] })
-
-        }
-        const raw = fs.readFileSync(RTDF.ajustesAPP,     { encoding: "utf8" }
-)
-        return (raw ? conseguir_ajuste() : { ...AJUSTES_APP_DEFAULT })
+        const raw = await fs.promises.readFile(RTDF.ajustesAPP, { encoding: "utf8" });
+        const obj = JSON.parse(raw || "{}");
+        if (!nombre) return obj;
+        return obj[nombre] !== undefined ? obj[nombre] : AJUSTES_APP_DEFAULT[nombre];
     } catch (e) {
-        console.error('Error al leer ajustes de app:', e)
-        return { ...AJUSTES_APP_DEFAULT }
+        console.error('Error al leer ajustes de app:', e);
+        return { ...AJUSTES_APP_DEFAULT };
     }
 }
-//limpiar archios
-async function clearFileSession(ruta) {//borrar archivo
-    if (fs.existsSync(RTDF[ruta])) {//existe el archivo?
-        fs.unlinkSync(RTDF[ruta]);//borrar archivo
+
+async function clearFileSession(rutaKey) {
+    const filePath = RTDF[rutaKey];
+    try {
+        if (filePath && fs.existsSync(filePath)) {
+            await fs.promises.unlink(filePath);
+        }
+    } catch (e) {
+        console.error(`No se pudo eliminar el archivo ${rutaKey}:`, e);
     }
 }
-async function limpiarArchivosCompleto() {//quita todos los archivos de la ruta
-    const exclusiones = ['sessionDir']
-    for (const ruta of Object.keys(RTDF)) {
-        if (exclusiones.indexOf(ruta) == -1) {//no exta excluido
-            fs.unlinkSync(RTDF[ruta]);//borrar archivo
+
+async function limpiarArchivosCompleto() {
+    const exclusiones = ['sessionDir'];
+    for (const key of Object.keys(RTDF)) {
+        if (!exclusiones.includes(key)) {
+            await clearFileSession(key);
         }
     }
 }
-//cifrar archivos
+
 async function CifrarDatosArchivos(data, especial) {
     let secretKey;
     if (!especial) {
-        secretKey = getSecretKEY()
-        if (!secretKey) secretKey = await ActualizarSecretKeyUsuario()
+        secretKey = getSecretKEY() || await ActualizarSecretKeyUsuario();
+    } else if (especial === 'sessionFile') {
+        secretKey = SECRET_KEY_COKKIE;
     }
-    else if (especial == 'sessionFile') {
-        secretKey = SECRET_KEY_COKKIE
-    }
-    secretKey = Buffer.from(secretKey, "hex")
+
+    if (!secretKey) throw new Error("No se pudo obtener la clave secreta para el cifrado.");
+
+    const finalKey = Buffer.isBuffer(secretKey) ? secretKey : Buffer.from(secretKey, "hex");
     const iv = randomBytes(12);
-    const cipher = createCipheriv(algorithm, secretKey, iv);
+    const cipher = createCipheriv(algorithm, finalKey, iv);
+    
     const encrypted = Buffer.concat([
         cipher.update(JSON.stringify(data)),
         cipher.final()
     ]);
-    const tag = cipher.getAuthTag(); // integridad
-    // Devuelve lo que guardas en disco
+    
     return {
         iv: iv.toString("hex"),
-        tag: tag.toString("hex"),
+        tag: cipher.getAuthTag().toString("hex"),
         data: encrypted.toString("hex")
     };
-}
-
-/**
- * Guarda la llave privada de identidad del usuario cifrada localmente.
- * Se cifra con el SECRET_KEY_COKKIE para que sea persistente y segura.
- */
-async function saveIdentityFile({ privateKey }) {
-    const data = await CifrarDatosArchivos({ privateKey }, 'sessionFile')
-    if (!fs.existsSync(RTDF.sessionDir)) fs.mkdirSync(RTDF.sessionDir, { recursive: true });
-    // Usar writeFileSync para asegurar que se guarda antes de continuar el flujo
-    fs.writeFileSync(RTDF.identity, JSON.stringify(data,null,2),     { encoding: "utf8" }
-);
 }
 
 export {

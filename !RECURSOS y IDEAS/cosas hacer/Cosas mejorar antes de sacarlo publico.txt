@@ -51,5 +51,3 @@ message counters
 -Añadir todas las validaciones de datos
 
 -Arreglar que en linux los mensajes sean promesas cuando se muestran (cuando eres emisor no se ve nada, pero si eres receptor si aparece [object promise])
-
--Quitar sistema usuario activo
