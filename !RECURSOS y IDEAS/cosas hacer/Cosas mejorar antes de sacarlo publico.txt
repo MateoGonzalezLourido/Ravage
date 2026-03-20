@@ -38,11 +38,7 @@ No veo:
 
 message counters
 
--Hacer plantillas de servidor localhost y railway
-
 -Hacer servidor railway y plantillas https localhost
-
--MIRAR CODIGO Y COMPARAR Y DECIDIR CUAL USAR: AJUSTES.JS Y AJUSTES DEL RENDER.JS
 
 -Deberia encriptar correo e idamigo en base de datos? con la secret_key de la app y la del usuario
 
