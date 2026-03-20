@@ -1,7 +1,7 @@
 import { User } from '../models/User.js';
 import { ValidationCode, CuentaValidationCode, TokenVC, TokenSession, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
 import { LoginUsuarioDB, InsertarUsuario } from '../repositories/UserRepository.js';
-import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC } from '../repositories/SecurityRepository.js';
+import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, BuscarVC, BuscarCuentaVC } from '../repositories/SecurityRepository.js';
 import {
     saveSessionFile,
     clearFileSession,
@@ -60,66 +60,54 @@ function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
     storage.setIDAmigo(!limpiar ? data.idamigo : false)
     storage.setVisibleUsuario(!limpiar ? data.visible : false)
 }
-async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo mismo
-    //leer fichero con datos de sesion anterior
-    const data = await readFileSession('sessionFile')
-    //verificar si estan todos los datos
-    if (!data || (!data.username || !data.token)) {
-        console.error("*Autologin: datos de fichero no validos")
+async function autoLoginUsuario() {
+    // Leer fichero con datos de sesion anterior
+    const data = await readFileSession('sessionFile');
+    
+    // Verificar si estan todos los datos
+    if (!data || !data.username || !data.token) {
         return { success: false }; 
     }
     
     const username = String(data.username);
     const token = String(data.token);
 
-    //comprobacion inicial de si es un correo
-    const VCorreo = comprobaciones_Correo(username)
-    if (!VCorreo.success) {//no es valido
-        console.error("*Autologin: correo no valido")
-        await clearFileSession('sessionFile'); // datos corruptos → limpiar sesión
-        return { success: false }
+    // Comprobacion inicial de si es un correo
+    if (!comprobaciones_Correo(username).success) {
+        await clearFileSession('sessionFile'); 
+        return { success: false };
     }
-    //comprobar si este dp no esta bloqueado
-    const deviceId = String(machineIdSync());// por defecto devuelve un hash único de la máquina
-    const dp_bloqueado_db = await DispositivosBloqueados.find({ correo: data.username, id_dp: deviceId }).limit(1)
-    if (dp_bloqueado_db && (dp_bloqueado_db.length != 0)) {
-        bloquear_accion = false
-        await limpiarArchivosCompleto()
-        return { success: false, message: '*ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
-    }
-    // verificar si esa cuenta sigue existiendo en la base de datos
-    const usuario_datos = await LoginUsuarioDB({ correo: data.username, token: data.token, id_dp: deviceId })
 
-    //mostrar como usuario activo en mongodb
-    if (usuario_datos.success && (usuario_datos.data)) {
-        // se ha encontrado el usuario
-        //establecer variables globales
-        //añadir usuario activo
-        ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data });
-        console.log("*Autologin correcto")
-        return { success: true };
+    // Comprobar si este dispositivo no esta bloqueado
+    const deviceId = String(machineIdSync());
+    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo: username, id_dp: deviceId });
+    if (dp_bloqueado_db) {
+        await limpiarArchivosCompleto();
+        return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' };
     }
-    else {//no se ha encontrado el usuario
-        LimpiarJWTUsuario(data.username, data.token)//limpiar token de mongodb
-        await clearFileSession('sessionFile'); // datos incorrectos → limpiar sesión
-        console.error("Error en auto login: no existe este usuario o los datos estan mal")
+
+    // Verificar si esa cuenta sigue existiendo y el token es válido
+    const usuario_datos = await LoginUsuarioDB({ correo: username, token: token, id_dp: deviceId });
+
+    if (usuario_datos.success && usuario_datos.data) {
+        ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data });
+        console.log("*Autologin correcto");
+        return { success: true };
+    } else {
+        await LimpiarJWTUsuario(username, token);
+        await clearFileSession('sessionFile');
+        console.error("Error en auto login: token no válido o usuario inexistente");
         return { success: false };
     }
 }
 
 //variables importantes para unir funciones log o reg con su validacion por correo
-let contraseña_hashed;
-let apodo_usuario;
-let mantener_sesion_iniciada_usuario;
-let identity_keys; // Temporal para guardar las llaves generadas durante el registro
+// Eliminadas variables globales por seguridad y concurrencia.
+// Se usa el campo 'data' en los modelos de códigos de validación.
+
 const n_intentos_codigo_validacion = 5;
-let intentos_codigo_validacion = n_intentos_codigo_validacion;
-let bloquear_accion = false
 
 async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
-    if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
-    bloquear_accion = true
-
     const correoStr = String(correo).toLowerCase();
     const passwordStr = String(password);
     const apodoStr = String(apodo);
@@ -127,93 +115,98 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     //comprobacion inicial de si es un correo
     const resultado = comprobaciones_Correo(correoStr)
     if (!resultado.success) {
-        bloquear_accion = false
         return { success: false, message: resultado.message }
     }
     //verificar si no existe un usuario igual
     const existe = await User.exists({ correo: correoStr });
     if (existe) {
-        bloquear_accion = false
         return { success: false, message: "Correo ya registrado" };
     }
-    //guardar vairables para pasarlas a la validacion por correo
-    contraseña_hashed = await hash(passwordStr, saltos_contraseña);//contraseña hasheada
+    
     const apodo_valido = comprobar_apodo(apodoStr)
     if (!apodo_valido.success) {
-        bloquear_accion = false
         return { success: false, message: apodo_valido.message }
     }
-    apodo_usuario = apodoStr;
-    const correo_uso = correoStr;
 
-    // Generar llaves de identidad para E2EE
-    identity_keys = generarLlavesRSA();
+    // Generar hash de contraseña y llaves de identidad
+    const pass_hashed = await hash(passwordStr, saltos_contraseña);
+    const keys = generarLlavesRSA();
 
     //crear verificacion por codigo de correo
     const code_generado = String(generarCodigoVerificacion())
     //generar correo
     const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado })
-    //insertar codigo en mongodb
+    
+    //insertar codigo en mongodb con la data necesaria para completar el registro después
     const deviceId = String(machineIdSync()); 
-    InsertarVC({ correo: correoStr, code: code_generado, id: deviceId })
+    await InsertarVC({ 
+        correo: correoStr, 
+        code: code_generado, 
+        id: deviceId,
+        data: {
+            passwordHash: pass_hashed,
+            apodo: apodoStr,
+            publicKey: keys.publicKey,
+            privateKey: keys.privateKey,
+            intentos: n_intentos_codigo_validacion
+        }
+    });
+
     //enviar correo
     enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido })
 
-    //intentos para poder poner el codigo correcto de verificacion
-    intentos_codigo_validacion = n_intentos_codigo_validacion
-    bloquear_accion = false
     return { success: true }
 }
 
 async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
-    if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
-    bloquear_accion = true
-
     const codeStr = String(code);
     const correoStr = String(correo);
-
-    intentos_codigo_validacion--
-    //verificar si ya habia cabado los intentos
-    if (intentos_codigo_validacion < 0) {
-        bloquear_accion = false
-        return { success: false, message: "Fallo al crear el usuario:intentos acabados" }
-    }
-    //mirar si es codigo valido
-    const VCodigo = comprobar_codigo_verificacion(codeStr)
-    if (!VCodigo.success) {
-        bloquear_accion = false
-        return { success: false, message: VCodigo.message }
-    }
-    //cojer el ultimo codigo generado
-    const codehash = createHash("sha256").update(codeStr).digest("hex");
     const deviceId = String(machineIdSync()); 
 
-    const code_db = await ValidationCode.exists({ correo: correoStr, code: codehash, id_dp: deviceId })
-    if (!code_db) {
-        contraseña_hashed = null;
-        apodo_usuario = null;
-        bloquear_accion = false
-        return { success: false, message: "Fallo al crear el usuario: no existe ese código" };
+    //mirar si es codigo valido (estructura)
+    const VCodigo = comprobar_codigo_verificacion(codeStr)
+    if (!VCodigo.success) {
+        return { success: false, message: VCodigo.message }
     }
+
+    // Buscar el código en la DB
+    const code_db = await BuscarVC(correoStr, codeStr, deviceId);
+    if (!code_db) {
+        return { success: false, message: "Fallo al crear el usuario: no existe ese código o ha expirado" };
+    }
+
+    let { intentos, passwordHash, apodo, publicKey, privateKey } = code_db.data;
+
+    if (intentos <= 0) {
+        await BorrarVC(correoStr);
+        return { success: false, message: "Fallo al crear el usuario: intentos acabados" }
+    }
+
+    // La comparación del hash del código ya se hace en BuscarVC (el repositorio genera el hash para la query)
+    // Si llegamos aquí, el código es correcto porque BuscarVC lo encontró.
+
     //crear nueva cuenta de usuario
     const nuevoUsuario = await InsertarUsuario({ 
-        apodo: apodo_usuario, 
-        contraseña: contraseña_hashed, 
+        apodo: apodo, 
+        contraseña: passwordHash, 
         correo: correoStr,
-        publicKey: identity_keys?.publicKey || ""
+        publicKey: publicKey || ""
     });
-    if (!nuevoUsuario) {//error
-        BorrarVC(correoStr)//borrar codigos
-        contraseña_hashed = null;
-        apodo_usuario = null;
-        identity_keys = null;
-        bloquear_accion = false
+
+    if (!nuevoUsuario) {
+        // Decrementar intentos si hubo un error al insertar (aunque es poco probable por el código)
+        intentos--;
+        if (intentos <= 0) {
+            await BorrarVC(correoStr);
+            return { success: false, message: "Fallo al crear el usuario: intentos acabados" }
+        }
+        await ValidationCode.updateOne({ _id: code_db._id }, { $set: { "data.intentos": intentos } });
         return { success: false, message: "Fallo al crear el usuario" }
     }
 
     //guardar llave privada localmente
-    if (identity_keys) {
-        await saveIdentityFile({ privateKey: identity_keys.privateKey });
+    if (privateKey) {
+        await saveIdentityFile({ privateKey: privateKey });
     }
 
     //mandar correo confirmando creacion de cuenta
@@ -228,35 +221,24 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     return { success: true };
 }
 
-async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {//aqui se usa username en vez de correo, pero son lo mismo
-    if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
-    bloquear_accion = true
-
+async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {
     const usernameStr = String(username).toLowerCase();
     const contraseñaStr = String(contraseña);
 
-    //limpiar cosas del registro si hubiese
-    if (apodo_usuario) {
-        contraseña_hashed = null;
-        apodo_usuario = null;
-    }
     //comprobacion inicial de si es un correo
     const resultado = comprobaciones_Correo(usernameStr)
     if (!resultado.success) {
-        bloquear_accion = false
         return { success: false, message: resultado.message }
     }
     //comprobar si este dp no esta bloqueado
     const deviceId = String(machineIdSync());
     const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo: usernameStr, id_dp: deviceId })
     if (dp_bloqueado_db) {
-        bloquear_accion = false
         return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
     }
     //iniciar sesion
     const usuario_data = await LoginUsuarioDB({ correo: usernameStr, contraseña: contraseñaStr })
     if (!usuario_data || !usuario_data.success) {
-        bloquear_accion = false
         await clearFileSession('sessionFile');
         return { success: false, message: 'Usuario no encontrado' }
     }
@@ -293,82 +275,80 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data });
     if (autoverificacion) {
         //JWT , mantener sesion iniciada en cache
-        (async () => {
-            if (mantener_sesion_iniciada) {
-                const token = await generarteToken('sesion');
-                await saveSessionFile({ username: usuario_data.data.correo, token: token })//guardar sesion en fichero local
-                await AñadirJWTUsuario(usuario_data.data.correo, token)//guardar en mongodb
-            }
-        })();
+        if (mantener_sesion_iniciada) {
+            const token = await generarteToken('sesion');
+            await saveSessionFile({ username: usuario_data.data.correo, token: token })
+            await AñadirJWTUsuario(usuario_data.data.correo, token)
+        }
         console.log("-Autoverificacion de cuenta")
     }
     else {
-        mantener_sesion_iniciada_usuario = mantener_sesion_iniciada
         //crear verificacion por codigo de correo
         const code_generado = String(generarCodigoVerificacion())
         const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.data.apodo, code: code_generado })
-        //insertar codigo en mongodb
-        InsertarCuentaVC({ correo: usuario_data.data.correo, code: code_generado, id: deviceId })
+        
+        //insertar codigo en mongodb guardando si se quería mantener la sesión
+        await InsertarCuentaVC({ 
+            correo: usuario_data.data.correo, 
+            code: code_generado, 
+            id: deviceId,
+            data: { 
+                mantenerSesion: mantener_sesion_iniciada,
+                intentos: n_intentos_codigo_validacion
+            }
+        });
+
         //mandar correo
         enviarEmail({ correoDestino: usuario_data.data.correo, asunto: asunto, htmlContenido: htmlContenido })
-        //intentos para poder poner el codigo correcto de verificacion
-        intentos_codigo_validacion = n_intentos_codigo_validacion
     }
-    bloquear_accion = false
     return { success: true, autoverificacion: autoverificacion }
 }
 
 async function ValidarCodeLogin({ correo, code }) {
-    if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
-    bloquear_accion = true
+    const deviceId = String(machineIdSync()); 
 
-    intentos_codigo_validacion--
-    //verificar si ya habia cabado los intentos
-    if (intentos_codigo_validacion < 0) {
-        ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
-        return { success: false, message: "Fallo al iniciar sesion:intentos acabados" }
-    }
-    //mirar si es codigo valido
+    //mirar si es codigo valido (estructura)
     const VCodigo = comprobar_codigo_verificacion(code)
     if (!VCodigo.success) {
-        bloquear_accion = false
         return { success: false, message: VCodigo.message }
     }
-    //cojer el ultimo codigo generado
 
-    //cojer el ultimo codigo generado
-    const codehash = createHash("sha256").update(code).digest("hex");
-    const deviceId = String(machineIdSync()); // por defecto devuelve un hash único de la máquina
-
-    const code_db = await CuentaValidationCode.exists({ correo, code: codehash, id_dp: deviceId })
-    if (!code_db) {//no hay codes
-        contraseña_hashed = null;
-        apodo_usuario = null;
-        bloquear_accion = false
+    // Buscar el código en la DB
+    const code_db = await BuscarCuentaVC(correo, code, deviceId);
+    if (!code_db) {
         ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
-        return { success: false, message: "Fallo al iniciar sesion: no existe ese código" };
+        return { success: false, message: "Fallo al iniciar sesion: no existe ese código o ha expirado" };
     }
-    //JWT , mantener sesion iniciada en cache
-    (async () => {
-        if (mantener_sesion_iniciada_usuario) {
-            const token = await generarteToken('sesion');
-            await saveSessionFile({ username: correo, token: token })//guardar sesion en fichero local
-            await AñadirJWTUsuario(correo, token)//guardar en mongodb
-        }
-    })();
-    //guardar auto verificacion de cuenta en fichero local
-    (async () => {
-        const token = await generarteToken('cuenta');
-        await saveOmitirVerificacionCuentaFile({ username: correo, token: token })
-        await AñadirJWTUsuarioVC(correo, token)//guardar en mongodb
-    })();
-    //borrar codigos
-    BorrarCuentaVC(correo)
 
-    //mandar correo confirmando creacion de cuenta
+    let { intentos, mantenerSesion } = code_db.data;
+
+    if (intentos <= 0) {
+        ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
+        await BorrarCuentaVC(correo);
+        return { success: false, message: "Fallo al iniciar sesion: intentos acabados" }
+    }
+
+    // Si llegamos aquí, el código es correcto porque BuscarCuentaVC lo encontró.
+
+    //JWT , mantener sesion iniciada en cache
+    if (mantenerSesion) {
+        const token = await generarteToken('sesion');
+        await saveSessionFile({ username: correo, token: token })
+        await AñadirJWTUsuario(correo, token)
+    }
+
+    //guardar auto verificacion de cuenta en fichero local (omitir verificacion futura)
+    const tokenVC = await generarteToken('cuenta');
+    await saveOmitirVerificacionCuentaFile({ username: correo, token: tokenVC })
+    await AñadirJWTUsuarioVC(correo, tokenVC)
+
+    //borrar codigos
+    await BorrarCuentaVC(correo)
+
+    //mandar correo confirmando inicio de sesion
     const { asunto, htmlContenido } = ConfirmacionInicioSesion()
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    bloquear_accion = false
+    
     return { success: true };
 }
 
@@ -391,7 +371,6 @@ async function cerrarSesionUsuario(correo) {
 
 
 export {
-    comprobar_contraseña_cuenta,
     registerUsuario,
     loginUsuario,
     autoLoginUsuario,
@@ -400,6 +379,5 @@ export {
     ValidarCodeLogin,
     comprobaciones_Correo,
     comprobar_apodo,
-    comprobarContrasenaValidaciones,
     comprobar_codigo_verificacion
 };
