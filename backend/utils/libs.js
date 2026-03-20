@@ -13,6 +13,7 @@ import { hash, compare } from 'bcrypt';
 import pkgMachineId from 'node-machine-id';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
+import validator from 'validator';
 
 // Mongoose & MongoDB
 import mongoose from 'mongoose';
@@ -64,5 +65,7 @@ export {
     express,
     http,
     Server,
-    os
+    os,
+    //validacion datos
+    validator
 };

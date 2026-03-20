@@ -1,7 +1,6 @@
-import validator from 'validator';
 import { User } from '../models/User.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
-import { compare } from '../utils/libs.js';
+import { compare,validator } from '../utils/libs.js';
 
 //TODO: añadir mas verificaciones
 function comprobaciones_Correo(correo) {
