@@ -43,5 +43,3 @@ message counters
 -Deberia encriptar correo e idamigo en base de datos? con la secret_key de la app y la del usuario
 
 -Añadir todas las validaciones de datos
-
--Arreglar que en linux los mensajes sean promesas cuando se muestran (cuando eres emisor no se ve nada, pero si eres receptor si aparece [object promise])

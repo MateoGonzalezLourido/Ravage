@@ -1,7 +1,7 @@
 import { mongoose } from '../utils/libs.js';
 
 const ArchivoSchema = new mongoose.Schema({
-    nombre: { type: String, default: "_archivo_.txt" },
+    nombre: { type: String, default: "_archivo_.txt", maxlength: 255 },
     id: { type: mongoose.Schema.Types.ObjectId, required: true }
 }, { _id: false });
 
@@ -10,7 +10,7 @@ const MessageSchema = new mongoose.Schema({
     emisor: { type: mongoose.Schema.Types.ObjectId, required: true },
     contenido: {
         type: [{
-            asunto: { type: String, default: "" },
+            asunto: { type: String, default: "", maxlength: 1000 },
             archivos: {
                 type: [ArchivoSchema],
             }
@@ -27,7 +27,7 @@ const MessageSchema = new mongoose.Schema({
 });
 
 const ArchivoSchemaGridfs = new mongoose.Schema({
-    filename: String,
+    filename: { type: String, maxlength: 255 },
     gridfsId: mongoose.Types.ObjectId,
     size: Number,
     mimetype: String,

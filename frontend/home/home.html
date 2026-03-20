@@ -121,12 +121,12 @@
                         <form id="form-cambio-contraseña">
                             <label for="cambio-pass">
                                 <span>Contraseña</span>
-                                <input id="cambio-pass" type="password" placeholder="Contraseña" required minlength="5">
+                                <input id="cambio-pass" type="password" placeholder="Contraseña" required minlength="8" maxlength="128">
                             </label>
                             <label for="cambio-pass-confirm">
                                 <span id="span-repetir-contraseña-cambio">Repita la Contraseña</span>
                                 <input id="cambio-pass-confirm" type="password" placeholder="Contraseña" required
-                                    minlength="5">
+                                    minlength="8" maxlength="128">
                             </label>
                             <span class="text-error-form-causa ocultar-display"
                                 id="text-error-form-causa-cambio-contraseña"></span>
@@ -141,12 +141,12 @@
                             <label for="cambio-correo">
                                 <span>Correo</span>
                                 <input id="cambio-correo" type="email" placeholder="correo electrónico" required
-                                    minlength="5">
+                                    maxlength="255">
                             </label>
                             <label for="confirmar-contraseña-correo">
                                 <span>Correo</span>
                                 <input id="confirmar-contraseña-correo" type="password" placeholder="contraseña"
-                                    required minlength="5">
+                                    required minlength="8" maxlength="128">
                             </label>
                             <span class="text-error-form-causa ocultar-display"
                                 id="text-error-form-causa-cambio-correo"></span>
@@ -161,7 +161,7 @@
                             <label for="cambio-apodo">
                                 <span>Apodo</span>
                                 <input id="cambio-apodo" type="text" placeholder="(visible para todos)" required
-                                    minlength="2">
+                                    minlength="3" maxlength="20">
                             </label>
                             <span class="text-error-form-causa ocultar-display"
                                 id="text-error-form-causa-cambio-apodo"></span>
@@ -257,7 +257,7 @@
         <div id="alineador-seccion-añadir-chat" class="ocultar-display">
             <div class="seccion-añadir-chat">
                 <div class="nav-principal-añadir-chat">
-                    <input type="text" id="texto-buscar-chat-añadir" value="" placeholder="Usuario buscar">
+                    <input type="text" id="texto-buscar-chat-añadir" value="" placeholder="Usuario buscar" maxlength="255">
 
                     <div id="bt-cerrar-menu-añadir-chats">
                         <img src="../recursos/cruz.png" alt="">
@@ -267,7 +267,7 @@
                 <div id="resultados-busqueda-usaurios"><span>*Sin resultados</span></div>
                 <div id="contactos-añadidos-grupo">*Agrega usuarios para el chat</div>
                 <div class="nombre-chat-crear">
-                    <input id="nombre-chat-nuevo-crear" type="text" value="" placeholder="Nombre para el chat">
+                    <input id="nombre-chat-nuevo-crear" type="text" value="" placeholder="Nombre para el chat" maxlength="50">
                 </div>
                 <div class="div-bt-agregar-contacto-nuevo"> <button id="bt-agregar-contacto-nuevo">Agregar</button>
                 </div>

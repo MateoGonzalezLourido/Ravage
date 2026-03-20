@@ -134,6 +134,9 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                 if (textarea_msg) {
                     // Crecimiento dinámico
                     textarea_msg.addEventListener("input", function () {
+                        if (this.value.length > 1000) {
+                            this.value = this.value.substring(0, 1000);
+                        }
                         this.style.height = "38px" // Vuelve al tamaño mínimo base para recalcular la caída recta
                         this.style.height = (this.scrollHeight) + "px"
                     })

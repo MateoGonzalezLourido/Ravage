@@ -25,11 +25,11 @@
                 <form id="form-login">
                     <label for="login-user">
                         <span>Correo electrónico</span>
-                        <input id="login-user" placeholder="Usuario" required autofocus="on" minlength="15">
+                        <input id="login-user" placeholder="Usuario" required autofocus="on" maxlength="255">
                     </label>
                     <label for="login-pass">
                         <span>Contraseña</span>
-                        <input id="login-pass" type="password" placeholder="Contraseña" required minlength="5">
+                        <input id="login-pass" type="password" placeholder="Contraseña" required minlength="8" maxlength="128">
                     </label>
                     <label class="label-check" for="login-guardar">
                         <span>Mantener sesión iniciada</span>
@@ -47,20 +47,20 @@
                 <form id="form-registro">
                     <label for="registro-apodo">
                         <span>Apodo (opcional)</span>
-                        <input id="registro-apodo" placeholder="Apodo" autofocus="on" minlength="3" maxlength="30">
+                        <input id="registro-apodo" placeholder="Apodo" autofocus="on" minlength="3" maxlength="20">
                     </label>
                     <label for="registro-user">
                         <span>Correo electrónico</span>
-                        <input id="registro-user" placeholder="Usuario" required minlength="15">
+                        <input id="registro-user" placeholder="Usuario" required maxlength="255">
                     </label>
                     <label for="registro-pass">
                         <span>Contraseña</span>
-                        <input id="registro-pass" type="password" placeholder="Contraseña" required minlength="5">
+                        <input id="registro-pass" type="password" placeholder="Contraseña" required minlength="8" maxlength="128">
                     </label>
                     <label for="registro-pass-confirm">
                         <span id="span-repetir-contraseña">Repita la Contraseña</span>
                         <input id="registro-pass-confirm" type="password" placeholder="Contraseña" required
-                            minlength="5">
+                            minlength="8" maxlength="128">
                     </label>
                     <span class="text-error-form-causa ocultar-display" id="text-error-form-causa-registro"></span>
                     <button type="submit">Registrar</button>
