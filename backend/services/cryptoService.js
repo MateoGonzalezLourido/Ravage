@@ -1,4 +1,51 @@
-import { generateKeyPairSync, publicEncrypt, privateDecrypt, createCipheriv, createDecipheriv, randomBytes, diffieHellman } from 'crypto';
+import { generateKeyPairSync, publicEncrypt, privateDecrypt, createCipheriv, createDecipheriv, randomBytes, diffieHellman, createHash } from 'crypto';
+
+const SYSTEM_KEY = Buffer.from(process.env.INTERNAL_ENCRYPTION_KEY, 'hex');
+
+/**
+ * Encripta datos del sistema usando la llave interna (AES-256-GCM).
+ */
+export function encriptarDatosSistema(datos) {
+    if (!datos) return null;
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', SYSTEM_KEY, iv);
+    
+    let encrypted = cipher.update(typeof datos === 'string' ? datos : JSON.stringify(datos), 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    
+    return {
+        data: encrypted,
+        iv: iv.toString('hex'),
+        tag: cipher.getAuthTag().toString('hex')
+    };
+}
+
+/**
+ * Desencripta datos del sistema usando la llave interna.
+ */
+export function desencriptarDatosSistema(encriptado) {
+    if (!encriptado || !encriptado.data || !encriptado.iv || !encriptado.tag) return null;
+    try {
+        const decipher = createDecipheriv('aes-256-gcm', SYSTEM_KEY, Buffer.from(encriptado.iv, 'hex'));
+        decipher.setAuthTag(Buffer.from(encriptado.tag, 'hex'));
+        
+        let decrypted = decipher.update(encriptado.data, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (e) {
+        console.error("Error al desencriptar datos del sistema:", e);
+        return null;
+    }
+}
+
+/**
+ * Genera un hash SHA-256 para búsquedas deterministas.
+ */
+export function hashDatosSistema(datos) {
+    if (!datos) return null;
+    return createHash('sha256').update(String(datos)).digest('hex');
+}
+
 
 /**
  * Servicio de Criptografía para E2EE

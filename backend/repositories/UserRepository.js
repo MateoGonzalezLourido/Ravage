@@ -2,6 +2,8 @@ import { User } from '../models/User.js';
 import { TokenSession } from '../models/Security.js';
 import { compare, createHash, randomBytes, mongoose } from '../utils/libs.js';
 import { validateToken } from '../services/CreadorTokens.js';
+import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } from '../services/cryptoService.js';
+
 import { 
     getIdDispositivo, 
     getCorreoSesion, 
@@ -16,6 +18,38 @@ import {
     setCorreoSesion,
     getIDMongodbUsuario
 } from '../STORAGE/Variables_sesion.js';
+
+/**
+ * Helper para desencriptar un objeto de usuario de la DB.
+ */
+function procesarUsuario(usuario) {
+    if (!usuario) return null;
+    const result = { ...usuario };
+    
+    if (result.apodo && typeof result.apodo === 'object') {
+        result.apodo = desencriptarDatosSistema(result.apodo);
+    }
+    if (result.correo && typeof result.correo === 'object') {
+        result.correo = desencriptarDatosSistema(result.correo);
+    }
+    if (result.idamigo && typeof result.idamigo === 'object') {
+        result.idamigo = desencriptarDatosSistema(result.idamigo);
+    }
+    
+    if (result.chats && Array.isArray(result.chats)) {
+        result.chats = result.chats.map(chat => ({
+            ...chat,
+            ultimomensaje: chat.ultimomensaje ? desencriptarDatosSistema(chat.ultimomensaje) : ""
+        }));
+    }
+
+    if (result._id) {
+        result.id = result._id.toString();
+    }
+    
+    return result;
+}
+
 
 export async function LoginUsuarioDB({ correo = null, contraseña = null, token = null, id_dp = null, bloqueada = false }) {
     try {
@@ -36,23 +70,25 @@ export async function LoginUsuarioDB({ correo = null, contraseña = null, token 
 
             if (!token_datos) return { success: false };
 
-            const usuario_datos = await User.findOne({ correo: correoStr, bloqueada }).lean();
+            const correoHash = hashDatosSistema(correoStr);
+            const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).lean();
             if (!usuario_datos) return { success: false };
             
-            return { success: true, data: usuario_datos };
+            return { success: true, data: procesarUsuario(usuario_datos) };
         }
 
         if (!correo || !contraseña) return { success: false };
         const correoStr = String(correo);
         const contraseñaStr = String(contraseña);
 
-        const usuario_datos = await User.findOne({ correo: correoStr, bloqueada }).lean();
+        const correoHash = hashDatosSistema(correoStr);
+        const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).lean();
         if (!usuario_datos) return { success: false };
 
         const ok = await compare(contraseñaStr, usuario_datos.contrasena);
         if (!ok) return { success: false };
 
-        return { success: true, data: usuario_datos };
+        return { success: true, data: procesarUsuario(usuario_datos) };
     } catch (e) {
         console.error(e);
         return { success: false };
@@ -64,12 +100,17 @@ export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, 
         const sKey = secretKey || randomBytes(32).toString("hex");
         const idAmigo = idamigo || randomBytes(5).toString("hex").toUpperCase();
         
+        const correoHash = hashDatosSistema(correo);
+        const idamigoHash = hashDatosSistema(idAmigo);
+
         await User.create({
-            apodo,
-            correo,
+            apodo: encriptarDatosSistema(apodo),
+            correo: encriptarDatosSistema(correo),
+            correo_hash: correoHash,
             contrasena: contraseña,
             secretKey: sKey,
-            idamigo: idAmigo,
+            idamigo: encriptarDatosSistema(idAmigo),
+            idamigo_hash: idamigoHash,
             publicKey: publicKey
         });
         return true;
@@ -78,6 +119,7 @@ export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, 
         return null;
     }
 }
+
 
 
 export async function añadirUsuariosBloqueados(id) {
@@ -90,8 +132,9 @@ export async function añadirUsuariosBloqueados(id) {
     lista_bloqueados.push(new mongoose.Types.ObjectId(idStr));
 
     try {
+        const correoHash = hashDatosSistema(correo);
         const r = await User.updateOne(
-            { correo },
+            { correo_hash: correoHash },
             { $set: { users_bloq: lista_bloqueados } }
         );
         if (r.matchedCount === 0) return false;
@@ -102,6 +145,7 @@ export async function añadirUsuariosBloqueados(id) {
         return null;
     }
 }
+
 
 export async function eliminarUsuariosBloqueados(id) {
     const correo = getCorreoSesion();
@@ -112,8 +156,9 @@ export async function eliminarUsuariosBloqueados(id) {
 
     lista_bloqueados.splice(index, 1);
     try {
+        const correoHash = hashDatosSistema(correo);
         const r = await User.updateOne(
-            { correo },
+            { correo_hash: correoHash },
             { $set: { users_bloq: lista_bloqueados } }
         );
         if (r.matchedCount === 0) return false;
@@ -124,12 +169,14 @@ export async function eliminarUsuariosBloqueados(id) {
         return null;
     }
 }
+
 export async function cambiarContraseñaUsuario(contraseña) {
     const correo = getCorreoSesion();
     const fecha_bloqueo = new Date(Date.now() + (48 * 60 * 20 * 1000));
     try {
+        const correoHash = hashDatosSistema(correo);
         const r = await User.updateOne(
-            { correo },
+            { correo_hash: correoHash },
             { $set: { contrasena: contraseña, exp_bloq_contrasena: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
@@ -141,13 +188,16 @@ export async function cambiarContraseñaUsuario(contraseña) {
     }
 }
 
+
 export async function cambiarCorreoUsuario(correo) {
     const correo_viejo = getCorreoSesion();
     const fecha_bloqueo = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
     try {
+        const correo_viejo_hash = hashDatosSistema(correo_viejo);
+        const correo_nuevo_hash = hashDatosSistema(correo);
         const r = await User.updateOne(
-            { correo: correo_viejo },
-            { $set: { correo, exp_bloq_correo: fecha_bloqueo } }
+            { correo_hash: correo_viejo_hash },
+            { $set: { correo: encriptarDatosSistema(correo), correo_hash: correo_nuevo_hash, exp_bloq_correo: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
         setCorreoSesion(correo);
@@ -159,14 +209,16 @@ export async function cambiarCorreoUsuario(correo) {
     }
 }
 
+
 export async function cambiarApodoUsuario(apodo) {
     const correo = getCorreoSesion();
     const apodoStr = String(apodo);
     const fecha_bloqueo = new Date(Date.now() + (24 * 60 * 60 * 1000));
     try {
+        const correoHash = hashDatosSistema(correo);
         const r = await User.updateOne(
-            { correo },
-            { $set: { apodo: apodoStr, exp_bloq_apodo: fecha_bloqueo } }
+            { correo_hash: correoHash },
+            { $set: { apodo: encriptarDatosSistema(apodoStr), exp_bloq_apodo: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
         setApodoSesion(apodoStr);
@@ -178,12 +230,14 @@ export async function cambiarApodoUsuario(apodo) {
     }
 }
 
+
 export async function ActualizarSecretKeyUsuario(actualizar = true) {
     const key = randomBytes(32).toString("hex");
     if (!actualizar) return key;
     try {
         const correo = getCorreoSesion();
-        const r = await User.updateOne({ correo }, { $set: { secretKey: key } });
+        const correoHash = hashDatosSistema(correo);
+        const r = await User.updateOne({ correo_hash: correoHash }, { $set: { secretKey: key } });
         if (r.matchedCount === 0) return false;
         return key;
     } catch (e) {
@@ -192,24 +246,21 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
     }
 }
 
+
 export async function obtener_datos_usuario(id, datos_usar = null) {
     const datos_buscar = datos_usar || "correo apodo visible idamigo";
     const usuario = await User.findById(id, datos_buscar).lean();
     if (!usuario) return null;
-    const result = { ...usuario };
-    if (result._id) {
-        result.id = result._id.toString();
-        result._id = result.id;
-    }
-    return result;
+    return procesarUsuario(usuario);
 }
+
 
 export async function encontrar_usuario(texto, correo = false) {
     try {
         const id_propio = getIDMongodbUsuario();
         const filtro = correo
-            ? { correo: texto, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }
-            : { idamigo: texto, visible: true, bloquearChatsNuevos: false };
+            ? { correo_hash: hashDatosSistema(texto), mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }
+            : { idamigo_hash: hashDatosSistema(texto), visible: true, bloquearChatsNuevos: false };
 
         const usuario = await User.findOne(filtro, "_id apodo users_bloq").lean();
         if (!usuario) return null;
@@ -217,19 +268,21 @@ export async function encontrar_usuario(texto, correo = false) {
         const isBloqueado = usuario.users_bloq.includes(id_propio) || getUsuariosBloqueados().includes(usuario._id.toString());
         if (isBloqueado) return null;
 
-        return { id: usuario._id.toString(), nombre: usuario.apodo };
+        const usuarioProcesado = procesarUsuario(usuario);
+        return { id: usuarioProcesado.id, nombre: usuarioProcesado.apodo };
     } catch (e) {
         console.error(e);
         return null;
     }
 }
 
+
 export async function AÑADIR_CONTACTO(id, nombre) {
     try {
         const id_propio = getIDMongodbUsuario();
         const r = await User.updateOne(
             { _id: id_propio, "contactos.id": { $ne: id } },
-            { $push: { contactos: { id, apodo: nombre } } }
+            { $push: { contactos: { id, apodo: encriptarDatosSistema(nombre) } } }
         );
         return r.modifiedCount > 0;
     } catch (e) {
@@ -238,8 +291,10 @@ export async function AÑADIR_CONTACTO(id, nombre) {
     }
 }
 
+
 export async function eliminarUsuariosSilenciados(id) {
     const correo = getCorreoSesion();
+    const correoHash = hashDatosSistema(correo);
     let lista_silenciados = getUsuariosSilence();
     const idStr = id.toString();
     const index = lista_silenciados.findIndex(sid => sid.toString() === idStr);
@@ -247,7 +302,7 @@ export async function eliminarUsuariosSilenciados(id) {
 
     lista_silenciados.splice(index, 1);
     try {
-        const r = await User.updateOne({ correo }, { $set: { users_silence: lista_silenciados } });
+        const r = await User.updateOne({ correo_hash: correoHash }, { $set: { users_silence: lista_silenciados } });
         if (r.matchedCount === 0) return false;
         setUsuariosSilence(lista_silenciados);
         return true;
@@ -257,15 +312,17 @@ export async function eliminarUsuariosSilenciados(id) {
     }
 }
 
+
 export async function añadirUsuariosSilenciados(id) {
     const correo = getCorreoSesion();
+    const correoHash = hashDatosSistema(correo);
     let lista_silenciados = getUsuariosSilence();
     const idStr = id.toString();
     if (lista_silenciados.some(sid => sid.toString() === idStr)) return false;
 
     lista_silenciados.push(new mongoose.Types.ObjectId(idStr));
     try {
-        const r = await User.updateOne({ correo }, { $set: { users_silence: lista_silenciados } });
+        const r = await User.updateOne({ correo_hash: correoHash }, { $set: { users_silence: lista_silenciados } });
         if (r.matchedCount === 0) return false;
         setUsuariosSilence(lista_silenciados);
         return true;
@@ -274,3 +331,4 @@ export async function añadirUsuariosSilenciados(id) {
         return null;
     }
 }
+
