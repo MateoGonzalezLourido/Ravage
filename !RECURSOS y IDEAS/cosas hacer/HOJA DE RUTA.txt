@@ -1,14 +1,9 @@
-1ºBorrar y cambiar nombre archivos subidos para mandar *->arreglar errores + añadir iconos extensiones
-
-2ºAñadir y eliminar usuarios de chats *->fase de testing
 
 3ºTerminar buzon *->en desarrollo
 
 4ºHacer las plantillas para usar servidor localhost http, https y servidor gratis railway
 
 5ºTerminar tablas de base de datos y reajustarlas-> + refactorizar codigo que necesite
-
-6ºAñadir todas las verificaciones de seguridad de la app
 
 7ºClean code y optimizaciones ... -> sacarlo al github publico
 

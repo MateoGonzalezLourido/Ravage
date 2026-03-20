@@ -1,44 +1,6 @@
--Mejorar el E2EE usando Curve25519 (whatsapp), actualmente usa RSA-2048
-
--5. Cosas que tu sistema todavía NO tiene
-
-Esto es importante.
-
-Tu arquitectura NO menciona:
-
-1️⃣ Forward Secrecy
-
-Si alguien roba una clave privada en el futuro:
-
-puede descifrar chats antiguos
-
-Signal evita esto con Double Ratchet.
-
--Verificación de identidad
-
-Problema:
-
-MITM attack
-
-El servidor podría sustituir claves públicas.
-
-Solución usada por apps reales:
-
-fingerprints
-QR verification
-safety numbers
-
--Rotación de claves
-
-Chats largos deberían rotar claves
-
--Protección contra replay
-
-No veo:
-
-message counters
-
 -Hacer servidor railway y plantillas https localhost
-
-
- 
+-hacer readme
+-revisar imports
+-testear todo el sistema
+-hacer pruebas de seguridad
+-revisar posibles optimizaciones de mongo
