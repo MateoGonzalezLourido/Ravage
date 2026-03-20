@@ -151,8 +151,8 @@ contextBridge.exposeInMainWorld('chats', {
     SELECCIONAR_ARCHIVOS: () => {
         return ipcRenderer.invoke("seleccionar-archivos")
     },
-    DESCARGAR_ARCHIVO: (id, nombre) => {
-        return ipcRenderer.invoke("descargar-archivo", id, nombre)
+    DESCARGAR_ARCHIVO: (id, nombre, iv = null, tag = null, id_chat = null) => {
+        return ipcRenderer.invoke("descargar-archivo", id, nombre, iv, tag, id_chat)
     },
     OBTENER_DATOS_MENSAJE: (id_chat, id_mensaje) => {
         return ipcRenderer.invoke("obtener-datos-mensaje", id_chat, id_mensaje)
