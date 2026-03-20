@@ -24,11 +24,15 @@ const ChatSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    claves_cifradas: [{
-        usuario_id: mongoose.Schema.Types.ObjectId,
-        clave_envuelta: String // ChatKey cifrada con la RSA pública del usuario
+    ratchet_keys: [{
+        emisor_id: mongoose.Schema.Types.ObjectId,
+        receptor_id: mongoose.Schema.Types.ObjectId, // A quien va dirigida esta copia de la clave
+        clave_envuelta: String, // ChainKey del emisor cifrada con RSA pública del receptor
+        counter: { type: Number, default: 0 }
     }],
     fecha_creacion: { type: Date, default: Date.now }
 });
+
+
 
 export const ChatsRavage = mongoose.model("ChatsRavage", ChatSchema, "chats");
