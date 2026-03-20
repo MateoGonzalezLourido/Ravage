@@ -19,8 +19,7 @@ import {
 } from './MENSAJERIA/Estructuras_correos.js';
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
-import { hash, compare, createHash, machineIdSync } from '../utils/libs.js';
-import validator from 'validator';
+import { hash, createHash, machineIdSync } from '../utils/libs.js';
 import { generarLlavesRSA } from './cryptoService.js';
 import {comprobar_contraseña_cuenta,
     comprobarContrasenaValidaciones,
