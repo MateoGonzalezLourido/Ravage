@@ -24,7 +24,8 @@ import {
     comprobaciones_Correo,
     comprobar_apodo,
     comprobarContrasenaValidaciones,
-    cerrarSesionUsuario
+    cerrarSesionUsuario,
+    comprobar_codigo_verificacion
 } from './sesionUsuario.js';
 
 
@@ -209,13 +210,10 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
             return { success: false, message: "Fallo al cambiar datos: intentos acabados" }
         }
         //mirar si es codigo valido
-        if (code.length > 6) {
+        const VCodigo = comprobar_codigo_verificacion(code)
+        if (!VCodigo.success) {
             bloquear_accion = false
-            return { success: false, message: "Código muy largo" }
-        }
-        if (isNaN(Number(code))) {
-            bloquear_accion = false
-            return { success: false, message: "Código no numérico" }
+            return { success: false, message: VCodigo.message }
         }
         //cojer el ultimo codigo generado
         let code_db = (await DatosCuentaVC.find({ correo: correo, tipo: tipo }).sort({ expira: -1 }).limit(1))[0];

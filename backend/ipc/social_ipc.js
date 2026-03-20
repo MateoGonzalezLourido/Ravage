@@ -5,7 +5,8 @@ import {
     añadirUsuariosBloqueados,
     eliminarUsuariosBloqueados,
     añadirUsuariosSilenciados,
-    eliminarUsuariosSilenciados
+    eliminarUsuariosSilenciados,
+    AÑADIR_CONTACTO
 } from '../repositories/UserRepository.js';
 import {
     getListaContactos,
@@ -48,5 +49,9 @@ export function registerSocialHandlers() {
 
     ipcMain.handle("eliminar-usuarios-silenciados", async (_, id) => {
         return await eliminarUsuariosSilenciados(id)
+    })
+
+    ipcMain.handle("añadir-contacto", async (_, id, nombre) => {
+        return await AÑADIR_CONTACTO(id, nombre)
     })
 }

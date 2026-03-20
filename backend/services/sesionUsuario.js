@@ -180,13 +180,10 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         return { success: false, message: "Fallo al crear el usuario:intentos acabados" }
     }
     //mirar si es codigo valido
-    if (codeStr.length > 6) {
+    const VCodigo = comprobar_codigo_verificacion(codeStr)
+    if (!VCodigo.success) {
         bloquear_accion = false
-        return { success: false, message: "Código muy largo" }
-    }
-    if (validator.isNumeric(codeStr) === false) {
-        bloquear_accion = false
-        return { success: false, message: "Código no numérico" }
+        return { success: false, message: VCodigo.message }
     }
     //cojer el ultimo codigo generado
     const codehash = createHash("sha256").update(codeStr).digest("hex");
@@ -333,8 +330,11 @@ async function ValidarCodeLogin({ correo, code }) {
         return { success: false, message: "Fallo al iniciar sesion:intentos acabados" }
     }
     //mirar si es codigo valido
-    if (code.length > 6) return { success: false, message: "Código muy largo" }
-    if (isNaN(Number(code))) return { success: false, message: "Código no numérico" }
+    const VCodigo = comprobar_codigo_verificacion(code)
+    if (!VCodigo.success) {
+        bloquear_accion = false
+        return { success: false, message: VCodigo.message }
+    }
     //cojer el ultimo codigo generado
 
     //cojer el ultimo codigo generado
@@ -401,5 +401,6 @@ export {
     ValidarCodeLogin,
     comprobaciones_Correo,
     comprobar_apodo,
-    comprobarContrasenaValidaciones
+    comprobarContrasenaValidaciones,
+    comprobar_codigo_verificacion
 };

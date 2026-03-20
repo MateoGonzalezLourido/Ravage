@@ -1,12 +1,6 @@
 import { ipcMain, app } from '../utils/libs.js';
-import {
-    loginUsuario,
-    registerUsuario,
-    ValidarCodeRegistroUsuario,
-    ValidarCodeLogin,
-    cerrarSesionUsuario,
-    comprobar_contraseña_cuenta
-} from '../services/sesionUsuario.js';
+import { loginUsuario, registerUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } from '../services/sesionUsuario.js';
+import { comprobaciones_Correo, comprobarContrasenaValidaciones, comprobar_apodo, comprobar_codigo_verificacion } from '../services/validadores.js';
 import { BorrarVC, BorrarCuentaVC } from '../repositories/SecurityRepository.js';
 import {
     getCorreoSesion,
@@ -34,18 +28,29 @@ export function registerSessionHandlers(mainWindow) {
 
     // SESIÓN
     ipcMain.handle('login-usuario', async (_, username, password, mantener_sesion_iniciada) => {
+        if (!comprobaciones_Correo(username).success || !comprobarContrasenaValidaciones(password).success) {
+            return { success: false, message: "Datos de login inválidos" }
+        }
         return await loginUsuario({ username, contraseña: password, mantener_sesion_iniciada })
     })
 
     ipcMain.handle('registrar-usuario', async (_, apodo, username, password) => {
+        if (!comprobaciones_Correo(username).success || !comprobarContrasenaValidaciones(password).success) {
+            return { success: false, message: "Datos de registro inválidos" }
+        }
+        if (apodo && !comprobar_apodo(apodo).success) {
+            return { success: false, message: "Apodo no válido" }
+        }
         return await registerUsuario({ apodo, correo: username, password })
     })
 
     ipcMain.handle('validar-code-registrar-usuario', async (_, correo, code) => {
+        if (!comprobar_codigo_verificacion(code).success) return { success: false, message: "Código no válido" }
         return await ValidarCodeRegistroUsuario({ correo, code })
     })
 
     ipcMain.handle('validar-code-login-usuario', async (_, correo, password) => {
+        if (!comprobar_codigo_verificacion(password).success) return { success: false, message: "Código no válido" }
         return await ValidarCodeLogin({ correo, code: password })
     })
 

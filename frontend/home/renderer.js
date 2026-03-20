@@ -152,7 +152,14 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                             // Si el mensaje está vacío y no hay archivos, evitar enviar nada
                             if (!mensaje && archivos_mensaje.length === 0) return;
 
-                            const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
+                            // Validar mensaje antes de enviar
+                        const esValido = await window.validadores.VALIDAR_MENSAJE(mensaje)
+                        if (!esValido && archivos_mensaje.length === 0) {
+                            window.pushNotificacion({ PRIORIDAD: 2, texto: "Mensaje no válido", tipo: "info" })
+                            return;
+                        }
+
+                        const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
                             if (result) {//limpiar seccion mensaje escritura
                                 const copia_archivos = archivos_mensaje
                                 archivos_mensaje = []
@@ -346,13 +353,18 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                                     textarea.value = archivo.nombre
                                     itemClicado.querySelector(".contenido-item-archivo-lista").appendChild(textarea)
                                     textarea.focus()
-
-                                    textarea.addEventListener("keypress", (event) => {
+                                    textarea.addEventListener("keypress", async (event) => {
                                         if (event.key == "Enter" && !event.shiftKey) {
                                             event.preventDefault()
                                             let nombre_nuevo = textarea.value.trim()
-                                            archivo.nombre = nombre_nuevo
+                                            
+                                            // Regla especial de archivo
+                                            const esNombreValido = await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nombre_nuevo)
+                                            if (!esNombreValido) {
+                                                nombre_nuevo = "Archivo"
+                                            }
 
+                                            archivo.nombre = nombre_nuevo
                                             if (spanActual) {
                                                 spanActual.innerHTML = nombre_nuevo
                                                 spanActual.style.display = "flex"
@@ -373,11 +385,23 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         //añadir archivos a la lista
                         for (const archivo of archivos) {
                             try {
-                                const estructura = archivo.split('\\')
-                                const nombre_extension = estructura[estructura.length - 1].split('.')
+                                const estructura = archivo.includes('\\') ? archivo.split('\\') : archivo.split('/')
+                                const fullFilename = estructura[estructura.length - 1]
+                                let parts = fullFilename.split('.')
+                                let extension = parts.length > 1 ? parts.pop() : "txt"
+                                let nombre = parts.join('.')
+
+                                // Validaciones y reglas especiales
+                                if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nombre))) {
+                                    nombre = "Archivo"
+                                }
+                                if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(extension))) { // Reutilizamos el validador de nombre para la extensión
+                                    extension = "txt"
+                                }
+
                                 archivos_mensaje.push({
-                                    nombre: nombre_extension[0],
-                                    extension: nombre_extension[1],
+                                    nombre: nombre,
+                                    extension: extension,
                                     ruta: archivo
                                 })
                             }

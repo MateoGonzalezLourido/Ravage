@@ -165,16 +165,27 @@ async function buscar_usuario_añadir_chat(e) {
     const texto_buscar = document.querySelector("#texto-buscar-chat-añadir").value.trim()
     let resultado;
     if (/[@]/.test(texto_buscar)) {//es correo
-        //TODO: HAY QUE COMPROBAR SI EL CORREO ES VALIDO PARA REDUCIR LLAMADAS AL DB
+        // Comprobar si el correo es válido para reducir llamadas al DB
+        const esValido = await window.validadores.VALIDAR_CORREO(texto_buscar)
+        if (!esValido) {
+            window.pushNotificacion({ prioridad: 2, texto: "Formato de correo no válido", tipo: "info" })
+            return null
+        }
         const correo_usuario = await window.cuenta_usuario.OBTENER_CORREO_USUARIO()
         if (texto_buscar === correo_usuario) return null
         else resultado = await window.social_usuario.ENCONTRAR_USUARIOS_EXTERNOS(texto_buscar, true)
     }
     else if (/[#]/.test(texto_buscar)) {//id amigo
-        //TODO: COMPROBAR SI ES UN  ID VALIDO
+        const idLimpio = texto_buscar.replace("#", "")
+        // Comprobar si es un ID válido
+        const esValido = await window.validadores.VALIDAR_IDAMIGO(idLimpio)
+        if (!esValido) {
+            window.pushNotificacion({ prioridad: 2, texto: "Formato de ID de amigo no válido", tipo: "info" })
+            return null
+        }
         const idamigo_usuario = await window.cuenta_usuario.OBTENER_IDAMIGO_USUARIO()
         if (texto_buscar === idamigo_usuario) return null
-        else resultado = await window.social_usuario.ENCONTRAR_USUARIOS_EXTERNOS(texto_buscar.replace("#", ""), false)
+        else resultado = await window.social_usuario.ENCONTRAR_USUARIOS_EXTERNOS(idLimpio, false)
     }
 
     //excluir usuarios ya existentes si es añadir usuario a un chat existente
@@ -214,8 +225,16 @@ async function crear_chat_nuevo(e) {
 
     //nombre del chat
     let nombre = $nombreChatNuevo.value.trim()
-    //TODO:comprobar si el nombre es valido
-    if (nombre == "" && contactos_añadir.length != 1) nombre = "ChatGrupalSiNombre"
+    // Comprobar si el nombre es válido
+    if (nombre !== "") {
+        const esNombreValido = await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nombre)
+        if (!esNombreValido) {
+            window.pushNotificacion({ prioridad: 2, texto: "Nombre de chat no válido (caracteres no permitidos)", tipo: "info" })
+            return null
+        }
+    }
+    
+    if (nombre == "" && contactos_añadir.length != 1) nombre = "ChatGrupalSinNombre"
     else if (nombre == "") nombre = contactos_añadir[0].nombre
 
     //sacar el id de los usuarios, asegurando que son válidos

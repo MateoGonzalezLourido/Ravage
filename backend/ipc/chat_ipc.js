@@ -21,6 +21,7 @@ import {
 import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js';
 import { iniciarBuzon } from '../services/buzon.js';
+import { comprobar_mensaje, comprobar_nombre_archivo } from '../services/validadores.js';
 const authorizedPaths = new Set();
 
 export function registerChatHandlers(mainWindow, socket) {
@@ -41,6 +42,9 @@ export function registerChatHandlers(mainWindow, socket) {
     })
 
     ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre, id_chat, solicitudAceptada) => {
+        if (nombre && !comprobar_nombre_archivo(nombre).success) {
+            throw new Error("Nombre de chat no válido");
+        }
         return await CREAR_CHAT_NUEVO(ids, nombre, id_chat, solicitudAceptada)
     })
 
@@ -71,6 +75,9 @@ export function registerChatHandlers(mainWindow, socket) {
                 console.error("Acceso a ruta no autorizada bloqueado:", arc.ruta);
                 throw new Error("Unauthorized path access");
             }
+        }
+        if (asunto && !comprobar_mensaje(asunto).success) {
+            throw new Error("Contenido de mensaje no válido");
         }
         return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
     })

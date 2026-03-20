@@ -486,9 +486,16 @@ export async function mostrar_datos_chat_usaurios(e) {
                     //comprobar si ya es contacto
                     const es_contacto = await Es_Contacto_Usuario(id)
                     if (es_contacto) return;
-                    const idamigo = ev.target.closest(".info-chat-participante-item").dataset.idamigo
-                    //TODO: Comprobar si es valido el idamigo
-                    await Añadir_Contacto(idamigo)
+                    const item = ev.target.closest(".info-chat-participante-item")
+                    const id = item.dataset.id
+                    const nombre = item.querySelector(".info-chat-participante-nombre").textContent
+                    const idamigo = item.dataset.idamigo
+                    // Comprobar si es valido el idamigo
+                    if (await window.validadores.VALIDAR_IDAMIGO(idamigo)) {
+                        await window.social_usuario.AÑADIR_CONTACTO(id, nombre)
+                    } else {
+                        window.pushNotificacion({ prioridad: 2, texto: "ID de amigo no válido", tipo: "info" })
+                    }
                 }
             })
         })
