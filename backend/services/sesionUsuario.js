@@ -1,5 +1,5 @@
 import { User } from '../models/User.js';
-import { ValidationCode, CuentaValidationCode, TokenVC, TokenSession, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
+import { ValidationCode, TokenVC, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
 import { LoginUsuarioDB, InsertarUsuario } from '../repositories/UserRepository.js';
 import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, BuscarVC, BuscarCuentaVC } from '../repositories/SecurityRepository.js';
 import {
@@ -21,7 +21,7 @@ import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, createHash, machineIdSync } from '../utils/libs.js';
 import { generarLlavesRSA } from './cryptoService.js';
-import {comprobar_contraseña_cuenta,
+import {
     comprobarContrasenaValidaciones,
     comprobar_apodo,
     comprobaciones_Correo} from './validadores.js'
@@ -128,6 +128,11 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
         return { success: false, message: apodo_valido.message }
     }
 
+    const password_valido = comprobarContrasenaValidaciones(passwordStr);
+    if (!password_valido.success) {
+        return { success: false, message: password_valido.message };
+    }
+
     // Generar hash de contraseña y llaves de identidad
     const pass_hashed = await hash(passwordStr, saltos_contraseña);
     const keys = generarLlavesRSA();
@@ -229,6 +234,11 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     const resultado = comprobaciones_Correo(usernameStr)
     if (!resultado.success) {
         return { success: false, message: resultado.message }
+    }
+
+    const password_valido = comprobarContrasenaValidaciones(contraseñaStr);
+    if (!password_valido.success) {
+        return { success: false, message: password_valido.message };
     }
     //comprobar si este dp no esta bloqueado
     const deviceId = String(machineIdSync());
