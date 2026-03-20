@@ -3,7 +3,8 @@ import { mongoose } from '../utils/libs.js';
 const ValidationCodeSchema = new mongoose.Schema({
     code: {
         type: String,
-        required: true
+        required: true,
+        maxlength: 6
     },
     correo: {
         type: String,
@@ -26,7 +27,8 @@ const DatosCuentaValidationCodeSchema = new mongoose.Schema({
     code: {
         type: String,
         required: true,
-        minlength: 6
+        minlength: 6,
+        maxlength: 6
     },
     correo: {
         type: String,

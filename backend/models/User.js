@@ -18,7 +18,7 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true,
         minlength: 3,
-        maxlength: 30,
+        maxlength: 20,
         trim: true,
         default: "Usuario",
         match: /^[a-zA-Z0-9_-]+$/
@@ -36,7 +36,7 @@ const UserSchema = new mongoose.Schema({
     contrasena: {
         type: String,
         required: true,
-        minlength: 5,
+        minlength: 8,
         trim: true,
     },
     exp_bloq_apodo: {
@@ -87,7 +87,8 @@ const UserSchema = new mongoose.Schema({
         type: String,
         default: "",
         required: true,
-        unique: true
+        unique: true,
+        maxlength: 10
     },
     secretKey: {
         type: String,

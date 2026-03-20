@@ -296,7 +296,7 @@ export async function Crear_chat_html(datos, id_propio) {
         <div id="bt-añadir-archivo-mensaje-escritura">        
             <img src="../recursos/carpeta.svg" alt="">
         </div>
-        <textarea id="textarea-mensaje-escritura" placeholder="Escribe un mensaje"></textarea>
+        <textarea id="textarea-mensaje-escritura" placeholder="Escribe un mensaje" maxlength="1000"></textarea>
     </div>
 `
 
