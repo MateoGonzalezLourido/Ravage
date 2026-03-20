@@ -431,7 +431,10 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                         // COJER ID DEL ARCHIVO, PEDIR A MONGO LOS DATOS DE ESE ARCHIVO Y GUARDARLO EN LA UBICACION ESTABLECIDA
                         const id_archivo = el.dataset.id
                         const nombre_archivo = el.dataset.nombre
-                        const resultado = await window.chats.DESCARGAR_ARCHIVO(id_archivo, nombre_archivo)
+                        const iv = el.dataset.iv
+                        const tag = el.dataset.tag
+                        const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
+                        const resultado = await window.chats.DESCARGAR_ARCHIVO(id_archivo, nombre_archivo, iv, tag, id_chat)
                         if (!resultado) {// fallo al descargar:notificar
                             window.pushNotificacion({
                                 prioridad: 1,        // menor número = más importante

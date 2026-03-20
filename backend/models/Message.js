@@ -2,7 +2,9 @@ import { mongoose } from '../utils/libs.js';
 
 const ArchivoSchema = new mongoose.Schema({
     nombre: { type: String, default: "_archivo_.txt", maxlength: 255 },
-    id: { type: mongoose.Schema.Types.ObjectId, required: true }
+    id: { type: mongoose.Schema.Types.ObjectId, required: true },
+    iv: String,
+    tag: String
 }, { _id: false });
 
 const MessageSchema = new mongoose.Schema({

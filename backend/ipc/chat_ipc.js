@@ -82,8 +82,8 @@ export function registerChatHandlers(mainWindow, socket) {
         return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
     })
 
-    ipcMain.handle("descargar-archivo", async (_, id, nombre) => {
-        return await DESCARGAR_ARCHIVO(id, nombre)
+    ipcMain.handle("descargar-archivo", async (_, id, nombre, iv, tag, id_chat) => {
+        return await DESCARGAR_ARCHIVO(id, nombre, iv, tag, id_chat)
     })
 
     ipcMain.handle("revisar-buzon", async () => {

@@ -66,3 +66,20 @@ export function cifrarConPublica(datos, publicKey) {
 export function descifrarConPrivada(datosHex, privateKey) {
     return privateDecrypt(privateKey, Buffer.from(datosHex, 'hex')).toString('utf8');
 }
+
+/**
+ * Crea un flujo de cifrado (AES-256-GCM).
+ * El tag se debe obtener con cipher.getAuthTag() después de que el flujo termine.
+ */
+export function crearCipherStream(key, iv) {
+    return createCipheriv('aes-256-gcm', key, iv);
+}
+
+/**
+ * Crea un flujo de descifrado (AES-256-GCM).
+ */
+export function crearDecipherStream(key, iv, tag) {
+    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(tag);
+    return decipher;
+}

@@ -1,5 +1,6 @@
 // Node nativo
 import fs from 'fs';
+import { Transform } from 'stream';
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -66,6 +67,7 @@ export {
     http,
     Server,
     os,
+    Transform,
     //validacion datos
     validator
 };

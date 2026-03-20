@@ -120,7 +120,7 @@ export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], prop
                 const [url, identificado] = await url_icono_extension_img(extension)
                 const nombre_mostrar = identificado ? (archivo.nombre?.includes(".") ? archivo.nombre.substring(0, archivo.nombre.lastIndexOf(".")) : archivo.nombre) : archivo.nombre
 
-                html += `<div class="archivo-mensaje-div-archivos" data-id="${archivo.id}" data-nombre="${archivo.nombre}">
+                html += `<div class="archivo-mensaje-div-archivos" data-id="${archivo.id}" data-nombre="${archivo.nombre}" data-iv="${archivo.iv || ''}" data-tag="${archivo.tag || ''}">
                 <div><img src="${url}"><span>${nombre_mostrar}</span></div>
                 </div> `
             }

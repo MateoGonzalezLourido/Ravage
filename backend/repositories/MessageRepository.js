@@ -4,7 +4,7 @@ import { User } from '../models/User.js';
 import { mongoose, GridFSBucket, ObjectId, fs } from '../utils/libs.js';
 import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
-import { cifrarContenido, descifrarConPrivada, descifrarContenido } from '../services/cryptoService.js';
+import { cifrarContenido, descifrarConPrivada, descifrarContenido, crearCipherStream, crearDecipherStream, randomBytes } from '../services/cryptoService.js';
 import { readFileSession } from '../services/controladorArchivos.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 
@@ -42,30 +42,47 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 let nombreCompletoUsar = nombre_defecto;
                 if (archivo.nombre && archivo.extension) nombreCompletoUsar = archivo.nombre + "." + archivo.extension;
                 const idArchivo = new ObjectId();
-                const uploadStream = bucket.openUploadStreamWithId(idArchivo, nombreCompletoUsar);
+                const iv = randomBytes(12);
+                const cipherStream = crearCipherStream(chatKey, iv);
+                
+                // Usamos el ID como nombre en GridFS para ocultar el nombre real
+                const uploadStream = bucket.openUploadStreamWithId(idArchivo, idArchivo.toHexString());
+                
                 await new Promise((resolve, reject) => {
-                    fs.createReadStream(archivo.ruta)
+                    const readStream = fs.createReadStream(archivo.ruta);
+                    readStream
+                        .pipe(cipherStream)
                         .pipe(uploadStream)
                         .on("error", reject)
                         .on("finish", resolve);
                 });
+
                 contenido_archivos.push({
                     nombre: nombreCompletoUsar,
-                    id: idArchivo.toHexString()
+                    id: idArchivo.toHexString(),
+                    iv: iv.toString('hex'),
+                    tag: cipherStream.getAuthTag().toString('hex')
                 });
             }
         }
 
-        // Cifrar contenido completo
-        const payload = JSON.stringify([{ asunto, archivos: contenido_archivos }]);
+        // Cifrar contenido completo (incluyendo emisor y fecha)
+        const data_mensaje = new Date();
+        const payload = JSON.stringify({ 
+            asunto, 
+            archivos: contenido_archivos,
+            emisor: id_emisor,
+            data: data_mensaje
+        });
         const encriptado = cifrarContenido(payload, chatKey);
 
+        const dummy_id = "000000000000000000000000";
         const mensaje = {
             id_chat: new mongoose.Types.ObjectId(id_chat),
-            emisor: new mongoose.Types.ObjectId(id_emisor),
+            emisor: new mongoose.Types.ObjectId(dummy_id),
             contenido: [], // Campo antiguo vacío (E2EE)
             encriptado: encriptado, // Nuevo campo cifrado
-            data: new Date()
+            data: data_mensaje 
         };
 
         const nuevoMensaje = await MessagesRavage.create(mensaje);
@@ -149,7 +166,17 @@ export function descifrarListaMensajes(mensajes, chatKey) {
         if (m.encriptado && m.encriptado.data) {
             try {
                 const decryptedPayload = descifrarContenido(m.encriptado, chatKey);
-                m.contenido = JSON.parse(decryptedPayload);
+                const data = JSON.parse(decryptedPayload);
+                
+                // Si es el nuevo formato (objeto)
+                if (data && !Array.isArray(data)) {
+                    m.contenido = [{ asunto: data.asunto, archivos: data.archivos }];
+                    m.emisor = data.emisor;
+                    m.data = data.data;
+                } else {
+                    // Formato antiguo (array)
+                    m.contenido = data;
+                }
             } catch (err) {
                 console.error("Error descifrando mensaje individual:", err);
                 m.contenido = [{ asunto: "[Error al descifrar]", archivos: [] }];
@@ -173,7 +200,7 @@ export async function limpiar_mensajes_chats_antiguos(chatIdsRaw) {
     }
 }
 
-export async function DESCARGAR_ARCHIVO(id, nombre) {
+export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null, id_chat = null) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         console.error("ID de archivo no válido:", id);
         return false;
@@ -205,8 +232,18 @@ export async function DESCARGAR_ARCHIVO(id, nombre) {
     let rutaFinal = generarRutaUnica(rutaCompleta);
     const writeStream = fs.createWriteStream(rutaFinal);
 
-    return new Promise((resolve, reject) => {
-        downloadStream
+    return new Promise(async (resolve, reject) => {
+        let stream_final = downloadStream;
+
+        if (ivHex && tagHex && id_chat) {
+            const chatKey = await getDecryptedChatKey(id_chat);
+            if (chatKey) {
+                const decipherStream = crearDecipherStream(chatKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex'));
+                stream_final = downloadStream.pipe(decipherStream);
+            }
+        }
+
+        stream_final
             .pipe(writeStream)
             .on("finish", () => resolve(rutaFinal))
             .on("error", reject);
