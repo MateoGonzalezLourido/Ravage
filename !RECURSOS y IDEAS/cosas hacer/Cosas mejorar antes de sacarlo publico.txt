@@ -44,8 +44,6 @@ message counters
 
 -MIRAR CODIGO Y COMPARAR Y DECIDIR CUAL USAR: AJUSTES.JS Y AJUSTES DEL RENDER.JS
 
--ARREGLAR TODOS LOS IMPORTS
-
 -Deberia encriptar correo e idamigo en base de datos? con la secret_key de la app y la del usuario
 
 -Añadir todas las validaciones de datos
