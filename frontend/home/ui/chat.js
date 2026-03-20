@@ -268,8 +268,8 @@ export async function Crear_chat_html(datos, id_propio) {
             }
 
             const id_emisor = Array.isArray(m.emisor) ? m.emisor[0] : m.emisor
-            const nombre = Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: contactos })
-            const propio = id_emisor == id_propio
+            const nombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: contactos })
+            const propio = id_emisor.toString() == id_propio.toString()
             const asunto = m?.contenido[0]?.asunto || ""
             const fecha = m.data
             const archivos = m?.contenido[0]?.archivos || []
