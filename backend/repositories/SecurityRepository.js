@@ -2,10 +2,10 @@ import { ValidationCode, CuentaValidationCode, DatosCuentaVC, TokenSession, Toke
 import { createHash } from '../utils/libs.js';
 import { getIdDispositivo } from '../STORAGE/Variables_sesion.js';
 
-export async function InsertarVC({ correo, code, id }) {
+export async function InsertarVC({ correo, code, id, data = {} }) {
     const codehash = createHash("sha256").update(code).digest("hex");
     try {
-        await ValidationCode.create({ code: codehash, correo, id_dp: id });
+        await ValidationCode.create({ code: codehash, correo, id_dp: id, data });
         return true;
     } catch (e) {
         console.error(e);
@@ -13,10 +13,10 @@ export async function InsertarVC({ correo, code, id }) {
     }
 }
 
-export async function InsertarCuentaVC({ correo, code, id }) {
+export async function InsertarCuentaVC({ correo, code, id, data = {} }) {
     const codehash = createHash("sha256").update(code).digest("hex");
     try {
-        await CuentaValidationCode.create({ code: codehash, correo, id_dp: id });
+        await CuentaValidationCode.create({ code: codehash, correo, id_dp: id, data });
         return true;
     } catch (e) {
         console.error(e);
@@ -44,6 +44,16 @@ export async function BorrarCuentaVC(correo) {
 
 export async function BorrarDatosCuentaVC(correo, code) {
     await DatosCuentaVC.deleteMany({ correo, code });
+}
+
+export async function BuscarVC(correo, code, id_dp) {
+    const codehash = createHash("sha256").update(code).digest("hex");
+    return await ValidationCode.findOne({ correo, code: codehash, id_dp }).lean();
+}
+
+export async function BuscarCuentaVC(correo, code, id_dp) {
+    const codehash = createHash("sha256").update(code).digest("hex");
+    return await CuentaValidationCode.findOne({ correo, code: codehash, id_dp }).lean();
 }
 
 // ... more security helpers
@@ -74,17 +84,15 @@ export async function AñadirJWTUsuarioVC(correo, token = "") {
         id_dp: deviceId
     });
 }
-//TODO: usarlo
 export async function AñadirJWTDPConfianza(correo, token = "") {
-    //exìra en 90min
     const tokenhash = createHash("sha256").update(token).digest("hex");
-    const deviceId = getIdDispositivo()
+    const deviceId = getIdDispositivo();
 
     await TokenDPC.create({
         correo,
         token: tokenhash,
         id_dp: deviceId
-    })
+    });
 }
 
 
@@ -92,8 +100,10 @@ export async function LimpiarJWTUsuario(correo, token) {
     const tokenhash = createHash("sha256").update(token).digest("hex");
     await TokenSession.deleteMany({ correo, token: tokenhash });
 }
-//TODO: REFACTORIZAR
 export async function LimpiarJWTUsuarioVC(correo, token = null) {
-    if (!token) try { await TokenVC.deleteMany({ correo: correo }) } catch (e) { throw e }
-    else try { await TokenVC.deleteMany({ correo: correo, token: token }) } catch (e) { throw e }
+    const query = { correo };
+    if (token) {
+        query.token = createHash("sha256").update(token).digest("hex");
+    }
+    await TokenVC.deleteMany(query);
 }

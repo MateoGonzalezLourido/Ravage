@@ -4,7 +4,7 @@ const ValidationCodeSchema = new mongoose.Schema({
     code: {
         type: String,
         required: true,
-        maxlength: 6
+        maxlength: 64 // SHA256 length
     },
     correo: {
         type: String,
@@ -20,15 +20,17 @@ const ValidationCodeSchema = new mongoose.Schema({
         type: String,
         required: true,
         default: ""
+    },
+    data: { // Data transitoria (hash, apodo, etc.)
+        type: Object,
+        default: {}
     }
 });
 
 const DatosCuentaValidationCodeSchema = new mongoose.Schema({
     code: {
         type: String,
-        required: true,
-        minlength: 6,
-        maxlength: 6
+        required: true
     },
     correo: {
         type: String,
@@ -49,6 +51,10 @@ const DatosCuentaValidationCodeSchema = new mongoose.Schema({
         type: String,
         required: true,
         default: ""
+    },
+    data: { // Data transitoria
+        type: Object,
+        default: {}
     }
 });
 
