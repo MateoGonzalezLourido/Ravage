@@ -1,6 +1,6 @@
-import { User, ActiveUser } from '../models/User.js';
+import { User } from '../models/User.js';
 import { ValidationCode, CuentaValidationCode, TokenVC, TokenSession, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
-import { LoginUsuarioDB, InsertarUsuario, ActualizarUsuarioActivo, BorrarUsuarioActivo } from '../repositories/UserRepository.js';
+import { LoginUsuarioDB, InsertarUsuario } from '../repositories/UserRepository.js';
 import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC } from '../repositories/SecurityRepository.js';
 import {
     saveSessionFile,
@@ -22,8 +22,10 @@ import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, compare, createHash, machineIdSync } from '../utils/libs.js';
 import validator from 'validator';
 import { generarLlavesRSA } from './cryptoService.js';
-
-let IntervalTimerUsuarioActivo;
+import {comprobar_contraseña_cuenta,
+    comprobarContrasenaValidaciones,
+    comprobar_apodo,
+    comprobaciones_Correo} from './validadores.js'
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 //vairables de usuario de sesion
 function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
@@ -95,10 +97,6 @@ async function autoLoginUsuario() {//aqui se usa username y correo, pero son lo 
         //establecer variables globales
         //añadir usuario activo
         ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data });
-        (async () => {
-            await ActualizarUsuarioActivo({ correo: usuario_datos.data.correo });
-            comprobarActividadOnline()//iniciar comprobador usuario activo
-        })();
         console.log("*Autologin correcto")
         return { success: true };
     }
@@ -297,11 +295,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
     }
     //guardar correo en variables globales
     ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data });
-    if (autoverificacion) {//se autovalida
-        (async () => {
-            await ActualizarUsuarioActivo({ correo: usuario_data.data.correo });
-            comprobarActividadOnline()
-        })();
+    if (autoverificacion) {
         //JWT , mantener sesion iniciada en cache
         (async () => {
             if (mantener_sesion_iniciada) {
@@ -355,11 +349,6 @@ async function ValidarCodeLogin({ correo, code }) {
         ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
         return { success: false, message: "Fallo al iniciar sesion: no existe ese código" };
     }
-    //mostrar como usuario activo en mongodb
-    (async () => {
-        await ActualizarUsuarioActivo({ correo: correo });
-        comprobarActividadOnline()
-    })();
     //JWT , mantener sesion iniciada en cache
     (async () => {
         if (mantener_sesion_iniciada_usuario) {
@@ -391,9 +380,6 @@ async function cerrarSesionUsuario(correo) {
     clearFileSession('sessionFile');
     //si existe ese archivo limpiar token
     if (data) LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
-    //borrar usuario activo
-    clearInterval(IntervalTimerUsuarioActivo)
-    BorrarUsuarioActivo()
     //limpiar datos
     storage.setCorreoSesion(null)
     storage.setApodoSesion(null)
@@ -404,67 +390,7 @@ async function cerrarSesionUsuario(correo) {
     return true
 }
 
-//TODO: añadir mas verificaciones
-function comprobaciones_Correo(correo) {
-    if (typeof correo !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
-    
-    if (!validator.isEmail(correo)) {
-        return { success: false, message: "Correo electrónico no válido" };
-    }
-    
-    if (/[A-Z]/.test(correo)) {
-        return { success: false, message: "El correo debe estar en minúsculas" };
-    }
 
-    return { success: true, message: "Correo válido" };
-}
-
-function comprobar_apodo(apodo) {
-    if (typeof apodo !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
-
-    if (!validator.isAlphanumeric(apodo, 'es-ES', { ignore: '_-' })) {
-        return { success: false, message: "Apodo: solo letras, números, guión y guión bajo" };
-    }
-    
-    if (apodo.length < 3 || apodo.length > 20) {
-        return { success: false, message: "Apodo: debe tener entre 3 y 20 caracteres" };
-    }
-
-    return { success: true, message: "Apodo válido" };
-}
-
-function comprobarContrasenaValidaciones(contraseña) {
-    if (typeof contraseña !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
-    
-    if (contraseña.length < 8) {
-        return { success: false, message: "La contraseña debe tener al menos 8 caracteres" };
-    }
-
-    return { success: true, message: "Contraseña válida" };
-}
-async function comprobar_contraseña_cuenta(contraseña) {
-    const correo = storage.getCorreoSesion()
-    const usuario_data = (await User.find({ correo: correo }).limit(1))[0]
-    if (!usuario_data) return false
-    const ok = await compare(String(contraseña), usuario_data.contrasena);
-    return ok
-}
-//mantener sesion activa
-async function comprobarActividadOnline() {
-    const correo_inicial = storage.getCorreoSesion()
-    IntervalTimerUsuarioActivo = setInterval(() => {
-        const correo_actual = storage.getCorreoSesion()
-        if (!correo_actual) {
-            //si no hay correo parar la comprobacion
-            clearInterval(IntervalTimerUsuarioActivo)
-            BorrarUsuarioActivo()
-            return;
-        }
-        if (correo_actual !== correo_inicial) BorrarUsuarioActivo()//borrar sesion desactualizada
-
-        ActualizarUsuarioActivo({ correo: correo_actual })
-    }, 4 * 60 * 1000)//4minutos, aunque mongo expire cada 5 minutos
-}
 export {
     comprobar_contraseña_cuenta,
     registerUsuario,

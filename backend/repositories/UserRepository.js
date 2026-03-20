@@ -1,4 +1,4 @@
-import { User, ActiveUser } from '../models/User.js';
+import { User } from '../models/User.js';
 import { TokenSession } from '../models/Security.js';
 import { compare, createHash, randomBytes, mongoose } from '../utils/libs.js';
 import { validateToken } from '../services/CreadorTokens.js';
@@ -79,25 +79,6 @@ export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, 
     }
 }
 
-export async function ActualizarUsuarioActivo({ correo = null }) {
-    if (!correo) return null;
-    const deviceId = getIdDispositivo();
-    try {
-        return await ActiveUser.updateOne(
-            { correo, id_dp: deviceId },
-            { $set: { expira: new Date() } },
-            { upsert: true }
-        );
-    } catch (e) {
-        console.error(e);
-        return null;
-    }
-}
-
-export async function BorrarUsuarioActivo() {
-    const deviceId = getIdDispositivo();
-    await ActiveUser.deleteOne({ id_dp: deviceId });
-}
 
 export async function añadirUsuariosBloqueados(id) {
     const correo = getCorreoSesion();
@@ -169,7 +150,6 @@ export async function cambiarCorreoUsuario(correo) {
             { $set: { correo, exp_bloq_correo: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
-        await BorrarUsuarioActivo();
         setCorreoSesion(correo);
         setFechaBloqueoCorreo(fecha_bloqueo);
         return true;
