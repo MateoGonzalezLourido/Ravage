@@ -14,6 +14,7 @@ import { autoLoginUsuario } from './backend/services/sesionUsuario.js';
 import { registerSessionHandlers } from './backend/ipc/session_ipc.js';
 import { registerChatHandlers } from './backend/ipc/chat_ipc.js';
 import { registerSocialHandlers } from './backend/ipc/social_ipc.js';
+import { registerValidadoresHandlers } from './backend/ipc/validadores_ipc.js';
 
 let socket;
 let mainWindow;
@@ -44,6 +45,7 @@ function createMainWindowHome(AutoLogin = false) {
     registerSessionHandlers(mainWindow);
     registerChatHandlers(mainWindow, socket);
     registerSocialHandlers();
+    registerValidadoresHandlers();
 }
 
 const gotTheLock = app.requestSingleInstanceLock();

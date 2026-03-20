@@ -110,6 +110,9 @@ contextBridge.exposeInMainWorld('social_usuario', {
     OBTENER_USUARIOS_SILENCIADOS: () => {
         return ipcRenderer.invoke("obtener-usuarios-silenciados")
     },
+    AÑADIR_CONTACTO: (id, apodo) => {
+        return ipcRenderer.invoke("añadir-contacto", id, apodo)
+    },
     AÑADIR_USUARIO_BLOQUEADOS: (id, apodo) => {
         return ipcRenderer.invoke("añadir-usuarios-bloqueados", id, apodo)
     },
@@ -179,6 +182,16 @@ contextBridge.exposeInMainWorld('ajustes_app', {
     GUARDAR_AJUSTES_APP: (data) => {
         return ipcRenderer.invoke("guardar-ajustes-app", data)
     }
+});
+// ─── VALIDACIONES ─────────────────────────────────────────────────────────────
+contextBridge.exposeInMainWorld('validadores', {
+    VALIDAR_CORREO: (correo) => ipcRenderer.invoke('validar-correo', correo),
+    VALIDAR_APODO: (apodo) => ipcRenderer.invoke('validar-apodo', apodo),
+    VALIDAR_CONTRASEÑA: (contraseña) => ipcRenderer.invoke('validar-contraseña', contraseña),
+    VALIDAR_IDAMIGO: (idAmigo) => ipcRenderer.invoke('validar-idamigo', idAmigo),
+    VALIDAR_CODIGO: (codigo) => ipcRenderer.invoke('validar-codigo', codigo),
+    VALIDAR_MENSAJE: (mensaje) => ipcRenderer.invoke('validar-mensaje', mensaje),
+    VALIDAR_NOMBRE_ARCHIVO: (nombre) => ipcRenderer.invoke('validar-nombre-archivo', nombre)
 });
 //socket buzon
 contextBridge.exposeInMainWorld("buzonAPI", {

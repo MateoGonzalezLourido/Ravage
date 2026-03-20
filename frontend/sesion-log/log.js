@@ -14,8 +14,9 @@ async function form_validar_correo_registro(e) {
 
     if (intentos > 0) {
         const codigo = document.querySelector("#bt-code-introducir").value
-        if (codigo.length == 6) result = await window.sesion_usuario.VALIDAR_CODE_REGISTRAR_USUARIO(username_g, codigo);
-        else result = { success: false, message: "Código muy largo" }
+        const esValido = await window.validadores.VALIDAR_CODIGO(codigo)
+        if (esValido) result = await window.sesion_usuario.VALIDAR_CODE_REGISTRAR_USUARIO(username_g, codigo);
+        else result = { success: false, message: "Código no válido (debe tener 6 números)" }
 
         if (result.success) {//codigo valido
             console.log("SE HA CREADO EL USUARIO CORRECTAMENTE")
@@ -35,8 +36,9 @@ async function form_validar_correo(e) {
     e.preventDefault()
     if (intentos > 0) {
         const codigo = document.querySelector("#bt-code-introducir").value
-        if (codigo.length <= 6) result = await window.sesion_usuario.VALIDAR_CODE_LOGIN_USUARIO(username_g, codigo);
-        else result = { success: false, message: "Código muy largo" }
+        const esValido = await window.validadores.VALIDAR_CODIGO(codigo)
+        if (esValido) result = await window.sesion_usuario.VALIDAR_CODE_LOGIN_USUARIO(username_g, codigo);
+        else result = { success: false, message: "Código no válido (debe tener 6 números)" }
 
         if (result.success) {//codigo valido
             console.log("SE HA INICIADO SESION CORRECTAMENTE")
@@ -140,7 +142,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const password = document.querySelector('#login-pass').value.trim()
         const mantener_sesion_iniciada = document.querySelector("#login-guardar").checked
 
-        //TODO:conectar con backend
+        // Validaciones frontend
+        if (!(await window.validadores.VALIDAR_CORREO(username))) {
+            document.querySelector("#text-error-form-causa-login").innerHTML = "*Correo no válido*"
+            document.querySelector("#text-error-form-causa-login").classList.remove("ocultar-display")
+            return;
+        }
+        if (!(await window.validadores.VALIDAR_CONTRASEÑA(password))) {
+            document.querySelector("#text-error-form-causa-login").innerHTML = "*Contraseña no válida (mín. 8 caracteres)*"
+            document.querySelector("#text-error-form-causa-login").classList.remove("ocultar-display")
+            return;
+        }
         let result = await window.sesion_usuario.LOGIN_USUARIO(username, password, mantener_sesion_iniciada)
 
         if (result.success) {//sesion iniciada
@@ -187,9 +199,29 @@ document.addEventListener("DOMContentLoaded", () => {
         const username = document.querySelector('#registro-user').value.trim()
         const password = document.querySelector('#registro-pass').value.trim()
         const password_confirm = document.querySelector('#registro-pass-confirm').value.trim()
+
+        // Validaciones frontend
+        if (apodo !== "" && !(await window.validadores.VALIDAR_APODO(apodo))) {
+            document.querySelector("#text-error-form-causa-registro").innerHTML = "*Apodo no válido*"
+            document.querySelector("#text-error-form-causa-registro").classList.remove("ocultar-display")
+            return;
+        }
+        if (!(await window.validadores.VALIDAR_CORREO(username))) {
+            document.querySelector("#text-error-form-causa-registro").innerHTML = "*Correo no válido*"
+            document.querySelector("#text-error-form-causa-registro").classList.remove("ocultar-display")
+            return;
+        }
+        if (!(await window.validadores.VALIDAR_CONTRASEÑA(password))) {
+            document.querySelector("#text-error-form-causa-registro").innerHTML = "*Contraseña no válida (mín. 8 caracteres)*"
+            document.querySelector("#text-error-form-causa-registro").classList.remove("ocultar-display")
+            return;
+        }
+
         if (!(password === password_confirm)) {//las dos contraseñas son diferentes
             document.querySelector("#registro-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto")
             document.querySelector("#span-repetir-contraseña").classList.add("estrada-menu-registro-login-incorrecto")
+            document.querySelector("#text-error-form-causa-registro").innerHTML = "*Las contraseñas no coinciden*"
+            document.querySelector("#text-error-form-causa-registro").classList.remove("ocultar-display")
             return;
         }
         document.querySelector("#registro-pass-confirm").classList.remove("estrada-menu-registro-login-incorrecto")
