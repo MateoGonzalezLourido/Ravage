@@ -28,7 +28,7 @@ function scroll_fin_chat() {
         behavior: "smooth"
     })
 }
-async function ACTUALIZAR_LISTAS_CHAT() {
+async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     try {
         archivo_cambiando_nombre = null
         const [lista_chats, lista_contactos] = await Promise.all([
@@ -55,7 +55,16 @@ async function ACTUALIZAR_LISTAS_CHAT() {
             return new Date(b.ultimoCambio) - new Date(a.ultimoCambio)
         })
 
-        const html = lista_chats_ordenada
+        // Filtrar por concordancia de nombre si hay filtro
+        const lista_filtrada = filtro 
+            ? lista_chats_ordenada.filter(c => {
+                const chatEx = map_grupales[c.id] || {}
+                const nombre = chatEx.nombre || "Chat sin nombre"
+                return nombre.toLowerCase().includes(filtro.toLowerCase())
+            })
+            : lista_chats_ordenada
+
+        const html = lista_filtrada
             .map(c => {
                 const chatEx = map_grupales[c.id] || {}
                 const nombre = chatEx.nombre || "Chat sin nombre"
@@ -760,6 +769,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     //añadir chat
     document.querySelector("#bt-añadir-chat").addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
+
+    //filtro buscador chats
+    const input_buscar_chat = document.querySelector("#input-buscar-chat")
+    if (input_buscar_chat) {
+        input_buscar_chat.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                const filtro = input_buscar_chat.value.trim()
+                ACTUALIZAR_LISTAS_CHAT(filtro)
+            }
+        })
+    }
 
     //historial archivos descargados
     document.querySelector("#bt-seccion-historial-archivos").addEventListener("click", () => {
