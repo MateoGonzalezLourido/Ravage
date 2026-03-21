@@ -15,7 +15,8 @@
   "type": "module",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "start-railway": "node backend/servidores/serverRailway.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",
