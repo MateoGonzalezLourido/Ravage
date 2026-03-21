@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain } from '../utils/libs.js';
 import { 
     comprobaciones_Correo, 
     comprobar_apodo, 

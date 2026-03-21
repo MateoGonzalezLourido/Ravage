@@ -1,4 +1,13 @@
-import { generateKeyPairSync, publicEncrypt, privateDecrypt, createCipheriv, createDecipheriv, randomBytes, diffieHellman, createHash, createHmac } from 'crypto';
+import { 
+    generateKeyPairSync, 
+    publicEncrypt, 
+    privateDecrypt, 
+    createCipheriv, 
+    createDecipheriv, 
+    randomBytes, 
+    createHash, 
+    createHmac 
+} from '../utils/libs.js';
 
 
 let systemKey = null;
