@@ -38,6 +38,8 @@ import { GridFSBucket, ObjectId } from 'mongodb';
 // Express, HTTP & Socket.IO
 import express from 'express';
 import http from 'http';
+import https from 'https';
+
 import { Server } from 'socket.io';
 
 // Funciones extraídas
@@ -80,6 +82,8 @@ export {
     // Express, HTTP & Socket.IO
     express,
     http,
+    https,
+
     Server,
     os,
     Transform,
