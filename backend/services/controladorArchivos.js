@@ -16,7 +16,8 @@ const RTDF = {
     dispositivoConfianza: path.join(ruta_app_data, name_carpeta, 'dp_confi.json'),
     ajustesAPP: path.join(ruta_app_data, name_carpeta, 'ajustes_app.json'),
     infoAPP: path.join(ruta_app_data, name_carpeta, 'info_app.json'),
-    identity: path.join(ruta_app_data, name_carpeta, 'identity.json')
+    identity: path.join(ruta_app_data, name_carpeta, 'identity.json'),
+    cacheArchivosDescargados: path.join(ruta_app_data, name_carpeta, 'cache_archivos.json')
 };
 
 import {AJUSTES_APP_DEFAULT} from '../STORAGE/ajustes_defecto.js'
@@ -72,6 +73,10 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {
 
 async function saveIdentityFile({ privateKey }) {
     await guardarArchivoGenerico('identity', { privateKey }, 'sessionFile');
+}
+
+async function saveCacheArchivosDescargadosFile(data) {
+    await guardarArchivoGenerico('cacheArchivosDescargados', data);
 }
 
 
@@ -208,5 +213,6 @@ export {
     limpiarArchivosCompleto,
     saveAjustesAppFile,
     getAjustesAppFile,
-    saveIdentityFile
+    saveIdentityFile,
+    saveCacheArchivosDescargadosFile
 };

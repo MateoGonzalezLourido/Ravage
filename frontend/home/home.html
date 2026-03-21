@@ -20,6 +20,7 @@
         <link rel="stylesheet" href="./styles/chat.css">
         <link rel="stylesheet" href="../notificaciones/notificaciones.css">
         <link rel="stylesheet" href="./styles/css_archivos.css">
+        <link rel="stylesheet" href="./styles/historial.css">
 
 
     </head>
@@ -230,8 +231,12 @@
                 <!--navegacion de menu inicio-->
                 <div id="nav-menu-inicio">
                     <!--ajustes-->
-                    <div id="bt-seccion-menu-cuenta-ajustes">
+                    <div id="bt-seccion-menu-cuenta-ajustes" title="Ajustes">
                         <img src="../recursos/engranaje.png" alt="" draggable="false">
+                    </div>
+                    <!--historial archivos descargados-->
+                    <div id="bt-seccion-historial-archivos" title="Historial de descargas">
+                        <img src="../recursos/carpeta.svg" alt="" draggable="false" style="width: 25px; height: 25px;">
                     </div>
                     <!--agregar chat-->
                     <div id="bt-secciones-agregar-chat">
@@ -249,6 +254,19 @@
                 <div class="seccion-cuerpo-chat">
                     <!--chat-->
                     <div id="chat-usuario"></div>
+                    <!--historial-->
+                    <div id="seccion-historial-archivos" class="ocultar-display">
+                        <div class="historial-header">
+                            <h2>Historial de Archivos Descargados</h2>
+                            <button id="bt-limpiar-historial-completo" class="bt-limpiar-historial">
+                                <img src="../recursos/escoba.png" alt="Limpiar Todo">
+                                <span>Limpiar Historial</span>
+                            </button>
+                        </div>
+                        <div id="historial-lista-contenido">
+                            <!-- Se cargará dinámicamente -->
+                        </div>
+                    </div>
                     <!--informacion chat-->
                     <div id="info-chat-seccion"></div>
                 </div>

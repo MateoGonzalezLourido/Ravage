@@ -3,6 +3,7 @@ import { desplegar_menu_añadir_chat } from './ui/añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './ui/url_icono_extensiones_archivos.js'
 import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario,Es_usuario_Sesion, texto_mostrar_fecha_mensajes_bloque } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes } from './ui/ajustes.js'
+import { crear_chat_historial_archivos_descargados } from './ui/historial_archivos_descargados.js'
 
 let archivos_mensaje = []//{ruta,nombre,extension}
 let archivo_cambiando_nombre; //es para guardar el archivo que se esta editando ya
@@ -447,6 +448,18 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                                 texto: `Descarga completa: ${nombre_archivo}`,
                                 tipo: "success"
                             })
+                            // AÑADIR AL CACHE DE ARCHIVOS DESCARGADOS
+                            const extension = nombre_archivo.includes(".") ? nombre_archivo.split(".").pop() : "txt"
+                            const [url_img] = await url_icono_extension_img(extension)
+                            await window.cache_archivos_descargados.setCacheArchivosDescargados({
+                                id_chat,
+                                id_archivo,
+                                nombre: nombre_archivo,
+                                url_img,
+                                iv,
+                                tag,
+                                fecha: new Date().toISOString()
+                            })
                         }
                     })
                 })
@@ -746,6 +759,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     //añadir chat
     document.querySelector("#bt-añadir-chat").addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
+
+    //historial archivos descargados
+    document.querySelector("#bt-seccion-historial-archivos").addEventListener("click", () => {
+        const seccionHistorial = document.querySelector("#seccion-historial-archivos")
+        const chatUsuario = document.querySelector("#chat-usuario")
+        const infoChatSeccion = document.querySelector("#info-chat-seccion")
+
+        if (seccionHistorial.classList.contains("ocultar-display")) {
+            // Mostrar historial, ocultar chat
+            seccionHistorial.classList.remove("ocultar-display")
+            chatUsuario.classList.add("ocultar-display")
+            if (infoChatSeccion) infoChatSeccion.classList.add("ocultar-display")
+            
+            // Cargar contenido historial
+            crear_chat_historial_archivos_descargados()
+        } else {
+            // Ocultar historial, volver al chat (si lo hay)
+            seccionHistorial.classList.add("ocultar-display")
+            chatUsuario.classList.remove("ocultar-display")
+            if (infoChatSeccion) infoChatSeccion.classList.remove("ocultar-display")
+        }
+    })
 
     //iniciar buzón api
     iniciar_buzonAPI().catch(e => console.error("Error al iniciar buzón api", e))

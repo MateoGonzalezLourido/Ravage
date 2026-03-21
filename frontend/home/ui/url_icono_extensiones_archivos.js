@@ -20,7 +20,7 @@ export async function url_icono_extension_img(extension) {
     //ocasiones que daria problemas o siempre devolveria el icono por defecto
     if (!extension || extension === "" || typeof extension !== "string") return [`${carpetaPrincipal}/${img_defecto}`, false]
 
-    const _cache_img_extensiones  = await window.cache.getCacheUrlImgExtensiones()
+    const _cache_img_extensiones  = await window.cache_url_img_extensiones.getCacheUrlImgExtensiones()
     
     let img_usar;
     if (!_cache_img_extensiones) {
@@ -35,7 +35,7 @@ export async function url_icono_extension_img(extension) {
     }
     img_usar = _cache_img_extensiones[extension_usar?.toLowerCase()] || img_defecto
 if(img_usar!==img_defecto)   {
-        window.cache.setCacheUrlImgExtensiones({[extension_usar?.toLowerCase()]:img_usar})
+        window.cache_url_img_extensiones.setCacheUrlImgExtensiones({[extension_usar?.toLowerCase()]:img_usar})
     }
  }
 
@@ -58,6 +58,6 @@ async function getDataImgExtensiones(){
             console.error("Error al cargar img_extensiones.json:", err)
             _cache_img_extensiones={}
         }
-        window.cache.setCacheUrlImgExtensiones(_cache_img_extensiones)
+        window.cache_url_img_extensiones.setCacheUrlImgExtensiones(_cache_img_extensiones)
         return _cache_img_extensiones
 }
