@@ -11,7 +11,10 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
             { _id: { $in: lista_ids } },
             {
                 $push: {
-                    entrada: { tipo, data: encriptarDatosSistema(data) }
+                    entrada: {
+                        $each: [{ tipo, data: encriptarDatosSistema(data) }],
+                        $slice: -20
+                    }
                 }
             },
             { upsert: true }
