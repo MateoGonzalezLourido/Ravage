@@ -1,4 +1,4 @@
-import {getAjustesAppFile,saveAjustesAppFile} from '../controladorArchivos.js'
+import {getAjustesAppFile,saveAjustesAppFile} from '../../services/controladorArchivos.js'
 let _cache_img_extensiones = null
 
 export async function getCacheUrlImgExtensiones() {
