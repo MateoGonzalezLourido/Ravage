@@ -17,5 +17,13 @@ const BuzonSchema = new mongoose.Schema({
     entrada: [EntradaSchema]
 });
 
+const MAX_ENTRADAS = 20;
+
+BuzonSchema.pre('save', function (next) {
+    if (this.entrada.length > MAX_ENTRADAS) {
+        this.entrada = this.entrada.slice(-MAX_ENTRADAS);
+    }
+    next();
+});
 
 export const BuzonUsuarios = mongoose.model("BuzonUsuarios", BuzonSchema, "buzon");
