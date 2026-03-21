@@ -17,7 +17,9 @@ const RTDF = {
     ajustesAPP: path.join(ruta_app_data, name_carpeta, 'ajustes_app.json'),
     infoAPP: path.join(ruta_app_data, name_carpeta, 'info_app.json'),
     identity: path.join(ruta_app_data, name_carpeta, 'identity.json'),
-    cacheArchivosDescargados: path.join(ruta_app_data, name_carpeta, 'cache_archivos.json')
+    cacheArchivosDescargados: path.join(ruta_app_data, name_carpeta, 'cache_archivos.json'),
+    cacheChatsFrecuentes: path.join(ruta_app_data, name_carpeta, 'cache_chats_frec.json'),
+    cacheUsuariosFrecuentes: path.join(ruta_app_data, name_carpeta, 'cache_users_frec.json')
 };
 
 import {AJUSTES_APP_DEFAULT} from '../STORAGE/ajustes_defecto.js'
@@ -64,19 +66,27 @@ async function saveSessionFile({ username, token = "" }) {
 }
 
 async function saveOmitirVerificacionCuentaFile({ username, token = "" }) {
-    await guardarArchivoGenerico('omitirVerificacionCuentaFile', { username, token });
+    await guardarArchivoGenerico('omitirVerificacionCuentaFile', { username, token }, 'global');
 }
 
 async function saveDispositivoConfianzaFile({ username, token = "" }) {
-    await guardarArchivoGenerico('dispositivoConfianza', { username, token });
+    await guardarArchivoGenerico('dispositivoConfianza', { username, token }, 'global');
 }
 
 async function saveIdentityFile({ privateKey }) {
-    await guardarArchivoGenerico('identity', { privateKey }, 'sessionFile');
+    await guardarArchivoGenerico('identity', { privateKey }, 'global');
 }
 
 async function saveCacheArchivosDescargadosFile(data) {
-    await guardarArchivoGenerico('cacheArchivosDescargados', data);
+    await guardarArchivoGenerico('cacheArchivosDescargados', data, 'global');
+}
+
+async function saveCacheChatsFile(data) {
+    await guardarArchivoGenerico('cacheChatsFrecuentes', data, 'global');
+}
+
+async function saveCacheUsuariosFile(data) {
+    await guardarArchivoGenerico('cacheUsuariosFrecuentes', data, 'global');
 }
 
 
@@ -90,9 +100,10 @@ async function saveAjustesAppFile({ data = {}, create = true }) {
     }
 
     try {
+        const encrypted = await CifrarDatosArchivos(data_usar, 'global');
         await fs.promises.writeFile(
             RTDF.ajustesAPP, 
-            JSON.stringify(data_usar, null, 2), 
+            JSON.stringify(encrypted, null, 2), 
             { encoding: "utf8" }
         );
     } catch (err) {
@@ -113,7 +124,9 @@ async function readFileSession(rutaKey, cifrado = true) {
 
         // Determinar la clave secreta a usar
         let secretKey;
-        if (rutaKey === 'sessionFile' || rutaKey === 'identity') {
+        const useGlobalKey = ['sessionFile', 'identity', 'cacheChatsFrecuentes', 'cacheUsuariosFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile'].includes(rutaKey);
+        
+        if (useGlobalKey) {
             secretKey = SECRET_KEY_COKKIE;
         } else {
             const currentKey = getSecretKEY();
@@ -148,10 +161,30 @@ async function getAjustesAppFile(nombre = null) {
     }
 
     try {
-        const raw = await fs.promises.readFile(RTDF.ajustesAPP, { encoding: "utf8" });
-        const obj = JSON.parse(raw || "{}");
-        if (!nombre) return obj;
-        return obj[nombre] !== undefined ? obj[nombre] : AJUSTES_APP_DEFAULT[nombre];
+        const rawstr = await fs.promises.readFile(RTDF.ajustesAPP, { encoding: "utf8" });
+        if (!rawstr) return { ...AJUSTES_APP_DEFAULT };
+
+        const raw = JSON.parse(rawstr);
+        let obj;
+
+        // Si el archivo ya está cifrado (tiene iv, tag, data)
+        if (raw.iv && raw.tag && raw.data) {
+            const decipher = createDecipheriv(algorithm, SECRET_KEY_COKKIE, Buffer.from(raw.iv, "hex"));
+            decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
+            const decrypted = Buffer.concat([
+                decipher.update(Buffer.from(raw.data, "hex")),
+                decipher.final()
+            ]);
+            obj = JSON.parse(decrypted.toString());
+        } else {
+            // Retrocompatibilidad: si era plano
+            obj = raw;
+            // Migrar a cifrado la próxima vez que se guarde
+        }
+
+        const merged = { ...AJUSTES_APP_DEFAULT, ...obj };
+        if (!nombre) return merged;
+        return merged[nombre];
     } catch (e) {
         console.error('Error al leer ajustes de app:', e);
         return { ...AJUSTES_APP_DEFAULT };
@@ -180,10 +213,10 @@ async function limpiarArchivosCompleto() {
 
 async function CifrarDatosArchivos(data, especial) {
     let secretKey;
-    if (!especial) {
-        secretKey = getSecretKEY() || await ActualizarSecretKeyUsuario();
-    } else if (especial === 'sessionFile') {
+    if (especial === 'global' || especial === 'sessionFile') {
         secretKey = SECRET_KEY_COKKIE;
+    } else {
+        secretKey = getSecretKEY() || await ActualizarSecretKeyUsuario();
     }
 
     if (!secretKey) throw new Error("No se pudo obtener la clave secreta para el cifrado.");
@@ -216,3 +249,10 @@ export {
     saveIdentityFile,
     saveCacheArchivosDescargadosFile
 };
+export async function saveCacheChatsFile(data) {
+    await guardarArchivoGenerico('cacheChatsFrecuentes', data);
+}
+
+export async function saveCacheUsuariosFile(data) {
+    await guardarArchivoGenerico('cacheUsuariosFrecuentes', data);
+}

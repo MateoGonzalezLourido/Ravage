@@ -222,6 +222,18 @@ contextBridge.exposeInMainWorld("cache_url_img_extensiones", {
         return ipcRenderer.invoke("clear-cache-url-img-extensiones")
     }
 })
+
+contextBridge.exposeInMainWorld("cache_persistente", {
+    // Chat Cache
+    getChatCache: (id) => ipcRenderer.invoke("get-chat-cache", id),
+    setConfigCacheChats: (config) => ipcRenderer.invoke("set-config-cache-chats", config),
+    clearCacheChats: () => ipcRenderer.invoke("clear-cache-chats"),
+
+    // User Cache
+    getUsuarioCache: (id) => ipcRenderer.invoke("get-usuario-cache", id),
+    setConfigCacheUsuarios: (config) => ipcRenderer.invoke("set-config-cache-usuarios", config),
+    clearCacheUsuarios: () => ipcRenderer.invoke("clear-cache-usuarios")
+})
 contextBridge.exposeInMainWorld("cache_archivos_descargados", {
 
     getCacheArchivosDescargados: () => {

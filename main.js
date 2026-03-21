@@ -16,6 +16,8 @@ import { registerChatHandlers } from './backend/ipc/chat_ipc.js';
 import { registerSocialHandlers } from './backend/ipc/social_ipc.js';
 import { registerValidadoresHandlers } from './backend/ipc/validadores_ipc.js';
 import { registerCacheImgExtensionesHandlers } from './backend/ipc/cache_img_extension_ipc.js';
+import { registerCacheArchivosDescargadosHandlers } from './backend/ipc/cache_archivos_descargados_ipc.js';
+import { registerCachePersistentHandlers } from './backend/ipc/cache_persistent_ipc.js';
 let socket;
 let mainWindow;
 
@@ -48,6 +50,7 @@ function createMainWindowHome(AutoLogin = false) {
     registerValidadoresHandlers();
     registerCacheImgExtensionesHandlers()
     registerCacheArchivosDescargadosHandlers()
+    registerCachePersistentHandlers()
 }
 
 const gotTheLock = app.requestSingleInstanceLock();

@@ -9,6 +9,30 @@ import { randomBytes } from 'crypto';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
 import { readFileSession } from '../services/controladorArchivos.js';
 import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
+import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
+import { getChatDeCache as getChatDeCacheRaw, setChatEnCache as setChatEnCacheRaw } from '../STORAGE/CACHE/_cache_chats.js';
+import { obtener_datos_usuario } from './UserRepository.js';
+
+/**
+ * Helper para normalizar el chat antes de guardarlo en cache (sin contenido de mensajes).
+ */
+async function setChatEnCache(chat) {
+    if (!chat) return;
+    const chatCopia = { ...chat };
+    if (chatCopia.mensajes && Array.isArray(chatCopia.mensajes)) {
+        // Guardar solo IDs para seguir la regla de "no contenido" y ahorrar espacio
+        chatCopia.mensajes = chatCopia.mensajes.map(m => m._id || m.id);
+        chatCopia._hasFullMessages = false; 
+    }
+    await setChatEnCacheRaw(chatCopia);
+}
+
+/**
+ * Helper para obtener de cache.
+ */
+async function getChatDeCache(id) {
+    return await getChatDeCacheRaw(id);
+}
 
 
 export async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
@@ -20,21 +44,50 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
 
         if (chatIds.length === 0) return [];
 
-        const data_obtenida = await ChatsRavage.find(
-            { _id: { $in: chatIds } }
-        ).lean();
+        const result = [];
+        const missingIds = [];
 
-        if (mensajes) {
-            const id_propio = getIDMongodbUsuario();
-            const identity_data = await readFileSession('identity');
-
-            for (let chat of data_obtenida) {
-                chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: 1 }).lean();
-                await descifrarListaMensajes(chat.mensajes, chat);
+        for (const id of chatIds) {
+            const cached = await getChatDeCache(id);
+            if (cached) {
+                result.push(cached);
+            } else {
+                missingIds.push(id);
             }
         }
 
-        const data_con_nombres = await resolverNombresChats(data_obtenida);
+        if (missingIds.length > 0) {
+            const data_obtenida = await ChatsRavage.find(
+                { _id: { $in: missingIds } }
+            ).lean();
+
+            for (let chat of data_obtenida) {
+                if (mensajes) {
+                    chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: 1 }).lean();
+                    await descifrarListaMensajes(chat.mensajes, chat);
+                }
+                await setChatEnCache(chat);
+                result.push(chat);
+            }
+        }
+
+        // Para los que vinieron de cache, si se piden mensajes y no los tienen (o solo tienen IDs), hay que cargarlos
+        for (let i = 0; i < result.length; i++) {
+            let chat = result[i];
+            const tieneMensajesFull = chat.mensajes && Array.isArray(chat.mensajes) && chat.mensajes.length > 0 && typeof chat.mensajes[0] === 'object';
+            
+            if (mensajes && !tieneMensajesFull) {
+                // El cache solo tiene IDs o nada. Cargar de DB.
+                chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: 1 }).lean();
+                await descifrarListaMensajes(chat.mensajes, chat);
+                // No actualizamos cache aquí porque ya tenemos la meta-info y no queremos guardar contenido
+            } else if (!mensajes && tieneMensajesFull) {
+                // Se pidieron sin mensajes pero el cache los tiene (no debería pasar con el nuevo setChatEnCache)
+                chat.mensajes = [];
+            }
+        }
+
+        const data_con_nombres = await resolverNombresChats(result);
         return data_con_nombres.map(convertirObjectId);
     } catch (e) {
         console.error(e);
@@ -46,6 +99,11 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
     try {
         if (!id_chat || !mongoose.Types.ObjectId.isValid(id_chat)) return null;
 
+        if (!datos_buscar) {
+            const cached = await getChatDeCache(id_chat);
+            if (cached) return cached;
+        }
+
         const projection = datos_buscar
             ? { [datos_buscar]: 1 }
             : {};
@@ -53,13 +111,13 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
         const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
         if (!data_obtenida) return null;
 
-        // Si no se pide un dato específico, buscar también los mensajes
         if (!datos_buscar) {
             data_obtenida.mensajes = await MessagesRavage.find({ 
                 id_chat: new mongoose.Types.ObjectId(id_chat) 
             }).sort({ data: 1 }).lean();
 
             await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
+            await setChatEnCache(data_obtenida);
         }
 
         const [data_con_nombre] = await resolverNombresChats([data_obtenida]);
@@ -140,6 +198,10 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             { _id: chatIdLimpio },
             { $addToSet: { usuarios: { $each: ids_añadir.map(id => new mongoose.Types.ObjectId(id)) } } }
         );
+
+        // Actualizar cache después de mutación
+        const updatedChat = await ChatsRavage.findById(chatIdLimpio).lean();
+        if (updatedChat) await setChatEnCache(updatedChat);
 
         // Actualizar a los usuarios existentes (y nuevos) en su lista de chats (User.chats)
         const ids_totales = [...chat.usuarios, ...ids_añadir];
@@ -255,6 +317,9 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             data: { creador: id_propio, chat: datos_chat._id } 
         }).catch(e => console.error(e));
 
+        // Actualizar cache con el nuevo chat
+        await setChatEnCache(datos_chat.toObject());
+
         return convertirObjectId(datos_chat.toObject());
     } catch (e) {
         if (datos_chat?._id) await ChatsRavage.deleteOne({ _id: datos_chat._id });
@@ -278,6 +343,10 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
             { _id: id_chat },
             { $pull: { usuarios: new mongoose.Types.ObjectId(id_usuario) } }
         );
+
+        // Actualizar cache
+        const updatedChat = await ChatsRavage.findById(id_chat).lean();
+        if (updatedChat) await setChatEnCache(updatedChat);
 
         // Actualizar a los demás usuarios para que vean "Usuario expulsado"
         await User.updateMany(
@@ -398,11 +467,29 @@ async function resolverNombresChats(chats) {
         }
     });
 
-    // Cargar apodos globales de los que no están en contactos o por si acaso
+    // Cargar apodos globales: Primero de CACHE, luego de DB
     let globales = {};
     if (ids_otros_necesarios.size > 0) {
-        const users = await User.find({ _id: { $in: Array.from(ids_otros_necesarios) } }, "apodo").lean();
-        users.forEach(u => globales[u._id.toString()] = u.apodo);
+        const missingIds = [];
+        const { getUsuarioDeCache, setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
+        
+        for (const id of ids_otros_necesarios) {
+            const cached = await getUsuarioDeCache(id);
+            if (cached) {
+                globales[id] = cached.apodo;
+            } else {
+                missingIds.push(id);
+            }
+        }
+
+        if (missingIds.length > 0) {
+            const users = await User.find({ _id: { $in: missingIds } }, "apodo").lean();
+            for (const u of users) {
+                globales[u._id.toString()] = u.apodo;
+                // Cache miss: Actualizamos cache y esto suma +1 al contador
+                await setUsuarioEnCache(u);
+            }
+        }
     }
 
     // Aplicar nombres
@@ -455,6 +542,10 @@ export async function HACER_ADMIN_CHAT(id_chat, id_usuario) {
             { $addToSet: { admins: new mongoose.Types.ObjectId(id_usuario) } }
         );
 
+        // Actualizar cache
+        const updatedChat = await ChatsRavage.findById(id_chat).lean();
+        if (updatedChat) await setChatEnCache(updatedChat);
+
         // Notificar a todos por buzón (ej: actualización silenciosa o notificación)
         // Tipo 5: actualizar chat info silencioso o mensaje al buzón (reciclo tipo 5 para actualizar app u organizo otro o dejo sin notificacion global)
         // El cliente actualizará localmente, pero por si acaso, puedes mandar un buzon para que los demas rendericen el cambio.
@@ -484,6 +575,10 @@ export async function QUITAR_ADMIN_CHAT(id_chat, id_usuario) {
             { _id: id_chat },
             { $pull: { admins: new mongoose.Types.ObjectId(id_usuario) } }
         );
+
+        // Actualizar cache
+        const updatedChat = await ChatsRavage.findById(id_chat).lean();
+        if (updatedChat) await setChatEnCache(updatedChat);
 
         Añadir_Entrada_Buzon_Usuario({
             ids: chat.usuarios.filter(u => u.toString() !== id_propio.toString()),
@@ -541,6 +636,10 @@ export async function rotarClavesChat(id_chat, id_emisor) {
                 $push: { ratchet_keys: { $each: updates } }
             }
         );
+
+        // Actualizar cache tras rotación de claves
+        const updatedChat = await ChatsRavage.findById(id_chat).lean();
+        if (updatedChat) await setChatEnCache(updatedChat);
 
         return true;
     } catch (e) {
