@@ -19,6 +19,7 @@ const RTDF = {
     identity: path.join(ruta_app_data, name_carpeta, 'identity.json')
 };
 
+import {AJUSTES_APP_DEFAULT} from '../STORAGE/ajustes_defecto.js'
 
 // --- UTILIDADES INTERNAS REUTILIZABLES ---
 
@@ -73,13 +74,8 @@ async function saveIdentityFile({ privateKey }) {
     await guardarArchivoGenerico('identity', { privateKey }, 'sessionFile');
 }
 
-const AJUSTES_APP_DEFAULT = {
-    MSBienvenida: true,
-    URL_DESCARGA: app ? app.getPath("downloads") : path.join(process.cwd(), 'downloads')
-};
 
-
-async function saveAjustesAppFile({ data = {}, create = false }) {
+async function saveAjustesAppFile({ data = {}, create = true }) {
     await asegurarCarpeta();
     let data_usar = create ? AJUSTES_APP_DEFAULT : await getAjustesAppFile();
     
@@ -142,7 +138,7 @@ async function readFileSession(rutaKey, cifrado = true) {
 
 async function getAjustesAppFile(nombre = null) {
     if (!fs.existsSync(RTDF.ajustesAPP)) {
-        await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT, create: true });
+        await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT });
         return nombre ? AJUSTES_APP_DEFAULT[nombre] : { ...AJUSTES_APP_DEFAULT };
     }
 

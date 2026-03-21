@@ -8,6 +8,7 @@ import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { randomBytes } from 'crypto';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
 import { readFileSession } from '../services/controladorArchivos.js';
+import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
 
 
 export async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {

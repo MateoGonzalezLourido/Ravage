@@ -205,3 +205,19 @@ contextBridge.exposeInMainWorld("buzonAPI", {
         ipcRenderer.on("nueva-notificacion", (event, data) => callback(data));
     }
 });
+
+// ─── CACHES ───────────────────────────────────────────────────────────────────
+contextBridge.exposeInMainWorld("cache", {
+    getCacheUrlImgExtensiones: () => {
+        return ipcRenderer.invoke("get-cache-url-img-extensiones")
+    },
+    setCacheUrlImgExtensiones: (cache) => {
+        return ipcRenderer.invoke("set-cache-url-img-extensiones", cache)
+    },
+    setLimiteCacheUrlImgExtensiones: (limite) => {
+        return ipcRenderer.invoke("set-limite-cache-url-img-extensiones", limite)
+    },
+    clearCacheUrlImgExtensiones: () => {
+        return ipcRenderer.invoke("clear-cache-url-img-extensiones")
+    }
+})
