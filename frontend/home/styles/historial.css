@@ -1,0 +1,163 @@
+#seccion-historial-archivos {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.historial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #333;
+}
+
+.historial-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.bt-limpiar-historial {
+    background: #333;
+    border: none;
+    color: #ff5555;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.bt-limpiar-historial:hover {
+    background: #444;
+}
+
+.bt-limpiar-historial:active {
+    transform: scale(0.95);
+}
+
+.bt-limpiar-historial img {
+    width: 18px;
+    height: 18px;
+}
+
+.chat-historial-bloque {
+    background: #252525;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.chat-historial-header {
+    background: #333;
+    padding: 10px 15px;
+    font-weight: 600;
+}
+
+.chat-historial-name {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.chat-historial-archivos {
+    padding: 10px;
+}
+
+.archivo-historial-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 15px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.archivo-historial-wrap:hover {
+    background: #353535;
+}
+
+.archivo-historial-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+    flex-grow: 1;
+}
+
+.archivo-acciones-historial {
+    display: flex;
+    align-items: center;
+}
+
+.bt-descargar-directo-historial {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bt-descargar-directo-historial:hover {
+    background: #444;
+}
+
+.bt-descargar-directo-historial img {
+    width: 20px;
+    height: 20px;
+    filter: brightness(0.8);
+}
+
+.archivo-info-historial {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.archivo-info-historial-avatar img {
+    width: 40px;
+    height: 40px;
+    border-radius: 5px;
+}
+
+.archivo-info-historial-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.archivo-info-historial-name-text {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.archivo-info-historial-descargas {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.historial-vacio {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #666;
+    font-style: italic;
+}
+
+.ocultar-display {
+    display: none !important;
+}

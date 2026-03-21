@@ -47,6 +47,7 @@ function createMainWindowHome(AutoLogin = false) {
     registerSocialHandlers();
     registerValidadoresHandlers();
     registerCacheImgExtensionesHandlers()
+    registerCacheArchivosDescargadosHandlers()
 }
 
 const gotTheLock = app.requestSingleInstanceLock();

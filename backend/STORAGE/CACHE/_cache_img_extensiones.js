@@ -3,12 +3,7 @@ let _cache_img_extensiones = null
 
 export async function getCacheUrlImgExtensiones() {
     /*si esta vacio devolver siempre null */
-    let cache_devolver=_cache_img_extensiones
-    if (!_cache_img_extensiones || Object.keys(_cache_img_extensiones).length === 0) {
-   
-    cache_devolver=null
-   }
-        return cache_devolver
+    return _cache_img_extensiones
 }
 export async function setCacheUrlImgExtensiones(cache = "c") {
     // reset

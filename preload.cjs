@@ -207,7 +207,8 @@ contextBridge.exposeInMainWorld("buzonAPI", {
 });
 
 // ─── CACHES ───────────────────────────────────────────────────────────────────
-contextBridge.exposeInMainWorld("cache", {
+contextBridge.exposeInMainWorld("cache_url_img_extensiones", {
+
     getCacheUrlImgExtensiones: () => {
         return ipcRenderer.invoke("get-cache-url-img-extensiones")
     },
@@ -219,5 +220,20 @@ contextBridge.exposeInMainWorld("cache", {
     },
     clearCacheUrlImgExtensiones: () => {
         return ipcRenderer.invoke("clear-cache-url-img-extensiones")
+    }
+})
+contextBridge.exposeInMainWorld("cache_archivos_descargados", {
+
+    getCacheArchivosDescargados: () => {
+        return ipcRenderer.invoke("get-cache-archivos-descargados")
+    },
+    setCacheArchivosDescargados: (cache) => {
+        return ipcRenderer.invoke("set-cache-archivos-descargados", cache)
+    },
+    setLimiteCacheArchivosDescargados: (limite) => {
+        return ipcRenderer.invoke("set-limite-cache-archivos-descargados", limite)
+    },
+    clearCacheArchivosDescargados: () => {
+        return ipcRenderer.invoke("clear-cache-archivos-descargados")
     }
 })
