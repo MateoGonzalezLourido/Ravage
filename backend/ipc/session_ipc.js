@@ -19,7 +19,7 @@ import {
     permitirCambioApodoUsuario
 } from '../services/Usuario.js';
 
-export function registerSessionHandlers(mainWindow) {
+export function registerSessionHandlers() {
     // NAVEGACIÓN (moved here or kept in main? let's keep separate)
     ipcMain.on("cambiar-pagina-log", () => {
         app.relaunch();

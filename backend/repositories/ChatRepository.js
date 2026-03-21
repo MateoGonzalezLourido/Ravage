@@ -7,10 +7,8 @@ import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { randomBytes } from '../utils/libs.js';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
-import { readFileSession } from '../services/controladorArchivos.js';
 import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
 import { getChatDeCache as getChatDeCacheRaw, setChatEnCache as setChatEnCacheRaw } from '../STORAGE/CACHE/_cache_chats.js';
-import { obtener_datos_usuario } from './UserRepository.js';
 
 /**
  * Helper para normalizar el chat antes de guardarlo en cache (sin contenido de mensajes).
@@ -484,8 +482,14 @@ async function resolverNombresChats(chats) {
         if (missingIds.length > 0) {
             const users = await User.find({ _id: { $in: missingIds } }, "apodo").lean();
             for (const u of users) {
-                globales[u._id.toString()] = u.apodo;
-                // Cache miss: Actualizamos cache y esto suma +1 al contador
+                // Decodificar el apodo si está encriptado antes de usarlo y guardarlo en cache
+                if (u.apodo && typeof u.apodo === 'object') {
+                    u.apodo = desencriptarDatosSistema(u.apodo);
+                }
+                
+                globales[u._id.toString()] = u.apodo || "Usuario Ravage";
+                
+                // Cache miss: Actualizamos cache con el dato procesado
                 await setUsuarioEnCache(u);
             }
         }

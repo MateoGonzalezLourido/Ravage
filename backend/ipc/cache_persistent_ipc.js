@@ -4,25 +4,25 @@ import { getUsuarioDeCache, setConfigCacheUsuarios, clearCacheUsuarios } from '.
 
 export function registerCachePersistentHandlers() {
     // Chat Cache
-    ipcMain.handle('get-chat-cache', async (event, id_chat) => {
+    ipcMain.handle('get-chat-cache', async (_, id_chat) => {
         return await getChatDeCache(id_chat);
     });
-    ipcMain.handle('set-config-cache-chats', async (event, config) => {
+    ipcMain.handle('set-config-cache-chats', async (_, config) => {
         return await setConfigCacheChats(config);
     });
-    ipcMain.handle('clear-cache-chats', async (event) => {
+    ipcMain.handle('clear-cache-chats', async () => {
         await clearCacheChats();
         return true;
     });
 
     // User Cache
-    ipcMain.handle('get-usuario-cache', async (event, id_usuario) => {
+    ipcMain.handle('get-usuario-cache', async (_, id_usuario) => {
         return await getUsuarioDeCache(id_usuario);
     });
-    ipcMain.handle('set-config-cache-usuarios', async (event, config) => {
+    ipcMain.handle('set-config-cache-usuarios', async (_, config) => {
         return await setConfigCacheUsuarios(config);
     });
-    ipcMain.handle('clear-cache-usuarios', async (event) => {
+    ipcMain.handle('clear-cache-usuarios', async () => {
         await clearCacheUsuarios();
         return true;
     });

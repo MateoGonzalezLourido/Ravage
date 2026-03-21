@@ -2,7 +2,6 @@ import { User } from '../models/User.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { compare,validator } from '../utils/libs.js';
 
-//TODO: añadir mas verificaciones
 function comprobaciones_Correo(correo) {
     if (typeof correo !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
     

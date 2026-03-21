@@ -1,4 +1,4 @@
-import { saveCacheArchivosDescargadosFile, readFileSession, getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js'
+import { saveCacheArchivosDescargadosFile, readFileSession, getAjustesAppFile, saveAjustesAppFile } from '../../services/controladorArchivos.js'
 let _cache_archivos_descargados = null
 const LIMITE_RAM_MB = 256
 const TIEMPO_EXPIRACION = 5 * 60 * 1000 // 5 minutos
