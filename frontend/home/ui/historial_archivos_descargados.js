@@ -1,32 +1,17 @@
 import { Encontrar_Nombre_Chat_Usuario, Crear_chat_html } from './chat.js'
 
 let cache_grupos_historial = null
-let ultima_actualizacion_cache = 0
-const TIEMPO_CACHE = 2 * 60 * 1000 // 2 minutos
-const LIMITE_RAM_MB = 256 // Límite de 256MB (esto hace que no se cree cache en ram demas, pero se guardara en archivos igualmente)
 
 export function invalidar_cache_historial() {
     cache_grupos_historial = null
-    ultima_actualizacion_cache = 0
 }
 
-function estimar_tamano_cache_mb(data) {
-    // Estimación rápida del tamaño de los datos en memoria
-    // JSON.stringify nos da una buena aproximación de los bytes almacenados
-    try {
-        const bytes = new TextEncoder().encode(JSON.stringify(data)).length
-        return bytes / (1024 * 1024)
-    } catch (e) {
-        return 0
-    }
-}
 
 export async function crear_chat_historial_archivos_descargados(){
-    const ahora = Date.now()
     let agrupar_chats = []
 
-    // Comprobar si la caché es válida
-    if (cache_grupos_historial && (ahora - ultima_actualizacion_cache < TIEMPO_CACHE)) {
+    // Comprobar si la caché es válida en RAM
+    if (cache_grupos_historial) {
         agrupar_chats = cache_grupos_historial
     } else {
         // Obtener cache de archivos descargados desde el backend
@@ -65,15 +50,8 @@ export async function crear_chat_historial_archivos_descargados(){
             }
         }
 
-        // Solo guardar en caché si no supera el límite de RAM de 256MB
-        const tamano_actual_mb = estimar_tamano_cache_mb(agrupar_chats)
-        if (tamano_actual_mb <= LIMITE_RAM_MB) {
-            cache_grupos_historial = agrupar_chats
-            ultima_actualizacion_cache = ahora
-        } else {
-            // Si supera el límite, invalidamos la caché existente pero permitimos mostrar los datos actuales (sin cachearlos)
-            invalidar_cache_historial()
-        }
+        // Guardar en caché directamente (la limpieza se delega al backend)
+        cache_grupos_historial = agrupar_chats
     }
     
     let html=``
