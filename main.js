@@ -44,7 +44,7 @@ function createMainWindowHome(AutoLogin = false) {
     mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html'));
     
     // Register IPC handlers
-    registerSessionHandlers(mainWindow);
+    registerSessionHandlers();
     registerChatHandlers(mainWindow, socket);
     registerSocialHandlers();
     registerValidadoresHandlers();

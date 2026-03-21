@@ -1,4 +1,4 @@
-import { os, fs, si } from './libs.js';
+import { os, si } from './libs.js';
 
 /**
  * Retrieves system RAM and free disk space.

@@ -6,7 +6,6 @@ import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } fro
 import { getUsuarioDeCache, setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 
 import { 
-    getIdDispositivo, 
     getCorreoSesion, 
     getUsuariosBloqueados, 
     getUsuariosSilence, 
@@ -23,7 +22,7 @@ import {
 /**
  * Helper para desencriptar un objeto de usuario de la DB.
  */
-function procesarUsuario(usuario) {
+export function procesarUsuario(usuario) {
     if (!usuario) return null;
     const result = { ...usuario };
     

@@ -6,7 +6,7 @@ import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { readFileSession } from '../services/controladorArchivos.js';
 import { setChatEnCache } from './ChatRepository.js';
-import { obtener_datos_usuario } from './UserRepository.js';
+import { obtener_datos_usuario, procesarUsuario } from './UserRepository.js';
 import { setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 
 import { descifrarListaMensajes, getMessageKey } from '../services/messageCryptoService.js';
@@ -147,11 +147,10 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 }
             );
 
-            // Intentar actualizar cache de los usuarios involucrados (si están en cache)
-            for (const uid of ids_afectados) {
-                // obtener_datos_usuario ya maneja el cache internamente (si existe lo devuelve, si no lo carga y guarda)
-                // Pero aquí queremos FORZAR actualización si ya estaba en cache o asegurar que se marque como "usado"
-                await obtener_datos_usuario(uid); 
+            // Forzar actualización en caché de los usuarios involucrados tras la modificación
+            const usuarios_afectados_db = await User.find({ _id: { $in: ids_afectados } }).lean();
+            for (const u of usuarios_afectados_db) {
+                await setUsuarioEnCache(procesarUsuario(u)); 
             }
         })();
 

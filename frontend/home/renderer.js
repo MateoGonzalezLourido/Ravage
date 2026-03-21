@@ -31,16 +31,10 @@ function scroll_fin_chat() {
 async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     try {
         archivo_cambiando_nombre = null
-        const [lista_chats, lista_contactos] = await Promise.all([
-            window.chats.OBTENER_CHATS_USUARIO(),
-            window.social_usuario.OBTENER_CONTACTOS_USUARIO()
-        ])
+        const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
         window.chats.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
 
-        const [datos_chats_grupales, id_propio] = await Promise.all([
-            window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false }),
-            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-        ])
+        const datos_chats_grupales = await window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
 
         //crear html lista chats
         const map_grupales = {}
@@ -540,11 +534,9 @@ async function refrescar_componente_lista_chats(id_chat, componente, notificacio
     try {
         // Obtener datos globales del chat (nombre, usuarios, etc)
         // El usuario pide usar obtener_datos_chats (vía bridge OBTENER_DATOS_CHATS_GRUPALES)
-        const [info_chats, lista_usuario, id_propio, lista_contactos] = await Promise.all([
+        const [info_chats, lista_usuario] = await Promise.all([
             window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: [{ id: id_chat }], grupales: null, mensajes: false }),
-            window.chats.OBTENER_CHATS_USUARIO(),
-            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
-            window.social_usuario.OBTENER_CONTACTOS_USUARIO()
+            window.chats.OBTENER_CHATS_USUARIO()
         ])
 
         const info_chat = info_chats[0]

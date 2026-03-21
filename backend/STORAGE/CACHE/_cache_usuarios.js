@@ -1,6 +1,5 @@
-import { readFileSession, saveCacheUsuariosFile, getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js';
+import { readFileSession, saveCacheUsuariosFile, getAjustesAppFile, saveAjustesAppFile } from '../../services/controladorArchivos.js';
 import { getRecommendedCacheStrategy, getSystemResources } from '../../utils/systemInfo.js';
-import { fs, path } from '../../utils/libs.js';
 
 let _cache_usuarios = new Map(); // Para RAM
 let _frecuencia_usuarios = new Map(); // Tracking de uso

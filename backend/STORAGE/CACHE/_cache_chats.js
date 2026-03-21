@@ -1,6 +1,5 @@
-import { readFileSession, saveCacheChatsFile, getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js';
+import { readFileSession, saveCacheChatsFile, getAjustesAppFile, saveAjustesAppFile } from '../../services/controladorArchivos.js';
 import { getRecommendedCacheStrategy, getSystemResources } from '../../utils/systemInfo.js';
-import { fs, path } from '../../utils/libs.js';
 
 let _cache_chats = new Map(); // Para RAM
 let _frecuencia_chats = new Map(); // Tracking de uso
