@@ -42,8 +42,11 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo);
     document.querySelector("#bt-cambiar-correo").addEventListener("click", funcion_cambiar_correo);
     document.querySelector("#bt-ver-chats_silenciados").addEventListener("click", ver_chats_silenciados); // Note: Fix potential ID typo if needed, renderer.js used #bt-ver-chats-silenciados
-    document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados);
-    
+        document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados);
+
+    // INICIAR CACHE SETTINGS
+    await cargar_ajustes_cache();
+    setup_cache_listeners();
     document.querySelector("#bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
         e.preventDefault();
         const menuCambio = document.querySelector("#alineador-menu-cambiar-data-cuenta");
@@ -376,4 +379,61 @@ export async function ver_chats_bloqueados(e) {
     document.querySelector("#bt-cerrar-menu-lista-bloqueados").onclick = () => {
         document.querySelector("#lista-usuarios-bloqueados").classList.replace("flex-display", "ocultar-display");
     };
+}
+
+async function cargar_ajustes_cache() {
+    const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
+    
+    document.querySelector("#input-cache-chats-ram").value = ajustes.LIMITE_CHAT_CACHE_RAM || 1024
+    document.querySelector("#input-cache-chats-disk").value = ajustes.LIMITE_CHAT_CACHE_DISK || 2048
+    document.querySelector("#input-cache-usuarios-ram").value = ajustes.LIMITE_USER_CACHE_RAM || 512
+    document.querySelector("#input-cache-usuarios-disk").value = ajustes.LIMITE_USER_CACHE_DISK || 1024
+    document.querySelector("#check-forzar-disco").checked = ajustes.FORCE_DISK_CACHE || false
+}
+
+function setup_cache_listeners() {
+    const inputs = [
+        { id: "#input-cache-chats-ram", key: "LIMITE_CHAT_CACHE_RAM" },
+        { id: "#input-cache-chats-disk", key: "LIMITE_CHAT_CACHE_DISK" },
+        { id: "#input-cache-usuarios-ram", key: "LIMITE_USER_CACHE_RAM" },
+        { id: "#input-cache-usuarios-disk", key: "LIMITE_USER_CACHE_DISK" }
+    ]
+
+    inputs.forEach(item => {
+        document.querySelector(item.id).addEventListener("change", async (e) => {
+            const val = parseInt(e.target.value)
+            if (isNaN(val) || val < 64) return
+            
+            const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
+            ajustes[item.key] = val
+            await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes)
+            
+            // Notificar al backend para actualizar config instantáneamente
+            if (item.key.includes("CHAT")) {
+                await window.cache_persistente.setConfigCacheChats({ [item.key]: val })
+            } else {
+                await window.cache_persistente.setConfigCacheUsuarios({ [item.key]: val })
+            }
+        })
+    })
+
+    document.querySelector("#check-forzar-disco").addEventListener("change", async (e) => {
+        const val = e.target.checked
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
+        ajustes.FORCE_DISK_CACHE = val
+        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes)
+        
+        await window.cache_persistente.setConfigCacheChats({ FORCE_DISK_CACHE: val })
+        await window.cache_persistente.setConfigCacheUsuarios({ FORCE_DISK_CACHE: val })
+    })
+
+    document.querySelector("#bt-limpiar-cache-chats").addEventListener("click", async () => {
+        const ok = await window.cache_persistente.clearCacheChats()
+        if (ok) window.pushNotificacion({ prioridad: 2, texto: "Caché de chats limpiada", tipo: "success" })
+    })
+
+    document.querySelector("#bt-limpiar-cache-usuarios").addEventListener("click", async () => {
+        const ok = await window.cache_persistente.clearCacheUsuarios()
+        if (ok) window.pushNotificacion({ prioridad: 2, texto: "Caché de usuarios limpiada", tipo: "success" })
+    })
 }

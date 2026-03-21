@@ -3,6 +3,7 @@ import { TokenSession } from '../models/Security.js';
 import { compare, createHash, randomBytes, mongoose } from '../utils/libs.js';
 import { validateToken } from '../services/CreadorTokens.js';
 import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } from '../services/cryptoService.js';
+import { getUsuarioDeCache, setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 
 import { 
     getIdDispositivo, 
@@ -139,6 +140,11 @@ export async function añadirUsuariosBloqueados(id) {
         );
         if (r.matchedCount === 0) return false;
         setUsuariosBloqueados(lista_bloqueados);
+
+        // Actualizar cache propia
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
         return true;
     } catch (e) {
         console.error(e);
@@ -163,6 +169,11 @@ export async function eliminarUsuariosBloqueados(id) {
         );
         if (r.matchedCount === 0) return false;
         setUsuariosBloqueados(lista_bloqueados);
+
+        // Actualizar cache propia
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
         return true;
     } catch (e) {
         console.error(e);
@@ -181,6 +192,11 @@ export async function cambiarContraseñaUsuario(contraseña) {
         );
         if (r.matchedCount === 0) return false;
         setFechaBloqueoContraseña(fecha_bloqueo);
+
+        // Actualizar cache
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
         return true;
     } catch (e) {
         console.error(e);
@@ -200,6 +216,11 @@ export async function cambiarCorreoUsuario(correo) {
             { $set: { correo: encriptarDatosSistema(correo), correo_hash: correo_nuevo_hash, exp_bloq_correo: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
+
+        // Actualizar cache
+        const updatedUser = await User.findOne({ correo_hash: correo_nuevo_hash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
         setCorreoSesion(correo);
         setFechaBloqueoCorreo(fecha_bloqueo);
         return true;
@@ -221,6 +242,11 @@ export async function cambiarApodoUsuario(apodo) {
             { $set: { apodo: encriptarDatosSistema(apodoStr), exp_bloq_apodo: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
+
+        // Actualizar cache
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
         setApodoSesion(apodoStr);
         setFechaBloqueoApodo(fecha_bloqueo);
         return true;
@@ -239,6 +265,11 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
         const correoHash = hashDatosSistema(correo);
         const r = await User.updateOne({ correo_hash: correoHash }, { $set: { secretKey: key } });
         if (r.matchedCount === 0) return false;
+
+        // Actualizar cache
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
         return key;
     } catch (e) {
         console.error(e);
@@ -248,19 +279,37 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
 
 
 export async function obtener_datos_usuario(id, datos_usar = null) {
+    const idStr = id.toString();
+    if (!datos_usar) {
+        const cached = await getUsuarioDeCache(idStr);
+        if (cached) return cached;
+    }
+
     const datos_buscar = datos_usar || "correo apodo visible idamigo";
     const usuario = await User.findById(id, datos_buscar).lean();
     if (!usuario) return null;
-    return procesarUsuario(usuario);
+    
+    const procesado = procesarUsuario(usuario);
+    if (!datos_usar) {
+        await setUsuarioEnCache(procesado);
+    }
+    return procesado;
 }
 
 
 export async function encontrar_usuario(texto, correo = false) {
     try {
         const id_propio = getIDMongodbUsuario();
+        const textoHash = hashDatosSistema(texto);
+
+        // Intentar buscar en cache primero por hash (si lo guardamos)
+        // Por ahora, buscaremos en cache por ID si tuviéramos un mapeo, 
+        // pero User.findOne es eficiente con índice. 
+        // Lo que sí haremos es guardar en cache una vez encontrado.
+
         const filtro = correo
-            ? { correo_hash: hashDatosSistema(texto), mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }
-            : { idamigo_hash: hashDatosSistema(texto), visible: true, bloquearChatsNuevos: false };
+            ? { correo_hash: textoHash, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }
+            : { idamigo_hash: textoHash, visible: true, bloquearChatsNuevos: false };
 
         const usuario = await User.findOne(filtro, "_id apodo users_bloq").lean();
         if (!usuario) return null;
@@ -269,6 +318,7 @@ export async function encontrar_usuario(texto, correo = false) {
         if (isBloqueado) return null;
 
         const usuarioProcesado = procesarUsuario(usuario);
+        await setUsuarioEnCache(usuarioProcesado); // Guardar en cache al encontrarlo
         return { id: usuarioProcesado.id, nombre: usuarioProcesado.apodo };
     } catch (e) {
         console.error(e);
@@ -284,7 +334,14 @@ export async function AÑADIR_CONTACTO(id, nombre) {
             { _id: id_propio, "contactos.id": { $ne: id } },
             { $push: { contactos: { id, apodo: encriptarDatosSistema(nombre) } } }
         );
-        return r.modifiedCount > 0;
+        if (r.modifiedCount > 0) {
+            // Actualizar cache propia por el cambio en contactos
+            const correoHash = hashDatosSistema(getCorreoSesion());
+            const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+            if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+            return true;
+        }
+        return false;
     } catch (e) {
         console.error(e);
         return false;
@@ -305,6 +362,11 @@ export async function eliminarUsuariosSilenciados(id) {
         const r = await User.updateOne({ correo_hash: correoHash }, { $set: { users_silence: lista_silenciados } });
         if (r.matchedCount === 0) return false;
         setUsuariosSilence(lista_silenciados);
+
+        // Actualizar cache propia
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
         return true;
     } catch (e) {
         console.error(e);
@@ -325,6 +387,11 @@ export async function añadirUsuariosSilenciados(id) {
         const r = await User.updateOne({ correo_hash: correoHash }, { $set: { users_silence: lista_silenciados } });
         if (r.matchedCount === 0) return false;
         setUsuariosSilence(lista_silenciados);
+
+        // Actualizar cache propia
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
         return true;
     } catch (e) {
         console.error(e);

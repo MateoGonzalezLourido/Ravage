@@ -5,6 +5,9 @@ import { mongoose, GridFSBucket, ObjectId, fs, randomBytes } from '../utils/libs
 import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { readFileSession } from '../services/controladorArchivos.js';
+import { setChatEnCache } from './ChatRepository.js';
+import { obtener_datos_usuario } from './UserRepository.js';
+import { setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 
 import { descifrarListaMensajes, getMessageKey } from '../services/messageCryptoService.js';
 import { cifrarContenido, descifrarConPrivada, cifrarConPublica, crearCipherStream, crearDecipherStream, encriptarDatosSistema } from '../services/cryptoService.js';
@@ -116,6 +119,10 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             }
         );
 
+        // Actualizar cache del chat (importante por los ratchet_keys)
+        const updatedChat = await ChatsRavage.findById(id_chat).lean();
+        if (updatedChat) await setChatEnCache(updatedChat);
+
         // Rotación automática si el contador es muy alto
         const ROTATION_THRESHOLD = 100;
         if (iteration >= ROTATION_THRESHOLD) {
@@ -126,8 +133,9 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         }
 
         (async () => {
+            const ids_afectados = chat.usuarios || [];
             await User.updateMany(
-                { _id: { $in: chat.usuarios } },
+                { _id: { $in: ids_afectados } },
                 {
                     $set: {
                         "chats.$[chat].ultimoCambio": new Date(),
@@ -138,6 +146,13 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                     arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }]
                 }
             );
+
+            // Intentar actualizar cache de los usuarios involucrados (si están en cache)
+            for (const uid of ids_afectados) {
+                // obtener_datos_usuario ya maneja el cache internamente (si existe lo devuelve, si no lo carga y guarda)
+                // Pero aquí queremos FORZAR actualización si ya estaba en cache o asegurar que se marque como "usado"
+                await obtener_datos_usuario(uid); 
+            }
         })();
 
 
