@@ -61,12 +61,12 @@ export async function LoginUsuarioDB({ correo = null, contraseña = null, token 
             let token_valido = validateToken(tokenStr);
             if (!token_valido) {
                 const tokenhash = createHash("sha256").update(tokenStr).digest("hex");
-                await TokenSession.deleteMany({ correo: correoStr, token: tokenhash });
+                await TokenSession.deleteMany({ correo_hash: hashDatosSistema(correoStr), token: tokenhash });
                 return { success: false };
             }
 
             const tokenhash = createHash("sha256").update(tokenStr).digest("hex");
-            const token_datos = await TokenSession.exists({ correo: correoStr, token: tokenhash, id_dp: idDpStr });
+            const token_datos = await TokenSession.exists({ correo_hash: hashDatosSistema(correoStr), token: tokenhash, id_dp_hash: hashDatosSistema(idDpStr) });
 
             if (!token_datos) return { success: false };
 
