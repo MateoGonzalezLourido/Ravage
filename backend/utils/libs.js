@@ -1,94 +1,117 @@
-// Node nativo
-import fs from 'fs';
-import { Transform } from 'stream';
-import { createHash, randomBytes, createCipheriv, createDecipheriv } from "crypto";
-import path from 'path';
-import { fileURLToPath } from 'url';
-import os from 'os';
+// ==========================================
+// 1. NATIVE NODE.JS MODULES
+// ==========================================
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import http from 'node:http';
+import https from 'node:https';
+import { Transform } from 'node:stream';
+import { fileURLToPath } from 'node:url';
+import { 
+    createHash, 
+    randomBytes, 
+    createCipheriv, 
+    createDecipheriv, 
+    generateKeyPairSync, 
+    publicEncrypt, 
+    privateDecrypt, 
+    createHmac 
+} from "node:crypto";
 
-// Electron
+// ==========================================
+// 2. ELECTRON (With fallback mocks)
+// ==========================================
 let app, BrowserWindow, ipcMain, dialog;
+
 try {
-    // Intentar importar electron solo si estamos en un proceso de Electron
-    // Si falla (por ejemplo, ejecutando con node puro), usamos mocks
+    // Import electron only if in an Electron process
     const electron = await import('electron');
     app = electron.app;
     BrowserWindow = electron.BrowserWindow;
     ipcMain = electron.ipcMain;
     dialog = electron.dialog;
 } catch (e) {
+    // Mocks for pure Node.js environments
     app = { getPath: () => '/tmp', on: () => { }, emit: () => { }, quit: () => { } };
     BrowserWindow = class { };
     ipcMain = { on: () => { }, handle: () => { } };
     dialog = { showOpenDialog: () => { }, showSaveDialog: () => { } };
 }
 
-
-// Dependencias externas
-import { hash, compare } from 'bcrypt';
-import pkgMachineId from 'node-machine-id';
-import jwt from 'jsonwebtoken';
+// ==========================================
+// 3. EXTERNAL LIBRARIES
+// ==========================================
 import 'dotenv/config';
-import validator from 'validator';
-
-// Mongoose & MongoDB
+import express from 'express';
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
+import validator from 'validator';
+import si from 'systeminformation';
+import pkgMachineId from 'node-machine-id';
+import { Server as SocketServer } from 'socket.io';
+import { hash, compare } from 'bcrypt';
 import { GridFSBucket, ObjectId } from 'mongodb';
 
-// Express, HTTP & Socket.IO
-import express from 'express';
-import http from 'http';
-import https from 'https';
-
-import { Server } from 'socket.io';
-
-// Funciones extraídas
+// ==========================================
+// 4. UTILITIES & CONSTANTS
+// ==========================================
 const { machineIdSync } = pkgMachineId;
 const { sign, verify } = jwt;
-// Opcional: definir __dirname en ESM
+
+// ESM __dirname & __filename
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
+// ==========================================
+// 5. EXPORTS
+// ==========================================
 export {
-    // Bcrypt
-    hash,
-    compare,
-    // Machine ID
-    machineIdSync,
-    // JWT
-    sign,
-    verify,
-    // Crypto
+    // Node.js Core
+    fs,
+    path,
+    os,
+    http,
+    https,
+    Transform,
+    __dirname,
+    __filename,
+
+    // Cryptography (Native)
     createHash,
     randomBytes,
     createCipheriv,
     createDecipheriv,
-    //node 
-    path,
-    fs,
-    //Electron
+    generateKeyPairSync,
+    publicEncrypt,
+    privateDecrypt,
+    createHmac,
+
+    // Electron
     app,
     BrowserWindow,
     ipcMain,
     dialog,
-    //Path
-    __dirname,
-    __filename,
-    // Mongoose & MongoDB
+
+    // Security & Auth
+    hash,
+    compare,
+    sign,
+    verify,
+    machineIdSync,
+
+    // Database
     mongoose,
     GridFSBucket,
     ObjectId,
-    // Express, HTTP & Socket.IO
-    express,
-    http,
-    https,
 
-    Server,
-    os,
-    Transform,
-    //validacion datos
-    validator
+    // Server & Networking
+    express,
+    SocketServer as Server,
+
+    // Other Utils
+    validator,
+    si
 };
 
 

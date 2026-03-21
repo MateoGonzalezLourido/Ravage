@@ -1,6 +1,4 @@
--Hacer servidor railway y plantillas https localhost
 -hacer readme
 -revisar imports
 -testear todo el sistema
 -hacer pruebas de seguridad
--revisar posibles optimizaciones de mongo
