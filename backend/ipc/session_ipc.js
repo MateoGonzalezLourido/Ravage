@@ -1,6 +1,6 @@
 import { ipcMain, app } from '../utils/libs.js';
-import { loginUsuario, registerUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, comprobar_contraseña_cuenta } from '../services/sesionUsuario.js';
-import { comprobaciones_Correo, comprobarContrasenaValidaciones, comprobar_apodo, comprobar_codigo_verificacion } from '../services/validadores.js';
+import { loginUsuario, registerUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } from '../services/sesionUsuario.js';
+import { comprobaciones_Correo, comprobarContrasenaValidaciones, comprobar_apodo, comprobar_codigo_verificacion, comprobar_contraseña_cuenta } from '../services/validadores.js';
 import { BorrarVC, BorrarCuentaVC } from '../repositories/SecurityRepository.js';
 import {
     getCorreoSesion,

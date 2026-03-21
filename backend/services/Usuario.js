@@ -26,9 +26,9 @@ import {
     comprobaciones_Correo,
     comprobar_apodo,
     comprobarContrasenaValidaciones,
-    cerrarSesionUsuario,
     comprobar_codigo_verificacion
-} from './sesionUsuario.js';
+} from './validadores.js';
+import { cerrarSesionUsuario } from './sesionUsuario.js';
 
 
 

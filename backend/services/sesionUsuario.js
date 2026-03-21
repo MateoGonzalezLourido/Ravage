@@ -25,7 +25,8 @@ import { generarLlavesRSA, hashDatosSistema } from './cryptoService.js';
 import {
     comprobarContrasenaValidaciones,
     comprobar_apodo,
-    comprobaciones_Correo} from './validadores.js'
+    comprobaciones_Correo,
+    comprobar_codigo_verificacion} from './validadores.js'
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 //vairables de usuario de sesion
 function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
@@ -387,8 +388,5 @@ export {
     autoLoginUsuario,
     cerrarSesionUsuario,
     ValidarCodeRegistroUsuario,
-    ValidarCodeLogin,
-    comprobaciones_Correo,
-    comprobar_apodo,
-    comprobar_codigo_verificacion
+    ValidarCodeLogin
 };

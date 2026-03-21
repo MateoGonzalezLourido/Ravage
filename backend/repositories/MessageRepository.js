@@ -5,9 +5,9 @@ import { mongoose, GridFSBucket, ObjectId, fs, randomBytes } from '../utils/libs
 import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { readFileSession } from '../services/controladorArchivos.js';
-import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
+
 import { descifrarListaMensajes, getMessageKey } from '../services/messageCryptoService.js';
-import { cifrarContenido, descifrarConPrivada, descifrarContenido, crearCipherStream, crearDecipherStream, encriptarDatosSistema, desencriptarDatosSistema } from '../services/cryptoService.js';
+import { cifrarContenido, descifrarConPrivada, cifrarConPublica, crearCipherStream, crearDecipherStream, encriptarDatosSistema } from '../services/cryptoService.js';
 
 
 
@@ -171,118 +171,6 @@ export async function obtener_datos_mensaje(id_chat, id_mensaje) {
     }
 }
 
-
-/**
- * Helper para descifrar un array de mensajes.
- * @param {Array} mensajes - Array de mensajes de MongoDB (lean)
- * @param {Buffer} chatKey - La llave simétrica del chat
- */
-/**
- * Helper para descifrar un array de mensajes usando el sistema de Ratchet.
- * @param {Array} mensajes - Array de mensajes de MongoDB (lean)
- * @param {Object} chat - El objeto chat completo de MongoDB (lean o hidratado)
- */
-export async function descifrarListaMensajes(mensajes, chat) {
-    if (!mensajes || !chat || !chat.ratchet_keys) return mensajes;
-
-    const id_propio = getIDMongodbUsuario();
-    const identity_data = await readFileSession('identity');
-    if (!identity_data || !identity_data.privateKey) return mensajes;
-
-    const { ratchetChainKey } = await import('../services/cryptoService.js');
-
-    // Caché local de claves para este lote de mensajes para evitar lecturas repetidas
-    const cache_keys = {}; 
-
-    for (let m of mensajes) {
-        if (m.encriptado && m.encriptado.data && m.ratchet_info) {
-            try {
-                const emisor_id = m.emisor ? m.emisor.toString() : null;
-                if (!emisor_id || emisor_id === "000000000000000000000000") {
-                    // Si el emisor no está en el mensaje, recuperarlo si es posible o saltar
-                    // Nota: en el nuevo formato, el emisor está DENTRO del encriptado, 
-                    // pero necesitamos saber quién lo envió para elegir la cadena.
-                    // Usaremos el campo 'emisor' original si existe (aunque sea el dummy, buscar el real si se puede)
-                    // Para este sistema, el emisor REAL debe estar en m.emisor_real o similar, 
-                    // pero si no, usaremos el chat.usuarios[0] como fallback o buscaremos por chain_id.
-                }
-
-                // Buscar la cadena del emisor para este receptor (nosotros)
-                // Usamos m.ratchet_info.emisor_id si lo añadimos, o confiamos en m.emisor
-                const target_emisor_id = m.emisor.toString();
-                const cache_key = `${target_emisor_id}_${id_propio}`;
-                
-                let current_state = cache_keys[cache_key];
-                if (!current_state) {
-                    const entry = chat.ratchet_keys.find(k => 
-                        k.emisor_id.toString() === target_emisor_id && 
-                        k.receptor_id.toString() === id_propio.toString()
-                    );
-                    if (!entry) throw new Error("No hay llave de ratchet para este emisor");
-                    
-                    const ck_hex = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
-                    current_state = { ck: ck_hex, counter: entry.counter };
-                    cache_keys[cache_key] = current_state;
-                }
-
-                // Ratchett forward si el mensaje es más reciente que nuestro estado guardado
-                while (current_state.counter < m.ratchet_info.iteration) {
-                    const { nextChainKey } = ratchetChainKey(current_state.ck);
-                    current_state.ck = nextChainKey;
-                    current_state.counter++;
-                }
-
-                // Obtener la MK para este mensaje
-                const { messageKey, nextChainKey } = ratchetChainKey(current_state.ck);
-                
-                // Descifrar
-                const decryptedPayload = descifrarContenido(m.encriptado, messageKey);
-                const data = JSON.parse(decryptedPayload);
-
-                if (data && !Array.isArray(data)) {
-                    m.contenido = [{ 
-                        asunto: data.asunto, 
-                        archivos: data.archivos.map(a => ({
-                            ...a,
-                            nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
-                        }))
-                    }];
-                    m.emisor = data.emisor; // Restaurar emisor real
-                    m.data = data.data;
-                }
-
-                // Avanzar el estado para el siguiente mensaje del mismo lote
-                current_state.ck = nextChainKey;
-                current_state.counter++;
-
-                // Opcional: Actualizar el estado en la DB para persistir el avance
-                // (Se recomienda hacerlo al final del lote para eficiencia)
-                
-            } catch (err) {
-                console.error("Error descifrando mensaje con Ratchet:", err);
-                m.contenido = [{ asunto: "[Error al descifrar]", archivos: [] }];
-            }
-        }
-    }
-
-    // Actualizar estados en DB al finalizar el lote si avanzaron
-    for (const [key, state] of Object.entries(cache_keys)) {
-        const [emisor_id, receptor_id] = key.split('_');
-        // Solo actualizar si el contador avanzó respecto al original del chat (idealmente comparar con chat.ratchet_keys)
-        await ChatsRavage.updateOne(
-            { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": receptor_id },
-            { 
-                $set: { 
-                    "ratchet_keys.$.clave_envuelta": cifrarConPublica(state.ck, identity_data.publicKey),
-                    "ratchet_keys.$.counter": state.counter 
-                }
-            }
-        ).catch(e => console.error("Fallo persistiendo ratchet state:", e));
-    }
-
-    return mensajes;
-    return mensajes;
-}
 
 export async function limpiar_mensajes_chats_antiguos(chatIdsRaw) {
     const chatIds = chatIdsRaw.map(c => c.id);
