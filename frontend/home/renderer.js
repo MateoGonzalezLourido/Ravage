@@ -3,7 +3,7 @@ import { desplegar_menu_añadir_chat } from './ui/añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './ui/url_icono_extensiones_archivos.js'
 import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario,Es_usuario_Sesion, texto_mostrar_fecha_mensajes_bloque } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes } from './ui/ajustes.js'
-import { crear_chat_historial_archivos_descargados } from './ui/historial_archivos_descargados.js'
+import { crear_chat_historial_archivos_descargados, invalidar_cache_historial } from './ui/historial_archivos_descargados.js'
 
 let archivos_mensaje = []//{ruta,nombre,extension}
 let archivo_cambiando_nombre; //es para guardar el archivo que se esta editando ya
@@ -460,6 +460,7 @@ async function ACTUALIZAR_LISTAS_CHAT() {
                                 tag,
                                 fecha: new Date().toISOString()
                             })
+                            invalidar_cache_historial()
                         }
                     })
                 })
