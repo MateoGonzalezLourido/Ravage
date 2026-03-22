@@ -651,3 +651,65 @@ export async function rotarClavesChat(id_chat, id_emisor) {
     }
 }
 
+export async function SILENCIAR_CHAT_USUARIO(id_chat) {
+    try {
+        const id_propio = getIDMongodbUsuario();
+        const usr = await User.findById(id_propio, "chats").lean();
+        if (!usr) return { success: false };
+        
+        const index = usr.chats.findIndex(c => c.id.toString() === id_chat.toString());
+        if (index === -1) return { success: false, message: "Chat no encontrado" };
+        
+        const currentMuted = usr.chats[index].silenciado || false;
+        const newMuted = !currentMuted;
+
+        await User.updateOne(
+            { _id: id_propio, "chats.id": new mongoose.Types.ObjectId(id_chat) },
+            { $set: { "chats.$.silenciado": newMuted } }
+        );
+
+        const { setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
+        const updatedUser = await User.findById(id_propio).lean();
+        if (updatedUser) {
+            const { procesarUsuario } = await import('./UserRepository.js');
+            await setUsuarioEnCache(procesarUsuario(updatedUser));
+        }
+
+        return { success: true, silenciado: newMuted };
+    } catch (e) {
+        console.error(e);
+        return { success: false, message: "Error al cambiar silencio" };
+    }
+}
+
+export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
+    try {
+        const id_propio = getIDMongodbUsuario();
+        const usr = await User.findById(id_propio, "chats").lean();
+        if (!usr) return { success: false };
+        
+        const index = usr.chats.findIndex(c => c.id.toString() === id_chat.toString());
+        if (index === -1) return { success: false, message: "Chat no encontrado" };
+        
+        const currentBlocked = usr.chats[index].bloqueado || false;
+        const newBlocked = !currentBlocked;
+
+        await User.updateOne(
+            { _id: id_propio, "chats.id": new mongoose.Types.ObjectId(id_chat) },
+            { $set: { "chats.$.bloqueado": newBlocked } }
+        );
+
+        const { setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
+        const updatedUser = await User.findById(id_propio).lean();
+        if (updatedUser) {
+            const { procesarUsuario } = await import('./UserRepository.js');
+            await setUsuarioEnCache(procesarUsuario(updatedUser));
+        }
+
+        return { success: true, bloqueado: newBlocked };
+    } catch (e) {
+        console.error(e);
+        return { success: false, message: "Error al bloquear chat" };
+    }
+}
+

@@ -62,7 +62,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
             .map(c => {
                 const chatEx = map_grupales[c.id] || {}
                 const nombre = chatEx.nombre || "Chat sin nombre"
-                const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre: nombre, ultimomensaje: c.ultimomensaje }
+                const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre: nombre, ultimomensaje: c.ultimomensaje, silenciado: c.silenciado || false, bloqueado: c.bloqueado || false }
                 return chat_componente_lista_estructura_html(datos_usar)
             })
             .join("")
@@ -71,6 +71,69 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
         
         //eventos doom
         document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
+            // Evento contextmenu para mutear/bloquear chats
+            componente.addEventListener("contextmenu", (e) => {
+                e.preventDefault()
+                const id_chat = componente.dataset.id
+
+                // Eliminar menú previo si existe
+                document.querySelector(".context-menu-chat")?.remove()
+
+                const chatInfo = lista_chats.find(c => (c.id || c._id) === id_chat)
+                const esta_silenciado = chatInfo?.silenciado || false
+                const esta_bloqueado = chatInfo?.bloqueado || false
+                
+                const texto_silenciar = esta_silenciado ? "Desilenciar chat" : "Silenciar chat"
+                const texto_bloquear = esta_bloqueado ? "Desbloquear chat" : "Bloquear chat"
+
+                const html_contextMenu = `
+                    <div class="context-menu context-menu-chat" style="position: fixed; z-index: 1000;">
+                        <div class="context-menu-item" data-action="silenciar">${texto_silenciar}</div>
+                        <div class="context-menu-item" data-action="bloquear">${texto_bloquear}</div>
+                    </div>
+                `
+
+                document.body.insertAdjacentHTML("beforeend", html_contextMenu)
+
+                const menu = document.querySelector(".context-menu-chat")
+                if (menu) {
+                    menu.style.left = e.clientX + "px"
+                    menu.style.top = e.clientY + "px"
+
+                    const cerrarMenuClickFuera = (event) => {
+                        if (!menu.contains(event.target)) {
+                            menu.remove()
+                            document.removeEventListener("mousedown", cerrarMenuClickFuera)
+                        }
+                    }
+                    setTimeout(() => document.addEventListener("mousedown", cerrarMenuClickFuera), 0)
+
+                    menu.addEventListener("click", async (ev) => {
+                        const action = ev.target.dataset.action
+                        if (!action) return;
+
+                        if (action === "silenciar") {
+                            const res = await window.chats.SILENCIAR_CHAT(id_chat)
+                            if (res && res.success) {
+                                window.pushNotificacion({ prioridad: 1, texto: res.silenciado ? "Chat silenciado" : "Chat desilenciado", tipo: "success" })
+                                await ACTUALIZAR_LISTAS_CHAT(document.querySelector("#input-buscar-chat")?.value?.trim() || "")
+                            } else {
+                                window.pushNotificacion({ prioridad: 0, texto: "Error al cambiar silencio", tipo: "error" })
+                            }
+                        } else if (action === "bloquear") {
+                            const res = await window.chats.BLOQUEAR_CHAT(id_chat)
+                            if (res && res.success) {
+                                window.pushNotificacion({ prioridad: 1, texto: res.bloqueado ? "Chat bloqueado" : "Chat desbloqueado", tipo: "success" })
+                                await ACTUALIZAR_LISTAS_CHAT(document.querySelector("#input-buscar-chat")?.value?.trim() || "")
+                            } else {
+                                window.pushNotificacion({ prioridad: 0, texto: "Error al bloquear chat", tipo: "error" })
+                            }
+                        }
+                        menu.remove()
+                    })
+                }
+            })
+
             componente.addEventListener("click", async (e) => {
                 e.preventDefault()
                 // OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
@@ -551,7 +614,9 @@ async function refrescar_componente_lista_chats(id_chat, componente, notificacio
             ultimoCambio: chat_usuario?.ultimoCambio,
             usuarios: info_chat.usuarios,
             nombre: info_chat.nombre, // Ya viene resuelto por el backend
-            ultimomensaje: chat_usuario?.ultimomensaje
+            ultimomensaje: chat_usuario?.ultimomensaje,
+            silenciado: chat_usuario?.silenciado || false,
+            bloqueado: chat_usuario?.bloqueado || false
         }
 
         // Generar el nuevo HTML

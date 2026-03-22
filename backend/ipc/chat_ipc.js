@@ -10,7 +10,9 @@ import {
     expulsar_usuario_chat,
     RESPONDER_SOLICITUD_AÑADIR,
     HACER_ADMIN_CHAT,
-    QUITAR_ADMIN_CHAT
+    QUITAR_ADMIN_CHAT,
+    SILENCIAR_CHAT_USUARIO,
+    BLOQUEAR_CHAT_USUARIO
 } from '../repositories/ChatRepository.js';
 import { 
     ENVIAR_MENSAJE, 
@@ -111,5 +113,13 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("quitar-admin-chat", async (_, id_chat, id_usuario) => {
         return await QUITAR_ADMIN_CHAT(id_chat, id_usuario)
+    })
+
+    ipcMain.handle("silenciar-chat", async (_, id_chat) => {
+        return await SILENCIAR_CHAT_USUARIO(id_chat)
+    })
+
+    ipcMain.handle("bloquear-chat", async (_, id_chat) => {
+        return await BLOQUEAR_CHAT_USUARIO(id_chat)
     })
 }

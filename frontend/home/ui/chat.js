@@ -80,7 +80,10 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     }
     let html = `
     <div data-id="${datos_usar.id}" class="chat-componente-lista-chats">
-        <div class="nombre-chat-lista-componente"><span>${nombre(datos_usar)}</span></div>
+        <div class="nombre-chat-lista-componente" style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${nombre(datos_usar)}</span>
+            ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" style="width: 16px; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat bloqueado">' : (datos_usar.silenciado ? '<img src="../recursos/silenciar.png" style="width: 16px; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat silenciado">' : '')}
+        </div>
         ${usuarios(datos_usar)}
         ${ultimo_mensaje(datos_usar)}
         ${ultima_vez(datos_usar)}
@@ -364,6 +367,13 @@ export async function mostrar_datos_chat_usaurios(e) {
             const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id))
             const participantes_datos = await Promise.all(participantes_promesas)
 
+            const [silenciados, bloqueados] = await Promise.all([
+                window.social_usuario.OBTENER_USUARIOS_SILENCIADOS(),
+                window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
+            ])
+            const ids_silenciados = (silenciados || []).map(u => typeof u === "string" ? u : u.id || u._id || u);
+            const ids_bloqueados = (bloqueados || []).map(u => typeof u === "string" ? u : u.id || u._id || u);
+
             let lista_html = `
             <div class="info-chat-lista-participantes">
                 <div class="info-chat-lista-titulo">Participantes (${participantes_datos.length + 1}) <div id="bt-anadir-participante-chat">+</div></div>
@@ -381,7 +391,10 @@ export async function mostrar_datos_chat_usaurios(e) {
                     lista_html += `
                     <div class="info-chat-participante-item" data-id="${p.id}"data-idamigo="${p.idamigo}">
                         <div class="info-chat-participante-info">
-                            <span class="info-chat-participante-nombre">${p.apodo || "Sin apodo"}</span>
+                            <span class="info-chat-participante-nombre">
+                                ${p.apodo || "Sin apodo"}
+                                ${ids_bloqueados.includes(p.id) ? '<img src="../recursos/bloqueado.png" class="icono-bloqueado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario bloqueado">' : (ids_silenciados.includes(p.id) ? '<img src="../recursos/silenciar.png" class="icono-silenciado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario silenciado">' : '')}
+                            </span>
                             <span class="info-chat-participante-correo">${p.correo || ""}</span>
                             ${info_chat.admins?.includes(p.id) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
                         </div>
@@ -439,6 +452,18 @@ export async function mostrar_datos_chat_usaurios(e) {
                 }
             }
 
+            const esta_bloqueado = ids_bloqueados.includes(id);
+            const esta_silenciado = ids_silenciados.includes(id);
+
+            const texto_bloquear = esta_bloqueado ? "Desbloquear usuario" : "Bloquear usuario";
+            const action_bloquear = esta_bloqueado ? "desbloquear" : "bloquear";
+            
+            const texto_silenciar = esta_silenciado ? "Desilenciar usuario" : "Silenciar usuario";
+            const action_silenciar = esta_silenciado ? "desilenciar" : "silenciar";
+
+            divContent.push(`<div class="context-menu-item" data-action="${action_silenciar}">${texto_silenciar}</div>`);
+            divContent.push(`<div class="context-menu-item" data-action="${action_bloquear}">${texto_bloquear}</div>`);
+
             if (divContent.length > 0) {
                 html_contextMenu = html_contextMenu.replace('</div>\n                                `', `${divContent.join('')}\n                                    </div>\n                                `);
             }
@@ -481,6 +506,22 @@ export async function mostrar_datos_chat_usaurios(e) {
                     if (resultado) {
                         mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
                     }
+                }
+                else if (action === "silenciar") {
+                    await window.social_usuario.AÑADIR_USUARIO_SILENCIADOS(id, "");
+                    mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                }
+                else if (action === "desilenciar") {
+                    await window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(id);
+                    mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                }
+                else if (action === "bloquear") {
+                    await window.social_usuario.AÑADIR_USUARIO_BLOQUEADOS(id, "");
+                    mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                }
+                else if (action === "desbloquear") {
+                    await window.social_usuario.ELIMINAR_USUARIO_BLOQUEADO(id);
+                    mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
                 }
                 else if (action === "añadir-contacto") { //editar nombre/extension
                     //comprobar si ya es contacto
