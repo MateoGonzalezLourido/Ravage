@@ -65,6 +65,8 @@ function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
     );
     storage.setIDAmigo(!limpiar ? data.idamigo : false)
     storage.setVisibleUsuario(!limpiar ? data.visible : false)
+    storage.setInvisibleUsuario(!limpiar ? data.invisible : false)
+    storage.setMostrarCorreoUsuario(!limpiar ? data.mostrarCorreo : true)
 }
 async function autoLoginUsuario() {
     // Leer fichero con datos de sesion anterior

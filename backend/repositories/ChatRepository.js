@@ -3,7 +3,7 @@ import { User } from '../models/User.js';
 import { MessagesRavage } from '../models/Message.js';
 import { mongoose } from '../utils/libs.js';
 import { convertirObjectId } from '../utils/conversores.js';
-import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
+import { getIDMongodbUsuario, getInvisibleUsuario } from '../STORAGE/Variables_sesion.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { randomBytes } from '../utils/libs.js';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
@@ -158,13 +158,20 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     if (!ids || ids.length === 0) return false;
     const id_propio = getIDMongodbUsuario();
 
+    // Si el usuario está en modo invisible, bloquear creación de chats nuevos
+    // (pero permitir añadir participantes a chats existentes)
+    let chatIdLimpioCheck = id_chat;
+    if (chatIdLimpioCheck === "null" || chatIdLimpioCheck === "undefined" || chatIdLimpioCheck === "") chatIdLimpioCheck = null;
+    const esChat_existente = chatIdLimpioCheck && mongoose.Types.ObjectId.isValid(chatIdLimpioCheck);
+    if (getInvisibleUsuario() && !esChat_existente) return false;
+
     // Filtrar usuarios bloqueados bidireccionalmente
     const miUsuario = await User.findById(id_propio, "users_bloq").lean();
     const mis_bloqueados = (miUsuario?.users_bloq || []).map(b => b.toString());
 
     const candidatos = await User.find(
         { _id: { $in: ids } },
-        "_id users_bloq"
+        "_id users_bloq invisible"
     ).lean();
 
     const ids_filtrados = candidatos
@@ -174,6 +181,8 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             if (mis_bloqueados.includes(uid)) return false;
             // Él me tiene bloqueado
             if ((u.users_bloq || []).some(b => b.toString() === id_propio.toString())) return false;
+            // El usuario está en modo invisible (no se le puede añadir)
+            if (u.invisible) return false;
             return true;
         })
         .map(u => u._id.toString());

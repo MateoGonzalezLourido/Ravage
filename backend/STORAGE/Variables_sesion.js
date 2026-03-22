@@ -13,6 +13,8 @@ let secretKey;
 let ListaChats = []
 let ListaContactos = []
 let VisibleUsuario = false
+let InvisibleUsuario = false
+let MostrarCorreoUsuario = true
 let IDamigo
 
 export const setCorreoSesion = (correo) => Correo_Usuario_sesion = correo;
@@ -118,3 +120,7 @@ export const setIDMongodbUsuario = (id) => IdMongodbUsuario = id;
 export const getIDMongodbUsuario = () => IdMongodbUsuario;
 export const setIDAmigo = (id) => IDamigo = id;
 export const getIDAmigo = () => IDamigo;
+export const setInvisibleUsuario = (bool) => InvisibleUsuario = bool;
+export const getInvisibleUsuario = () => InvisibleUsuario;
+export const setMostrarCorreoUsuario = (bool) => MostrarCorreoUsuario = bool;
+export const getMostrarCorreoUsuario = () => MostrarCorreoUsuario;

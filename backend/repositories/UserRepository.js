@@ -16,7 +16,11 @@ import {
     setFechaBloqueoApodo,
     setApodoSesion,
     setCorreoSesion,
-    getIDMongodbUsuario
+    getIDMongodbUsuario,
+    getInvisibleUsuario,
+    setInvisibleUsuario,
+    getMostrarCorreoUsuario,
+    setMostrarCorreoUsuario
 } from '../STORAGE/Variables_sesion.js';
 
 /**
@@ -282,12 +286,23 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
 
 export async function obtener_datos_usuario(id, datos_usar = null) {
     const idStr = id.toString();
-    if (!datos_usar) {
+    const id_propio = getIDMongodbUsuario();
+    const esMiPropioUsuario = id_propio && idStr === id_propio.toString();
+
+    if (!datos_usar && !esMiPropioUsuario) {
         const cached = await getUsuarioDeCache(idStr);
-        if (cached) return cached;
+        if (cached) {
+            // Ocultar correo si el usuario tiene mostrarCorreo: false
+            if (cached.mostrarCorreo === false) {
+                const sinCorreo = { ...cached };
+                delete sinCorreo.correo;
+                return sinCorreo;
+            }
+            return cached;
+        }
     }
 
-    const datos_buscar = datos_usar || "correo apodo visible idamigo";
+    const datos_buscar = datos_usar || "correo apodo visible idamigo mostrarCorreo";
     const usuario = await User.findById(id, datos_buscar).lean();
     if (!usuario) return null;
     
@@ -295,6 +310,14 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
     if (!datos_usar) {
         await setUsuarioEnCache(procesado);
     }
+
+    // Ocultar correo para otros usuarios si mostrarCorreo es false
+    if (!esMiPropioUsuario && procesado.mostrarCorreo === false) {
+        const sinCorreo = { ...procesado };
+        delete sinCorreo.correo;
+        return sinCorreo;
+    }
+
     return procesado;
 }
 
@@ -310,8 +333,8 @@ export async function encontrar_usuario(texto, correo = false) {
         // Lo que sí haremos es guardar en cache una vez encontrado.
 
         const filtro = correo
-            ? { correo_hash: textoHash, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }
-            : { idamigo_hash: textoHash, visible: true, bloquearChatsNuevos: false };
+            ? { correo_hash: textoHash, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false, invisible: false }
+            : { idamigo_hash: textoHash, visible: true, bloquearChatsNuevos: false, invisible: false };
 
         const id_propio_obj = mongoose.Types.ObjectId.isValid(id_propio) ? new mongoose.Types.ObjectId(id_propio) : null;
         if (id_propio_obj) {
@@ -417,3 +440,52 @@ export async function añadirUsuariosSilenciados(id) {
     }
 }
 
+
+export async function toggleInvisibleUsuario() {
+    const correo = getCorreoSesion();
+    const correoHash = hashDatosSistema(correo);
+    const estadoActual = getInvisibleUsuario();
+    const nuevoEstado = !estadoActual;
+    try {
+        const r = await User.updateOne(
+            { correo_hash: correoHash },
+            { $set: { invisible: nuevoEstado } }
+        );
+        if (r.matchedCount === 0) return { success: false };
+        setInvisibleUsuario(nuevoEstado);
+
+        // Actualizar cache
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
+        return { success: true, invisible: nuevoEstado };
+    } catch (e) {
+        console.error(e);
+        return { success: false };
+    }
+}
+
+
+export async function toggleMostrarCorreoUsuario() {
+    const correo = getCorreoSesion();
+    const correoHash = hashDatosSistema(correo);
+    const estadoActual = getMostrarCorreoUsuario();
+    const nuevoEstado = !estadoActual;
+    try {
+        const r = await User.updateOne(
+            { correo_hash: correoHash },
+            { $set: { mostrarCorreo: nuevoEstado } }
+        );
+        if (r.matchedCount === 0) return { success: false };
+        setMostrarCorreoUsuario(nuevoEstado);
+
+        // Actualizar cache
+        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
+        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+
+        return { success: true, mostrarCorreo: nuevoEstado };
+    } catch (e) {
+        console.error(e);
+        return { success: false };
+    }
+}

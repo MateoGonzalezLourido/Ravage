@@ -89,6 +89,10 @@ const UserSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    invisible: {
+        type: Boolean,
+        default: false
+    },
     idamigo: {
         type: EncryptedDataSchema,
         required: true

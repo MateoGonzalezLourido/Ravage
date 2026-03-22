@@ -10,7 +10,9 @@ import {
     getFechaBloqueoCorreo,
     getFechaBloqueoContraseña,
     getIDMongodbUsuario,
-    getIDAmigo
+    getIDAmigo,
+    getInvisibleUsuario,
+    getMostrarCorreoUsuario
 } from '../STORAGE/Variables_sesion.js';
 import {
     permitirCambioContraseñaUsuario,
@@ -114,5 +116,13 @@ export function registerSessionHandlers() {
 
     ipcMain.handle("obtener-fecha-bloqueo-contraseña", () => {
         return getFechaBloqueoContraseña()
+    })
+
+    ipcMain.handle("obtener-invisible-usuario", () => {
+        return getInvisibleUsuario()
+    })
+
+    ipcMain.handle("obtener-mostrar-correo-usuario", () => {
+        return getMostrarCorreoUsuario()
     })
 }
