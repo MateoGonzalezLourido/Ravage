@@ -11,7 +11,9 @@ const ChatUsuarioSchema = new mongoose.Schema({
     grupo: { type: Boolean, default: false },
     ultimoCambio: { type: Date, default: Date.now },
     ultimomensaje: { type: EncryptedDataSchema, default: null },
-    fijado: { type: Boolean, default: false }
+    fijado: { type: Boolean, default: false },
+    silenciado: { type: Boolean, default: false },
+    bloqueado: { type: Boolean, default: false }
 }, { _id: false });
 
 const ContactoUsuarioSchema = new mongoose.Schema({

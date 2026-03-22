@@ -168,6 +168,12 @@ contextBridge.exposeInMainWorld('chats', {
     },
     QUITAR_ADMIN_CHAT: (id_chat, id_usuario) => {
         return ipcRenderer.invoke("quitar-admin-chat", id_chat, id_usuario)
+    },
+    SILENCIAR_CHAT: (id_chat) => {
+        return ipcRenderer.invoke("silenciar-chat", id_chat)
+    },
+    BLOQUEAR_CHAT: (id_chat) => {
+        return ipcRenderer.invoke("bloquear-chat", id_chat)
     }
 
 
