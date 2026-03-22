@@ -158,6 +158,31 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     if (!ids || ids.length === 0) return false;
     const id_propio = getIDMongodbUsuario();
 
+    // Filtrar usuarios bloqueados bidireccionalmente
+    const miUsuario = await User.findById(id_propio, "users_bloq").lean();
+    const mis_bloqueados = (miUsuario?.users_bloq || []).map(b => b.toString());
+
+    const candidatos = await User.find(
+        { _id: { $in: ids } },
+        "_id users_bloq"
+    ).lean();
+
+    const ids_filtrados = candidatos
+        .filter(u => {
+            const uid = u._id.toString();
+            // Yo lo tengo bloqueado
+            if (mis_bloqueados.includes(uid)) return false;
+            // Él me tiene bloqueado
+            if ((u.users_bloq || []).some(b => b.toString() === id_propio.toString())) return false;
+            return true;
+        })
+        .map(u => u._id.toString());
+
+    if (ids_filtrados.length === 0) return false;
+
+    // Reemplazar ids por los filtrados
+    ids = ids_filtrados;
+
     // Limpiar id_chat por si viene "null" como string
     let chatIdLimpio = id_chat;
     if (chatIdLimpio === "null" || chatIdLimpio === "undefined" || chatIdLimpio === "") chatIdLimpio = null;
