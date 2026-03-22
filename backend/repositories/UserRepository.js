@@ -340,6 +340,14 @@ export async function encontrar_usuario(texto, correo = false) {
 export async function AÑADIR_CONTACTO(id, nombre) {
     try {
         const id_propio = getIDMongodbUsuario();
+
+        // Comprobar bloqueo bidireccional
+        const mis_bloqueados = getUsuariosBloqueados() || [];
+        if (mis_bloqueados.some(b => b.toString() === id.toString())) return false;
+
+        const targetUser = await User.findById(id, "users_bloq").lean();
+        if (targetUser && (targetUser.users_bloq || []).some(b => b.toString() === id_propio.toString())) return false;
+
         const r = await User.updateOne(
             { _id: id_propio, "contactos.id": { $ne: id } },
             { $push: { contactos: { id, apodo: encriptarDatosSistema(nombre) } } }
