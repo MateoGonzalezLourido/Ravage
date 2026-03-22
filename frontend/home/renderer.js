@@ -647,6 +647,20 @@ async function refrescar_componente_lista_chats(id_chat, componente, notificacio
 async function hacer_cambios_buzon(entrada) {
     //TODO: CAMBIO DE NOMBRE CHATGRUPO, AÑADIDO USUARIO A UN GRUPO, ELIMINADO USUARIO DE UN CHAT, MENSAJE ACTUALIZAR APP
     const tp = Number(entrada.tipo)
+
+    const id_chat_entrada = entrada.data?.chat || entrada.chat;
+    const id_emisor_entrada = entrada.data?.emisor || entrada.data?.creador;
+
+    let esta_silenciado = false;
+    if (id_chat_entrada) {
+        const chats_usuario = await window.chats.OBTENER_CHATS_USUARIO();
+        const chatInfo = chats_usuario.find(c => (c.id || c._id) == id_chat_entrada);
+        if (chatInfo && chatInfo.silenciado) esta_silenciado = true;
+    } else if (id_emisor_entrada) {
+        const silenciados = await window.social_usuario.OBTENER_USUARIOS_SILENCIADOS() || [];
+        const ids_silenciados = silenciados.map(u => typeof u === "string" ? u : u.id || u._id || u);
+        if (ids_silenciados.includes(id_emisor_entrada)) esta_silenciado = true;
+    }
     if (tp === 0) { //mensaje chat
         /*Mirar si el usuario tiene abierto ese chat:
         si es asi actualizar chat
@@ -671,14 +685,16 @@ async function hacer_cambios_buzon(entrada) {
                 if (chatC.dataset.id == entrada.chat) {
                     const nombre = chatC.querySelector(".nombre-chat-lista-componente span").textContent
                     //refrescar componente chat
-                    refrescar_componente_lista_chats(entrada.chat, chatC, true)
+                    refrescar_componente_lista_chats(entrada.chat, chatC, !esta_silenciado)
 
                     //notificacion
-                    window.pushNotificacion({
-                        prioridad: 0, // menor número = más importante
-                        texto: `Nuevo mensaje de ${nombre}`,
-                        tipo: "info" // "info", "error", "success"
-                    })
+                    if (!esta_silenciado) {
+                        window.pushNotificacion({
+                            prioridad: 0, // menor número = más importante
+                            texto: `Nuevo mensaje de ${nombre}`,
+                            tipo: "info" // "info", "error", "success"
+                        })
+                    }
                 }
             }
         }
@@ -689,22 +705,24 @@ async function hacer_cambios_buzon(entrada) {
         //buscar nombre del chat, como se supone que es grupal pues con buscarlo en mongodb en la tabla de chats globales llega
         const nombreChat = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat })
         //notificacion
-        //si el usuario es a quien añadieron
-        if (entrada.data.usuarios.includes(await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO())) {
-            window.pushNotificacion({
-                prioridad: 0, // menor número = más importante
-                texto: `Te has unido a un nuevo chat${nombreChat ? `\n${nombreChat}` : ``}`,
-                tipo: "info" // "info", "error", "success"
-            })
-        }
-        else {
-            const nombreEmisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.emisor })
-            const nombreAñadido = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.añadido })
-            window.pushNotificacion({
-                prioridad: 0, // menor número = más importante
-                texto: `${nombreEmisor} añadio a ${nombreAñadido} al grupo${nombreChat ? `\n${nombreChat}` : ``}`,
-                tipo: "info" // "info", "error", "success"
-            })
+        if (!esta_silenciado) {
+            //si el usuario es a quien añadieron
+            if (entrada.data.usuarios.includes(await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO())) {
+                window.pushNotificacion({
+                    prioridad: 0, // menor número = más importante
+                    texto: `Te has unido a un nuevo chat${nombreChat ? `\n${nombreChat}` : ``}`,
+                    tipo: "info" // "info", "error", "success"
+                })
+            }
+            else {
+                const nombreEmisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.emisor })
+                const nombreAñadido = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.añadido })
+                window.pushNotificacion({
+                    prioridad: 0, // menor número = más importante
+                    texto: `${nombreEmisor} añadio a ${nombreAñadido} al grupo${nombreChat ? `\n${nombreChat}` : ``}`,
+                    tipo: "info" // "info", "error", "success"
+                })
+            }
         }
         //actualizar chat
         await Actualizar_render_chat({
@@ -722,11 +740,13 @@ async function hacer_cambios_buzon(entrada) {
         const nombreChat = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat })
         const nombreCreador = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.creador })
         //notificacion
-        window.pushNotificacion({
-            prioridad: 0, // menor número = más importante
-            texto: `${nombreCreador} ha creado un nuevo chat${nombreChat ? `\n${nombreChat}` : ``}`,
-            tipo: "info" // "info", "error", "success"
-        })
+        if (!esta_silenciado) {
+            window.pushNotificacion({
+                prioridad: 0, // menor número = más importante
+                texto: `${nombreCreador} ha creado un nuevo chat${nombreChat ? `\n${nombreChat}` : ``}`,
+                tipo: "info" // "info", "error", "success"
+            })
+        }
     }
     else if (tp === 3) {//cambio nombre chat
 
@@ -742,17 +762,21 @@ async function hacer_cambios_buzon(entrada) {
             if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
                 document.querySelector("#chat-usuario").innerHTML = "";
             }
-            window.pushNotificacion({
-                prioridad: 0,
-                texto: `Has sido expulsado del chat ${chatNombre || ""}`,
-                tipo: "error"
-            });
+            if (!esta_silenciado) {
+                window.pushNotificacion({
+                    prioridad: 0,
+                    texto: `Has sido expulsado del chat ${chatNombre || ""}`,
+                    tipo: "error"
+                });
+            }
         } else {
-            window.pushNotificacion({
-                prioridad: 1,
-                texto: `${nombreExpulsado} ha sido expulsado del chat ${chatNombre || ""}`,
-                tipo: "info"
-            });
+            if (!esta_silenciado) {
+                window.pushNotificacion({
+                    prioridad: 1,
+                    texto: `${nombreExpulsado} ha sido expulsado del chat ${chatNombre || ""}`,
+                    tipo: "info"
+                });
+            }
         }
         //actualizar chat
         await Actualizar_render_chat({
