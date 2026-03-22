@@ -21,6 +21,10 @@ import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, createHash, machineIdSync } from '../utils/libs.js';
 import { generarLlavesRSA, hashDatosSistema } from './cryptoService.js';
+import { clearCacheChats } from '../STORAGE/CACHE/_cache_chats.js';
+import { clearCacheUsuarios } from '../STORAGE/CACHE/_cache_usuarios.js';
+import { clearCacheArchivosDescargados } from '../STORAGE/CACHE/_cache_archivos_descargados.js';
+import { clearCacheUrlImgExtensiones } from '../STORAGE/CACHE/_cache_img_extensiones.js';
 
 import {
     comprobarContrasenaValidaciones,
@@ -372,8 +376,14 @@ async function cerrarSesionUsuario(correo) {
     //si existe ese archivo limpiar token
     if (data) LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
     //limpiar datos
-    storage.setCorreoSesion(null)
-    storage.setApodoSesion(null)
+    ACTUALIZAR_DATOS_LOGIN({ limpiar: true });
+    
+    //limpiar caches
+    await clearCacheChats();
+    await clearCacheUsuarios();
+    await clearCacheArchivosDescargados();
+    await clearCacheUrlImgExtensiones();
+
     //mostrar log
 
     //sesion cerrada
