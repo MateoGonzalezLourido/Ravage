@@ -135,7 +135,10 @@ export async function añadirUsuariosBloqueados(id) {
         const correoHash = hashDatosSistema(correo);
         const r = await User.updateOne(
             { correo_hash: correoHash },
-            { $set: { users_bloq: lista_bloqueados } }
+            { 
+                $set: { users_bloq: lista_bloqueados },
+                $pull: { contactos: { id: idStr } }
+            }
         );
         if (r.matchedCount === 0) return false;
         setUsuariosBloqueados(lista_bloqueados);
@@ -310,11 +313,19 @@ export async function encontrar_usuario(texto, correo = false) {
             ? { correo_hash: textoHash, mostrarCorreo: true, visible: true, bloquearChatsNuevos: false }
             : { idamigo_hash: textoHash, visible: true, bloquearChatsNuevos: false };
 
-        const usuario = await User.findOne(filtro, "_id apodo users_bloq").lean();
-        if (!usuario) return null;
+        const id_propio_obj = mongoose.Types.ObjectId.isValid(id_propio) ? new mongoose.Types.ObjectId(id_propio) : null;
+        if (id_propio_obj) {
+            const mis_bloqueados = getUsuariosBloqueados() || [];
+            const mis_bloqueados_ids = mis_bloqueados
+                .filter(id => mongoose.Types.ObjectId.isValid(id))
+                .map(id => new mongoose.Types.ObjectId(id));
+                
+            filtro._id = { $nin: mis_bloqueados_ids };
+            filtro.users_bloq = { $ne: id_propio_obj };
+        }
 
-        const isBloqueado = usuario.users_bloq.includes(id_propio) || getUsuariosBloqueados().includes(usuario._id.toString());
-        if (isBloqueado) return null;
+        const usuario = await User.findOne(filtro, "_id apodo").lean();
+        if (!usuario) return null;
 
         const usuarioProcesado = procesarUsuario(usuario);
         await setUsuarioEnCache(usuarioProcesado); // Guardar en cache al encontrarlo

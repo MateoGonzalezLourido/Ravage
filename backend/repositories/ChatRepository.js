@@ -96,29 +96,58 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
     try {
         if (!id_chat || !mongoose.Types.ObjectId.isValid(id_chat)) return null;
 
-        if (!datos_buscar) {
-            const cached = await getChatDeCache(id_chat);
-            if (cached) return cached;
-        }
-
         const projection = datos_buscar
             ? { [datos_buscar]: 1 }
             : {};
 
-        const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
-        if (!data_obtenida) return null;
-
         if (!datos_buscar) {
-            data_obtenida.mensajes = await MessagesRavage.find({ 
-                id_chat: new mongoose.Types.ObjectId(id_chat) 
-            }).sort({ data: 1 }).lean();
+            let chat_a_devolver;
+            const cached = await getChatDeCache(id_chat);
+            if (cached) {
+                chat_a_devolver = { ...cached, mensajes: [...(cached.mensajes || [])] };
+            } else {
+                const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
+                if (!data_obtenida) return null;
 
-            await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
-            await setChatEnCache(data_obtenida);
+                data_obtenida.mensajes = await MessagesRavage.find({ 
+                    id_chat: new mongoose.Types.ObjectId(id_chat) 
+                }).sort({ data: 1 }).lean();
+
+                await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
+                await setChatEnCache(data_obtenida);
+                
+                chat_a_devolver = { ...data_obtenida, mensajes: [...(data_obtenida.mensajes || [])] };
+            }
+
+            const id_propio = getIDMongodbUsuario();
+            const usr = await User.findById(id_propio, "chats").lean();
+            const miChatData = usr?.chats.find(c => c.id.toString() === id_chat.toString());
+
+            if (miChatData && miChatData.bloqueado && miChatData.mensaje_bloqueo_id) {
+                const stopId = miChatData.mensaje_bloqueo_id.toString();
+                chat_a_devolver.mensajes = chat_a_devolver.mensajes.filter(m => (m._id || m.id).toString() <= stopId);
+            }
+
+            if (miChatData && miChatData.bloqueado) {
+                // Congelar nombre
+                if (miChatData.nombre_bloqueo != null) {
+                    chat_a_devolver.nombre = miChatData.nombre_bloqueo;
+                }
+                // Congelar participantes
+                if (miChatData.participantes_bloqueo != null && miChatData.participantes_bloqueo.length > 0) {
+                    chat_a_devolver.usuarios = miChatData.participantes_bloqueo;
+                }
+            }
+
+            const [data_con_nombre] = await resolverNombresChats([chat_a_devolver]);
+            return convertirObjectId(data_con_nombre);
+        } else {
+            const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
+            if (!data_obtenida) return null;
+
+            const [data_con_nombre] = await resolverNombresChats([data_obtenida]);
+            return convertirObjectId(data_con_nombre);
         }
-
-        const [data_con_nombre] = await resolverNombresChats([data_obtenida]);
-        return convertirObjectId(data_con_nombre);
     } catch (e) {
         console.error(e);
         return null;
@@ -694,9 +723,33 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
         const currentBlocked = usr.chats[index].bloqueado || false;
         const newBlocked = !currentBlocked;
 
+        let mensaje_bloqueo_id = null;
+        let nombre_bloqueo = null;
+        let participantes_bloqueo = null;
+
+        if (newBlocked) {
+            const ultimoMsg = await MessagesRavage.findOne({ id_chat: new mongoose.Types.ObjectId(id_chat) })
+                .sort({ data: -1 })
+                .select('_id')
+                .lean();
+            if (ultimoMsg) mensaje_bloqueo_id = ultimoMsg._id;
+
+            // Snapshot del estado actual del chat
+            const chatActual = await ChatsRavage.findById(id_chat, "nombre usuarios").lean();
+            if (chatActual) {
+                nombre_bloqueo = chatActual.nombre || null;
+                participantes_bloqueo = chatActual.usuarios || null;
+            }
+        }
+
         await User.updateOne(
             { _id: id_propio, "chats.id": new mongoose.Types.ObjectId(id_chat) },
-            { $set: { "chats.$.bloqueado": newBlocked } }
+            { $set: { 
+                "chats.$.bloqueado": newBlocked,
+                "chats.$.mensaje_bloqueo_id": mensaje_bloqueo_id,
+                "chats.$.nombre_bloqueo": nombre_bloqueo,
+                "chats.$.participantes_bloqueo": participantes_bloqueo
+            } }
         );
 
         const { setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
