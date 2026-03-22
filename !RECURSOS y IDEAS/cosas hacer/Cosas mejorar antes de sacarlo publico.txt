@@ -1,4 +1,3 @@
 -hacer readme
--revisar imports
 -testear todo el sistema
 -hacer pruebas de seguridad
