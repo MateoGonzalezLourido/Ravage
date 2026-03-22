@@ -6,7 +6,9 @@ import {
     eliminarUsuariosBloqueados,
     añadirUsuariosSilenciados,
     eliminarUsuariosSilenciados,
-    AÑADIR_CONTACTO
+    AÑADIR_CONTACTO,
+    toggleInvisibleUsuario,
+    toggleMostrarCorreoUsuario
 } from '../repositories/UserRepository.js';
 import {
     getListaContactos,
@@ -53,5 +55,13 @@ export function registerSocialHandlers() {
 
     ipcMain.handle("añadir-contacto", async (_, id, nombre) => {
         return await AÑADIR_CONTACTO(id, nombre)
+    })
+
+    ipcMain.handle("toggle-invisible-usuario", async () => {
+        return await toggleInvisibleUsuario()
+    })
+
+    ipcMain.handle("toggle-mostrar-correo-usuario", async () => {
+        return await toggleMostrarCorreoUsuario()
     })
 }

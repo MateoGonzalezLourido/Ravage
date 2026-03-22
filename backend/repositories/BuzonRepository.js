@@ -15,11 +15,14 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
         if (emisorId || chatId) {
             const usuariosPref = await User.find(
                 { _id: { $in: lista_ids } },
-                "users_bloq users_silence chats"
+                "users_bloq users_silence chats invisible"
             ).lean();
 
             for (const usr of usuariosPref) {
                 let bloqueado_o_silenciado = false;
+
+                // Usuario invisible = silenciado global, no recibe notificaciones
+                if (usr.invisible) bloqueado_o_silenciado = true;
                 
                 if (emisorId) {
                     const strEmisor = emisorId.toString();
