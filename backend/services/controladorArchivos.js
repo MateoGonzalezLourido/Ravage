@@ -247,12 +247,7 @@ export {
     saveAjustesAppFile,
     getAjustesAppFile,
     saveIdentityFile,
-    saveCacheArchivosDescargadosFile
+    saveCacheArchivosDescargadosFile,
+    saveCacheChatsFile,
+    saveCacheUsuariosFile
 };
-export async function saveCacheChatsFile(data) {
-    await guardarArchivoGenerico('cacheChatsFrecuentes', data);
-}
-
-export async function saveCacheUsuariosFile(data) {
-    await guardarArchivoGenerico('cacheUsuariosFrecuentes', data);
-}

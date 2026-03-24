@@ -50,7 +50,8 @@ import validator from 'validator';
 import si from 'systeminformation';
 import pkgMachineId from 'node-machine-id';
 import { Server as SocketServer } from 'socket.io';
-import { hash, compare } from 'bcrypt';
+import bcrypt from 'bcrypt';
+const { hash, compare } = bcrypt;
 import { GridFSBucket, ObjectId } from 'mongodb';
 
 // ==========================================
