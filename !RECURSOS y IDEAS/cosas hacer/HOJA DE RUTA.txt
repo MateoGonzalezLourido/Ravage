@@ -1,15 +1,10 @@
 
-3ºTerminar buzon *->en desarrollo
+*Añadir todas las funciones de la app
 
-4ºHacer las plantillas para usar servidor localhost http, https y servidor gratis railway
+*mejorar codigo, optimizar, clean code, etc
 
-5ºTerminar tablas de base de datos y reajustarlas-> + refactorizar codigo que necesite
+*mejorar app, experiencia usuario ... (opcional, sin definir)
 
-7ºClean code y optimizaciones ... -> sacarlo al github publico
-
-8ºAñadir todas las funciones de la app (bloqueos, silencioas, ajustes, no mostrar correo...)
-
-9ºTerminar TODOS
-
-10ºmejorar app, experiencia usuario ... (opcional, sin definir)
-
+*Crear transmision archivos entre pcs de dos formas sin guardar en base de datos:
+-En red local(sin intermedio)
+-Por internet(servidor intermedio)
