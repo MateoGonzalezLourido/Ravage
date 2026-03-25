@@ -33,7 +33,7 @@ export function registerSessionHandlers(mainWindow) {
         if (!comprobaciones_Correo(username).success || !comprobarContrasenaValidaciones(password).success) {
             return { success: false, message: "Datos de login inválidos" }
         }
-        return await loginUsuario({ username, contraseña: password, mantener_sesion_iniciada })
+        return await loginUsuario(mainWindow, { username, contraseña: password, mantener_sesion_iniciada })
     })
 
     ipcMain.handle('registrar-usuario', async (_, apodo, username, password) => {
@@ -43,7 +43,7 @@ export function registerSessionHandlers(mainWindow) {
         if (apodo && !comprobar_apodo(apodo).success) {
             return { success: false, message: "Apodo no válido" }
         }
-        return await registerUsuario(mainWindow,{ apodo, correo: username, password })
+        return await registerUsuario(mainWindow, { apodo, correo: username, password })
     })
 
     ipcMain.handle('validar-code-registrar-usuario', async (_, correo, code) => {

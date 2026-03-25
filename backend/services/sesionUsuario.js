@@ -125,23 +125,19 @@ async function registerUsuario(mainWindow, { apodo = "Usuario", correo = null, p
     const passwordStr = String(password);
     const apodoStr = String(apodo);
 
-    await Promise.all([
-        (async () => {
-            const res = comprobaciones_Correo(correoStr);
-            if (!res.success) throw new Error(res.message);
-        })(),
-        (async () => {
-            const res = comprobar_apodo(apodoStr);
-            if (!res.success) throw new Error(res.message);
-        })(),
-        (async () => {
-            const res = comprobarContrasenaValidaciones(passwordStr);
-            if (!res.success) throw new Error(res.message);
-        })()
-    ]).catch((error) => {
+    try {
+        const resCorreo = comprobaciones_Correo(correoStr);
+        if (!resCorreo.success) throw new Error(resCorreo.message);
+
+        const resApodo = comprobar_apodo(apodoStr);
+        if (!resApodo.success) throw new Error(resApodo.message);
+
+        const resPass = comprobarContrasenaValidaciones(passwordStr);
+        if (!resPass.success) throw new Error(resPass.message);
+    } catch (error) {
         mainWindow.webContents.send("icono-cargando", false);
         return { success: false, message: error.message };
-    })
+    }
 
     //verificar si no existe un usuario igual
     const existe = await User.exists({ correo_hash: hashDatosSistema(correoStr) });
@@ -248,101 +244,121 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         await saveIdentityFile({ privateKey: privateKey })
     }
 
-    (async () => await BorrarVC(correoStr))()
-        (async () => {
-            //mandar correo confirmando creacion de cuenta
-            const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo })
-            enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-        })().catch(() => {
-            mainWindow.webContents.send("fallo-correo-mandar");
-        })
+    (async () => await BorrarVC(correoStr))();
+    ;(async () => {
+        //mandar correo confirmando creacion de cuenta
+        const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo })
+        enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+    })().catch(() => {
+        mainWindow.webContents.send("fallo-correo-mandar");
+    })
 
     return { success: true };
 }
 
-async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {
+async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion_iniciada = true }) {
     //mostrar en html un icono de carga
     mainWindow.webContents.send("icono-cargando", true);
 
     const usernameStr = String(username).toLowerCase();
     const contraseñaStr = String(contraseña);
 
-    await Promise.all([
-        (async () => {
-            const resultado = comprobaciones_Correo(usernameStr);
-            if (!resultado.success) throw new Error(resultado.message);
-        })(),
-        (async () => {
-            const password_valido = comprobarContrasenaValidaciones(contraseñaStr);
-            if (!password_valido.success) throw new Error(password_valido.message);
-        })()
-    ]).catch((e) => {
+    try {
+        const resultado = comprobaciones_Correo(usernameStr);
+        if (!resultado.success) throw new Error(resultado.message);
+        
+        const password_valido = comprobarContrasenaValidaciones(contraseñaStr);
+        if (!password_valido.success) throw new Error(password_valido.message);
+    } catch (e) {
+        mainWindow.webContents.send("icono-cargando", false);
         return { success: false, message: e.message };
-    })
+    }
 
-    //comprobar si este dp no esta bloqueado
     const deviceId = String(machineIdSync());
-    const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo_hash: hashDatosSistema(usernameStr), id_dp_hash: hashDatosSistema(deviceId) })
+    const usernameHash = hashDatosSistema(usernameStr);
+    const deviceIdHash = hashDatosSistema(deviceId);
+
+    // Lanzar operaciones I/O y de DB en paralelo para reducir tiempo total
+    const dpConfianzaDataPromise = readFileSession('dispositivoConfianza').catch(() => null);
+    const dataAutoverificacionPromise = readFileSession("omitirVerificacionCuentaFile").catch(() => null);
+
+    const checkBloqueadoPromise = DispositivosBloqueados.exists({ 
+        correo_hash: usernameHash, 
+        id_dp_hash: deviceIdHash 
+    });
+    
+    const loginPromise = LoginUsuarioDB({ correo: usernameStr, contrasena: contraseñaStr });
+
+    // Esperar a que terminen las tareas principales simultáneamente
+    const [dp_bloqueado_db, usuario_data, dp_confianza_data] = await Promise.all([
+        checkBloqueadoPromise,
+        loginPromise,
+        dpConfianzaDataPromise
+    ]);
+
     if (dp_bloqueado_db) {
-        return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
+        mainWindow.webContents.send("icono-cargando", false);
+        return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' };
     }
-    //iniciar sesion
-    const usuario_data = await LoginUsuarioDB({ correo: usernameStr, contrasena: contraseñaStr })
+
     if (!usuario_data || !usuario_data.success) {
-        await clearFileSession('sessionFile');
-        return { success: false, message: 'Usuario no encontrado' }
+        clearFileSession('sessionFile').catch(console.error); // sin await (background)
+        mainWindow.webContents.send("icono-cargando", false);
+        return { success: false, message: 'Usuario no encontrado' };
     }
-    //dispositivo confianza
-    const dp_confianza_data = await readFileSession('dispositivoConfianza')
-    let dp_confianza = false
-    if (!dp_confianza_data || (dp_confianza_data != "" && !validateToken(dp_confianza_data.token))) {
-        await clearFileSession('dispositivoConfianza');
-    }
-    else {
+
+    // Verificar dispositivo de confianza
+    let dp_confianza = false;
+    if (!dp_confianza_data || (dp_confianza_data !== "" && !validateToken(dp_confianza_data.token))) {
+        clearFileSession('dispositivoConfianza').catch(console.error); // background
+    } else {
         const tokenhash = createHash("sha256").update(dp_confianza_data.token).digest("hex");
-        dp_confianza = await TokenDPC.exists({ correo_hash: hashDatosSistema(username), token: tokenhash, id_dp_hash: hashDatosSistema(deviceId) })
+        dp_confianza = await TokenDPC.exists({ correo_hash: usernameHash, token: tokenhash, id_dp_hash: deviceIdHash });
     }
-    //autovalidacion del codigo de verificacion de cuenta por token
-    const data_autoverificacion = !dp_confianza ? await readFileSession("omitirVerificacionCuentaFile") : ""
-    let autoverificacion = dp_confianza
-    if (!dp_confianza && data_autoverificacion && (data_autoverificacion.token && data_autoverificacion.username)) {
-        const valido = validateToken(data_autoverificacion.token)
-        if (valido) {
-            //validar token con mongodb
-            const tokenhash = createHash("sha256").update(data_autoverificacion.token).digest("hex");
-            const token_datos = await TokenVC.exists({ correo_hash: hashDatosSistema(usuario_data.data.correo), token: tokenhash, id_dp_hash: hashDatosSistema(deviceId) })
 
-            if (!token_datos) await clearFileSession('omitirVerificacionCuentaFile');
-            else autoverificacion = true
+    // Autovalidacion del codigo de verificacion de cuenta por token
+    let autoverificacion = dp_confianza;
+    if (!dp_confianza) {
+        const data_autoverificacion = await dataAutoverificacionPromise;
+        if (data_autoverificacion && data_autoverificacion.token && data_autoverificacion.username) {
+            if (validateToken(data_autoverificacion.token)) {
+                const tokenhash = createHash("sha256").update(data_autoverificacion.token).digest("hex");
+                const token_datos = await TokenVC.exists({ correo_hash: hashDatosSistema(usuario_data.data.correo), token: tokenhash, id_dp_hash: deviceIdHash });
 
-        }
-        else {//limpiar archivo y token
-            await Promise.all([
-                clearFileSession('omitirVerificacionCuentaFile'),
-                LimpiarJWTUsuarioVC(username, data_autoverificacion.token)
-            ])
+                if (!token_datos) {
+                    clearFileSession('omitirVerificacionCuentaFile').catch(console.error);
+                } else {
+                    autoverificacion = true;
+                }
+            } else {
+                Promise.all([
+                    clearFileSession('omitirVerificacionCuentaFile'),
+                    LimpiarJWTUsuarioVC(usernameStr, data_autoverificacion.token)
+                ]).catch(console.error);
+            }
         }
     }
-    //guardar correo en variables globales
-    (async () => ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data }))()
+
+    // Guardar datos en memoria de manera síncrona
+    ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data });
+
     if (autoverificacion) {
-        //JWT , mantener sesion iniciada en cache
+        // JWT, mantener sesion iniciada en cache (ejecutado en background)
         if (mantener_sesion_iniciada) {
-            const token = await generarteToken('sesion');
-            saveSessionFile({ username: usuario_data.data.correo, token: token }).catch((e) => {
-                console.error(e)
-            })
-            await AñadirJWTUsuario(usuario_data.data.correo, token)
+            (async () => {
+                const token = await generarteToken('sesion');
+                await Promise.all([
+                    saveSessionFile({ username: usuario_data.data.correo, token: token }),
+                    AñadirJWTUsuario(usuario_data.data.correo, token)
+                ]);
+            })().catch(console.error);
         }
-        console.log("-Autoverificacion de cuenta")
-    }
-    else {
+        console.log("-Autoverificacion de cuenta");
+    } else {
         (async () => {
-            //crear verificacion por codigo de correo
-            const code_generado = String(generarCodigoVerificacion())
-            const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.data.apodo, code: code_generado })
+            const code_generado = String(generarCodigoVerificacion());
+            const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.data.apodo, code: code_generado });
 
-            //insertar codigo en mongodb guardando si se quería mantener la sesión
             await InsertarCuentaVC({
                 correo: usuario_data.data.correo,
                 code: code_generado,
@@ -353,17 +369,19 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
                 }
             });
 
-            //mandar correo
-            enviarEmail({ correoDestino: usuario_data.data.correo, asunto: asunto, htmlContenido: htmlContenido })
+            enviarEmail({ correoDestino: usuario_data.data.correo, asunto: asunto, htmlContenido: htmlContenido });
         })().catch(() => {
             mainWindow.webContents.send("fallo-correo-mandar");
-        })
+        });
     }
-    return { success: true, autoverificacion: autoverificacion }
+
+    mainWindow.webContents.send("icono-cargando", false);
+    return { success: true, autoverificacion: autoverificacion };
 }
 
 async function ValidarCodeLogin({ correo, code }) {
     const deviceId = String(machineIdSync());
+    storage.setIdDispositivo(deviceId);
 
     //mirar si es codigo valido (estructura)
     const VCodigo = comprobar_codigo_verificacion(code)
@@ -382,8 +400,8 @@ async function ValidarCodeLogin({ correo, code }) {
     let { intentos, mantenerSesion } = parsedData;
 
     if (intentos <= 0) {
-        ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
-            (async () => await BorrarCuentaVC(correo))()
+        ACTUALIZAR_DATOS_LOGIN({ limpiar: true });
+        ;(async () => await BorrarCuentaVC(correo))();
         return { success: false, message: "Fallo al iniciar sesion: intentos acabados" }
     }
 
@@ -404,27 +422,28 @@ async function ValidarCodeLogin({ correo, code }) {
     await AñadirJWTUsuarioVC(correo, tokenVC)
 
     //borrar codigos
-    await BorrarCuentaVC(correo)
+    await BorrarCuentaVC(correo);
 
-        //mandar correo confirmando inicio de sesion
-        (async () => {
-            const { asunto, htmlContenido } = ConfirmacionInicioSesion()
-            enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-        })().catch(() => {
-            mainWindow.webContents.send("fallo-correo-mandar");
-        })
+    //mandar correo confirmando inicio de sesion
+    ;(async () => {
+        const { asunto, htmlContenido } = ConfirmacionInicioSesion()
+        enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+    })().catch(() => {
+        mainWindow.webContents.send("fallo-correo-mandar");
+    })
 
     return { success: true };
 }
 
 async function cerrarSesionUsuario(correo) {
+    mainWindow.webContents.send("cerrando-sesion", true);
     ACTUALIZAR_DATOS_LOGIN({ limpiar: true });
 
     (async () => {
         try {
             const data = await readFileSession('sessionFile').catch(() => null);
 
-//limpiar ficheros cache
+            //limpiar ficheros cache
             const arreglos = [
                 clearFileSession('sessionFile'),
                 clearCacheChats(),
@@ -432,7 +451,7 @@ async function cerrarSesionUsuario(correo) {
                 clearCacheArchivosDescargados(),
                 clearCacheUrlImgExtensiones()
             ];
-            
+
             if (data && data.token) {
                 arreglos.push(LimpiarJWTUsuario(correo, data.token));
             }
@@ -446,6 +465,7 @@ async function cerrarSesionUsuario(correo) {
         }
     })();
 
+    mainWindow.webContents.send("cerrando-sesion", false);
 
     return true;
 }

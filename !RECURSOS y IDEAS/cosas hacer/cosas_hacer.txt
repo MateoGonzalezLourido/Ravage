@@ -28,3 +28,5 @@ Añadir salir de un chat, bloquear un chat
 Añadir seguridad en el login ante espameo en bucle de contraseñas y correos
 
 Añadir limites de peticiones en funciones donde se puede hacer spoff a db o server
+
+Añadir detector de cambio de hash id del dispositivo !seguridad
