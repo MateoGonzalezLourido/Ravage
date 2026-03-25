@@ -249,7 +249,7 @@ e.preventDefault()
             username_g = username
             document.querySelector("#form-validation-correo").addEventListener('submit', form_validar_correo_registro)
         }
-        else {//TODO:mostrar errores en el html
+        else {//mostrar errores en el html
             if (result.bloqueador) return;
             console.log("ERROR AL REGISTRAR USUARIO")
             document.querySelector("#text-error-form-causa-registro").innerHTML = "*" + result.message + "*"
@@ -282,3 +282,12 @@ document.body.appendChild(syncBar)
     }
     
 })
+
+window.sesion_usuario.FALLO_CORREO_MANDAR(() => {
+    window.pushNotificacion({
+    prioridad: 0, // menor número = más importante
+    texto: `Fallo al enviar correo`,
+    tipo: "error" // "info", "error", "success"
+})
+})
+    

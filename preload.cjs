@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld('sesion_usuario', {
     },
     ICONO_CARGANDO:(callback)=>{ //se envia al log.js
            ipcRenderer.on("icono-cargando", (_, mostrar) => callback(mostrar));
+    },
+    FALLO_CORREO_MANDAR:(callback)=>{ //se envia al log.js
+           ipcRenderer.on("fallo-correo-mandar", () => callback());
     }
 });
 
