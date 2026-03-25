@@ -55,7 +55,7 @@ export function procesarUsuario(usuario) {
 }
 
 
-export async function LoginUsuarioDB({ correo = null, contraseña = null, token = null, id_dp = null, bloqueada = false }) {
+export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {
     try {
         if (token && correo && id_dp) {
             const correoStr = String(correo);
@@ -81,9 +81,9 @@ export async function LoginUsuarioDB({ correo = null, contraseña = null, token 
             return { success: true, data: procesarUsuario(usuario_datos) };
         }
 
-        if (!correo || !contraseña) return { success: false };
+        if (!correo || !contrasena) return { success: false };
         const correoStr = String(correo);
-        const contraseñaStr = String(contraseña);
+        const contraseñaStr = String(contrasena);
 
         const correoHash = hashDatosSistema(correoStr);
         const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).lean();
@@ -99,7 +99,7 @@ export async function LoginUsuarioDB({ correo = null, contraseña = null, token 
     }
 }
 
-export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, secretKey, idamigo, publicKey = "" }) {
+export async function InsertarUsuario({ apodo = "Usuario", contrasena, correo, secretKey, idamigo, publicKey = "" }) {
     try {
         const sKey = secretKey || randomBytes(32).toString("hex");
         const idAmigo = idamigo || randomBytes(5).toString("hex").toUpperCase();
@@ -111,7 +111,7 @@ export async function InsertarUsuario({ apodo = "Usuario", contraseña, correo, 
             apodo: encriptarDatosSistema(apodo),
             correo: encriptarDatosSistema(correo),
             correo_hash: correoHash,
-            contrasena: contraseña,
+            contrasena: contrasena,
             secretKey: sKey,
             idamigo: encriptarDatosSistema(idAmigo),
             idamigo_hash: idamigoHash,
