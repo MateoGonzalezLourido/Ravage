@@ -1,17 +1,3 @@
 *ERRORES VISTOS EN EL TEST RAVAGE
 
 -No aparece la extension del archivo al editar el nombre de un archivo (textarea), tampoco despues de editar el nombre y actualizarlo en el span ; pero si actualizas la lista por completo si aparece la extension
-
-
-
--
-file:///C:/Users/mlour/Documents/!programacion/Ravage/backend/repositories/MessageRepository.js:8
-import { setChatEnCache } from './ChatRepository.js';
-         ^^^^^^^^^^^^^^
-SyntaxError: The requested module './ChatRepository.js' does not provide an export named 'setChatEnCache'
-    at #asyncInstantiate (node:internal/modules/esm/module_job:319:21)
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at async ModuleJob.run (node:internal/modules/esm/module_job:422:5)
-    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
-    at async loadApplicationPackage (file:///C:/Users/mlour/Documents/!programacion/Ravage/node_modules/electron/dist/resources/default_app.asar/main.js:125:9)
-    at async file:///C:/Users/mlour/Documents/!programacion/Ravage/node_modules/electron/dist/resources/default_app.asar/main.js:238:9

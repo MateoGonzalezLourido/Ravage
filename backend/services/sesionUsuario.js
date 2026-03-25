@@ -115,20 +115,16 @@ async function autoLoginUsuario() {
 
 const n_intentos_codigo_validacion = 5;
 
-async function registerUsuario({ apodo = "Usuario", correo = null, password = null }) {
+async function registerUsuario(mainWindow,{ apodo = "Usuario", correo = null, password = null }) {
+    //TODO: añadir asincronias
     const correoStr = String(correo).toLowerCase();
     const passwordStr = String(password);
     const apodoStr = String(apodo);
 
-    //comprobacion inicial de si es un correo
+    //comprobaciones datos
     const resultado = comprobaciones_Correo(correoStr)
     if (!resultado.success) {
         return { success: false, message: resultado.message }
-    }
-    //verificar si no existe un usuario igual
-    const existe = await User.exists({ correo_hash: hashDatosSistema(correoStr) });
-    if (existe) {
-        return { success: false, message: "Correo ya registrado" };
     }
     
     const apodo_valido = comprobar_apodo(apodoStr)
@@ -140,6 +136,13 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     if (!password_valido.success) {
         return { success: false, message: password_valido.message };
     }
+
+    //verificar si no existe un usuario igual
+    const existe = await User.exists({ correo_hash: hashDatosSistema(correoStr) });
+    if (existe) {
+        return { success: false, message: "Correo ya registrado" };
+    }
+    mainWindow.webContents.send("icono-cargando", true);
 
     // Generar hash de contraseña y llaves de identidad
     const pass_hashed = await hash(passwordStr, saltos_contraseña);
@@ -168,6 +171,7 @@ async function registerUsuario({ apodo = "Usuario", correo = null, password = nu
     //enviar correo
     enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido })
 
+    mainWindow.webContents.send("icono-cargando", false);
     return { success: true }
 }
 
@@ -201,7 +205,7 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     //crear nueva cuenta de usuario
     const nuevoUsuario = await InsertarUsuario({ 
         apodo: apodo, 
-        contraseña: passwordHash, 
+        contrasena: passwordHash, 
         correo: correoStr,
         publicKey: publicKey || ""
     });
