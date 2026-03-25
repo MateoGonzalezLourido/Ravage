@@ -824,7 +824,7 @@ async function iniciar_buzonAPI() {
     }, 1000)
 
     const cambios = await window.buzonAPI.REVISAR_BUZON()
-    for (const entrada of cambios.entrada) await hacer_cambios_buzon(entrada)
+    for (const entrada of cambios?.entrada || []) await hacer_cambios_buzon(entrada)
 
     await window.buzonAPI.INICIAR_BUZON()
 
