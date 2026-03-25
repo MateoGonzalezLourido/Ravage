@@ -30,7 +30,9 @@ import {
     comprobarContrasenaValidaciones,
     comprobar_apodo,
     comprobaciones_Correo,
-    comprobar_codigo_verificacion} from './validadores.js'
+    comprobar_codigo_verificacion
+} from './validadores.js'
+import { promises } from 'original-fs';
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 //vairables de usuario de sesion
 function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
@@ -71,18 +73,18 @@ function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
 async function autoLoginUsuario() {
     // Leer fichero con datos de sesion anterior
     const data = await readFileSession('sessionFile');
-    
+
     // Verificar si estan todos los datos
     if (!data || !data.username || !data.token) {
-        return { success: false }; 
+        return { success: false };
     }
-    
+
     const username = String(data.username);
     const token = String(data.token);
 
     // Comprobacion inicial de si es un correo
     if (!comprobaciones_Correo(username).success) {
-        await clearFileSession('sessionFile'); 
+        await clearFileSession('sessionFile');
         return { success: false };
     }
 
@@ -115,33 +117,31 @@ async function autoLoginUsuario() {
 
 const n_intentos_codigo_validacion = 5;
 
-async function registerUsuario(mainWindow,{ apodo = "Usuario", correo = null, password = null }) {
-        //mostrar en html un icono de carga
+async function registerUsuario(mainWindow, { apodo = "Usuario", correo = null, password = null }) {
+    //mostrar en html un icono de carga
     mainWindow.webContents.send("icono-cargando", true);
 
     const correoStr = String(correo).toLowerCase();
     const passwordStr = String(password);
     const apodoStr = String(apodo);
 
-    try {
-        await Promise.all([
-            (async () => {
-                const res = comprobaciones_Correo(correoStr);
-                if (!res.success) throw new Error(res.message);
-            })(),
-            (async () => {
-                const res = comprobar_apodo(apodoStr);
-                if (!res.success) throw new Error(res.message);
-            })(),
-            (async () => {
-                const res = comprobarContrasenaValidaciones(passwordStr);
-                if (!res.success) throw new Error(res.message);
-            })()
-        ]);
-    } catch (error) {
+    await Promise.all([
+        (async () => {
+            const res = comprobaciones_Correo(correoStr);
+            if (!res.success) throw new Error(res.message);
+        })(),
+        (async () => {
+            const res = comprobar_apodo(apodoStr);
+            if (!res.success) throw new Error(res.message);
+        })(),
+        (async () => {
+            const res = comprobarContrasenaValidaciones(passwordStr);
+            if (!res.success) throw new Error(res.message);
+        })()
+    ]).catch((error) => {
         mainWindow.webContents.send("icono-cargando", false);
         return { success: false, message: error.message };
-    }
+    })
 
     //verificar si no existe un usuario igual
     const existe = await User.exists({ correo_hash: hashDatosSistema(correoStr) });
@@ -149,8 +149,8 @@ async function registerUsuario(mainWindow,{ apodo = "Usuario", correo = null, pa
         mainWindow.webContents.send("icono-cargando", false);
         return { success: false, message: "Usuario ya registrado" };
     }
-        
-mainWindow.webContents.send("icono-cargando", false);
+
+    mainWindow.webContents.send("icono-cargando", false);
 
     // Ejecutar TODA la carga asíncrona pesada (hash, rsa, db y email) en segundo plano
     (async () => {
@@ -161,16 +161,16 @@ mainWindow.webContents.send("icono-cargando", false);
             ]);
 
 
-    //crear verificacion por codigo de correo
-    const code_generado = String(generarCodigoVerificacion());
-    //generar correo
-    const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado });
- 
-    const deviceId = String(machineIdSync()); 
+            //crear verificacion por codigo de correo
+            const code_generado = String(generarCodigoVerificacion());
+            //generar correo
+            const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado });
 
-            await InsertarVC({ 
-                correo: correoStr, 
-                code: code_generado, 
+            const deviceId = String(machineIdSync());
+
+            await InsertarVC({
+                correo: correoStr,
+                code: code_generado,
                 id: deviceId,
                 data: {
                     passwordHash: pass_hashed,
@@ -181,7 +181,7 @@ mainWindow.webContents.send("icono-cargando", false);
                 }
             });
             enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido });
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             mainWindow.webContents.send("fallo-correo-mandar");
         }
@@ -193,7 +193,7 @@ mainWindow.webContents.send("icono-cargando", false);
 async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     const codeStr = String(code);
     const correoStr = String(correo);
-    const deviceId = String(machineIdSync()); 
+    const deviceId = String(machineIdSync());
 
     //mirar si es codigo valido (estructura)
     const VCodigo = comprobar_codigo_verificacion(codeStr)
@@ -219,9 +219,9 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     // Si llegamos aquí, el código es correcto porque BuscarVC lo encontró.
 
     //crear nueva cuenta de usuario
-    const nuevoUsuario = await InsertarUsuario({ 
-        apodo: apodo, 
-        contrasena: passwordHash, 
+    const nuevoUsuario = await InsertarUsuario({
+        apodo: apodo,
+        contrasena: passwordHash,
         correo: correoStr,
         publicKey: publicKey || ""
     });
@@ -233,7 +233,7 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
             await BorrarVC(correoStr);
             return { success: false, message: "Fallo al crear el usuario: intentos acabados" }
         }
-        
+
         parsedData.intentos = intentos;
         if (typeof code_db.data === 'string') {
             await ValidationCode.updateOne({ _id: code_db._id }, { $set: { data: parsedData } });
@@ -245,31 +245,41 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
 
     //guardar llave privada localmente
     if (privateKey) {
-        await saveIdentityFile({ privateKey: privateKey });
+        await saveIdentityFile({ privateKey: privateKey })
     }
 
-    //mandar correo confirmando creacion de cuenta
-    const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo })
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    //limpiar datos 
-    BorrarVC(correoStr)
+    (async () => await BorrarVC(correoStr))()
+        (async () => {
+            //mandar correo confirmando creacion de cuenta
+            const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo })
+            enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+        })().catch(() => {
+            mainWindow.webContents.send("fallo-correo-mandar");
+        })
+
     return { success: true };
 }
 
 async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = true }) {
+    //mostrar en html un icono de carga
+    mainWindow.webContents.send("icono-cargando", true);
+
     const usernameStr = String(username).toLowerCase();
     const contraseñaStr = String(contraseña);
 
-    //comprobacion inicial de si es un correo
-    const resultado = comprobaciones_Correo(usernameStr)
-    if (!resultado.success) {
-        return { success: false, message: resultado.message }
-    }
+    await Promise.all([
+        (async () => {
+            const resultado = comprobaciones_Correo(usernameStr);
+            if (!resultado.success) throw new Error(resultado.message);
+        })(),
+        (async () => {
+            const password_valido = comprobarContrasenaValidaciones(contraseñaStr);
+            if (!password_valido.success) throw new Error(password_valido.message);
+        })()
+    ]).catch((e) => {
+        return { success: false, message: e.message };
+    })
 
-    const password_valido = comprobarContrasenaValidaciones(contraseñaStr);
-    if (!password_valido.success) {
-        return { success: false, message: password_valido.message };
-    }
     //comprobar si este dp no esta bloqueado
     const deviceId = String(machineIdSync());
     const dp_bloqueado_db = await DispositivosBloqueados.exists({ correo_hash: hashDatosSistema(usernameStr), id_dp_hash: hashDatosSistema(deviceId) })
@@ -307,45 +317,53 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
 
         }
         else {//limpiar archivo y token
-            await clearFileSession('omitirVerificacionCuentaFile');
-            LimpiarJWTUsuarioVC(username, data_autoverificacion.token)
+            await Promise.all([
+                clearFileSession('omitirVerificacionCuentaFile'),
+                LimpiarJWTUsuarioVC(username, data_autoverificacion.token)
+            ])
         }
     }
     //guardar correo en variables globales
-    ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data });
+    (async () => ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data }))()
     if (autoverificacion) {
         //JWT , mantener sesion iniciada en cache
         if (mantener_sesion_iniciada) {
             const token = await generarteToken('sesion');
-            await saveSessionFile({ username: usuario_data.data.correo, token: token })
+            saveSessionFile({ username: usuario_data.data.correo, token: token }).catch((e) => {
+                console.error(e)
+            })
             await AñadirJWTUsuario(usuario_data.data.correo, token)
         }
         console.log("-Autoverificacion de cuenta")
     }
     else {
-        //crear verificacion por codigo de correo
-        const code_generado = String(generarCodigoVerificacion())
-        const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.data.apodo, code: code_generado })
-        
-        //insertar codigo en mongodb guardando si se quería mantener la sesión
-        await InsertarCuentaVC({ 
-            correo: usuario_data.data.correo, 
-            code: code_generado, 
-            id: deviceId,
-            data: { 
-                mantenerSesion: mantener_sesion_iniciada,
-                intentos: n_intentos_codigo_validacion
-            }
-        });
+        (async () => {
+            //crear verificacion por codigo de correo
+            const code_generado = String(generarCodigoVerificacion())
+            const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.data.apodo, code: code_generado })
 
-        //mandar correo
-        enviarEmail({ correoDestino: usuario_data.data.correo, asunto: asunto, htmlContenido: htmlContenido })
+            //insertar codigo en mongodb guardando si se quería mantener la sesión
+            await InsertarCuentaVC({
+                correo: usuario_data.data.correo,
+                code: code_generado,
+                id: deviceId,
+                data: {
+                    mantenerSesion: mantener_sesion_iniciada,
+                    intentos: n_intentos_codigo_validacion
+                }
+            });
+
+            //mandar correo
+            enviarEmail({ correoDestino: usuario_data.data.correo, asunto: asunto, htmlContenido: htmlContenido })
+        })().catch(() => {
+            mainWindow.webContents.send("fallo-correo-mandar");
+        })
     }
     return { success: true, autoverificacion: autoverificacion }
 }
 
 async function ValidarCodeLogin({ correo, code }) {
-    const deviceId = String(machineIdSync()); 
+    const deviceId = String(machineIdSync());
 
     //mirar si es codigo valido (estructura)
     const VCodigo = comprobar_codigo_verificacion(code)
@@ -365,55 +383,71 @@ async function ValidarCodeLogin({ correo, code }) {
 
     if (intentos <= 0) {
         ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
-        await BorrarCuentaVC(correo);
+            (async () => await BorrarCuentaVC(correo))()
         return { success: false, message: "Fallo al iniciar sesion: intentos acabados" }
     }
-
-    // Si llegamos aquí, el código es correcto porque BuscarCuentaVC lo encontró.
 
     //JWT , mantener sesion iniciada en cache
     if (mantenerSesion) {
         const token = await generarteToken('sesion');
-        await saveSessionFile({ username: correo, token: token })
+        saveSessionFile({ username: correo, token: token }).catch((e) => {
+            console.error(e)
+        })
         await AñadirJWTUsuario(correo, token)
     }
 
     //guardar auto verificacion de cuenta en fichero local (omitir verificacion futura)
     const tokenVC = await generarteToken('cuenta');
-    await saveOmitirVerificacionCuentaFile({ username: correo, token: tokenVC })
+    saveOmitirVerificacionCuentaFile({ username: correo, token: tokenVC }).catch((e) => {
+        console.error(e)
+    })
     await AñadirJWTUsuarioVC(correo, tokenVC)
 
     //borrar codigos
     await BorrarCuentaVC(correo)
 
-    //mandar correo confirmando inicio de sesion
-    const { asunto, htmlContenido } = ConfirmacionInicioSesion()
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    
+        //mandar correo confirmando inicio de sesion
+        (async () => {
+            const { asunto, htmlContenido } = ConfirmacionInicioSesion()
+            enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
+        })().catch(() => {
+            mainWindow.webContents.send("fallo-correo-mandar");
+        })
+
     return { success: true };
 }
 
 async function cerrarSesionUsuario(correo) {
-    //cojer datos del archivo de sesion para borrar el token
-    const data = await readFileSession('sessionFile')
-    //limpiar archivo de sesion
-    await clearFileSession('sessionFile');
-    //si existe ese archivo limpiar token
-    if (data) LimpiarJWTUsuario(correo, data.token)//borrar jwt de DB
-    //limpiar datos
     ACTUALIZAR_DATOS_LOGIN({ limpiar: true });
-    
-    //limpiar caches
-    await clearCacheChats();
-    await clearCacheUsuarios();
-    await clearCacheArchivosDescargados();
-    await clearCacheUrlImgExtensiones();
 
-    //mostrar log
+    (async () => {
+        try {
+            const data = await readFileSession('sessionFile').catch(() => null);
 
-    //sesion cerrada
-    console.warn("*Sesion cerrada")
-    return true
+//limpiar ficheros cache
+            const arreglos = [
+                clearFileSession('sessionFile'),
+                clearCacheChats(),
+                clearCacheUsuarios(),
+                clearCacheArchivosDescargados(),
+                clearCacheUrlImgExtensiones()
+            ];
+            
+            if (data && data.token) {
+                arreglos.push(LimpiarJWTUsuario(correo, data.token));
+            }
+
+            //si uno falla no rompe otros
+            await Promise.allSettled(arreglos);
+
+            console.warn("*Sesion cerrada (recursos liberados)");
+        } catch (error) {
+            console.error("Error en el cierre de sesión persistente:", error);
+        }
+    })();
+
+
+    return true;
 }
 
 
