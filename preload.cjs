@@ -40,6 +40,9 @@ contextBridge.exposeInMainWorld('sesion_usuario', {
     },
     CERRAR_SESION: () => {
         return ipcRenderer.invoke('cerrar-sesion-usuario')
+    },
+    ICONO_CARGANDO:(callback)=>{ //se envia al log.js
+           ipcRenderer.on("icono-cargando", (_, mostrar) => callback(mostrar));
     }
 });
 

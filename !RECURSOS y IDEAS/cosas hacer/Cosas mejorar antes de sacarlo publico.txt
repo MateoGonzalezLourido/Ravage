@@ -1,3 +1,5 @@
 -hacer readme
 -testear todo el sistema
 -hacer pruebas de seguridad
+-añadir sistema dispositivos confianza
+-arreglar/hacer ajustes

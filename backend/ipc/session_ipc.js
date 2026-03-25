@@ -21,7 +21,7 @@ import {
     permitirCambioApodoUsuario
 } from '../services/Usuario.js';
 
-export function registerSessionHandlers() {
+export function registerSessionHandlers(mainWindow) {
     // NAVEGACIÓN (moved here or kept in main? let's keep separate)
     ipcMain.on("cambiar-pagina-log", () => {
         app.relaunch();
@@ -43,7 +43,7 @@ export function registerSessionHandlers() {
         if (apodo && !comprobar_apodo(apodo).success) {
             return { success: false, message: "Apodo no válido" }
         }
-        return await registerUsuario({ apodo, correo: username, password })
+        return await registerUsuario(mainWindow,{ apodo, correo: username, password })
     })
 
     ipcMain.handle('validar-code-registrar-usuario', async (_, correo, code) => {

@@ -5,7 +5,7 @@ import { mongoose, GridFSBucket, ObjectId, fs, randomBytes } from '../utils/libs
 import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { readFileSession } from '../services/controladorArchivos.js';
-import { setChatEnCache } from './ChatRepository.js';
+import { setChatEnCacheRaw } from './ChatRepository.js';
 import { obtener_datos_usuario, procesarUsuario } from './UserRepository.js';
 import { setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 
@@ -121,7 +121,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 
         // Actualizar cache del chat (importante por los ratchet_keys)
         const updatedChat = await ChatsRavage.findById(id_chat).lean();
-        if (updatedChat) await setChatEnCache(updatedChat);
+        if (updatedChat) await setChatEnCacheRaw(updatedChat);
 
         // Rotación automática si el contador es muy alto
         const ROTATION_THRESHOLD = 100;

@@ -177,12 +177,13 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#text-error-form-causa-login").classList.add("flex-display")
         }
     })
-    document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", (e) => {
-        e.preventDefault()
+    function cambiar_login_menu(e){
+e.preventDefault()
         mostrar_menu_validation_code(false)
         mostrar_menu_reg(false)
         mostrar_menu_log(true)
-    })
+    }
+    document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", cambiar_login_menu)
     //login-pagina soporte cambiar
     document.querySelector("#bt-cambiar-contraseña-login").addEventListener("click", (e) => {
         e.stopPropagation()
@@ -191,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     //registro
     document.querySelector("#form-registro").addEventListener('submit', async (e) => {
         e.preventDefault()
-        document.querySelector("#bt-cambiar-login-validation-code").removeEventListener("click", camibar_login_validation_code)
+        document.querySelector("#bt-cambiar-login-validation-code").removeEventListener("click", cambiar_login_menu)
         document.querySelector("#form-validation-correo").removeEventListener('submit', form_validar_correo_registro)
         document.querySelector("#form-validation-correo").removeEventListener('submit', form_validar_correo)
 
@@ -236,13 +237,14 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelector("#text-error-form-causa-codigo-validar").classList.remove("flex-display")
             document.querySelector("#text-error-form-causa-codigo-validar").classList.add("ocultar-display")
             mostrar_menu_validation_code(true)
-            function camibar_login_validation_code(e) {
+            function cambiar_login_validation_code(e) {
                 e.preventDefault()
                 mostrar_menu_validation_code(false)
+                mostrar_menu_log(false)
                 mostrar_menu_reg(true)
                 window.sesion_usuario.BORRAR_CODES_VALIDACION_CUENTA(username)
             }
-            document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", camibar_login_validation_code)
+            document.querySelector("#bt-cambiar-login-validation-code").addEventListener("click", cambiar_login_validation_code)
             intentos = 5;//esto se define en backend
             username_g = username
             document.querySelector("#form-validation-correo").addEventListener('submit', form_validar_correo_registro)
@@ -261,4 +263,22 @@ document.addEventListener("DOMContentLoaded", () => {
         mostrar_menu_reg(false)
         mostrar_menu_log(true)
     })
+})
+
+window.sesion_usuario.ICONO_CARGANDO((mostrar) => {
+    const clase_sync_bar="sync-mailbox-bar"
+    if(mostrar){
+        if(!document.querySelector(`.${clase_sync_bar}`)){
+    const syncBar = document.createElement("div")
+    syncBar.className = clase_sync_bar
+    syncBar.innerHTML = `<div class="sync-spinner"></div><span>Procesando...</span>`
+document.body.appendChild(syncBar)
+        requestAnimationFrame(() => syncBar.classList.add("visible"))
+        }
+    }
+    else{
+        document.querySelector(`.${clase_sync_bar}`)?.classList.remove("visible")
+        setTimeout(() => document.querySelector(`.${clase_sync_bar}`)?.remove(), 450)
+    }
+    
 })

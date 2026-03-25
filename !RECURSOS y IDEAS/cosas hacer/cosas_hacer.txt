@@ -24,3 +24,5 @@ AÑADIR EVENTOS DE PARTICIPANTES EN CHAT GRUPAL SECCION INFO CHAT (añadir conta
 !!!!!!FALLO IMPORTANTE, NO SE GUARDAN LOS MENSAJES QUE NO TENGAN  ASUNTO
 
 Añadir salir de un chat, bloquear un chat
+
+Añadir seguridad en el login ante espameo en bucle de contraseñas y correos
