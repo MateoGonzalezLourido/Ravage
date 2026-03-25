@@ -116,37 +116,48 @@ async function autoLoginUsuario() {
 const n_intentos_codigo_validacion = 5;
 
 async function registerUsuario(mainWindow,{ apodo = "Usuario", correo = null, password = null }) {
-    //TODO: añadir asincronias
     const correoStr = String(correo).toLowerCase();
     const passwordStr = String(password);
     const apodoStr = String(apodo);
 
-    //comprobaciones datos
-    const resultado = comprobaciones_Correo(correoStr)
-    if (!resultado.success) {
-        return { success: false, message: resultado.message }
-    }
-    
-    const apodo_valido = comprobar_apodo(apodoStr)
-    if (!apodo_valido.success) {
-        return { success: false, message: apodo_valido.message }
-    }
-
-    const password_valido = comprobarContrasenaValidaciones(passwordStr);
-    if (!password_valido.success) {
-        return { success: false, message: password_valido.message };
+    try {
+        await Promise.all([
+            (async () => {
+                const res = comprobaciones_Correo(correoStr);
+                if (!res.success) throw new Error(res.message);
+            })(),
+            (async () => {
+                const res = comprobar_apodo(apodoStr);
+                if (!res.success) throw new Error(res.message);
+            })(),
+            (async () => {
+                const res = comprobarContrasenaValidaciones(passwordStr);
+                if (!res.success) throw new Error(res.message);
+            })()
+        ]);
+    } catch (error) {
+        return { success: false, message: error.message };
     }
 
     //verificar si no existe un usuario igual
     const existe = await User.exists({ correo_hash: hashDatosSistema(correoStr) });
     if (existe) {
-        return { success: false, message: "Correo ya registrado" };
+        return { success: false, message: "Usuario ya registrado" };
     }
+
+    //mostrar en html un icono de carga
     mainWindow.webContents.send("icono-cargando", true);
 
-    // Generar hash de contraseña y llaves de identidad
-    const pass_hashed = await hash(passwordStr, saltos_contraseña);
-    const keys = generarLlavesRSA();
+    let pass_hashed, keys;
+    try {
+        [pass_hashed, keys] = await Promise.all([
+            hash(passwordStr, saltos_contraseña),
+            generarLlavesRSA()
+        ]);
+    } catch (e) {
+        mainWindow.webContents.send("icono-cargando", false);
+        return { success: false, message: "Error al generar seguridad del codigo de validacion" };
+    }
 
     //crear verificacion por codigo de correo
     const code_generado = String(generarCodigoVerificacion())
@@ -155,23 +166,31 @@ async function registerUsuario(mainWindow,{ apodo = "Usuario", correo = null, pa
     
     //insertar codigo en mongodb con la data necesaria para completar el registro después
     const deviceId = String(machineIdSync()); 
-    await InsertarVC({ 
-        correo: correoStr, 
-        code: code_generado, 
-        id: deviceId,
-        data: {
-            passwordHash: pass_hashed,
-            apodo: apodoStr,
-            publicKey: keys.publicKey,
-            privateKey: keys.privateKey,
-            intentos: n_intentos_codigo_validacion
+
+    // Ejecutar de forma asíncrona en segundo plano para no bloquear el retorno al usuario
+    (async () => {
+        try {
+            await InsertarVC({ 
+                correo: correoStr, 
+                code: code_generado, 
+                id: deviceId,
+                data: {
+                    passwordHash: pass_hashed,
+                    apodo: apodoStr,
+                    publicKey: keys.publicKey,
+                    privateKey: keys.privateKey,
+                    intentos: n_intentos_codigo_validacion
+                }
+            });
+            enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido });
+        } catch(e) {
+            mainWindow.webContents.send("fallo-correo-mandar");
         }
-    });
-
-    //enviar correo
-    enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido })
-
+    })();
+    
+    //quita rel icono de carga
     mainWindow.webContents.send("icono-cargando", false);
+
     return { success: true }
 }
 

@@ -1,5 +1,5 @@
 import { 
-    generateKeyPairSync, 
+    generateKeyPair,
     publicEncrypt, 
     privateDecrypt, 
     createCipheriv, 
@@ -8,8 +8,8 @@ import {
     createHash, 
     createHmac 
 } from '../utils/libs.js';
-
-
+import { promisify } from 'util'; // <-- Añadir esto
+const generateKeyPairAsync=promisify(generateKeyPair);
 let systemKey = null;
 function getSystemKey() {
     if (!systemKey) {
@@ -74,8 +74,8 @@ export function hashDatosSistema(datos) {
  */
 
 // Generar par de llaves de identidad (X25519)
-export function generarLlavesIdentidad() {
-    const { publicKey, privateKey } = generateKeyPairSync('x25519', {
+export async function generarLlavesIdentidad() {
+    const { publicKey, privateKey } = await generateKeyPairAsync('x25519', {
         publicKeyEncoding: { type: 'spki', format: 'pem' },
         privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
     });
@@ -119,8 +119,8 @@ export function descifrarContenido(cifrado, key) {
 // sobre la ChatKey inicial, o ECDH para derivarla.
 // Implementaremos RSA para la envoltura de la ChatKey por simplicidad en la lógica de distribución.
 
-export function generarLlavesRSA() {
-    return generateKeyPairSync('rsa', {
+export async function generarLlavesRSA() {
+    return await generateKeyPairAsync('rsa', {
         modulusLength: 2048,
         publicKeyEncoding: { type: 'spki', format: 'pem' },
         privateKeyEncoding: { type: 'pkcs8', format: 'pem' }

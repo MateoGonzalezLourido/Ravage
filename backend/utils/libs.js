@@ -14,6 +14,7 @@ import {
     createCipheriv, 
     createDecipheriv, 
     generateKeyPairSync, 
+    generateKeyPair,
     publicEncrypt, 
     privateDecrypt, 
     createHmac 
@@ -84,6 +85,7 @@ export {
     createCipheriv,
     createDecipheriv,
     generateKeyPairSync,
+    generateKeyPair,
     publicEncrypt,
     privateDecrypt,
     createHmac,
