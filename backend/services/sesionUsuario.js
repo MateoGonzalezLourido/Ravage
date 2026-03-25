@@ -116,6 +116,9 @@ async function autoLoginUsuario() {
 const n_intentos_codigo_validacion = 5;
 
 async function registerUsuario(mainWindow,{ apodo = "Usuario", correo = null, password = null }) {
+        //mostrar en html un icono de carga
+    mainWindow.webContents.send("icono-cargando", true);
+
     const correoStr = String(correo).toLowerCase();
     const passwordStr = String(password);
     const apodoStr = String(apodo);
@@ -136,40 +139,35 @@ async function registerUsuario(mainWindow,{ apodo = "Usuario", correo = null, pa
             })()
         ]);
     } catch (error) {
+        mainWindow.webContents.send("icono-cargando", false);
         return { success: false, message: error.message };
     }
 
     //verificar si no existe un usuario igual
     const existe = await User.exists({ correo_hash: hashDatosSistema(correoStr) });
     if (existe) {
+        mainWindow.webContents.send("icono-cargando", false);
         return { success: false, message: "Usuario ya registrado" };
     }
+        
+mainWindow.webContents.send("icono-cargando", false);
 
-    //mostrar en html un icono de carga
-    mainWindow.webContents.send("icono-cargando", true);
-
-    let pass_hashed, keys;
-    try {
-        [pass_hashed, keys] = await Promise.all([
-            hash(passwordStr, saltos_contraseña),
-            generarLlavesRSA()
-        ]);
-    } catch (e) {
-        mainWindow.webContents.send("icono-cargando", false);
-        return { success: false, message: "Error al generar seguridad del codigo de validacion" };
-    }
-
-    //crear verificacion por codigo de correo
-    const code_generado = String(generarCodigoVerificacion())
-    //generar correo
-    const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado })
-    
-    //insertar codigo en mongodb con la data necesaria para completar el registro después
-    const deviceId = String(machineIdSync()); 
-
-    // Ejecutar de forma asíncrona en segundo plano para no bloquear el retorno al usuario
+    // Ejecutar TODA la carga asíncrona pesada (hash, rsa, db y email) en segundo plano
     (async () => {
         try {
+            const [pass_hashed, keys] = await Promise.all([
+                hash(passwordStr, saltos_contraseña),
+                generarLlavesRSA()
+            ]);
+
+
+    //crear verificacion por codigo de correo
+    const code_generado = String(generarCodigoVerificacion());
+    //generar correo
+    const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado });
+ 
+    const deviceId = String(machineIdSync()); 
+
             await InsertarVC({ 
                 correo: correoStr, 
                 code: code_generado, 
@@ -184,12 +182,10 @@ async function registerUsuario(mainWindow,{ apodo = "Usuario", correo = null, pa
             });
             enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido });
         } catch(e) {
+            console.error(e);
             mainWindow.webContents.send("fallo-correo-mandar");
         }
     })();
-    
-    //quita rel icono de carga
-    mainWindow.webContents.send("icono-cargando", false);
 
     return { success: true }
 }
@@ -211,7 +207,8 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         return { success: false, message: "Fallo al crear el usuario: no existe ese código o ha expirado" };
     }
 
-    let { intentos, passwordHash, apodo, publicKey, privateKey } = code_db.data;
+    let parsedData = typeof code_db.data === 'string' ? JSON.parse(code_db.data) : code_db.data;
+    let { intentos, passwordHash, apodo, publicKey, privateKey } = parsedData;
 
     if (intentos <= 0) {
         await BorrarVC(correoStr);
@@ -236,7 +233,13 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
             await BorrarVC(correoStr);
             return { success: false, message: "Fallo al crear el usuario: intentos acabados" }
         }
-        await ValidationCode.updateOne({ _id: code_db._id }, { $set: { "data.intentos": intentos } });
+        
+        parsedData.intentos = intentos;
+        if (typeof code_db.data === 'string') {
+            await ValidationCode.updateOne({ _id: code_db._id }, { $set: { data: parsedData } });
+        } else {
+            await ValidationCode.updateOne({ _id: code_db._id }, { $set: { "data.intentos": intentos } });
+        }
         return { success: false, message: "Fallo al crear el usuario" }
     }
 
@@ -246,14 +249,10 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
     }
 
     //mandar correo confirmando creacion de cuenta
-    const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo_usuario })
+    const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo })
     enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
     //limpiar datos 
     BorrarVC(correoStr)
-    apodo_usuario = null;
-    contraseña_hashed = null;
-    identity_keys = null;
-    bloquear_accion = false
     return { success: true };
 }
 
@@ -278,7 +277,7 @@ async function loginUsuario({ username, contraseña, mantener_sesion_iniciada = 
         return { success: false, message: 'ESTE DISPOSITIVO TIENE EL ACCESO BLOQUEADO A ESTA CUENTA' }
     }
     //iniciar sesion
-    const usuario_data = await LoginUsuarioDB({ correo: usernameStr, contraseña: contraseñaStr })
+    const usuario_data = await LoginUsuarioDB({ correo: usernameStr, contrasena: contraseñaStr })
     if (!usuario_data || !usuario_data.success) {
         await clearFileSession('sessionFile');
         return { success: false, message: 'Usuario no encontrado' }
@@ -361,7 +360,8 @@ async function ValidarCodeLogin({ correo, code }) {
         return { success: false, message: "Fallo al iniciar sesion: no existe ese código o ha expirado" };
     }
 
-    let { intentos, mantenerSesion } = code_db.data;
+    let parsedData = typeof code_db.data === 'string' ? JSON.parse(code_db.data) : code_db.data;
+    let { intentos, mantenerSesion } = parsedData;
 
     if (intentos <= 0) {
         ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
