@@ -1,7 +1,7 @@
 //importar componentes js
 import { desplegar_menu_añadir_chat } from './ui/añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './ui/url_icono_extensiones_archivos.js'
-import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario,Es_usuario_Sesion, texto_mostrar_fecha_mensajes_bloque } from './ui/chat.js'
+import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion, texto_mostrar_fecha_mensajes_bloque } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes } from './ui/ajustes.js'
 import { crear_chat_historial_archivos_descargados, invalidar_cache_historial } from './ui/historial_archivos_descargados.js'
 
@@ -50,7 +50,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
         })
 
         // Filtrar por concordancia de nombre si hay filtro
-        const lista_filtrada = filtro 
+        const lista_filtrada = filtro
             ? lista_chats_ordenada.filter(c => {
                 const chatEx = map_grupales[c.id] || {}
                 const nombre = chatEx.nombre || "Chat sin nombre"
@@ -68,7 +68,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
             .join("")
 
         document.querySelector("#lista-chats-componentes").innerHTML = html
-        
+
         //eventos doom
         document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
             // Evento contextmenu para mutear/bloquear chats
@@ -82,7 +82,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 const chatInfo = lista_chats.find(c => (c.id || c._id) === id_chat)
                 const esta_silenciado = chatInfo?.silenciado || false
                 const esta_bloqueado = chatInfo?.bloqueado || false
-                
+
                 const texto_silenciar = esta_silenciado ? "Desilenciar chat" : "Silenciar chat"
                 const texto_bloquear = esta_bloqueado ? "Desbloquear chat" : "Bloquear chat"
 
@@ -220,13 +220,13 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                             if (!mensaje && archivos_mensaje.length === 0) return;
 
                             // Validar mensaje antes de enviar
-                        const esValido = await window.validadores.VALIDAR_MENSAJE(mensaje)
-                        if (!esValido && archivos_mensaje.length === 0) {
-                            window.pushNotificacion({ PRIORIDAD: 2, texto: "Mensaje no válido", tipo: "info" })
-                            return;
-                        }
+                            const esValido = await window.validadores.VALIDAR_MENSAJE(mensaje)
+                            if (!esValido && archivos_mensaje.length === 0) {
+                                window.pushNotificacion({ PRIORIDAD: 2, texto: "Mensaje no válido", tipo: "info" })
+                                return;
+                            }
 
-                        const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
+                            const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
                             if (result) {//limpiar seccion mensaje escritura
                                 const copia_archivos = archivos_mensaje
                                 archivos_mensaje = []
@@ -424,7 +424,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                                         if (event.key == "Enter" && !event.shiftKey) {
                                             event.preventDefault()
                                             let nombre_nuevo = textarea.value.trim()
-                                            
+
                                             // Regla especial de archivo
                                             const esNombreValido = await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nombre_nuevo)
                                             if (!esNombreValido) {
@@ -557,13 +557,13 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
 
         //crear mensaje
         const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
-        
+
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         const lastBlock = chatContainer.querySelector(".bloque-dia-chat:last-child");
         const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
 
         let lastBlockDateText = lastBlock ? lastBlock.querySelector(".fecha-bloque-mensajes span")?.innerHTML : null;
-        
+
         if (!lastBlock || lastBlockDateText !== fechaActualText) {
             // crear nuevo bloque  y añadir ahi
             const nuevoBloqueHTML = `
@@ -873,7 +873,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             seccionHistorial.classList.remove("ocultar-display")
             chatUsuario.classList.add("ocultar-display")
             if (infoChatSeccion) infoChatSeccion.classList.add("ocultar-display")
-            
+
             // Cargar contenido historial
             crear_chat_historial_archivos_descargados()
         } else {
@@ -891,5 +891,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         //realizar cambios en la app segun la entrada del buzon
         for (const entrada of data.entrada) await hacer_cambios_buzon(entrada)
     });
+
+})
+
+window.sesion_usuario.CERRANDO_SESION((mostrar) => {
+    const clase_sync_bar = "sync-mailbox-bar"
+    if (mostrar) {
+        if (!document.querySelector(`.${clase_sync_bar}`)) {
+            const syncBar = document.createElement("div")
+            syncBar.className = clase_sync_bar
+            syncBar.innerHTML = `<div class="sync-spinner"></div><span>Cerrando sesión...</span>`
+            document.body.appendChild(syncBar)
+            requestAnimationFrame(() => syncBar.classList.add("visible"))
+        }
+    }
+    else {
+        document.querySelector(`.${clase_sync_bar}`)?.classList.remove("visible")
+        setTimeout(() => document.querySelector(`.${clase_sync_bar}`)?.remove(), 450)
+    }
 
 })

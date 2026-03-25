@@ -46,7 +46,10 @@ contextBridge.exposeInMainWorld('sesion_usuario', {
     },
     FALLO_CORREO_MANDAR:(callback)=>{ //se envia al log.js
            ipcRenderer.on("fallo-correo-mandar", () => callback());
-    }
+    },
+    CERRANDO_SESION:(callback)=>{ //se envia al log.js
+           ipcRenderer.on("cerrando-sesion", (_, mostrar) => callback(mostrar));
+    },
 });
 
 // ─── NAVEGACIÓN ───────────────────────────────────────────────────────────────

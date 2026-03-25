@@ -54,7 +54,7 @@ export function procesarUsuario(usuario) {
     return result;
 }
 
-
+//TODO:OPTIMIZAR Y LIMITAR DATOS RECIBIDOS
 export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {
     try {
         if (token && correo && id_dp) {

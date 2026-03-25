@@ -150,6 +150,8 @@ async function readFileSession(rutaKey, cifrado = true) {
         return JSON.parse(decrypted.toString());
     } catch (e) {
         console.error(`Error al leer archivo ${rutaKey}:`, e);
+        // Si el archivo está corrupto o la clave es incorrecta, lo eliminamos para que no cause errores persistentes
+        await clearFileSession(rutaKey);
         return null;
     }
 }
