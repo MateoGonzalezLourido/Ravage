@@ -149,8 +149,10 @@ async function _aplicar_limites_cache() {
     const isDiskOk = await _verificar_recursos_sistema(limitDisk, 'disk');
     
     // Si forzamos disco, el límite de RAM de la Map debe ser pequeño (ej 256MB)
-    // El "cache" real estará en el archivo persistente que puede ser de hasta limitDisk.
-    const maxRAM_MB = forceDisk ? 256 : (isRAMOk ? limitRAM : 128);
+    // Pero si el disco está al límite (isDiskOk = false), bajamos la RAM aún más para ser cautos.
+    const maxRAM_MB = forceDisk 
+        ? (isDiskOk ? 256 : 128) 
+        : (isRAMOk ? limitRAM : 128);
     
     let currentMB = _estimar_tamano_mb(Array.from(_cache_chats.values()));
     
@@ -192,7 +194,10 @@ async function _gestionar_persistencia_frecuentes() {
     _timer_persistencia = setTimeout(async () => {
         try {
             const { forceDisk, limitDisk } = await _obtener_limite_actual();
-            const persistentLimitMB = forceDisk ? limitDisk : LIMITE_FRECUENTES_MB;
+            const isDiskOk = await _verificar_recursos_sistema(limitDisk, 'disk');
+            
+            // Si el disco está bajo en espacio, usamos el límite mínimo incluso en modo forceDisk
+            const persistentLimitMB = (forceDisk && isDiskOk) ? limitDisk : LIMITE_FRECUENTES_MB;
 
             const allChats = Array.from(_cache_chats.values());
             const sorted = allChats.sort((a, b) => {
