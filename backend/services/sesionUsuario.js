@@ -32,7 +32,6 @@ import {
     comprobaciones_Correo,
     comprobar_codigo_verificacion
 } from './validadores.js'
-import { promises } from 'original-fs';
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 //vairables de usuario de sesion
 function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {

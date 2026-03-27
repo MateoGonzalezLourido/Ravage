@@ -23,6 +23,9 @@ import {
     setMostrarCorreoUsuario
 } from '../STORAGE/Variables_sesion.js';
 
+// Campos mínimos necesarios para el login y la inicialización de la sesión según sesionUsuario.js
+const LOGIN_FIELDS = "_id apodo correo createdAt exp_bloq_apodo exp_bloq_correo exp_bloq_contrasena users_silence users_bloq secretKey chats.id chats.grupo chats.ultimoCambio contactos.id contactos.apodo idamigo visible invisible mostrarCorreo";
+
 /**
  * Helper para desencriptar un objeto de usuario de la DB.
  */
@@ -47,6 +50,13 @@ export function procesarUsuario(usuario) {
         }));
     }
 
+    if (result.contactos && Array.isArray(result.contactos)) {
+        result.contactos = result.contactos.map(c => ({
+            ...c,
+            apodo: (c.apodo && typeof c.apodo === 'object') ? desencriptarDatosSistema(c.apodo) : (c.apodo || "")
+        }));
+    }
+
     if (result._id) {
         result.id = result._id.toString();
     }
@@ -54,7 +64,6 @@ export function procesarUsuario(usuario) {
     return result;
 }
 
-//TODO:OPTIMIZAR Y LIMITAR DATOS RECIBIDOS
 export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {
     try {
         if (token && correo && id_dp) {
@@ -75,7 +84,7 @@ export async function LoginUsuarioDB({ correo = null, contrasena = null, token =
             if (!token_datos) return { success: false };
 
             const correoHash = hashDatosSistema(correoStr);
-            const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).lean();
+            const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).select(LOGIN_FIELDS).lean();
             if (!usuario_datos) return { success: false };
             
             return { success: true, data: procesarUsuario(usuario_datos) };
@@ -86,7 +95,12 @@ export async function LoginUsuarioDB({ correo = null, contrasena = null, token =
         const contraseñaStr = String(contrasena);
 
         const correoHash = hashDatosSistema(correoStr);
-        const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).lean();
+        // Al hacer login con contraseña, necesitamos el campo contrasena para comparar,
+        // además de los campos necesarios para la sesión.
+        const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada })
+            .select(`${LOGIN_FIELDS} contrasena`)
+            .lean();
+            
         if (!usuario_datos) return { success: false };
 
         const ok = await compare(contraseñaStr, usuario_datos.contrasena);

@@ -3,3 +3,4 @@
 -hacer pruebas de seguridad
 -añadir sistema dispositivos confianza
 -arreglar/hacer ajustes
+-terminar bloqueo de dispositivos al inicio sesion
