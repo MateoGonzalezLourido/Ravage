@@ -212,8 +212,15 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     const esIdentificadorValido = chatIdLimpio && mongoose.Types.ObjectId.isValid(chatIdLimpio);
 
     if (esIdentificadorValido) {
-        const chat = await ChatsRavage.findById(chatIdLimpio);
         if (!chat) return false;
+
+        // Comprobar si el usuario tiene el chat bloqueado
+        const miUsuarioConChats = await User.findById(id_propio, "chats").lean();
+        const chatMiInfo = miUsuarioConChats?.chats.find(c => c.id.toString() === chatIdLimpio.toString());
+        if (chatMiInfo && chatMiInfo.bloqueado) {
+            console.warn(`[CREAR_CHAT_NUEVO] Intento de modificar chat bloqueado (${chatIdLimpio}) por el usuario ${id_propio}`);
+            return false;
+        }
 
         const ids_añadir = ids.filter(id => !chat.usuarios.some(uid => uid.toString() === id.toString()));
         if (ids_añadir.length === 0) return true; // Ya estaban todos

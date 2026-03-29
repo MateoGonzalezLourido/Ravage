@@ -34,6 +34,13 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 
         if (!chat || !usuario) return false;
 
+        // Comprobar si el usuario tiene el chat bloqueado
+        const chatUsuarioInfo = usuario.chats.find(c => c.id.toString() === id_chat.toString());
+        if (chatUsuarioInfo && chatUsuarioInfo.bloqueado) {
+            console.warn(`[ENVIAR_MENSAJE] Intento de envío en chat bloqueado (${id_chat}) por el usuario ${id_emisor}`);
+            return false;
+        }
+
         // E2EE: Obtener identidad de la caché en memoria (mucho más rápido que disco)
         const identity_data = await getIdentity();
         if (!identity_data || !identity_data.privateKey) {
