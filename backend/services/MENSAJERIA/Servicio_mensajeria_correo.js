@@ -1,4 +1,6 @@
 // Usando fetch nativo de Node.js v18+
+import { createLogger } from '../../utils/logger.js';
+const log = createLogger('mensajeria');
 import { randomInt } from 'node:crypto';
 
 function generarCodigoVerificacion() {//generar codigo 6 digitos que se utilizara para verificar
@@ -36,7 +38,7 @@ async function enviarEmail({ correoDestino = null, asunto = "Sin asunto", htmlCo
         throw new Error(`Brevo error: ${errorData.message || res.statusText}`);
     }
 
-    console.log("Correo enviado al usuario")
+    log.info("Correo enviado al usuario");
 }
 
 export { enviarEmail, generarCodigoVerificacion };

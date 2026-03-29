@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('security-repo');
 import { ValidationCode, CuentaValidationCode, DatosCuentaVC, TokenSession, TokenVC, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
 import { createHash } from '../utils/libs.js';
 import { getIdDispositivo } from '../STORAGE/Variables_sesion.js';
@@ -18,7 +20,7 @@ export async function InsertarVC({ correo, code, id, data = {} }) {
         });
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -39,7 +41,7 @@ export async function InsertarCuentaVC({ correo, code, id, data = {} }) {
         });
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -58,7 +60,7 @@ export async function InsertarDatosCuentaVC({ correo, code, id, tipo }) {
         });
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }

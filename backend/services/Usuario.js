@@ -2,6 +2,8 @@ import { hash, compare, machineIdSync } from '../utils/libs.js';
 import { hashDatosSistema, desencriptarDatosSistema } from './cryptoService.js';
 
 
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('usuario');
 import { User } from '../models/User.js';
 import { DatosCuentaVC } from '../models/Security.js';
 import { InsertarDatosCuentaVC, BorrarDatosCuentaVC } from '../repositories/SecurityRepository.js';
@@ -243,7 +245,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
         //comparar codigo de usuario con el de mongodb
         const ok = await compare(String(code), code_db.code);
         if (!ok) {//no son iguales
-            console.error(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
+            log.warn(`Código incorrecto, intentos restantes: ${intentos_codigo_validacion}`)
             bloquear_accion = false
             return { success: false, message: "Fallo al cambiar datos: codigo incorrecto", intentos: intentos_codigo_validacion };
         };
