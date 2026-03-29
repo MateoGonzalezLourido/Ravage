@@ -20,27 +20,27 @@ export async function url_icono_extension_img(extension) {
     //ocasiones que daria problemas o siempre devolveria el icono por defecto
     if (!extension || extension === "" || typeof extension !== "string") return [`${carpetaPrincipal}/${img_defecto}`, false]
 
+    //eliminar . inicial si existe (MOVÉNDOLO AL PRINCIPIO PARA EVITAR BUGS)
+    const extension_usar = (extension[0] === '.' ? extension.replace(".", "") : extension).toLowerCase()
+    
     const _cache_img_extensiones  = await window.cache_url_img_extensiones.getCacheUrlImgExtensiones()
     
     let img_usar;
     if (!_cache_img_extensiones) {
         _cache_img_extensiones=await getDataImgExtensiones()
-        img_usar = _cache_img_extensiones[extension_usar?.toLowerCase()] || img_defecto
+        img_usar = _cache_img_extensiones[extension_usar] || img_defecto
 
     }
     else{
-        img_usar = _cache_img_extensiones[extension_usar?.toLowerCase()] || img_defecto
+        img_usar = _cache_img_extensiones[extension_usar] || img_defecto
     if(img_usar===img_defecto)   {
     _cache_img_extensiones=await getDataImgExtensiones()
     }
-    img_usar = _cache_img_extensiones[extension_usar?.toLowerCase()] || img_defecto
+    img_usar = _cache_img_extensiones[extension_usar] || img_defecto
 if(img_usar!==img_defecto)   {
-        window.cache_url_img_extensiones.setCacheUrlImgExtensiones({[extension_usar?.toLowerCase()]:img_usar})
+        window.cache_url_img_extensiones.setCacheUrlImgExtensiones({[extension_usar]:img_usar})
     }
  }
-
-    //eliminar . inicial si existe
-    const extension_usar = extension[0] === '.' ? extension.replace(".", "") : extension
 
     //conseguir icono
     const url_img = `${carpetaPrincipal}/${img_usar}`

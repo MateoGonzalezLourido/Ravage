@@ -336,6 +336,32 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
 }
 
 
+export async function obtener_varios_usuarios(ids, datos_usar = null) {
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+
+    const id_propio = getIDMongodbUsuario();
+    const query_datos = datos_usar || "correo apodo visible idamigo mostrarCorreo";
+    
+    // Buscar en DB todos los IDs
+    const usuarios_db = await User.find({ _id: { $in: ids } }, query_datos).lean();
+    
+    const resultados = usuarios_db.map(u => {
+        const procesado = procesarUsuario(u);
+        const idStr = procesado.id || procesado._id?.toString();
+        
+        // Ocultar correo si no es el usuario propio y mostrarCorreo es false
+        if (idStr !== id_propio?.toString() && procesado.mostrarCorreo === false) {
+            const sinCorreo = { ...procesado };
+            delete sinCorreo.correo;
+            return sinCorreo;
+        }
+        return procesado;
+    });
+
+    return resultados;
+}
+
+
 export async function encontrar_usuario(texto, correo = false) {
     try {
         const id_propio = getIDMongodbUsuario();

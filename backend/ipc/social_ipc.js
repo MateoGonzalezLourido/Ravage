@@ -2,6 +2,7 @@ import { ipcMain } from '../utils/libs.js';
 import {
     encontrar_usuario,
     obtener_datos_usuario,
+    obtener_varios_usuarios,
     añadirUsuariosBloqueados,
     eliminarUsuariosBloqueados,
     añadirUsuariosSilenciados,
@@ -23,6 +24,10 @@ export function registerSocialHandlers() {
 
     ipcMain.handle("obtener-datos-usuario-externo", async (_, id, datos) => {
         return await obtener_datos_usuario(id, datos)
+    })
+
+    ipcMain.handle("obtener-varios-usuarios-externos", async (_, ids, datos) => {
+        return await obtener_varios_usuarios(ids, datos)
     })
 
     ipcMain.handle("obtener-contactos-usuario", () => {
