@@ -10,6 +10,7 @@ import { startServer } from './backend/servidores/serverLocalHost.js';
 import { connectDB, closeDB } from "./backend/db/mongo.js";
 import { autoLoginUsuario } from './backend/services/sesionUsuario.js';
 import { detenerBuzon } from './backend/services/buzon.js';
+import { setMainWindow } from './backend/STORAGE/Variables_sesion.js';
 
 // Import modular IPC handlers
 import { registerSessionHandlers } from './backend/ipc/session_ipc.js';
@@ -71,6 +72,7 @@ if (!gotTheLock) {
         await connectDB();
         const AutoLogin = await autoLoginUsuario();
         createMainWindowHome(AutoLogin.success);
+        setMainWindow(mainWindow)
     });
 }
 

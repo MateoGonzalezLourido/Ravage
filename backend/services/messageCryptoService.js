@@ -92,10 +92,10 @@ export async function descifrarListaMensajes(mensajes, chat) {
                                 }));
                             }
                         } else {
-                             throw new Error(`Error AES-GCM: Tag mismatch. Clave incorrecta. ${err.message}`);
+                             throw new Error(`Error AES-GCM: Tag mismatch. Clave incorrecta. ${aesErr.message}`);
                         }
                     } else {
-                        throw new Error(`Error AES-GCM: Tag mismatch. Sin copia de respaldo. ${err.message}`);
+                        throw new Error(`Error AES-GCM: Tag mismatch. Sin copia de respaldo. ${aesErr.message}`);
                     }
                 }
 
