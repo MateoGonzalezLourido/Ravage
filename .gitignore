@@ -1,7 +1,12 @@
 node_modules/
 .env
-package-lock.json
+.test_data/
+.APP_DATA/
+!RECURSOS y IDEAS/
+.DS_Store
 *.pem
 *.key
 *.crt
 *.csr
+pino-*.log
+# package-lock.json NO debe ignorarse para consistencia de versiones en equipo

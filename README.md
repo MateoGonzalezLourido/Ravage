@@ -8,7 +8,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![Socket.IO](https://img.shields.io/badge/Socket.IO-4.x-010101?logo=socket.io&logoColor=white)](https://socket.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
 **Ravage** es una aplicación de escritorio construida con Electron que implementa un **sistema de mensajería con cifrado extremo a extremo (E2EE)** basado en un protocolo de ratchet simétrico, transferencia segura de archivos cifrados con AES-256-GCM en streaming, y un sistema de caché adaptativo multinivel que ajusta su estrategia según los recursos del sistema.
 
@@ -98,9 +98,11 @@ npm install
 
 ---
 
-## ⚙ Configuración de Variables de Entorno
+Crea un archivo `.env` en la raíz del proyecto (puedes usar `.env.example` como plantilla):
 
-Crea un archivo `.env` en la raíz del proyecto:
+```bash
+cp .env.example .env
+```
 
 ```env
 # ── Base de datos ──
