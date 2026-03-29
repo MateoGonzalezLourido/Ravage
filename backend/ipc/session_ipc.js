@@ -2,6 +2,10 @@ import { ipcMain, app } from '../utils/libs.js';
 import { loginUsuario, registerUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } from '../services/sesionUsuario.js';
 import { comprobaciones_Correo, comprobarContrasenaValidaciones, comprobar_apodo, comprobar_codigo_verificacion, comprobar_contraseña_cuenta } from '../services/validadores.js';
 import { BorrarVC, BorrarCuentaVC } from '../repositories/SecurityRepository.js';
+import { machineIdSync } from '../utils/libs.js';
+import { authRateLimiter } from '../utils/rateLimiter.js';
+import { estaDispositivoBloqueadoApp, registrarInfraccionPersistent } from '../repositories/rateLimitRepository.js';
+import { hashDatosSistema } from '../services/cryptoService.js';
 import {
     getCorreoSesion,
     getApodoSesion,
@@ -22,6 +26,37 @@ import {
 } from '../services/Usuario.js';
 
 export function registerSessionHandlers(mainWindow) {
+    const machineId = machineIdSync();
+    const id_dp_hash = hashDatosSistema(machineId);
+
+    /**
+     * Verifica bloqueos permanentes y rate-limiting en memoria.
+     * Si salta el límite de memoria, registra una infracción en DB.
+     * @returns {Promise<{blocked: boolean, message?: string}>}
+     */
+    async function checkSecurityLimits() {
+        // 1. Verificar bloqueo permanente de la App (irreversible)
+        if (await estaDispositivoBloqueadoApp(id_dp_hash)) {
+            return { blocked: true, message: "Este dispositivo ha sido bloqueado permanentemente por mal uso. Contacta con soporte para más información." };
+        }
+
+        // 2. Verificar Rate Limiter en memoria (7 intentos / 15 min)
+        const limiter = authRateLimiter.check(id_dp_hash);
+        if (limiter.blocked) {
+            // Registrar infracción en DB (si llega a 5 en un día, se bloquea permanentemente)
+            const audit = await registrarInfraccionPersistent(id_dp_hash);
+            
+            let msg = `Demasiados intentos. Por favor, espera ${Math.ceil(limiter.resetIn / 60000)} minutos.`;
+            if (audit.bloqueadoAhora) {
+                msg = "Has excedido el límite de seguridad diario. Este dispositivo ha sido BLOQUEADO permanentemente.";
+            }
+
+            return { blocked: true, message: msg };
+        }
+
+        return { blocked: false };
+    }
+
     // NAVEGACIÓN (moved here or kept in main? let's keep separate)
     ipcMain.on("cambiar-pagina-log", () => {
         app.relaunch();
@@ -30,29 +65,57 @@ export function registerSessionHandlers(mainWindow) {
 
     // SESIÓN
     ipcMain.handle('login-usuario', async (_, username, password, mantener_sesion_iniciada) => {
+        const security = await checkSecurityLimits();
+        if (security.blocked) return { success: false, message: security.message };
+
         if (!comprobaciones_Correo(username).success || !comprobarContrasenaValidaciones(password).success) {
+            authRateLimiter.record(id_dp_hash); // Registrar intento fallido
             return { success: false, message: "Datos de login inválidos" }
         }
-        return await loginUsuario(mainWindow, { username, contraseña: password, mantener_sesion_iniciada })
+        
+        const res = await loginUsuario(mainWindow, { username, contraseña: password, mantener_sesion_iniciada });
+        if (!res.success) authRateLimiter.record(id_dp_hash);
+        else authRateLimiter.reset(id_dp_hash); // Éxito: limpiar limitador
+
+        return res;
     })
 
     ipcMain.handle('registrar-usuario', async (_, apodo, username, password) => {
+        const security = await checkSecurityLimits();
+        if (security.blocked) return { success: false, message: security.message };
+
         if (!comprobaciones_Correo(username).success || !comprobarContrasenaValidaciones(password).success) {
+            authRateLimiter.record(id_dp_hash);
             return { success: false, message: "Datos de registro inválidos" }
         }
         if (apodo && !comprobar_apodo(apodo).success) {
             return { success: false, message: "Apodo no válido" }
         }
-        return await registerUsuario(mainWindow, { apodo, correo: username, password })
+        
+        const res = await registerUsuario(mainWindow, { apodo, correo: username, password });
+        if (!res.success) authRateLimiter.record(id_dp_hash);
+        return res;
     })
 
     ipcMain.handle('validar-code-registrar-usuario', async (_, correo, code) => {
-        if (!comprobar_codigo_verificacion(code).success) return { success: false, message: "Código no válido" }
+        const security = await checkSecurityLimits();
+        if (security.blocked) return { success: false, message: security.message };
+
+        if (!comprobar_codigo_verificacion(code).success) {
+            authRateLimiter.record(id_dp_hash);
+            return { success: false, message: "Código no válido" }
+        }
         return await ValidarCodeRegistroUsuario({ correo, code })
     })
 
     ipcMain.handle('validar-code-login-usuario', async (_, correo, password) => {
-        if (!comprobar_codigo_verificacion(password).success) return { success: false, message: "Código no válido" }
+        const security = await checkSecurityLimits();
+        if (security.blocked) return { success: false, message: security.message };
+
+        if (!comprobar_codigo_verificacion(password).success) {
+            authRateLimiter.record(id_dp_hash);
+            return { success: false, message: "Código no válido" }
+        }
         return await ValidarCodeLogin({ correo, code: password })
     })
 

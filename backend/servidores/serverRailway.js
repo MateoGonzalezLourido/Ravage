@@ -14,7 +14,17 @@ async function startServer() {
     log.info("Iniciando servidor en modo PRODUCCIÓN (Railway)...");
 
     const app = express();
+    app.set('trust proxy', 1); // Confiar en el proxy de Railway para obtener la IP real
     app.use(express.json());
+
+    // Middleware de Rate Limiting Global (Servidor)
+    const rateLimit = await import('express-rate-limit');
+    const globalLimiter = rateLimit.default({
+        windowMs: 15 * 60 * 1000,
+        max: 100, // Límite generoso para el servidor Socket.IO
+        message: "Demasiadas peticiones desde esta IP, por favor intenta más tarde."
+    });
+    app.use(globalLimiter);
 
     // Configuración de CORS segura para PRODUCCIÓN
     app.use((req, res, next) => {
