@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('buzon-repo');
 import { BuzonUsuarios } from '../models/Buzon.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { encriptarDatosSistema, desencriptarDatosSistema } from '../services/cryptoService.js';
@@ -62,7 +64,7 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
         );
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return false;
     }
 }
@@ -84,7 +86,7 @@ export async function Revisar_Buzon_Usuario() {
         );
         return entradas;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return [];
     }
 }

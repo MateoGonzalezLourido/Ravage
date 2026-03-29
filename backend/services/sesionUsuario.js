@@ -179,7 +179,7 @@ async function registerUsuario(mainWindow, { apodo = "Usuario", correo = null, p
             });
             enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido });
         } catch (e) {
-            console.error(e);
+            log.error(e);
             mainWindow.webContents.send("fallo-correo-mandar");
         }
     })();
@@ -410,7 +410,7 @@ async function ValidarCodeLogin({ correo, code }) {
     if (mantenerSesion) {
         const token = await generarteToken('sesion');
         saveSessionFile({ username: correo, token: token }).catch((e) => {
-            console.error(e)
+            log.error(e)
         })
         await AñadirJWTUsuario(correo, token)
     }
@@ -418,7 +418,7 @@ async function ValidarCodeLogin({ correo, code }) {
     //guardar auto verificacion de cuenta en fichero local (omitir verificacion futura)
     const tokenVC = await generarteToken('cuenta');
     saveOmitirVerificacionCuentaFile({ username: correo, token: tokenVC }).catch((e) => {
-        console.error(e)
+        log.error(e)
     })
     await AñadirJWTUsuarioVC(correo, tokenVC)
 

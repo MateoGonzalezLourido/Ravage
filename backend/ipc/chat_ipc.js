@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('chat-ipc');
 import { ipcMain, dialog } from '../utils/libs.js';
 import {
     getListaChats,
@@ -80,7 +82,7 @@ export function registerChatHandlers(mainWindow, socket) {
         // Validar que todas las rutas hayan sido autorizadas por el diálogo
         for (const arc of archivos) {
             if (!authorizedPaths.has(arc.ruta)) {
-                console.error("Acceso a ruta no autorizada bloqueado:", arc.ruta);
+                log.error({ ruta: arc.ruta }, "Acceso a ruta no autorizada bloqueado");
                 throw new Error("Unauthorized path access");
             }
         }

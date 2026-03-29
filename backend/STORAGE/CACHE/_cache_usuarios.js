@@ -1,3 +1,5 @@
+import { createLogger } from '../../utils/logger.js';
+const log = createLogger('cache-users');
 import { readFileSession, saveCacheUsuariosFile, getAjustesAppFile, saveAjustesAppFile } from '../../services/controladorArchivos.js';
 import { getRecommendedCacheStrategy, getSystemResources } from '../../utils/systemInfo.js';
 
@@ -75,7 +77,7 @@ async function _asegurar_inicio() {
         }
         _cache_frecuentes_cargada = true;
     } catch (e) {
-        console.error("Error al cargar usuarios frecuentes:", e);
+        log.error({ err: e }, "Error al cargar usuarios frecuentes");
     }
 }
 async function _obtener_limite_actual() {
@@ -202,7 +204,7 @@ async function _gestionar_persistencia_frecuentes() {
             
             await saveCacheUsuariosFile(frecuentes);
         } catch (e) {
-            console.error("Error persistiendo usuarios frecuentes:", e);
+            log.error({ err: e }, "Error persistiendo usuarios frecuentes");
         } finally {
             _timer_persistencia = null;
         }

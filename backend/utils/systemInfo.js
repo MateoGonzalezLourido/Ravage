@@ -1,3 +1,5 @@
+import { createLogger } from './logger.js';
+const log = createLogger('system-info');
 import { os, si } from './libs.js';
 
 /**
@@ -18,7 +20,7 @@ export async function getSystemResources() {
 
         return { totalRamGB, freeDiskGB };
     } catch (e) {
-        console.error("Error getting system resources:", e);
+        log.error({ err: e }, "Error getting system resources");
         // Fallback to os module for RAM if si fails
         return {
             totalRamGB: os.totalmem() / (1024 * 1024 * 1024),

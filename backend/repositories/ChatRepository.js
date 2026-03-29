@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('chat-repo');
 import { ChatsRavage } from '../models/Chat.js';
 import { User } from '../models/User.js';
 import { MessagesRavage } from '../models/Message.js';
@@ -87,7 +89,7 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
         const data_con_nombres = await resolverNombresChats(result);
         return data_con_nombres.map(convertirObjectId);
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return [];
     }
 }
@@ -161,7 +163,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
             return convertirObjectId(data_con_nombre);
         }
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -218,7 +220,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         const miUsuarioConChats = await User.findById(id_propio, "chats").lean();
         const chatMiInfo = miUsuarioConChats?.chats.find(c => c.id.toString() === chatIdLimpio.toString());
         if (chatMiInfo && chatMiInfo.bloqueado) {
-            console.warn(`[CREAR_CHAT_NUEVO] Intento de modificar chat bloqueado (${chatIdLimpio}) por el usuario ${id_propio}`);
+        log.warn(`[CREAR_CHAT_NUEVO] Intento de modificar chat bloqueado (${chatIdLimpio}) por el usuario ${id_propio}`);
             return false;
         }
 
@@ -262,7 +264,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
                     candidato: ids_añadir[0],
                     mensaje: msgSolicitud._id
                 }
-            }).catch(e => console.error(e));
+            }).catch(e => log.error(e));
 
             return { solicitud: true, mensaje_id: msgSolicitud._id };
         }
@@ -330,7 +332,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
                 añadido: ids_añadir[0], 
                 mensaje: msgEspecial._id 
             } 
-        }).catch(e => console.error(e));
+        }).catch(e => log.error(e));
 
         return true;
     }
@@ -346,7 +348,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     // Validar que el creador tenga llave pública
     const creador = usuarios_data.find(u => u._id.toString() === id_propio.toString());
     if (!creador || !creador.publicKey) {
-        console.error("[Chat] El creador no tiene llave pública, el chat será ilegible.");
+        log.error("[Chat] El creador no tiene llave pública, el chat será ilegible.");
     }
 
     for (const emisor of usuarios_data) {
@@ -354,7 +356,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         
         for (const receptor of usuarios_data) {
             if (!receptor.publicKey) {
-                console.warn(`[Chat] Usuario ${receptor._id} no tiene llave pública, saltando entrada de ratchet.`);
+                log.warn(`[Chat] Usuario ${receptor._id} no tiene llave pública, saltando entrada de ratchet.`);
                 continue;
             }
             
@@ -404,7 +406,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             ids: ids_totales.filter(id => id.toString() !== id_propio.toString()), 
             tipo: 2, 
             data: { creador: id_propio, chat: datos_chat._id } 
-        }).catch(e => console.error(e));
+        }).catch(e => log.error(e));
 
         // Actualizar cache con el nuevo chat
         await setChatEnCacheRaw(datos_chat.toObject());
@@ -465,11 +467,11 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
             ids: chat.usuarios, 
             tipo: 4, 
             data: { chat: id_chat, expulsado: id_usuario, id_mensaje: msgExpulsion._id?.toHexString(), mensaje: msgExpulsion._id, emisor: id_propio } 
-        }).catch(e => console.error(e));
+        }).catch(e => log.error(e));
 
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return false;
     }
 }
@@ -525,12 +527,12 @@ export async function RESPONDER_SOLICITUD_AÑADIR(id_chat, id_mensaje, aceptar) 
                     aceptada: aceptar,
                     respondido_por: id_propio
                 }
-            }).catch(e => console.error(e));
+            }).catch(e => log.error(e));
         }
 
         return { success: true, aceptada: aceptar };
     } catch (e) {
-        console.error("Error en RESPONDER_SOLICITUD_AÑADIR:", e);
+        log.error({ err: e }, "Error en RESPONDER_SOLICITUD_AÑADIR");
         return { success: false, message: "Error interno" };
     }
 }
@@ -648,11 +650,11 @@ export async function HACER_ADMIN_CHAT(id_chat, id_usuario) {
             ids: chat.usuarios.filter(u => u.toString() !== id_propio.toString()),
             tipo: 5, // reutilizar tipo 5 (actualizar app/chat_info) para que re-soliciten datos. o crear lógica front.
             data: { chat: id_chat, accion: "nuevo_admin", usuario: id_usuario }
-        }).catch(e => console.error(e));
+        }).catch(e => log.error(e));
 
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return false;
     }
 }
@@ -679,11 +681,11 @@ export async function QUITAR_ADMIN_CHAT(id_chat, id_usuario) {
             ids: chat.usuarios.filter(u => u.toString() !== id_propio.toString()),
             tipo: 5, 
             data: { chat: id_chat, accion: "quitar_admin", usuario: id_usuario }
-        }).catch(e => console.error(e));
+        }).catch(e => log.error(e));
 
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return false;
     }
 }
@@ -738,7 +740,7 @@ export async function rotarClavesChat(id_chat, id_emisor) {
 
         return true;
     } catch (e) {
-        console.error("Error al rotar claves del chat:", e);
+        log.error({ err: e }, "Error al rotar claves del chat");
         return false;
     }
 }
@@ -769,7 +771,7 @@ export async function SILENCIAR_CHAT_USUARIO(id_chat) {
 
         return { success: true, silenciado: newMuted };
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return { success: false, message: "Error al cambiar silencio" };
     }
 }
@@ -824,7 +826,7 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
 
         return { success: true, bloqueado: newBlocked };
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return { success: false, message: "Error al bloquear chat" };
     }
 }

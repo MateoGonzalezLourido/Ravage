@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('archivo-ctrl');
 import { randomBytes, createCipheriv, createDecipheriv, fs, path, app } from '../utils/libs.js';
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../repositories/UserRepository.js';
@@ -35,7 +37,7 @@ async function asegurarCarpeta() {
             await fs.promises.mkdir(RTDF.sessionDir, { recursive: true });
         }
     } catch (err) {
-        console.error("Error al crear directorio de datos:", err);
+        log.error({ err }, "Error al crear directorio de datos");
     }
 }
 
@@ -52,7 +54,7 @@ async function guardarArchivoGenerico(rutaKey, data, especial = false) {
             { encoding: "utf8" }
         );
     } catch (err) {
-        console.error(`Error al guardar en ${rutaKey}:`, err);
+        log.error({ err }, `Error al guardar en ${rutaKey}`);
         // Solo limpiar si es un error crítico de corrupción (archivo ilegible),
         // pero no por errores temporales de permisos.
         if (err.code !== 'EACCES') await clearFileSession(rutaKey);
@@ -110,7 +112,7 @@ async function saveAjustesAppFile({ data = {}, create = true }) {
             { encoding: "utf8" }
         );
     } catch (err) {
-        console.error("Error al guardar ajustes de app:", err);
+        log.error({ err }, "Error al guardar ajustes de app");
     }
 }
 
@@ -152,7 +154,7 @@ async function readFileSession(rutaKey, cifrado = true) {
 
         return JSON.parse(decrypted.toString());
     } catch (e) {
-        console.error(`Error al leer archivo ${rutaKey}:`, e);
+        log.error({ err: e }, `Error al leer archivo ${rutaKey}`);
         // Si el archivo está corrupto o la clave es incorrecta, lo eliminamos para que no cause errores persistentes
         await clearFileSession(rutaKey);
         return null;
@@ -191,7 +193,7 @@ async function getAjustesAppFile(nombre = null) {
         if (!nombre) return merged;
         return merged[nombre];
     } catch (e) {
-        console.error('Error al leer ajustes de app:', e);
+        log.error({ err: e }, "Error al leer ajustes de app");
         return { ...AJUSTES_APP_DEFAULT };
     }
 }
@@ -203,7 +205,7 @@ async function clearFileSession(rutaKey) {
             await fs.promises.unlink(filePath);
         }
     } catch (e) {
-        console.error(`No se pudo eliminar el archivo ${rutaKey}:`, e);
+        log.error({ err: e }, `No se pudo eliminar el archivo ${rutaKey}`);
     }
 }
 

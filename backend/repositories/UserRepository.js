@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('user-repo');
 import { User } from '../models/User.js';
 import { TokenSession } from '../models/Security.js';
 import { compare, createHash, randomBytes, mongoose } from '../utils/libs.js';
@@ -108,7 +110,7 @@ export async function LoginUsuarioDB({ correo = null, contrasena = null, token =
 
         return { success: true, data: procesarUsuario(usuario_datos) };
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return { success: false };
     }
 }
@@ -133,7 +135,7 @@ export async function InsertarUsuario({ apodo = "Usuario", contrasena, correo, s
         });
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -167,7 +169,7 @@ export async function añadirUsuariosBloqueados(id) {
 
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -196,7 +198,7 @@ export async function eliminarUsuariosBloqueados(id) {
 
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -219,7 +221,7 @@ export async function cambiarContraseñaUsuario(contraseña) {
 
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -245,7 +247,7 @@ export async function cambiarCorreoUsuario(correo) {
         setFechaBloqueoCorreo(fecha_bloqueo);
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -271,7 +273,7 @@ export async function cambiarApodoUsuario(apodo) {
         setFechaBloqueoApodo(fecha_bloqueo);
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -292,7 +294,7 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
 
         return key;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -394,7 +396,7 @@ export async function encontrar_usuario(texto, correo = false) {
         await setUsuarioEnCache(usuarioProcesado); // Guardar en cache al encontrarlo
         return { id: usuarioProcesado.id, nombre: usuarioProcesado.apodo };
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -424,7 +426,7 @@ export async function AÑADIR_CONTACTO(id, nombre) {
         }
         return false;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return false;
     }
 }
@@ -450,7 +452,7 @@ export async function eliminarUsuariosSilenciados(id) {
 
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -475,7 +477,7 @@ export async function añadirUsuariosSilenciados(id) {
 
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -500,7 +502,7 @@ export async function toggleInvisibleUsuario() {
 
         return { success: true, invisible: nuevoEstado };
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return { success: false };
     }
 }
@@ -525,7 +527,7 @@ export async function toggleMostrarCorreoUsuario() {
 
         return { success: true, mostrarCorreo: nuevoEstado };
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return { success: false };
     }
 }
@@ -552,7 +554,7 @@ export async function obtenerChatsUsuarioDB() {
             bloqueado: !!c.bloqueado
         }));
     } catch (e) {
-        console.error("Error al obtener chats desde DB:", e);
+        log.error({ err: e }, "Error al obtener chats desde DB");
         return [];
     }
 }
