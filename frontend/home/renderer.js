@@ -125,7 +125,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                             if (res && res.success) {
                                 window.pushNotificacion({ prioridad: 1, texto: res.bloqueado ? "Chat bloqueado" : "Chat desbloqueado", tipo: "success" })
                                 await ACTUALIZAR_LISTAS_CHAT(document.querySelector("#input-buscar-chat")?.value?.trim() || "")
-                                
+
                                 // Si el chat bloqueado es el que está abierto, re-renderizarlo para bloquear/desbloquear escritura
                                 if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
                                     const [datos_chat, id_usuario] = await Promise.all([
@@ -514,45 +514,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                         document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
                     })
                 })
-                //descargar archivos mensaje
-                document.querySelectorAll(".archivo-mensaje-div-archivos").forEach(el => {
-                    el.addEventListener("click", async (e) => {
-                        e.preventDefault()
-                        // COJER ID DEL ARCHIVO, PEDIR A MONGO LOS DATOS DE ESE ARCHIVO Y GUARDARLO EN LA UBICACION ESTABLECIDA
-                        const id_archivo = el.dataset.id
-                        const nombre_archivo = el.dataset.nombre
-                        const iv = el.dataset.iv
-                        const tag = el.dataset.tag
-                        const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
-                        const resultado = await window.chats.DESCARGAR_ARCHIVO(id_archivo, nombre_archivo, iv, tag, id_chat)
-                        if (!resultado) {// fallo al descargar:notificar
-                            window.pushNotificacion({
-                                prioridad: 1,        // menor número = más importante
-                                texto: `Fallo al cargar archivo: ${nombre_archivo}`,
-                                tipo: "error"
-                            })
-                        } else {
-                            window.pushNotificacion({
-                                prioridad: 1,        // menor número = más importante
-                                texto: `Descarga completa: ${nombre_archivo}`,
-                                tipo: "success"
-                            })
-                            // AÑADIR AL CACHE DE ARCHIVOS DESCARGADOS
-                            const extension = nombre_archivo.includes(".") ? nombre_archivo.split(".").pop() : "txt"
-                            const [url_img] = await url_icono_extension_img(extension)
-                            await window.cache_archivos_descargados.setCacheArchivosDescargados({
-                                id_chat,
-                                id_archivo,
-                                nombre: nombre_archivo,
-                                url_img,
-                                iv,
-                                tag,
-                                fecha: new Date().toISOString()
-                            })
-                            invalidar_cache_historial()
-                        }
-                    })
-                })
+                //descargar archivos mensaje (movido a evento delegado en DOMContentLoaded)
             })
         })
     }
@@ -573,14 +535,14 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
             window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
             window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
             window.chats.OBTENER_DATOS_CHAT_UNICO(chat)
-        ]).catch((e) => { 
+        ]).catch((e) => {
             console.error("Error al obtener datos para renderizar mensaje:", e);
             return [[], null, null];
         })
 
         const propio = id_propio && id_emisor == id_propio.toString()
         const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(admin_id => admin_id.toString() === id_emisor.toString());
-        
+
         // Obtener el nombre (ahora sí tenemos nombres_contactos)
         const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos });
 
@@ -712,7 +674,7 @@ async function hacer_cambios_buzon(entrada) {
         // 2. Si el chat está abierto, actualizar mensajes
         if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
             const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(id_chat, id_mensaje)
-            
+
             //actualizar chat
             await Actualizar_render_chat({
                 emisor: respuesta.emisor,
@@ -722,7 +684,7 @@ async function hacer_cambios_buzon(entrada) {
                 fecha: respuesta.data
             })
         }
-        
+
         // 3. Si el componente existe en la lista, refrescarlo (y moverlo arriba)
         if (chatC) {
             const chatAbierto = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat;
@@ -882,6 +844,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     //cargar eventos doom
 
+    //evento descargar archivos chat (delegado)
+    document.querySelector("#chat-usuario")?.addEventListener("click", async (e) => {
+        const el = e.target.closest(".archivo-mensaje-div-archivos")
+        if (el) {
+            e.preventDefault()
+            const id_archivo = el.dataset.id
+            const nombre_archivo = el.dataset.nombre
+            const iv = el.dataset.iv
+            const tag = el.dataset.tag
+            const emisor_id = el.dataset.emisor
+            const ratchet_info = el.dataset.ratchet ? JSON.parse(decodeURIComponent(el.dataset.ratchet)) : null
+            const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
+            const resultado = await window.chats.DESCARGAR_ARCHIVO(id_archivo, nombre_archivo, iv, tag, id_chat, ratchet_info, emisor_id)
+            if (!resultado) {
+                window.pushNotificacion({ prioridad: 1, texto: `Fallo al cargar archivo: ${nombre_archivo}`, tipo: "error" })
+            } else {
+                const extension = nombre_archivo.includes(".") ? nombre_archivo.split(".").pop() : "txt"
+                const [url_img] = await url_icono_extension_img(extension)
+                await window.cache_archivos_descargados.setCacheArchivosDescargados({
+                    id_chat,
+                    id_archivo,
+                    nombre: nombre_archivo,
+                    url_img,
+                    iv,
+                    tag,
+                    ratchet_info,
+                    emisor_id,
+                    fecha: new Date().toISOString()
+                })
+                invalidar_cache_historial()
+            }
+        }
+    });
+
     //evento ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
 
@@ -930,6 +926,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.buzonAPI.onNuevaNotificacion(async (data) => {
         //realizar cambios en la app segun la entrada del buzon
         for (const entrada of data.entrada) await hacer_cambios_buzon(entrada)
+    });
+
+    window.buzonAPI.onNotificarRender((data) => {
+        window.pushNotificacion(data)
     });
 
 })

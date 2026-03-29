@@ -163,8 +163,8 @@ contextBridge.exposeInMainWorld('chats', {
     SELECCIONAR_ARCHIVOS: () => {
         return ipcRenderer.invoke("seleccionar-archivos")
     },
-    DESCARGAR_ARCHIVO: (id, nombre, iv = null, tag = null, id_chat = null) => {
-        return ipcRenderer.invoke("descargar-archivo", id, nombre, iv, tag, id_chat)
+    DESCARGAR_ARCHIVO: (id, nombre, iv = null, tag = null, id_chat = null, ratchet_info = null, emisor_id = null) => {
+        return ipcRenderer.invoke("descargar-archivo", id, nombre, iv, tag, id_chat, ratchet_info, emisor_id)
     },
     OBTENER_DATOS_MENSAJE: (id_chat, id_mensaje) => {
         return ipcRenderer.invoke("obtener-datos-mensaje", id_chat, id_mensaje)
@@ -221,6 +221,9 @@ contextBridge.exposeInMainWorld("buzonAPI", {
     },
     onNuevaNotificacion: (callback) => {//esto es para enviar los cambios del socket(backend) al renderer(frontend)
         ipcRenderer.on("nueva-notificacion", (event, data) => callback(data));
+    },
+    onNotificarRender: (callback) => {
+        ipcRenderer.on("notificar-render", (event, data) => callback(data));
     }
 });
 

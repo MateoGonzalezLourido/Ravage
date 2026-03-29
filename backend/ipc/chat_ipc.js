@@ -90,8 +90,12 @@ export function registerChatHandlers(mainWindow, socket) {
         return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
     })
 
-    ipcMain.handle("descargar-archivo", async (_, id, nombre, iv, tag, id_chat) => {
-        return await DESCARGAR_ARCHIVO(id, nombre, iv, tag, id_chat)
+    ipcMain.handle("descargar-archivo", async (_, id, nombre, iv, tag, id_chat, ratchet_info, emisor_id) => {
+        const result = await DESCARGAR_ARCHIVO(id, nombre, iv, tag, id_chat, ratchet_info, emisor_id)
+        if (result && mainWindow) {
+            mainWindow.webContents.send("notificar-render", { texto: `Descarga completa: ${nombre}`, tipo: "success" })
+        }
+        return result
     })
 
     ipcMain.handle("revisar-buzon", async () => {
