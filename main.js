@@ -9,6 +9,7 @@ import 'dotenv/config';
 import { startServer } from './backend/servidores/serverLocalHost.js';
 import { connectDB, closeDB } from "./backend/db/mongo.js";
 import { autoLoginUsuario } from './backend/services/sesionUsuario.js';
+import { detenerBuzon } from './backend/services/buzon.js';
 
 // Import modular IPC handlers
 import { registerSessionHandlers } from './backend/ipc/session_ipc.js';
@@ -75,6 +76,7 @@ if (!gotTheLock) {
 
 app.on('before-quit', async (e) => {
     try {
+        await detenerBuzon(); // Cerrar change streams antes de cerrar la DB
         await closeDB();
     } catch (err) {
         console.error(err);
