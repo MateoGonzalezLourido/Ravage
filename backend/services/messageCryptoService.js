@@ -69,8 +69,8 @@ export async function descifrarListaMensajes(mensajes, chat) {
                 current_state.counter++;
                 
             } catch (err) {
-                console.error("Error descifrando mensaje con Ratchet:", err);
-                m.contenido = [{ asunto: "[Error al descifrar]", archivos: [] }];
+                console.error(`Error descifrando mensaje ${m._id || m.id}:`, err.message);
+                m.contenido = [{ asunto: "[Error al descifrar: posible clave de dispositivo obsoleta]", archivos: [] }];
             }
         }
     }

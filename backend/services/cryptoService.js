@@ -6,7 +6,8 @@ import {
     createDecipheriv, 
     randomBytes, 
     createHash, 
-    createHmac 
+    createHmac,
+    constants
 } from '../utils/libs.js';
 import { promisify } from 'util'; // <-- Añadir esto
 const generateKeyPairAsync=promisify(generateKeyPair);
@@ -128,11 +129,23 @@ export async function generarLlavesRSA() {
 }
 
 export function cifrarConPublica(datos, publicKey) {
-    return publicEncrypt(publicKey, Buffer.from(datos)).toString('hex');
+    return publicEncrypt({
+        key: publicKey,
+        padding: constants.RSA_PKCS1_OAEP_PADDING,
+        oaepHash: 'sha1'
+    }, Buffer.from(datos)).toString('hex');
 }
 
 export function descifrarConPrivada(datosHex, privateKey) {
-    return privateDecrypt(privateKey, Buffer.from(datosHex, 'hex')).toString('utf8');
+    if (!datosHex || typeof datosHex !== 'string') {
+        throw new Error("RSA: Ciphertext must be a hex string.");
+    }
+    const buffer = Buffer.from(datosHex, 'hex');
+    return privateDecrypt({
+        key: privateKey,
+        padding: constants.RSA_PKCS1_OAEP_PADDING,
+        oaepHash: 'sha1'
+    }, buffer).toString('utf8');
 }
 
 /**

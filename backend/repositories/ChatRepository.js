@@ -226,7 +226,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
                 {
                     $set: {
                         "chats.$[chat].ultimoCambio": new Date(),
-                        "chats.$[chat].ultimomensaje": "Solicitud: añadir usuario"
+                        "chats.$[chat].ultimomensaje": encriptarDatosSistema("Solicitud: añadir usuario")
                     }
                 },
                 { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(chatIdLimpio) }] }
@@ -270,7 +270,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             {
                 $set: {
                     "chats.$[chat].ultimoCambio": new Date(),
-                    "chats.$[chat].ultimomensaje": "Añadido nuevo usuario"
+                    "chats.$[chat].ultimomensaje": encriptarDatosSistema("Añadido nuevo usuario")
                 }
             },
             { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(chatIdLimpio) }] }
@@ -287,7 +287,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
                             nombre: chat.nombre,
                             grupo: chat.grupo,
                             ultimoCambio: new Date(),
-                            ultimomensaje: "Bienvenido al chat"
+                            ultimomensaje: encriptarDatosSistema("Bienvenido al chat")
                         }
                     }
                 }
@@ -414,7 +414,7 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
             {
                 $set: {
                     "chats.$[chat].ultimoCambio": new Date(),
-                    "chats.$[chat].ultimomensaje": "Usuario expulsado"
+                    "chats.$[chat].ultimomensaje": encriptarDatosSistema("Usuario expulsado")
                 }
             },
             { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }] }

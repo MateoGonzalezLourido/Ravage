@@ -15,7 +15,7 @@ const ChatUsuarioSchema = new mongoose.Schema({
     silenciado: { type: Boolean, default: false },
     bloqueado: { type: Boolean, default: false },
     mensaje_bloqueo_id: { type: mongoose.Schema.Types.ObjectId, default: null },
-    nombre_bloqueo: { type: String, default: null },
+    nombre_bloqueo: { type: EncryptedDataSchema, default: null },
     participantes_bloqueo: { type: [mongoose.Schema.Types.ObjectId], default: null }
 }, { _id: false });
 

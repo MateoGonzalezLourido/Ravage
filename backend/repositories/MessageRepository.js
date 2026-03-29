@@ -40,8 +40,43 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             return false;
         }
 
-        const current_ck_hex = descifrarConPrivada(ratchet_entry.clave_envuelta, identity_data.privateKey);
-        const iteration = ratchet_entry.counter;
+        let current_ck_hex;
+        let active_entry = ratchet_entry;
+
+        async function intentarDescifrado() {
+            const id_data = await readFileSession('identity');
+            if (!id_data || !id_data.privateKey) throw new Error("No Identity");
+            return descifrarConPrivada(active_entry.clave_envuelta, id_data.privateKey);
+        }
+
+        try {
+            current_ck_hex = await intentarDescifrado();
+        } catch (err) {
+            console.warn("Fallo de descifrado (posible inconsistencia de llaves). Intentando recuperación...");
+            const { rotarClavesChat } = await import('./ChatRepository.js');
+            
+            // Intento 1: Rotación simple (asume que la public key en DB es correcta pero la clave_envuelta no)
+            await rotarClavesChat(id_chat, id_emisor);
+            let chatAct = await ChatsRavage.findById(id_chat).lean();
+            active_entry = chatAct.ratchet_keys.find(k => k.emisor_id.toString() === id_emisor.toString() && k.receptor_id.toString() === id_emisor.toString());
+            
+            try {
+                current_ck_hex = await intentarDescifrado();
+            } catch (err2) {
+                // Intento 2: Regeneración de identidad (asume que la public key en DB o la local están mal)
+                console.error("Rotación insuficiente. Regenerando identidad completa (Opción Nuclear)...");
+                const { REGENERAR_IDENTIDAD_USUARIO } = await import('../services/sesionUsuario.js');
+                await REGENERAR_IDENTIDAD_USUARIO();
+                
+                // Tras regenerar identidad, DEBEMOS volver a rotar para que el servidor use la nueva public key
+                await rotarClavesChat(id_chat, id_emisor);
+                chatAct = await ChatsRavage.findById(id_chat).lean();
+                active_entry = chatAct.ratchet_keys.find(k => k.emisor_id.toString() === id_emisor.toString() && k.receptor_id.toString() === id_emisor.toString());
+                
+                current_ck_hex = await intentarDescifrado();
+            }
+        }
+        const iteration = active_entry.counter;
         
         // Ratchet: Derivar MessageKey y el siguiente ChainKey
         const { messageKey, nextChainKey } = (await import('../services/cryptoService.js')).ratchetChainKey(current_ck_hex);
