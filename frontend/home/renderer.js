@@ -241,6 +241,12 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
 
                                 //reactualizar chat (render)
                                 await Actualizar_render_chat({ emisor: id_usuario.toString(), chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date().toISOString() })
+
+                                // Actualizar componente en la lista de chats
+                                const chatC = document.querySelector(`.chat-componente-lista-chats[data-id="${id_chat}"]`)
+                                if (chatC) {
+                                    await refrescar_componente_lista_chats(id_chat, chatC)
+                                }
                             }
                         }
                     })
@@ -609,7 +615,6 @@ async function INICIO_CHAT_MENU_PRINCIPAL() {
 async function refrescar_componente_lista_chats(id_chat, componente, notificacion = false) {
     try {
         // Obtener datos globales del chat (nombre, usuarios, etc)
-        // El usuario pide usar obtener_datos_chats (vía bridge OBTENER_DATOS_CHATS_GRUPALES)
         const [info_chats, lista_usuario] = await Promise.all([
             window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: [{ id: id_chat }], grupales: null, mensajes: false }),
             window.chats.OBTENER_CHATS_USUARIO()
@@ -642,10 +647,15 @@ async function refrescar_componente_lista_chats(id_chat, componente, notificacio
 
         componente.innerHTML = contenido_nuevo
 
-        // Si hay notificación, podemos añadir una clase visual (ej: brillo o punto azul)
+        // MOVER AL PRINCIPIO DE LA LISTA
+        const lista_contenedor = document.querySelector("#lista-chats-componentes")
+        if (lista_contenedor && componente) {
+            lista_contenedor.prepend(componente)
+        }
+
+        // Si hay notificación, podemos añadir una clase visual
         if (notificacion) {
             componente.classList.add("nuevo-mensaje-notificacion")
-            // Opcional: quitar la clase tras unos segundos o al hacer click
         }
 
     } catch (e) {
@@ -675,40 +685,39 @@ async function hacer_cambios_buzon(entrada) {
         if (ids_silenciados.includes(id_emisor_entrada)) esta_silenciado = true;
     }
     if (tp === 0) { //mensaje chat
-        /*Mirar si el usuario tiene abierto ese chat:
-        si es asi actualizar chat
-        sino mostrar notificacion e icono en el componente de la lista de chats de ese chat */
-        /*entrada= { tipo, data: { id_chat, id_mensaje }}*/
-        if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
-            const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(entrada.data.chat, entrada.data.id_mensaje)
-            console.log([entrada, respuesta])
+        const id_chat = id_chat_entrada;
+        const id_mensaje = entrada.data?.id_mensaje;
 
+        // 1. Buscar el componente en la lista para actualizar vista previa
+        const chatC = Array.from(document.querySelectorAll(".chat-componente-lista-chats")).find(el => el.dataset.id == id_chat);
+
+        // 2. Si el chat está abierto, actualizar mensajes
+        if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
+            const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(id_chat, id_mensaje)
+            
             //actualizar chat
             await Actualizar_render_chat({
                 emisor: respuesta.emisor,
-                chat: entrada.data.chat,
+                chat: id_chat,
                 mensaje: respuesta.contenido?.[0]?.asunto || "",
                 archivos: respuesta.contenido?.[0]?.archivos || [],
                 fecha: respuesta.data
             })
         }
-        else {
-            //cojer nombre del chat
-            for (const chatC of document.querySelectorAll(".chat-componente-lista-chats")) {
-                if (chatC.dataset.id == entrada.chat) {
-                    const nombre = chatC.querySelector(".nombre-chat-lista-componente span").textContent
-                    //refrescar componente chat
-                    refrescar_componente_lista_chats(entrada.chat, chatC, !esta_silenciado)
+        
+        // 3. Si el componente existe en la lista, refrescarlo (y moverlo arriba)
+        if (chatC) {
+            const chatAbierto = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat;
+            await refrescar_componente_lista_chats(id_chat, chatC, !esta_silenciado && !chatAbierto)
 
-                    //notificacion
-                    if (!esta_silenciado) {
-                        window.pushNotificacion({
-                            prioridad: 0, // menor número = más importante
-                            texto: `Nuevo mensaje de ${nombre}`,
-                            tipo: "info" // "info", "error", "success"
-                        })
-                    }
-                }
+            // 4. Notificación desktop si no está abierto y no silenciado
+            if (!esta_silenciado && !chatAbierto) {
+                const nombre = chatC.querySelector(".nombre-chat-lista-componente span")?.textContent || "nuevo mensaje";
+                window.pushNotificacion({
+                    prioridad: 0,
+                    texto: `Nuevo mensaje de ${nombre}`,
+                    tipo: "info"
+                })
             }
         }
     }
