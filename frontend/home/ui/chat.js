@@ -146,86 +146,106 @@ export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], prop
 let controller_renderizado_activo = null;
 
 async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
-    if (controller_renderizado_activo) {
-        controller_renderizado_activo.abort = true;
-    }
-    const controller = { abort: false };
-    controller_renderizado_activo = controller;
-
-    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
-    if (!chatContainer) return;
-
-    const mensajes = datos.mensajes || [];
-    if (mensajes.length === 0) return;
-
-    // 1. Pre-obtener todos los nombres en un solo lote (petición grande a DB)
-    const uniqueEmitterIds = [...new Set(mensajes.map(m => (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor).toString()))];
-    const data_usuarios = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(uniqueEmitterIds);
-    const map_nombres = {};
-    const map_contactos = {};
-
-    // Mapear contactos para búsqueda rápida
-    contactos.forEach(c => map_contactos[c.id] = c.apodo);
-
-    data_usuarios.forEach(u => {
-        const id = u.id || u._id?.toString();
-        map_nombres[id] = map_contactos[id] || u.apodo || nombre_defecto;
-    });
-
-    // 2. Agrupar mensajes por día
-    const mensajes_ordenados = [...mensajes].sort((a, b) => new Date(a.data) - new Date(b.data));
-    const grupos_por_dia = [];
-    let current_dia = null;
-
-    mensajes_ordenados.forEach(m => {
-        const dateStr = new Date(m.data).toDateString();
-        if (dateStr !== current_dia) {
-            grupos_por_dia.push({ fecha: m.data, mensajes: [] });
-            current_dia = dateStr;
+    try {
+        if (controller_renderizado_activo) {
+            controller_renderizado_activo.abort = true;
         }
-        grupos_por_dia[grupos_por_dia.length - 1].mensajes.push(m);
-    });
+        const controller = { abort: false };
+        controller_renderizado_activo = controller;
 
-    // 3. Renderizar día a día (de más nuevo a más viejo)
-    const dias_reversos = [...grupos_por_dia].reverse();
-    let es_primer_dia = true;
+        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        if (!chatContainer) return;
 
-    for (const grupo of dias_reversos) {
-        if (controller.abort) return;
-
-        // Renderizar mensajes del día en paralelo
-        const html_mensajes = await Promise.all(grupo.mensajes.map(async (m) => {
-            const id_emisor = (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor).toString();
-            const propio = id_emisor === id_propio.toString();
-            const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor);
-            const nombre = map_nombres[id_emisor] || nombre_defecto;
-
-            return await crear_mensaje_html(m.data, m?.contenido[0]?.asunto || "", m?.contenido[0]?.archivos || [], propio, nombre, esAdmin);
-        }));
-
-        const html_dia = `
-            <div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(new Date(grupo.fecha))}</span></div>
-            ${html_mensajes.join('')}
-        `;
-
-        if (es_primer_dia) {
-            chatContainer.innerHTML = html_dia;
-            // Scroll al final al cargar el día más reciente
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            es_primer_dia = false;
-        } else {
-            // Prepend manteniendo el scroll
-            const scroll_previo = chatContainer.scrollHeight;
-            const top_previo = chatContainer.scrollTop;
-
-            chatContainer.insertAdjacentHTML("afterbegin", html_dia);
-
-            const nuevo_scroll = chatContainer.scrollHeight;
-            chatContainer.scrollTop = top_previo + (nuevo_scroll - scroll_previo);
+        const mensajes = (datos.mensajes || []).filter(m => m && typeof m === 'object');
+        if (mensajes.length === 0) {
+            if (datos.mensajes?.length > 0) {
+                console.warn("Se recibieron mensajes pero no son objetos válidos. Posible error de carga en backend.");
+            }
+            return;
         }
 
-        // Dejar respirar al UI entre días
-        await new Promise(resolve => setTimeout(resolve, 0));
+        // 1. Pre-obtener todos los nombres en un solo lote (petición grande a DB)
+        const uniqueEmitterIds = [...new Set(mensajes.map(m => {
+            const emisor = Array.isArray(m.emisor) ? m.emisor[0] : m.emisor;
+            return emisor ? emisor.toString() : null;
+        }).filter(id => id))];
+        
+        const data_usuarios = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(uniqueEmitterIds);
+        const map_nombres = {};
+        const map_contactos = {};
+
+        // Mapear contactos para búsqueda rápida
+        contactos.forEach(c => map_contactos[c.id] = c.apodo);
+
+        data_usuarios.forEach(u => {
+            const id = u.id || u._id?.toString();
+            map_nombres[id] = map_contactos[id] || u.apodo || nombre_defecto;
+        });
+
+        // 2. Agrupar mensajes por día
+        const mensajes_ordenados = [...mensajes].sort((a, b) => new Date(a.data) - new Date(b.data));
+        const grupos_por_dia = [];
+        let current_dia = null;
+
+        mensajes_ordenados.forEach(m => {
+            const dateStr = new Date(m.data).toDateString();
+            if (dateStr !== current_dia) {
+                grupos_por_dia.push({ fecha: m.data, mensajes: [] });
+                current_dia = dateStr;
+            }
+            grupos_por_dia[grupos_por_dia.length - 1].mensajes.push(m);
+        });
+
+        // 3. Renderizar día a día (de más nuevo a más viejo)
+        const dias_reversos = [...grupos_por_dia].reverse();
+        let es_primer_dia = true;
+
+        for (const grupo of dias_reversos) {
+            if (controller.abort) return;
+
+            // Renderizar mensajes del día en paralelo
+            const html_mensajes = await Promise.all(grupo.mensajes.map(async (m) => {
+                try {
+                    const id_emisor = (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString();
+                    if (!id_emisor) return "";
+                    
+                    const propio = id_emisor === id_propio.toString();
+                    const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor);
+                    const nombre = map_nombres[id_emisor] || nombre_defecto;
+
+                    return await crear_mensaje_html(m.data, m?.contenido[0]?.asunto || "", m?.contenido[0]?.archivos || [], propio, nombre, esAdmin);
+                } catch (err) {
+                    console.error("Error al renderizar un mensaje individual:", err, m);
+                    return "";
+                }
+            }));
+
+            const html_dia = `
+                <div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(new Date(grupo.fecha))}</span></div>
+                ${html_mensajes.join('')}
+            `;
+
+            if (es_primer_dia) {
+                chatContainer.innerHTML = html_dia;
+                // Scroll al final al cargar el día más reciente
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                es_primer_dia = false;
+            } else {
+                // Prepend manteniendo el scroll
+                const scroll_previo = chatContainer.scrollHeight;
+                const top_previo = chatContainer.scrollTop;
+
+                chatContainer.insertAdjacentHTML("afterbegin", html_dia);
+
+                const nuevo_scroll = chatContainer.scrollHeight;
+                chatContainer.scrollTop = top_previo + (nuevo_scroll - scroll_previo);
+            }
+
+            // Dejar respirar al UI entre días
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    } catch (e) {
+        console.error("Error crítico en renderizar_chat_progresivo_plano:", e);
     }
 }
 

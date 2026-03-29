@@ -11,18 +11,21 @@ import { ChatsRavage } from '../models/Chat.js';
 export async function descifrarListaMensajes(mensajes, chat) {
     if (!mensajes || !chat || !chat.ratchet_keys) return mensajes;
 
-    const id_propio = getIDMongodbUsuario();
+    const id_propio = getIDMongodbUsuario()?.toString();
     const identity_data = await readFileSession('identity');
-    if (!identity_data || !identity_data.privateKey) return mensajes;
+    if (!identity_data || !identity_data.privateKey || !id_propio) return mensajes;
 
     // Caché local de claves para este lote de mensajes
     const cache_keys = {}; 
 
     for (let m of mensajes) {
+        // Skip if already decrypted in a previous pass
+        if (m.contenido && m.contenido.length > 0 && typeof m.contenido[0].asunto === 'string') continue;
+
         if (m.encriptado && m.encriptado.data && m.ratchet_info) {
             try {
                 const emisor_id = m.emisor ? m.emisor.toString() : null;
-                if (!emisor_id || emisor_id === "000000000000000000000000") continue;
+                if (!emisor_id) continue;
 
                 const cache_key = `${emisor_id}_${id_propio}`;
                 
@@ -30,16 +33,22 @@ export async function descifrarListaMensajes(mensajes, chat) {
                 if (!current_state) {
                     const entry = chat.ratchet_keys.find(k => 
                         k.emisor_id.toString() === emisor_id && 
-                        k.receptor_id.toString() === id_propio.toString()
+                        k.receptor_id.toString() === id_propio
                     );
                     if (!entry) throw new Error("No hay llave de ratchet para este emisor");
                     
-                    const ck_hex = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
+                    let ck_hex;
+                    try {
+                        ck_hex = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
+                    } catch (rsaErr) {
+                        throw new Error(`Error RSA: Fallo al descifrar el eslabón de la cadena. ${rsaErr.message}`);
+                    }
+
                     current_state = { ck: ck_hex, counter: entry.counter };
                     cache_keys[cache_key] = current_state;
                 }
 
-                // Ratchett forward si el mensaje es más reciente (o igual si queremos derivar la MK actual)
+                // Ratchett forward si el mensaje es más reciente
                 while (current_state.counter < m.ratchet_info.iteration) {
                     const { nextChainKey } = ratchetChainKey(current_state.ck);
                     current_state.ck = nextChainKey;
@@ -49,28 +58,52 @@ export async function descifrarListaMensajes(mensajes, chat) {
                 // Obtener la MK para este mensaje e iteración
                 const { messageKey, nextChainKey } = ratchetChainKey(current_state.ck);
                 
-                const decryptedPayload = descifrarContenido(m.encriptado, messageKey);
-                const data = JSON.parse(decryptedPayload);
+                let decryptedPayload;
+                try {
+                    decryptedPayload = descifrarContenido(m.encriptado, messageKey);
+                    
+                    const data = JSON.parse(decryptedPayload);
 
-                if (data && !Array.isArray(data)) {
-                    m.contenido = [{ 
-                        asunto: data.asunto, 
-                        archivos: data.archivos.map(a => ({
-                            ...a,
-                            nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
-                        }))
-                    }];
-                    m.emisor = data.emisor; 
-                    m.data = data.data;
+                    if (data && !Array.isArray(data)) {
+                        m.contenido = [{ 
+                            asunto: data.asunto, 
+                            archivos: (data.archivos || []).map(a => ({
+                                ...a,
+                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
+                            }))
+                        }];
+                        m.emisor = data.emisor; 
+                        m.data = data.data;
+                    }
+                } catch (aesErr) {
+                    // FALLBACK: Si falla E2EE, intentar descifrar la copia del sistema si existe (ej: copia legible del emisor)
+                    if (m.contenido && m.contenido.length > 0 && m.contenido[0].asunto) {
+                        const asuntoRaw = m.contenido[0].asunto;
+                        if (typeof asuntoRaw === 'object' && asuntoRaw.data) {
+                            m.contenido[0].asunto = desencriptarDatosSistema(asuntoRaw);
+                            if (m.contenido[0].archivos) {
+                                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                                    ...a,
+                                    nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
+                                }));
+                            }
+                        } else {
+                             throw new Error(`Error AES-GCM: Tag mismatch. Clave incorrecta. ${err.message}`);
+                        }
+                    } else {
+                        throw new Error(`Error AES-GCM: Tag mismatch. Sin copia de respaldo. ${err.message}`);
+                    }
                 }
 
-                // Avanzar para el siguiente mensaje
+                // Avanzar para el siguiente mensaje (siempre avanzamos para mantener sincronía)
                 current_state.ck = nextChainKey;
                 current_state.counter++;
                 
             } catch (err) {
-                console.error(`Error descifrando mensaje ${m._id || m.id}:`, err.message);
-                m.contenido = [{ asunto: "[Error al descifrar: posible clave de dispositivo obsoleta]", archivos: [] }];
+                console.error(`[E2EE] Fallo descifrando msg ${m._id || m.id}:`, err.message);
+                if (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string') {
+                    m.contenido = [{ asunto: "[Error al descifrar: posible clave de dispositivo obsoleta]", archivos: [] }];
+                }
             }
         }
     }
@@ -86,7 +119,7 @@ export async function descifrarListaMensajes(mensajes, chat) {
                     "ratchet_keys.$.counter": state.counter 
                 }
             }
-        ).catch(e => console.error("Fallo persistiendo ratchet state:", e));
+        ).catch(e => console.error("[E2EE] Fallo persistiendo ratchet state:", e));
     }
 
     return mensajes;

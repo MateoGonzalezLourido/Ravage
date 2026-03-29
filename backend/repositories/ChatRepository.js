@@ -105,6 +105,18 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
             const cached = await getChatDeCache(id_chat);
             if (cached) {
                 chat_a_devolver = { ...cached, mensajes: [...(cached.mensajes || [])] };
+                
+                // Si el cache solo tiene IDs o está vacío (pero se esperan mensajes), cargar de DB
+                const tieneMensajesFull = chat_a_devolver.mensajes && 
+                                          chat_a_devolver.mensajes.length > 0 && 
+                                          typeof chat_a_devolver.mensajes[0] === 'object';
+                
+                if (!tieneMensajesFull) {
+                    chat_a_devolver.mensajes = await MessagesRavage.find({ 
+                        id_chat: new mongoose.Types.ObjectId(id_chat) 
+                    }).sort({ data: 1 }).lean();
+                    await descifrarListaMensajes(chat_a_devolver.mensajes, chat_a_devolver);
+                }
             } else {
                 const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
                 if (!data_obtenida) return null;
@@ -317,17 +329,27 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     }
 
     // CREAR CHAT NUEVO (Todos los chats se consideran expansibles/grupos)
-    const ids_total = [...ids, id_propio];
+    const ids_totales = [...new Set([...ids.map(id => id.toString()), id_propio.toString()])];
+    const ids_objectid = ids_totales.map(id => new mongoose.Types.ObjectId(id));
     
     // Preparar ratchet_keys iniciales (Sender Key por usuario)
     const ratchet_keys = [];
-    const usuarios_data = await User.find({ _id: { $in: ids_total } }, "_id publicKey").lean();
+    const usuarios_data = await User.find({ _id: { $in: ids_objectid } }, "_id publicKey").lean();
+
+    // Validar que el creador tenga llave pública
+    const creador = usuarios_data.find(u => u._id.toString() === id_propio.toString());
+    if (!creador || !creador.publicKey) {
+        console.error("[Chat] El creador no tiene llave pública, el chat será ilegible.");
+    }
 
     for (const emisor of usuarios_data) {
         const chainKey = randomBytes(32).toString('hex');
         
         for (const receptor of usuarios_data) {
-            if (!receptor.publicKey) continue;
+            if (!receptor.publicKey) {
+                console.warn(`[Chat] Usuario ${receptor._id} no tiene llave pública, saltando entrada de ratchet.`);
+                continue;
+            }
             
             ratchet_keys.push({
                 emisor_id: emisor._id,
@@ -343,15 +365,15 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     try {
         datos_chat = await ChatsRavage.create({
             nombre: nombre ? encriptarDatosSistema(nombre) : null,
-            usuarios: ids_total.map(id => new mongoose.Types.ObjectId(id)),
-            admins: ids_total.length === 2 ? ids_total.map(id => new mongoose.Types.ObjectId(id)) : [new mongoose.Types.ObjectId(id_propio)],
+            usuarios: ids_objectid,
+            admins: ids_totales.length === 2 ? ids_objectid : [new mongoose.Types.ObjectId(id_propio)],
             grupo: true,
             ratchet_keys
         });
 
 
         await User.updateMany(
-            { _id: { $in: ids_total } },
+            { _id: { $in: ids_totales } },
             {
                 $push: {
                     chats: {
@@ -372,7 +394,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         }
 
         Añadir_Entrada_Buzon_Usuario({ 
-            ids: ids_total.filter(id => id.toString() !== id_propio.toString()), 
+            ids: ids_totales.filter(id => id.toString() !== id_propio.toString()), 
             tipo: 2, 
             data: { creador: id_propio, chat: datos_chat._id } 
         }).catch(e => console.error(e));
