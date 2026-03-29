@@ -82,7 +82,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     <div data-id="${datos_usar.id}" class="chat-componente-lista-chats">
         <div class="nombre-chat-lista-componente" style="display: flex; align-items: center; justify-content: space-between;">
             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${nombre(datos_usar)}</span>
-            ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" style="width: 16px; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat bloqueado">' : (datos_usar.silenciado ? '<img src="../recursos/silenciar.png" style="width: 16px; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat silenciado">' : '')}
+            ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" style="width: 16px;z-index:2 !important; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat bloqueado">' : (datos_usar.silenciado ? '<img src="../recursos/silenciar.png" style="width: 16px;z-index:2 !important; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat silenciado">' : '')}
         </div>
         ${usuarios(datos_usar)}
         ${ultimo_mensaje(datos_usar)}
@@ -292,11 +292,14 @@ export async function Crear_chat_html(datos, id_propio) {
 
     </div>
 
-    <div class="seccion-escritura-mensaje-chat">
-        <div id="bt-añadir-archivo-mensaje-escritura">        
+    <div class="seccion-escritura-mensaje-chat" ${datos.bloqueado ? 'style="background: rgba(255,0,0,0.05);"' : ''}>
+        <div id="bt-añadir-archivo-mensaje-escritura" ${datos.bloqueado ? 'style="display:none;"' : ''}>        
             <img src="../recursos/carpeta.svg" alt="">
         </div>
-        <textarea id="textarea-mensaje-escritura" placeholder="Escribe un mensaje" maxlength="1000"></textarea>
+        <textarea id="textarea-mensaje-escritura" 
+            placeholder="${datos.bloqueado ? 'Este chat está bloqueado' : 'Escribe un mensaje'}" 
+            maxlength="1000" 
+            ${datos.bloqueado ? 'disabled style="cursor: not-allowed; opacity: 0.7;"' : ''}></textarea>
     </div>
 `
 }

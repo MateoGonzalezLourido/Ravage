@@ -125,6 +125,18 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                             if (res && res.success) {
                                 window.pushNotificacion({ prioridad: 1, texto: res.bloqueado ? "Chat bloqueado" : "Chat desbloqueado", tipo: "success" })
                                 await ACTUALIZAR_LISTAS_CHAT(document.querySelector("#input-buscar-chat")?.value?.trim() || "")
+                                
+                                // Si el chat bloqueado es el que está abierto, re-renderizarlo para bloquear/desbloquear escritura
+                                if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
+                                    const [datos_chat, id_usuario] = await Promise.all([
+                                        window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat),
+                                        window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+                                    ])
+                                    datos_chat._id = id_chat
+                                    document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+                                    cerrar_paneles_al_abrir_chat()
+                                    scroll_fin_chat()
+                                }
                             } else {
                                 window.pushNotificacion({ prioridad: 0, texto: "Error al bloquear chat", tipo: "error" })
                             }
@@ -675,15 +687,21 @@ async function hacer_cambios_buzon(entrada) {
     const id_emisor_entrada = entrada.data?.emisor || entrada.data?.creador;
 
     let esta_silenciado = false;
+    let esta_bloqueado = false;
     if (id_chat_entrada) {
         const chats_usuario = await window.chats.OBTENER_CHATS_USUARIO();
         const chatInfo = chats_usuario.find(c => (c.id || c._id) == id_chat_entrada);
-        if (chatInfo && chatInfo.silenciado) esta_silenciado = true;
+        if (chatInfo) {
+            if (chatInfo.silenciado) esta_silenciado = true;
+            if (chatInfo.bloqueado) esta_bloqueado = true;
+        }
     } else if (id_emisor_entrada) {
         const silenciados = await window.social_usuario.OBTENER_USUARIOS_SILENCIADOS() || [];
         const ids_silenciados = silenciados.map(u => typeof u === "string" ? u : u.id || u._id || u);
         if (ids_silenciados.includes(id_emisor_entrada)) esta_silenciado = true;
     }
+
+    if (esta_bloqueado) return; // Ignorar completamente si el chat está bloqueado
     if (tp === 0) { //mensaje chat
         const id_chat = id_chat_entrada;
         const id_mensaje = entrada.data?.id_mensaje;
