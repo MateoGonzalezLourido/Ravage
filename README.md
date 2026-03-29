@@ -769,16 +769,22 @@ MongoDB (Colección "buzon")
 
 ---
 
-## 📊 Monitorización Estructurada
+## 📊 Monitorización y Testing
 
-Para asegurar la observabilidad de los procesos críticos (E2EE, Auth, DB, Servidores), el backend implementa un sistema de logging estructurado utilizando **Pino**, el logger más rápido de Node.js.
+Para garantizar la fiabilidad y observabilidad de los procesos críticos (E2EE, Auth, DB), el sistema integra herramientas profesionales de registro y pruebas.
 
-- **Entorno de Desarrollo (`pino-pretty`):** Genera un *output* coloreado, claro y legible para humanos con timestamps locales, ideal para debugging.
-- **Entorno de Producción (JSON):** Emite trazas en formato de objeto JSON, listas para ser ingeridas, indexadas y analizadas por plataformas de monitorización y agregación de logs (Grafana, Datadog, Kibana).
+### Logging Estructurado (Pino)
+- **Desarrollo:** Salida legible y coloreada con `pino-pretty`.
+- **Producción:** Logs JSON estructurados listos para ser ingeridos por plataformas de monitorización (Grafana, Datadog).
 
-```json
-{"level":30,"time":1711752000000,"module":"session","msg":"Autologin completado correctamente"}
-{"level":50,"time":1711752001000,"module":"msg-crypto","err":{"message":"Tag mismatch"},"msg":"[E2EE] Fallo descifrando msg"}
+### Tests Unitarios (Vitest)
+Suite de pruebas exhaustivas para el núcleo de seguridad y validación:
+- **Criptografía:** Verificación de AES-GCM, RSA, SHA-256 y protocolos de Ratchet.
+- **Validadores:** Pruebas de seguridad para inputs, correos y prevención de inyección de rutas.
+
+```bash
+# Ejecutar la suite de pruebas
+npm run test
 ```
 
 ---
