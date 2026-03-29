@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/MateoGonzalezLourido/Ravage.git"
   },
-  "license": "MIT",
+  "license": "ISC",
   "author": "mateo gonzalez lourido",
   "type": "module",
   "main": "main.js",
