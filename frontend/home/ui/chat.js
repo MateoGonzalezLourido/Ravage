@@ -249,49 +249,6 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
     }
 }
 
-async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha }) {
-    if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
-        const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
-
-        const [nombres_contactos, id_propio, info_chat] = await Promise.all([
-            window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
-            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
-            window.chats.OBTENER_DATOS_CHAT_UNICO(chat)
-        ]).catch((e) => {
-            console.error("Error al obtener datos para renderizar mensaje:", e);
-            return [[], null, null];
-        })
-
-        const propio = id_propio && id_emisor == id_propio.toString()
-        const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(admin_id => admin_id.toString() === id_emisor.toString());
-
-        const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos });
-        const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
-
-        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
-        if (!chatContainer) return;
-
-        // Buscar el último texto de fecha mostrado
-        const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
-        const todos_los_bloques_fecha = chatContainer.querySelectorAll(".fecha-bloque-mensajes");
-        const ultimoBloqueFecha = todos_los_bloques_fecha[todos_los_bloques_fecha.length - 1];
-        const ultimaFechaText = ultimoBloqueFecha ? ultimoBloqueFecha.querySelector("span")?.textContent : null;
-
-        if (!ultimoBloqueFecha || ultimaFechaText !== fechaActualText) {
-            // Añadir nuevo header de fecha y luego el mensaje
-            const fragmento = `
-                <div class="fecha-bloque-mensajes"><span>${fechaActualText}</span></div>
-                ${html}
-            `;
-            chatContainer.insertAdjacentHTML("beforeend", fragmento);
-        } else {
-            // Simplemente añadir el mensaje al final
-            chatContainer.insertAdjacentHTML("beforeend", html);
-        }
-        scroll_fin_chat()
-    }
-}
-
 export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, contactos = null }) {
     //si grupal: false->es un usuario, true->puede ser un chat grupal
     if (grupal) {
@@ -332,7 +289,7 @@ export async function Crear_chat_html(datos, id_propio) {
     </div>
     
     <div id="cuerpo-mensajes-chat">
-        <!-- Los mensajes se cargarán progresivamente aquí -->
+
     </div>
 
     <div class="seccion-escritura-mensaje-chat">

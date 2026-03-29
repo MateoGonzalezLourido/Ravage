@@ -139,7 +139,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 // OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
                 const id = e.currentTarget.dataset.id
                 //obtener info de ese chat
-                //TODO: AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
+                //AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
                 const [datos_chat, id_usuario] = await Promise.all([
                     window.chats.OBTENER_DATOS_CHAT_UNICO(id),
                     window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
