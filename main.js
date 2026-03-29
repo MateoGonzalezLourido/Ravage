@@ -29,7 +29,7 @@ function createMainWindowHome(AutoLogin = false) {
         height: 600,
         minHeight: 400,
         minWidth: 450,
-        title: "RAVAGE",
+        title: "SIGMATE",
         autoHideMenuBar: true,
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
@@ -89,11 +89,11 @@ app.on('window-all-closed', () => {
 
 // Navigation handlers (kept here as they directly affect main window)
 ipcMain.on("cambiar-pagina-soporte", () => {
-    mainWindow.setTitle("RAVAGE-Soporte");
+    mainWindow.setTitle("SIGMATE-Soporte");
     mainWindow.loadFile(path.join(__dirname, 'frontend', 'soporte', 'soporte.html'));
 });
 
 ipcMain.on("cambiar-pagina-home", () => {
-    mainWindow.setTitle("RAVAGE-Home");
+    mainWindow.setTitle("SIGMATE-Home");
     mainWindow.loadFile(path.join(__dirname, 'frontend','home', 'home.html'));
 });
