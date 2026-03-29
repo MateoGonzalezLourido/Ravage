@@ -12,6 +12,8 @@ import {
 import { promisify } from 'util'; // <-- Añadir esto
 const generateKeyPairAsync=promisify(generateKeyPair);
 let systemKey = null;
+let cachedIdentity = null;
+
 function getSystemKey() {
     if (!systemKey) {
         if (!process.env.INTERNAL_ENCRYPTION_KEY) {
@@ -20,6 +22,33 @@ function getSystemKey() {
         systemKey = Buffer.from(process.env.INTERNAL_ENCRYPTION_KEY, 'hex');
     }
     return systemKey;
+}
+
+/**
+ * Retorna la identidad (llaves) en cache o la lee de disco si es necesario.
+ */
+export async function getIdentity() {
+    if (cachedIdentity) return cachedIdentity;
+    const { readFileSession } = await import('./controladorArchivos.js');
+    const data = await readFileSession('identity');
+    if (data) {
+        cachedIdentity = data;
+    }
+    return cachedIdentity;
+}
+
+/**
+ * Actualiza la identidad en cache.
+ */
+export function setCachedIdentity(data) {
+    cachedIdentity = data;
+}
+
+/**
+ * Limpia la identidad en cache (ej: logout).
+ */
+export function clearCachedIdentity() {
+    cachedIdentity = null;
 }
 
 

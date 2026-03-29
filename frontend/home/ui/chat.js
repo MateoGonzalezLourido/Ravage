@@ -142,6 +142,136 @@ export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], prop
     </div> `)
 
 }
+
+let controller_renderizado_activo = null;
+
+async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
+    if (controller_renderizado_activo) {
+        controller_renderizado_activo.abort = true;
+    }
+    const controller = { abort: false };
+    controller_renderizado_activo = controller;
+
+    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    if (!chatContainer) return;
+
+    const mensajes = datos.mensajes || [];
+    if (mensajes.length === 0) return;
+
+    // 1. Pre-obtener todos los nombres en un solo lote (petición grande a DB)
+    const uniqueEmitterIds = [...new Set(mensajes.map(m => (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor).toString()))];
+    const data_usuarios = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(uniqueEmitterIds);
+    const map_nombres = {};
+    const map_contactos = {};
+
+    // Mapear contactos para búsqueda rápida
+    contactos.forEach(c => map_contactos[c.id] = c.apodo);
+
+    data_usuarios.forEach(u => {
+        const id = u.id || u._id?.toString();
+        map_nombres[id] = map_contactos[id] || u.apodo || nombre_defecto;
+    });
+
+    // 2. Agrupar mensajes por día
+    const mensajes_ordenados = [...mensajes].sort((a, b) => new Date(a.data) - new Date(b.data));
+    const grupos_por_dia = [];
+    let current_dia = null;
+
+    mensajes_ordenados.forEach(m => {
+        const dateStr = new Date(m.data).toDateString();
+        if (dateStr !== current_dia) {
+            grupos_por_dia.push({ fecha: m.data, mensajes: [] });
+            current_dia = dateStr;
+        }
+        grupos_por_dia[grupos_por_dia.length - 1].mensajes.push(m);
+    });
+
+    // 3. Renderizar día a día (de más nuevo a más viejo)
+    const dias_reversos = [...grupos_por_dia].reverse();
+    let es_primer_dia = true;
+
+    for (const grupo of dias_reversos) {
+        if (controller.abort) return;
+
+        // Renderizar mensajes del día en paralelo
+        const html_mensajes = await Promise.all(grupo.mensajes.map(async (m) => {
+            const id_emisor = (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor).toString();
+            const propio = id_emisor === id_propio.toString();
+            const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor);
+            const nombre = map_nombres[id_emisor] || nombre_defecto;
+
+            return await crear_mensaje_html(m.data, m?.contenido[0]?.asunto || "", m?.contenido[0]?.archivos || [], propio, nombre, esAdmin);
+        }));
+
+        const html_dia = `
+            <div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(new Date(grupo.fecha))}</span></div>
+            ${html_mensajes.join('')}
+        `;
+
+        if (es_primer_dia) {
+            chatContainer.innerHTML = html_dia;
+            // Scroll al final al cargar el día más reciente
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            es_primer_dia = false;
+        } else {
+            // Prepend manteniendo el scroll
+            const scroll_previo = chatContainer.scrollHeight;
+            const top_previo = chatContainer.scrollTop;
+
+            chatContainer.insertAdjacentHTML("afterbegin", html_dia);
+
+            const nuevo_scroll = chatContainer.scrollHeight;
+            chatContainer.scrollTop = top_previo + (nuevo_scroll - scroll_previo);
+        }
+
+        // Dejar respirar al UI entre días
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+}
+
+async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha }) {
+    if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
+        const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
+
+        const [nombres_contactos, id_propio, info_chat] = await Promise.all([
+            window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
+            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
+            window.chats.OBTENER_DATOS_CHAT_UNICO(chat)
+        ]).catch((e) => {
+            console.error("Error al obtener datos para renderizar mensaje:", e);
+            return [[], null, null];
+        })
+
+        const propio = id_propio && id_emisor == id_propio.toString()
+        const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(admin_id => admin_id.toString() === id_emisor.toString());
+
+        const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos });
+        const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
+
+        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        if (!chatContainer) return;
+
+        // Buscar el último texto de fecha mostrado
+        const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
+        const todos_los_bloques_fecha = chatContainer.querySelectorAll(".fecha-bloque-mensajes");
+        const ultimoBloqueFecha = todos_los_bloques_fecha[todos_los_bloques_fecha.length - 1];
+        const ultimaFechaText = ultimoBloqueFecha ? ultimoBloqueFecha.querySelector("span")?.textContent : null;
+
+        if (!ultimoBloqueFecha || ultimaFechaText !== fechaActualText) {
+            // Añadir nuevo header de fecha y luego el mensaje
+            const fragmento = `
+                <div class="fecha-bloque-mensajes"><span>${fechaActualText}</span></div>
+                ${html}
+            `;
+            chatContainer.insertAdjacentHTML("beforeend", fragmento);
+        } else {
+            // Simplemente añadir el mensaje al final
+            chatContainer.insertAdjacentHTML("beforeend", html);
+        }
+        scroll_fin_chat()
+    }
+}
+
 export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, contactos = null }) {
     //si grupal: false->es un usuario, true->puede ser un chat grupal
     if (grupal) {
@@ -171,128 +301,18 @@ export async function Crear_chat_html(datos, id_propio) {
         window.social_usuario.OBTENER_CONTACTOS_USUARIO()
     ])
 
-    //nav principal
-    let html = ""
-    //crear html mensajes
-    const todo_chat = async () => {
-        let html = ""
-        if (!datos?.mensajes) return html
+    // Iniciar renderizado progresivo en segundo plano
+    setTimeout(() => {
+        renderizar_chat_progresivo_plano(datos, id_propio, contactos);
+    }, 0);
 
-        // Ordenar mensajes por fecha (de más antiguo a más reciente),en la base de datos se guardan segun lleguen no por fecha
-        const mensajes_ordenados = [...datos.mensajes].sort((a, b) => {
-            return new Date(a.data) - new Date(b.data)
-        })
-        let fecha_ultimo;//para guardar la fecha del ultimo mensaje procesado, para los bloques de fechas de mensajes
-        let primer_dia = true;
-        for (const m of mensajes_ordenados) {
-            //comparar si son del mismo dia
-            const fecha_actual = new Date(m.data)
-            const fecha_comparar = new Date(fecha_ultimo)
-
-            if (fecha_actual.toDateString() !== fecha_comparar.toDateString() || !fecha_ultimo) {
-                if (!primer_dia) {
-                    html += `</div>`
-                }
-                primer_dia = false;
-                html += `<div class="bloque-dia-chat">`
-                html += `<div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(fecha_actual)}</span></div> `
-            }
-            fecha_ultimo = m.data
-
-            // Manejar mensajes especiales (sistema)
-            if (m.especial && m.especial.tipo !== undefined) {
-                const tipo = m.especial.tipo
-
-                // tipo 0: usuario añadido
-                if (tipo === 0) {
-                    const nombre_emisor_esp = await Encontrar_Nombre_Chat_Usuario({ id_buscar: m.especial.emisor, grupal: false, contactos: contactos })
-                    const nombre_añadido = await Encontrar_Nombre_Chat_Usuario({ id_buscar: m.especial.añadido, grupal: false, contactos: contactos })
-                    const esYo_emisor = m.especial.emisor == id_propio
-                    const esYo_añadido = m.especial.añadido == id_propio
-
-                    let texto
-                    if (esYo_emisor) texto = `Has añadido a <b>${nombre_añadido}</b> al chat`
-                    else if (esYo_añadido) texto = `<b>${nombre_emisor_esp}</b> te ha añadido al chat`
-                    else texto = `<b>${nombre_emisor_esp}</b> añadió a <b>${nombre_añadido}</b>`
-
-                    html += `<div class="mensaje-especial mensaje-especial-añadido"><span class="icono-especial">👤+</span> <span>${texto}</span></div>`
-                    continue
-                }
-
-                // tipo 1: usuario expulsado
-                if (tipo === 1) {
-                    const nombre_emisor_esp = await Encontrar_Nombre_Chat_Usuario({ id_buscar: m.especial.emisor, grupal: false, contactos: contactos })
-                    const nombre_expulsado = await Encontrar_Nombre_Chat_Usuario({ id_buscar: m.especial.expulsado, grupal: false, contactos: contactos })
-                    const esYo_emisor = m.especial.emisor == id_propio
-                    const esYo_expulsado = m.especial.expulsado == id_propio
-
-                    let texto
-                    if (esYo_emisor) texto = `Has expulsado a <b>${nombre_expulsado}</b> del chat`
-                    else if (esYo_expulsado) texto = `<b>${nombre_emisor_esp}</b> te ha expulsado del chat`
-                    else texto = `<b>${nombre_emisor_esp}</b> expulsó a <b>${nombre_expulsado}</b>`
-
-                    html += `<div class="mensaje-especial mensaje-especial-expulsado"><span class="icono-especial">👤−</span> <span>${texto}</span></div>`
-                    continue
-                }
-
-                // tipo 2: solicitud añadir usuario (requiere confirmación en chats de 2)
-                if (tipo === 2) {
-                    const nombre_emisor_sol = await Encontrar_Nombre_Chat_Usuario({ id_buscar: m.especial.emisor, grupal: false, contactos: contactos })
-                    const nombre_candidato = await Encontrar_Nombre_Chat_Usuario({ id_buscar: m.especial.candidato, grupal: false, contactos: contactos })
-                    const estado = m.especial.estado || "pendiente"
-                    const esSolicitante = m.especial.emisor == id_propio
-                    const id_mensaje = m._id || m.id
-
-                    let contenido_solicitud = ""
-                    if (estado === "pendiente") {
-                        if (esSolicitante) {
-                            contenido_solicitud = `<span>Has solicitado añadir a <b>${nombre_candidato}</b>. Esperando confirmación...</span>`
-                        } else {
-                            contenido_solicitud = `
-                                <span><b>${nombre_emisor_sol}</b> quiere añadir a <b>${nombre_candidato}</b> al chat</span>
-                                <div class="solicitud-botones">
-                                    <button class="bt-solicitud-aceptar" data-chat="${datos._id}" data-mensaje="${id_mensaje}">Aceptar</button>
-                                    <button class="bt-solicitud-rechazar" data-chat="${datos._id}" data-mensaje="${id_mensaje}">Rechazar</button>
-                                </div>`
-                        }
-                    } else if (estado === "aceptada") {
-                        contenido_solicitud = `<span><b>${nombre_candidato}</b> fue añadido al chat</span>`
-                    } else if (estado === "rechazada") {
-                        contenido_solicitud = `<span>Solicitud para añadir a <b>${nombre_candidato}</b> fue rechazada</span>`
-                    }
-
-                    html += `<div class="mensaje-especial mensaje-solicitud-añadir estado-${estado}">${contenido_solicitud}</div>`
-                    continue
-                }
-
-                // tipo desconocido: fallback genérico
-                html += `<div class="mensaje-especial"><span>Mensaje del sistema</span></div>`
-                continue
-            }
-
-            const id_emisor = Array.isArray(m.emisor) ? m.emisor[0] : m.emisor
-            const nombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: contactos })
-            const propio = id_emisor.toString() == id_propio.toString()
-            const asunto = m?.contenido[0]?.asunto || ""
-            const fecha = m.data
-            const archivos = m?.contenido[0]?.archivos || []
-            const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor?.toString())
-            html += (await crear_mensaje_html(fecha, asunto, archivos, propio, nombre, esAdmin))
-        }
-
-        if (!primer_dia) {
-            html += `</div>`
-        }
-
-        return html
-    }
-    html += `
+    return `
     <div id="nav-prinicpal-chat-usaurio" data-id="${datos?._id}">
         <div id="nombre-chat-nav"><span>${nombre_chat}</span></div>
     </div>
     
     <div id="cuerpo-mensajes-chat">
-        ${await todo_chat()}
+        <!-- Los mensajes se cargarán progresivamente aquí -->
     </div>
 
     <div class="seccion-escritura-mensaje-chat">
@@ -302,8 +322,6 @@ export async function Crear_chat_html(datos, id_propio) {
         <textarea id="textarea-mensaje-escritura" placeholder="Escribe un mensaje" maxlength="1000"></textarea>
     </div>
 `
-
-    return html
 }
 
 export async function mostrar_datos_chat_usaurios(e) {
@@ -457,7 +475,7 @@ export async function mostrar_datos_chat_usaurios(e) {
 
             const texto_bloquear = esta_bloqueado ? "Desbloquear usuario" : "Bloquear usuario";
             const action_bloquear = esta_bloqueado ? "desbloquear" : "bloquear";
-            
+
             const texto_silenciar = esta_silenciado ? "Desilenciar usuario" : "Silenciar usuario";
             const action_silenciar = esta_silenciado ? "desilenciar" : "silenciar";
 

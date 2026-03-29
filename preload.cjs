@@ -110,6 +110,9 @@ contextBridge.exposeInMainWorld('social_usuario', {
     OBTENER_DATOS_USUARIO_EXTERNO: (id, datos = null) => {
         return ipcRenderer.invoke("obtener-datos-usuario-externo", id, datos)
     },
+    OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS: (ids, datos = null) => {
+        return ipcRenderer.invoke("obtener-varios-usuarios-externos", ids, datos)
+    },
     OBTENER_CONTACTOS_USUARIO: () => {
         return ipcRenderer.invoke("obtener-contactos-usuario")
     },

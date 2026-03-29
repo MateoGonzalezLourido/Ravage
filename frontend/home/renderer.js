@@ -229,10 +229,15 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                             const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
                             if (result) {//limpiar seccion mensaje escritura
                                 const copia_archivos = archivos_mensaje
-                                archivos_mensaje = []
-                                textarea_msg.value = ""
-                                textarea_msg.style.height = "38px" // Restaurar tamaño original base
-                                document.querySelectorAll(".ventana-archivos-mensaje").forEach(x => x.remove())
+
+                                    //reinicar datos mensaje html
+                                    ; (async () => {
+                                        archivos_mensaje = []
+                                        textarea_msg.value = ""
+                                        textarea_msg.style.height = "38px" // Restaurar tamaño original base
+                                        document.querySelectorAll(".ventana-archivos-mensaje")?.forEach(x => x.remove())
+                                    })()
+
 
                                 //reactualizar chat (render)
                                 await Actualizar_render_chat({ emisor: id_usuario.toString(), chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date().toISOString() })
@@ -543,30 +548,40 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
     //chat, emisor son ids
     //el chat abierto es el del mensaje ?
     if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
-        const [nombres_contactos, id_propio] = await Promise.all([
-            window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
-            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-        ])
-
         const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
-        const propio = id_emisor == id_propio.toString()
-        const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos })
 
-        // Verificar si el emisor es admin en este chat (solo para grupos > 2)
-        const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(chat);
+        // 1. Obtener datos base en paralelo (Corregido: Encontrar_Nombre_Chat_Usuario requiere nombres_contactos)
+        const [nombres_contactos, id_propio, info_chat] = await Promise.all([
+            window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
+            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
+            window.chats.OBTENER_DATOS_CHAT_UNICO(chat)
+        ]).catch((e) => { 
+            console.error("Error al obtener datos para renderizar mensaje:", e);
+            return [[], null, null];
+        })
+
+        const propio = id_propio && id_emisor == id_propio.toString()
         const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(admin_id => admin_id.toString() === id_emisor.toString());
+        
+        // Obtener el nombre (ahora sí tenemos nombres_contactos)
+        const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos });
 
-        //crear mensaje
-        const html = await crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
+        // 2. Iniciar la creación del HTML (sin el incorrecto 'new Promise')
+        // Esto permite que el HTML se genere mientras hacemos lógica de DOM y fechas
+        const htmlPromise = crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
 
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        if (!chatContainer) return;
+
         const lastBlock = chatContainer.querySelector(".bloque-dia-chat:last-child");
         const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
-
         let lastBlockDateText = lastBlock ? lastBlock.querySelector(".fecha-bloque-mensajes span")?.innerHTML : null;
 
+        // 3. Resolver el HTML justo antes de insertarlo
+        const html = await htmlPromise;
+
         if (!lastBlock || lastBlockDateText !== fechaActualText) {
-            // crear nuevo bloque  y añadir ahi
+            // crear nuevo bloque y añadir ahi
             const nuevoBloqueHTML = `
                 <div class="bloque-dia-chat">
                     <div class="fecha-bloque-mensajes"><span>${fechaActualText}</span></div>
@@ -575,13 +590,10 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
             `;
             chatContainer.insertAdjacentHTML("beforeend", nuevoBloqueHTML);
         } else {
-            // añadir mensaje al bloque ya existente
+            // añadir mensaje al bloque ya existente (Corregido: usar el html resuelto)
             lastBlock.insertAdjacentHTML("beforeend", html);
         }
         scroll_fin_chat()
-    }
-    else {
-        console.log("dasda")
     }
 }
 

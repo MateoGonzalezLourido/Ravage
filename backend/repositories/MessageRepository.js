@@ -10,20 +10,32 @@ import { obtener_datos_usuario, procesarUsuario } from './UserRepository.js';
 import { setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 
 import { descifrarListaMensajes, getMessageKey } from '../services/messageCryptoService.js';
-import { cifrarContenido, descifrarConPrivada, cifrarConPublica, crearCipherStream, crearDecipherStream, encriptarDatosSistema } from '../services/cryptoService.js';
+import { 
+    cifrarContenido, 
+    descifrarConPrivada, 
+    cifrarConPublica, 
+    crearCipherStream, 
+    crearDecipherStream, 
+    encriptarDatosSistema,
+    getIdentity,
+    ratchetChainKey
+} from '../services/cryptoService.js';
 
 
 
 
 export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }) {
     try {
-        const chat = await ChatsRavage.findById(id_chat);
-        if (!chat) return false;
-        const usuario = await User.findById(id_emisor);
-        if (!usuario) return false;
+        // Ejecución en paralelo de la búsqueda de chat y usuario
+        const [chat, usuario] = await Promise.all([
+            ChatsRavage.findById(id_chat),
+            User.findById(id_emisor)
+        ]);
 
-        // E2EE: Obtener la ChainKey (Sender Key) del emisor
-        const identity_data = await readFileSession('identity');
+        if (!chat || !usuario) return false;
+
+        // E2EE: Obtener identidad de la caché en memoria (mucho más rápido que disco)
+        const identity_data = await getIdentity();
         if (!identity_data || !identity_data.privateKey) {
             console.error("No se encontró la llave privada local para E2EE");
             return false;
@@ -44,7 +56,8 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         let active_entry = ratchet_entry;
 
         async function intentarDescifrado() {
-            const id_data = await readFileSession('identity');
+            // Internamente getIdentity() usa cache
+            const id_data = await getIdentity();
             if (!id_data || !id_data.privateKey) throw new Error("No Identity");
             return descifrarConPrivada(active_entry.clave_envuelta, id_data.privateKey);
         }
@@ -55,7 +68,6 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             console.warn("Fallo de descifrado (posible inconsistencia de llaves). Intentando recuperación...");
             const { rotarClavesChat } = await import('./ChatRepository.js');
             
-            // Intento 1: Rotación simple (asume que la public key en DB es correcta pero la clave_envuelta no)
             await rotarClavesChat(id_chat, id_emisor);
             let chatAct = await ChatsRavage.findById(id_chat).lean();
             active_entry = chatAct.ratchet_keys.find(k => k.emisor_id.toString() === id_emisor.toString() && k.receptor_id.toString() === id_emisor.toString());
@@ -63,12 +75,10 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             try {
                 current_ck_hex = await intentarDescifrado();
             } catch (err2) {
-                // Intento 2: Regeneración de identidad (asume que la public key en DB o la local están mal)
                 console.error("Rotación insuficiente. Regenerando identidad completa (Opción Nuclear)...");
                 const { REGENERAR_IDENTIDAD_USUARIO } = await import('../services/sesionUsuario.js');
                 await REGENERAR_IDENTIDAD_USUARIO();
                 
-                // Tras regenerar identidad, DEBEMOS volver a rotar para que el servidor use la nueva public key
                 await rotarClavesChat(id_chat, id_emisor);
                 chatAct = await ChatsRavage.findById(id_chat).lean();
                 active_entry = chatAct.ratchet_keys.find(k => k.emisor_id.toString() === id_emisor.toString() && k.receptor_id.toString() === id_emisor.toString());
@@ -76,11 +86,12 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 current_ck_hex = await intentarDescifrado();
             }
         }
+
         const iteration = active_entry.counter;
         
         // Ratchet: Derivar MessageKey y el siguiente ChainKey
-        const { messageKey, nextChainKey } = (await import('../services/cryptoService.js')).ratchetChainKey(current_ck_hex);
-        const chatKey = messageKey; // Usamos la MK para esta sesión de cifrado
+        const { messageKey, nextChainKey } = ratchetChainKey(current_ck_hex);
+        const chatKey = messageKey; 
 
 
         const contenido_archivos = [];
@@ -154,9 +165,18 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             }
         );
 
-        // Actualizar cache del chat (importante por los ratchet_keys)
-        const updatedChat = await ChatsRavage.findById(id_chat).lean();
-        if (updatedChat) await setChatEnCacheRaw(updatedChat);
+        // Actualizar el objeto local para evitar un segundo findById
+        const target_entry = chat.ratchet_keys.find(k => 
+            k.emisor_id.toString() === id_emisor.toString() && 
+            k.receptor_id.toString() === id_emisor.toString()
+        );
+        if (target_entry) {
+            target_entry.clave_envuelta = cifrarConPublica(nextChainKey, usuario.publicKey);
+            target_entry.counter += 1;
+        }
+
+        // Actualizar cache del chat (importante por los ratchet_keys) con el objeto local ya actualizado
+        await setChatEnCacheRaw(chat.toObject ? chat.toObject() : chat);
 
         // Rotación automática si el contador es muy alto
         const ROTATION_THRESHOLD = 100;

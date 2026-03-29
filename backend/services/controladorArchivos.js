@@ -74,7 +74,10 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {
 }
 
 async function saveIdentityFile({ privateKey, publicKey }) {
-    await guardarArchivoGenerico('identity', { privateKey, publicKey }, 'global');
+    const data = { privateKey, publicKey };
+    const { setCachedIdentity } = await import('./cryptoService.js');
+    setCachedIdentity(data);
+    await guardarArchivoGenerico('identity', data, 'global');
 }
 
 async function saveCacheArchivosDescargadosFile(data) {
