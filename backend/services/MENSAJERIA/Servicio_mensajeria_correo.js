@@ -9,36 +9,36 @@ function generarCodigoVerificacion() {//generar codigo 6 digitos que se utilizar
 }
 
 async function enviarEmail({ correoDestino = null, asunto = "Sin asunto", htmlContenido = "" }) {
-    if (!correoDestino) { throw new Error(`Brevo error: FALTA DESTINATARIO`) }
+    try {
+        if (!correoDestino) { throw new Error(`Brevo error: FALTA DESTINATARIO`) }
 
-    const body = {//metadatos del correo
-        sender: { email: process.env.BREVO_SENDER_EMAIL, name: "RAVAGE" },
-        to: [{ email: correoDestino }],
-        subject: asunto,
-        htmlContent: htmlContenido
-    };
-    /*API de Brevo, no puedo usar sin mas un correo gratuito porque se detectaria como spam y los mensjaes no llegarias...
-    Para no gastar dinero brevo permite 300 emails al dia y funciona rápido y la dirección de correo que se muestra es una personalizada tuya
-    y no la que use la api para mandarlos
-    Recuerda: si el usuario recibe muchos correos pueden acabar en spam
-    El usuario puede responder al correo sin problemas y te llegan las respuestas a tu correo
-    */
-    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-            "api-key": process.env.BREVO_API_KEY,
-            "Content-Type": "application/json",
-            accept: "application/json"
-        },
-        body: JSON.stringify(body)
-    });
+        const body = {//metadatos del correo
+            sender: { email: process.env.BREVO_SENDER_EMAIL, name: "RAVAGE" },
+            to: [{ email: correoDestino }],
+            subject: asunto,
+            htmlContent: htmlContenido
+        };
 
-    if (!res.ok) {//si falla la api
-        const errorData = await res.json();
-        throw new Error(`Brevo error: ${errorData.message || res.statusText}`);
+        const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "api-key": process.env.BREVO_API_KEY,
+                "Content-Type": "application/json",
+                accept: "application/json"
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {//si falla la api
+            const errorData = await res.json();
+            throw new Error(`Brevo error: ${errorData.message || res.statusText}`);
+        }
+
+        log.info("Correo enviado al usuario");
+    } catch (e) {
+        log.error({ err: e }, "Error al enviar el correo");
+        // No relanzamos el error porque el usuario especificó que si falla no afecta al código ni app
     }
-
-    log.info("Correo enviado al usuario");
 }
 
 export { enviarEmail, generarCodigoVerificacion };

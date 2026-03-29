@@ -147,44 +147,43 @@ async function registerUsuario(mainWindow, { apodo = "Usuario", correo = null, p
         return { success: false, message: "Usuario ya registrado" };
     }
 
-    mainWindow.webContents.send("icono-cargando", false);
+    mainWindow.webContents.send("icono-cargando", true);
 
-    // Ejecutar TODA la carga asíncrona pesada (hash, rsa, db y email) en segundo plano
-    (async () => {
-        try {
-            const [pass_hashed, keys] = await Promise.all([
-                hash(passwordStr, saltos_contraseña),
-                generarLlavesRSA()
-            ]);
+    try {
+        const [pass_hashed, keys] = await Promise.all([
+            hash(passwordStr, saltos_contraseña),
+            generarLlavesRSA()
+        ]);
 
+        const code_generado = String(generarCodigoVerificacion());
+        const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado });
 
-            //crear verificacion por codigo de correo
-            const code_generado = String(generarCodigoVerificacion());
-            //generar correo
-            const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado });
+        const deviceId = String(machineIdSync());
 
-            const deviceId = String(machineIdSync());
+        await InsertarVC({
+            correo: correoStr,
+            code: code_generado,
+            id: deviceId,
+            data: {
+                passwordHash: pass_hashed,
+                apodo: apodoStr,
+                publicKey: keys.publicKey,
+                privateKey: keys.privateKey,
+                intentos: n_intentos_codigo_validacion
+            }
+        });
 
-            await InsertarVC({
-                correo: correoStr,
-                code: code_generado,
-                id: deviceId,
-                data: {
-                    passwordHash: pass_hashed,
-                    apodo: apodoStr,
-                    publicKey: keys.publicKey,
-                    privateKey: keys.privateKey,
-                    intentos: n_intentos_codigo_validacion
-                }
-            });
-            enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido });
-        } catch (e) {
-            log.error(e);
-            mainWindow.webContents.send("fallo-correo-mandar");
-        }
-    })();
+        // El envío de email sigue siendo asíncrono "fire-and-forget" seguro
+        enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido });
 
-    return { success: true }
+        mainWindow.webContents.send("icono-cargando", false);
+        return { success: true };
+    } catch (e) {
+        log.error({ err: e }, "Error en el proceso de registro");
+        mainWindow.webContents.send("icono-cargando", false);
+        mainWindow.webContents.send("fallo-correo-mandar");
+        return { success: false, message: "Error interno al procesar el registro" };
+    }
 }
 
 async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
@@ -240,19 +239,12 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         return { success: false, message: "Fallo al crear el usuario" }
     }
 
-    //guardar llave privada localmente
-    if (privateKey) {
-        await saveIdentityFile({ privateKey: privateKey, publicKey: publicKey })
-    }
+    await saveIdentityFile({ privateKey: privateKey, publicKey: publicKey });
+    await BorrarVC(correoStr);
 
-    (async () => await BorrarVC(correoStr))();
-    ;(async () => {
-        //mandar correo confirmando creacion de cuenta
-        const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo })
-        enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    })().catch(() => {
-        mainWindow.webContents.send("fallo-correo-mandar");
-    })
+    // Mandar correo confirmando creación de cuenta (no bloqueante)
+    const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo });
+    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
 
     return { success: true };
 }
@@ -402,72 +394,66 @@ async function ValidarCodeLogin({ correo, code }) {
 
     if (intentos <= 0) {
         ACTUALIZAR_DATOS_LOGIN({ limpiar: true });
-        ;(async () => await BorrarCuentaVC(correo))();
+        await BorrarCuentaVC(correo);
         return { success: false, message: "Fallo al iniciar sesion: intentos acabados" }
     }
 
     //JWT , mantener sesion iniciada en cache
     if (mantenerSesion) {
         const token = await generarteToken('sesion');
-        saveSessionFile({ username: correo, token: token }).catch((e) => {
-            log.error(e)
-        })
+        await saveSessionFile({ username: correo, token: token });
         await AñadirJWTUsuario(correo, token)
     }
 
     //guardar auto verificacion de cuenta en fichero local (omitir verificacion futura)
     const tokenVC = await generarteToken('cuenta');
-    saveOmitirVerificacionCuentaFile({ username: correo, token: tokenVC }).catch((e) => {
-        log.error(e)
-    })
+    await saveOmitirVerificacionCuentaFile({ username: correo, token: tokenVC });
     await AñadirJWTUsuarioVC(correo, tokenVC)
 
     //borrar codigos
     await BorrarCuentaVC(correo);
 
-    //mandar correo confirmando inicio de sesion
-    ;(async () => {
-        const { asunto, htmlContenido } = ConfirmacionInicioSesion()
-        enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    })().catch(() => {
-        mainWindow.webContents.send("fallo-correo-mandar");
-    })
+    //mandar correo confirmando inicio de sesion (no bloqueante)
+    const { asunto, htmlContenido } = ConfirmacionInicioSesion();
+    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
 
     return { success: true };
 }
 
 async function cerrarSesionUsuario(correo) {
-    const mainWindow = await getMainWindow();
-    mainWindow.webContents.send("cerrando-sesion", true);
+    const mainWindow = storage.getMainWindow();
+    if (mainWindow) {
+        mainWindow.webContents.send("cerrando-sesion", true);
+    }
     ACTUALIZAR_DATOS_LOGIN({ limpiar: true });
 
-    (async () => {
-        try {
-            const data = await readFileSession('sessionFile').catch(() => null);
+    try {
+        const data = await readFileSession('sessionFile').catch(() => null);
 
-            //limpiar ficheros cache
-            const arreglos = [
-                clearFileSession('sessionFile'),
-                clearCacheChats(),
-                clearCacheUsuarios(),
-                clearCacheArchivosDescargados(),
-                clearCacheUrlImgExtensiones()
-            ];
+        //limpiar ficheros cache
+        const arreglos = [
+            clearFileSession('sessionFile'),
+            clearCacheChats(),
+            clearCacheUsuarios(),
+            clearCacheArchivosDescargados(),
+            clearCacheUrlImgExtensiones()
+        ];
 
-            if (data && data.token) {
-                arreglos.push(LimpiarJWTUsuario(correo, data.token));
-            }
-
-            //si uno falla no rompe otros
-            await Promise.allSettled(arreglos);
-
-            log.info("Sesion cerrada y recursos liberados");
-        } catch (error) {
-            log.error({ err: error }, "Error en el cierre de sesión persistente");
+        if (data && data.token) {
+            arreglos.push(LimpiarJWTUsuario(correo, data.token));
         }
-    })();
 
-    mainWindow.webContents.send("cerrando-sesion", false);
+        //si uno falla no rompe otros
+        await Promise.allSettled(arreglos);
+
+        log.info("Sesion cerrada y recursos liberados");
+    } catch (error) {
+        log.error({ err: error }, "Error en el cierre de sesión persistente");
+    }
+
+    if (mainWindow) {
+        mainWindow.webContents.send("cerrando-sesion", false);
+    }
 
     return true;
 }
