@@ -338,15 +338,6 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
         stream_final
             .pipe(writeStream)
             .on("finish", async () => {
-                const { setCacheArchivosDescargados } = await import('../STORAGE/CACHE/_cache_archivos_descargados.js');
-                await setCacheArchivosDescargados({
-                    id_chat,
-                    id_archivo: id.toString(),
-                    nombre: nombre,
-                    iv: ivHex,
-                    tag: tagHex,
-                    fecha: new Date().toISOString()
-                });
                 resolve(rutaFinal)
             })
             .on("error", reject);
