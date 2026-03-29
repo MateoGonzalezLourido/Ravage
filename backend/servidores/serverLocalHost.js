@@ -15,6 +15,15 @@ async function startServer() {
     const app = express();
     app.use(express.json());
 
+    // Middleware de Rate Limiting Global (Servidor Local)
+    const rateLimit = await import('express-rate-limit');
+    const globalLimiter = rateLimit.default({
+        windowMs: 15 * 60 * 1000,
+        max: 300, // Más permisivo en local
+        message: "Demasiadas peticiones desde esta IP (Local)."
+    });
+    app.use(globalLimiter);
+
     // Configuración de CORS para desarrollo local (más flexible pero controlada)
     app.use((req, res, next) => {
         const allowedOrigins = ["http://localhost:3000", "http://localhost:8080", "file://"];
