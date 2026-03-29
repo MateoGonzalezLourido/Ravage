@@ -12,7 +12,7 @@ Esta cache esta optimizada para remplazar las ultimas entradas, es decir, las ex
 */
 
 //variables principales compartidas
-const carpetaPrincipal = new URL('../../recursos/extensionesArchivos', import.meta.url).href;
+const carpetaPrincipal = '../recursos/extensionesArchivos';
 const archivoJSON = 'img_extensiones.json';
 const img_defecto = "cualquiera.svg"
 
@@ -22,12 +22,12 @@ export async function url_icono_extension_img(extension) {
 
     //eliminar . inicial si existe (MOVÉNDOLO AL PRINCIPIO PARA EVITAR BUGS)
     const extension_usar = (extension[0] === '.' ? extension.replace(".", "") : extension).toLowerCase()
-    
+
     let _cache_img_extensiones = null;
     if (window.cache_url_img_extensiones && typeof window.cache_url_img_extensiones.getCacheUrlImgExtensiones === 'function') {
         _cache_img_extensiones = await window.cache_url_img_extensiones.getCacheUrlImgExtensiones();
     }
-    
+
     let img_usar;
     if (!_cache_img_extensiones) {
         _cache_img_extensiones = await getDataImgExtensiones()
@@ -39,7 +39,7 @@ export async function url_icono_extension_img(extension) {
             _cache_img_extensiones = await getDataImgExtensiones()
             img_usar = _cache_img_extensiones[extension_usar] || img_defecto
         }
-        
+
         if (img_usar !== img_defecto && window.cache_url_img_extensiones) {
             window.cache_url_img_extensiones.setCacheUrlImgExtensiones({ [extension_usar]: img_usar })
         }
@@ -61,7 +61,7 @@ async function getDataImgExtensiones() {
         console.error("Error al cargar img_extensiones.json:", err)
         data = {}
     }
-    
+
     if (window.cache_url_img_extensiones) {
         window.cache_url_img_extensiones.setCacheUrlImgExtensiones(data)
     }
