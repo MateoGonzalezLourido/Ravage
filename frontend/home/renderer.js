@@ -21,7 +21,15 @@ function cerrar_paneles_al_abrir_chat() {
         ventanaArchivos.classList.remove("abierto")
         setTimeout(() => ventanaArchivos.remove(), 310)
     }
+    // Cerrar historial si está abierto
+    const seccionHistorial = document.querySelector("#seccion-historial-archivos")
+    const chatUsuario = document.querySelector("#chat-usuario")
+    if (seccionHistorial && !seccionHistorial.classList.contains("ocultar-display")) {
+        seccionHistorial.classList.add("ocultar-display")
+        if (chatUsuario) chatUsuario.classList.remove("ocultar-display")
+    }
 }
+
 function scroll_fin_chat() {
     document.querySelector("#cuerpo-mensajes-chat").scrollTo({
         top: document.querySelector("#cuerpo-mensajes-chat").scrollHeight,
