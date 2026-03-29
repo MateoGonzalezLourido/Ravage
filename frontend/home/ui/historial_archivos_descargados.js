@@ -120,13 +120,16 @@ export async function crear_chat_historial_archivos_descargados(){
 }
 
 function crear_eventos(){
-    // Evento limpiar historial
-    document.querySelector("#bt-limpiar-historial-completo")?.addEventListener("click", async (e) => {
-        e.preventDefault()
-        await window.cache_archivos_descargados.setCacheArchivosDescargados()
-        invalidar_cache_historial()
-        crear_chat_historial_archivos_descargados()
-    })
+    // Evento limpiar historial (usar onclick para no acumular listeners si se recrean los eventos multiples veces sin destruir este boton estatico)
+    const btnLimpiar = document.querySelector("#bt-limpiar-historial-completo")
+    if (btnLimpiar) {
+        btnLimpiar.onclick = async (e) => {
+            e.preventDefault()
+            await window.cache_archivos_descargados.setCacheArchivosDescargados()
+            invalidar_cache_historial()
+            crear_chat_historial_archivos_descargados()
+        }
+    }
 
     // Click en un archivo para volver al chat
     document.querySelectorAll(".archivo-historial-item").forEach(el=>{
@@ -162,38 +165,45 @@ function crear_eventos(){
     document.querySelectorAll(".bt-descargar-directo-historial").forEach(btn => {
         btn.addEventListener("click", async (e) => {
             e.preventDefault()
-            const { id, nombre, iv, tag, idChat, emisor, ratchet } = btn.dataset
-            const ratchet_info = ratchet ? JSON.parse(decodeURIComponent(ratchet)) : null
-            
-            const resultado = await window.chats.DESCARGAR_ARCHIVO(id, nombre, iv, tag, idChat, ratchet_info, emisor)
-            if (!resultado) {
-                window.pushNotificacion({
-                    prioridad: 1,
-                    texto: `Fallo al cargar archivo: ${nombre}`,
-                    tipo: "error"
-                })
-            } else {
-                window.pushNotificacion({
-                    prioridad: 1,
-                    texto: `Archivo guardado en: ${resultado}`,
-                    tipo: "success"
-                })
-                // Actualizar historial (para que se cuente la descarga si el cache se actualiza)
-                // Nota: el cache se actualiza en el listener de descarga de renderer.js, pero ese listener está vinculado a los elementos del chat.
-                // Aquí deberíamos actualizarlo manualmente si queremos que aparezca en el historial de inmediato.
-                const [url_img] = await url_icono_extension_img(nombre.split(".").pop())
-                await window.cache_archivos_descargados.setCacheArchivosDescargados({
-                    id_chat: idChat,
-                    id_archivo: id,
-                    nombre,
-                    url_img,
-                    iv,
-                    tag,
-                    ratchet_info,
-                    emisor_id: emisor,
-                    fecha: new Date().toISOString()
-                })
-                crear_chat_historial_archivos_descargados()
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+
+            try {
+                const { id, nombre, iv, tag, idChat, emisor, ratchet } = btn.dataset
+                const ratchet_info = ratchet ? JSON.parse(decodeURIComponent(ratchet)) : null
+                
+                const resultado = await window.chats.DESCARGAR_ARCHIVO(id, nombre, iv, tag, idChat, ratchet_info, emisor)
+                if (!resultado) {
+                    window.pushNotificacion({
+                        prioridad: 1,
+                        texto: `Fallo al cargar archivo: ${nombre}`,
+                        tipo: "error"
+                    })
+                } else {
+                    window.pushNotificacion({
+                        prioridad: 1,
+                        texto: `Archivo guardado en: ${resultado}`,
+                        tipo: "success"
+                    })
+                    // Actualizar historial
+                    const [url_img] = await url_icono_extension_img(nombre.split(".").pop())
+                    await window.cache_archivos_descargados.setCacheArchivosDescargados({
+                        id_chat: idChat,
+                        id_archivo: id,
+                        nombre,
+                        url_img,
+                        iv,
+                        tag,
+                        ratchet_info,
+                        emisor_id: emisor,
+                        fecha: new Date().toISOString()
+                    })
+                    crear_chat_historial_archivos_descargados()
+                }
+            } finally {
+                btn.disabled = false;
+                btn.style.opacity = "1";
             }
         })
     })
