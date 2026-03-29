@@ -41,8 +41,8 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.querySelector("#bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña);
     document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo);
     document.querySelector("#bt-cambiar-correo").addEventListener("click", funcion_cambiar_correo);
-    document.querySelector("#bt-ver-chats_silenciados").addEventListener("click", ver_chats_silenciados); // Note: Fix potential ID typo if needed, renderer.js used #bt-ver-chats-silenciados
-        document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados);
+    document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados); 
+    document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados);
 
     // INICIAR CACHE SETTINGS
     await cargar_ajustes_cache();

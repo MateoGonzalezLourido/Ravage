@@ -11,36 +11,39 @@ Si no existe icono para esa extension la url sera la de "cualquiera.svg"(icono p
 Esta cache esta optimizada para remplazar las ultimas entradas, es decir, las extensiones mas usadas deberan ir en el .json al principio, lo que aumenta la probabilidad de que no se remplacen.
 */
 
-export async function url_icono_extension_img(extension) {
-    //variables principales
-    const carpetaPrincipal = new URL('../../recursos/extensionesArchivos', import.meta.url).href;
-    const archivoJSON = 'img_extensiones.json';
-    const img_defecto = "cualquiera.svg"
+//variables principales compartidas
+const carpetaPrincipal = new URL('../../recursos/extensionesArchivos', import.meta.url).href;
+const archivoJSON = 'img_extensiones.json';
+const img_defecto = "cualquiera.svg"
 
+export async function url_icono_extension_img(extension) {
     //ocasiones que daria problemas o siempre devolveria el icono por defecto
     if (!extension || extension === "" || typeof extension !== "string") return [`${carpetaPrincipal}/${img_defecto}`, false]
 
     //eliminar . inicial si existe (MOVÉNDOLO AL PRINCIPIO PARA EVITAR BUGS)
     const extension_usar = (extension[0] === '.' ? extension.replace(".", "") : extension).toLowerCase()
     
-    const _cache_img_extensiones  = await window.cache_url_img_extensiones.getCacheUrlImgExtensiones()
+    let _cache_img_extensiones = null;
+    if (window.cache_url_img_extensiones && typeof window.cache_url_img_extensiones.getCacheUrlImgExtensiones === 'function') {
+        _cache_img_extensiones = await window.cache_url_img_extensiones.getCacheUrlImgExtensiones();
+    }
     
     let img_usar;
     if (!_cache_img_extensiones) {
-        _cache_img_extensiones=await getDataImgExtensiones()
+        _cache_img_extensiones = await getDataImgExtensiones()
         img_usar = _cache_img_extensiones[extension_usar] || img_defecto
-
     }
-    else{
+    else {
         img_usar = _cache_img_extensiones[extension_usar] || img_defecto
-    if(img_usar===img_defecto)   {
-    _cache_img_extensiones=await getDataImgExtensiones()
+        if (img_usar === img_defecto) {
+            _cache_img_extensiones = await getDataImgExtensiones()
+            img_usar = _cache_img_extensiones[extension_usar] || img_defecto
+        }
+        
+        if (img_usar !== img_defecto && window.cache_url_img_extensiones) {
+            window.cache_url_img_extensiones.setCacheUrlImgExtensiones({ [extension_usar]: img_usar })
+        }
     }
-    img_usar = _cache_img_extensiones[extension_usar] || img_defecto
-if(img_usar!==img_defecto)   {
-        window.cache_url_img_extensiones.setCacheUrlImgExtensiones({[extension_usar]:img_usar})
-    }
- }
 
     //conseguir icono
     const url_img = `${carpetaPrincipal}/${img_usar}`
@@ -49,15 +52,18 @@ if(img_usar!==img_defecto)   {
     return [url_img, identificado]
 }
 
-async function getDataImgExtensiones(){
-    let _cache_img_extensiones;
+async function getDataImgExtensiones() {
+    let data;
     try {
-            const res = await fetch(`${carpetaPrincipal}/${archivoJSON}`)
-            _cache_img_extensiones = await res.json()
-        } catch (err) {
-            console.error("Error al cargar img_extensiones.json:", err)
-            _cache_img_extensiones={}
-        }
-        window.cache_url_img_extensiones.setCacheUrlImgExtensiones(_cache_img_extensiones)
-        return _cache_img_extensiones
+        const res = await fetch(`${carpetaPrincipal}/${archivoJSON}`)
+        data = await res.json()
+    } catch (err) {
+        console.error("Error al cargar img_extensiones.json:", err)
+        data = {}
+    }
+    
+    if (window.cache_url_img_extensiones) {
+        window.cache_url_img_extensiones.setCacheUrlImgExtensiones(data)
+    }
+    return data
 }
