@@ -16,7 +16,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "start-railway": "node backend/servidores/serverRailway.js"
+    "start-railway": "node backend/servidores/serverRailway.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@getbrevo/brevo": "^5.0.3",
@@ -37,7 +38,8 @@
   },
   "devDependencies": {
     "electron": "^41.1.0",
-    "standard": "^17.1.2"
+    "standard": "^17.1.2",
+    "vitest": "^4.1.2"
   },
   "browserslist": [
     "Chrome >= 120",
