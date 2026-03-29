@@ -55,35 +55,55 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         let current_ck_hex;
         let active_entry = ratchet_entry;
 
-        async function intentarDescifrado() {
-            // Internamente getIdentity() usa cache
+        async function intentarDescifrado(ent) {
             const id_data = await getIdentity();
-            if (!id_data || !id_data.privateKey) throw new Error("No Identity");
-            return descifrarConPrivada(active_entry.clave_envuelta, id_data.privateKey);
+            if (!id_data || !id_data.privateKey) throw new Error("No Identity keys found locally.");
+            return descifrarConPrivada(ent.clave_envuelta, id_data.privateKey);
         }
 
         try {
-            current_ck_hex = await intentarDescifrado();
+            current_ck_hex = await intentarDescifrado(active_entry);
         } catch (err) {
-            console.warn("Fallo de descifrado (posible inconsistencia de llaves). Intentando recuperación...");
-            const { rotarClavesChat } = await import('./ChatRepository.js');
-            
-            await rotarClavesChat(id_chat, id_emisor);
-            let chatAct = await ChatsRavage.findById(id_chat).lean();
-            active_entry = chatAct.ratchet_keys.find(k => k.emisor_id.toString() === id_emisor.toString() && k.receptor_id.toString() === id_emisor.toString());
+            console.warn(`[E2EE] Fallo al descifrar propia llave de cadena en chat ${id_chat}. Intentando recuperación por rotación...`, err.message);
             
             try {
-                current_ck_hex = await intentarDescifrado();
-            } catch (err2) {
-                console.error("Rotación insuficiente. Regenerando identidad completa (Opción Nuclear)...");
-                const { REGENERAR_IDENTIDAD_USUARIO } = await import('../services/sesionUsuario.js');
-                await REGENERAR_IDENTIDAD_USUARIO();
-                
+                const { rotarClavesChat } = await import('./ChatRepository.js');
                 await rotarClavesChat(id_chat, id_emisor);
-                chatAct = await ChatsRavage.findById(id_chat).lean();
-                active_entry = chatAct.ratchet_keys.find(k => k.emisor_id.toString() === id_emisor.toString() && k.receptor_id.toString() === id_emisor.toString());
                 
-                current_ck_hex = await intentarDescifrado();
+                let chatAct = await ChatsRavage.findById(id_chat).lean();
+                active_entry = chatAct.ratchet_keys.find(k => 
+                    k.emisor_id.toString() === id_emisor.toString() && 
+                    k.receptor_id.toString() === id_emisor.toString()
+                );
+                
+                if (!active_entry) throw new Error("Ratchet entry not found after rotation.");
+                current_ck_hex = await intentarDescifrado(active_entry);
+                console.log("[E2EE] Recuperación por rotación exitosa.");
+            } catch (err2) {
+                console.error("[E2EE] Rotación de chat insuficiente. Fallo crítico de identidad detectado.", err2.message);
+                
+                // OPCIÓN NUCLEAR: Solo si la llave privada local ya no sirve para NADA.
+                // Esto romperá la retrocompatibilidad con TODOS los chats existentes.
+                try {
+                    const { REGENERAR_IDENTIDAD_USUARIO } = await import('../services/sesionUsuario.js');
+                    const regenOk = await REGENERAR_IDENTIDAD_USUARIO();
+                    if (!regenOk) throw new Error("Failed to regenerate identity.");
+                    
+                    const { rotarClavesChat } = await import('./ChatRepository.js');
+                    await rotarClavesChat(id_chat, id_emisor);
+                    
+                    let chatAct = await ChatsRavage.findById(id_chat).lean();
+                    active_entry = chatAct.ratchet_keys.find(k => 
+                        k.emisor_id.toString() === id_emisor.toString() && 
+                        k.receptor_id.toString() === id_emisor.toString()
+                    );
+                    
+                    current_ck_hex = await intentarDescifrado(active_entry);
+                    console.warn("[E2EE] Recuperación nuclear completada. Los mensajes antiguos podrían no ser legibles.");
+                } catch (err3) {
+                    console.error("[E2EE] Fallo absoluto en el sistema criptográfico:", err3.message);
+                    return false;
+                }
             }
         }
 
@@ -139,11 +159,13 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         });
         const encriptado = cifrarContenido(payload, chatKey);
 
-        const dummy_id = "000000000000000000000000";
         const mensaje = {
             id_chat: new mongoose.Types.ObjectId(id_chat),
-            emisor: new mongoose.Types.ObjectId(dummy_id),
-            contenido: [],
+            emisor: new mongoose.Types.ObjectId(id_emisor),
+            contenido: [{
+                asunto: encriptarDatosSistema(asunto),
+                archivos: contenido_archivos
+            }],
             encriptado: encriptado,
             data: data_mensaje,
             ratchet_info: {

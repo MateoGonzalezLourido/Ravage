@@ -492,10 +492,10 @@ async function REGENERAR_IDENTIDAD_USUARIO() {
             await setUsuarioEnCache(procesarUsuario(updatedUser));
         }
 
-        console.warn("(!) Identidad E2EE regenerada por incompatibilidad de llaves.");
+        console.warn("(!) ATENCIÓN: Regenerando identidad E2EE completa. Esto romperá la lectura de mensajes antiguos en todos los chats existentes.");
         return true;
     } catch (e) {
-        console.error("Error regenerando identidad:", e);
+        console.error("Error crítico regenerando identidad:", e);
         return false;
     }
 }
