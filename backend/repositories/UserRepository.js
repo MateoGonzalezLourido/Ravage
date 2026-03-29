@@ -23,9 +23,6 @@ import {
     setMostrarCorreoUsuario
 } from '../STORAGE/Variables_sesion.js';
 
-// Campos mínimos necesarios para el login y la inicialización de la sesión según sesionUsuario.js
-const LOGIN_FIELDS = "_id apodo correo createdAt exp_bloq_apodo exp_bloq_correo exp_bloq_contrasena users_silence users_bloq secretKey chats.id chats.grupo chats.ultimoCambio contactos.id contactos.apodo idamigo visible invisible mostrarCorreo";
-
 /**
  * Helper para desencriptar un objeto de usuario de la DB.
  */
@@ -64,7 +61,10 @@ export function procesarUsuario(usuario) {
     return result;
 }
 
-export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {
+export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {    
+    // Campos mínimos necesarios para el login y la inicialización de la sesión según sesionUsuario.js
+    const LOGIN_FIELDS = "_id apodo correo createdAt exp_bloq_apodo exp_bloq_correo exp_bloq_contrasena users_silence users_bloq secretKey chats.id chats.grupo chats.ultimoCambio contactos.id contactos.apodo idamigo visible invisible mostrarCorreo";
+
     try {
         if (token && correo && id_dp) {
             const correoStr = String(correo);

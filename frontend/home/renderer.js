@@ -537,6 +537,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
         throw e
     }
 }
+window.ACTUALIZAR_LISTAS_CHAT = ACTUALIZAR_LISTAS_CHAT;
 
 async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {} }) {
     //chat, emisor son ids

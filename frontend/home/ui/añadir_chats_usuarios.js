@@ -54,8 +54,7 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
         menu_añadir_chat.classList.add("ocultar-display")
 
         //limpiar datos y html
-        actualizar_cache_listas_usuarios_añadir(null)
-        actualizar_lista_usuarios_añadir({ conjunto: [] })
+        actualizar_lista_usuarios_añadir({ clean:true})
         $inputBuscar.value = ""
         $resultados.innerHTML = "<span>*Sin resultados</span>"
         $contactosGrupo.innerHTML = "<span>*Agregar usuarios para el chat</span>"
@@ -64,20 +63,19 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
         //limpiar eventos
         desactivar_eventos_menu_añadir_chat()
         //limpiar cache
-        actualizar_cache_listas_usuarios_añadir(null)
+        actualizar_cache_listas_usuarios_añadir(null,true)
     }
 }
 
-function actualizar_lista_usuarios_añadir({ id, nombre, conjunto = null }) {
-    //control errores
-    if ((!id || !nombre) && (!conjunto || conjunto.length === 0)) return
-
+function actualizar_lista_usuarios_añadir({conjunto = null,remove = false,clean=false }) {
     const clase_span_lista_contactos_añadidos = ".span-text-contactos-añadir"
     const $lista_contactos_añadir = document.querySelector("#contactos-añadidos-grupo")
     const $span_text_contactos_añadidos = $lista_contactos_añadir?.querySelector(clase_span_lista_contactos_añadidos) || null
     const $bt_agregar_contacto_nuevo = document.querySelector("#bt-agregar-contacto-nuevo")
 
-    if (conjunto) {
+    if(clean) $lista_contactos_añadir.innerHTML = ""
+    else if(remove)remove.currentTarget.remove()
+    else if (Array.isArray(conjunto) && conjunto.length > 0) {
         //borrar
         $lista_contactos_añadir.innerHTML = ""
         //añadir contacto a la lista
@@ -86,16 +84,14 @@ function actualizar_lista_usuarios_añadir({ id, nombre, conjunto = null }) {
         })
     }
     else {
-        //si es la primera vez vaciar
-        if ($span_text_contactos_añadidos) $span_text_contactos_añadidos.innerHTML = ""
+
         //añadir contacto a la lista
-        if (id && nombre) {
-            $lista_contactos_añadir.innerHTML += `<div class="${clase_cp_lista_contactos_añadidos}" data-id="${id}">${nombre}</div>`
-        }
+        $lista_contactos_añadir.innerHTML = `<div class="${clase_cp_lista_contactos_añadidos}" data-id="${conjunto.id}">${conjunto.nombre}</div>`
     }
 
 
     //cambiar textos concorde a los contactos en la lista
+    const contactos_añadir = mirar_usuarios_añadir_lista()
     if (contactos_añadir.length == 1) {
         $bt_agregar_contacto_nuevo.innerHTML = "Crear Chat"
     }
@@ -112,17 +108,21 @@ function actualizar_lista_usuarios_añadir({ id, nombre, conjunto = null }) {
         c.addEventListener("click", (e) => {
             const id = e.currentTarget.dataset.id
             quitar_usuarios_lista_añadir(id)
+            //actualizar html
+            actualizar_lista_usuarios_añadir({remove:e})
+
         })
     })
 }
 
-function actualizar_cache_listas_usuarios_añadir(data) {
+function actualizar_cache_listas_usuarios_añadir(data,clean=false) {
+    if(clean) _cache_lista_usuarios_añadir = null
     const MAX_CONTACTOS_CACHE = 5000//limitar cache
 
     if (_cache_lista_usuarios_añadir != data && data.length <= MAX_CONTACTOS_CACHE) _cache_lista_usuarios_añadir = data
     else if (_cache_lista_usuarios_añadir != data) _cache_lista_usuarios_añadir = null//si la cache supera el limite es inutil guardar los datos, mejor limpiarla y esperar a que baje al limite
 }
-function mirar_usuarios_añadir_lista() {//
+function mirar_usuarios_añadir_lista() {
     /*funcion para recuperar la lista de usuarios para añadir del html
     para no usar variables globales que consuman memoria se recogeran del html los datos de los contactos*/
 
@@ -146,7 +146,7 @@ function añadir_usuarios_lista_añadir(e) {
     if (lista_contactos_añadir.findIndex(x => x.id == id) == -1) {
         const data = { id, nombre }
         actualizar_cache_listas_usuarios_añadir([...lista_contactos_añadir, data])
-        actualizar_lista_usuarios_añadir(data)
+        return data
     }
 }
 function quitar_usuarios_lista_añadir(id) {
@@ -154,12 +154,11 @@ function quitar_usuarios_lista_añadir(id) {
     lista_contactos_añadir = lista_contactos_añadir.filter(x => x.id != id)
 
     actualizar_cache_listas_usuarios_añadir(lista_contactos_añadir)
-    actualizar_lista_usuarios_añadir({ conjunto: lista_contactos_añadir })
 }
 
 async function buscar_usuario_añadir_chat(e) {
     /*Buscar el id o correo de un usuario; solo se busca coincidencias exactas, por lo que el resultado es 1 o 0 usuarios*/
-    const clase_cp_posible_usuario_añadir = ".componente-posible-usaurio-añadir"
+    const clase_cp_posible_usuario_añadir = "componente-posible-usaurio-añadir"
 
     //buscar
     const texto_buscar = document.querySelector("#texto-buscar-chat-añadir").value.trim()
@@ -206,12 +205,15 @@ async function buscar_usuario_añadir_chat(e) {
     }
 
     //eventos doom
-    document.querySelectorAll(clase_cp_posible_usuario_añadir).forEach(c => {
-        c.addEventListener("click", (e) => {
-            e.preventDefault()
-            añadir_usuarios_lista_añadir(e)
+    function crear_eventos() {
+        document.querySelectorAll(`.${clase_cp_posible_usuario_añadir}`).forEach(c => {
+            c.addEventListener("click", (e) => {
+                e.preventDefault()
+                const data = añadir_usuarios_lista_añadir(e)
+                actualizar_lista_usuarios_añadir({ conjunto: data })
+            })
         })
-    })
+    }
 }
 async function crear_chat_nuevo(e) {
     e.preventDefault()
@@ -248,15 +250,12 @@ async function crear_chat_nuevo(e) {
     }
 
     try {
-        console.log("Creando chat con IDs:", ids, "Nombre:", nombre, "ID Chat (añadir):", id_chat)
         const result = await window.chats.CREAR_CHAT_NUEVO(ids, nombre, id_chat)
         if (result) {
-            console.log("Chat creado/actualizado con éxito:", result)
-            //limpiar cache
-            actualizar_cache_listas_usuarios_añadir(null)
             //actualizar html
             desplegar_menu_añadir_chat({ mostrar: false })
-            await ACTUALIZAR_LISTAS_CHAT()
+            if (window.ACTUALIZAR_LISTAS_CHAT) await window.ACTUALIZAR_LISTAS_CHAT()
+            else console.warn("ACTUALIZAR_LISTAS_CHAT no está definida aún")
 
             // Verificar si fue una solicitud (chat de 2 personas)
             if (result.solicitud) {
