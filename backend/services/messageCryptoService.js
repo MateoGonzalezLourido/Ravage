@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('msg-crypto');
 import { descifrarContenido, descifrarConPrivada, ratchetChainKey, cifrarConPublica, desencriptarDatosSistema } from './cryptoService.js';
 import { readFileSession } from './controladorArchivos.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
@@ -104,7 +106,7 @@ export async function descifrarListaMensajes(mensajes, chat) {
                 current_state.counter++;
                 
             } catch (err) {
-                console.error(`[E2EE] Fallo descifrando msg ${m._id || m.id}:`, err.message);
+                log.error({ err: aesErr, msgId: m._id || m.id }, "[E2EE] Fallo descifrando msg");
                 if (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string') {
                     m.contenido = [{ asunto: "[Error al descifrar: posible clave de dispositivo obsoleta]", archivos: [] }];
                 }
@@ -123,7 +125,7 @@ export async function descifrarListaMensajes(mensajes, chat) {
                     "ratchet_keys.$.counter": state.counter 
                 }
             }
-        ).catch(e => console.error("[E2EE] Fallo persistiendo ratchet state:", e));
+        ).catch(e => log.error({ err: e }, "[E2EE] Fallo persistiendo ratchet state"));
     }
 
     return mensajes;

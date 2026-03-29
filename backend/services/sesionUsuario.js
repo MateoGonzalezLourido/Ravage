@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('session');
 import { User } from '../models/User.js';
 import { ValidationCode, TokenVC, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
 import { LoginUsuarioDB, InsertarUsuario } from '../repositories/UserRepository.js';
@@ -100,12 +102,12 @@ async function autoLoginUsuario() {
 
     if (usuario_datos.success && usuario_datos.data) {
         ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data });
-        console.log("*Autologin correcto");
+        log.info("Autologin completado correctamente");
         return { success: true };
     } else {
         await LimpiarJWTUsuario(username, token);
         await clearFileSession('sessionFile');
-        console.error("Error en auto login: token no válido o usuario inexistente");
+        log.warn("Auto login fallido: token no válido o usuario inexistente");
         return { success: false };
     }
 }
@@ -301,7 +303,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
     }
 
     if (!usuario_data || !usuario_data.success) {
-        clearFileSession('sessionFile').catch(console.error); // sin await (background)
+        clearFileSession('sessionFile').catch(e => log.error(e)); // sin await (background)
         mainWindow.webContents.send("icono-cargando", false);
         return { success: false, message: 'Usuario no encontrado' };
     }
@@ -309,7 +311,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
     // Verificar dispositivo de confianza
     let dp_confianza = false;
     if (!dp_confianza_data || (dp_confianza_data !== "" && !validateToken(dp_confianza_data.token))) {
-        clearFileSession('dispositivoConfianza').catch(console.error); // background
+        clearFileSession('dispositivoConfianza').catch(e => log.error(e)); // background
     } else {
         const tokenhash = createHash("sha256").update(dp_confianza_data.token).digest("hex");
         dp_confianza = await TokenDPC.exists({ correo_hash: usernameHash, token: tokenhash, id_dp_hash: deviceIdHash });
@@ -325,7 +327,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
                 const token_datos = await TokenVC.exists({ correo_hash: hashDatosSistema(usuario_data.data.correo), token: tokenhash, id_dp_hash: deviceIdHash });
 
                 if (!token_datos) {
-                    clearFileSession('omitirVerificacionCuentaFile').catch(console.error);
+                    clearFileSession('omitirVerificacionCuentaFile').catch(e => log.error(e));
                 } else {
                     autoverificacion = true;
                 }
@@ -333,7 +335,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
                 Promise.all([
                     clearFileSession('omitirVerificacionCuentaFile'),
                     LimpiarJWTUsuarioVC(usernameStr, data_autoverificacion.token)
-                ]).catch(console.error);
+                ]).catch(e => log.error(e));
             }
         }
     }
@@ -350,9 +352,9 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
                     saveSessionFile({ username: usuario_data.data.correo, token: token }),
                     AñadirJWTUsuario(usuario_data.data.correo, token)
                 ]);
-            })().catch(console.error);
+            })().catch(e => log.error(e));
         }
-        console.log("-Autoverificacion de cuenta");
+        log.info("Autoverificacion de cuenta completada");
     } else {
         (async () => {
             const code_generado = String(generarCodigoVerificacion());
@@ -459,9 +461,9 @@ async function cerrarSesionUsuario(correo) {
             //si uno falla no rompe otros
             await Promise.allSettled(arreglos);
 
-            console.warn("*Sesion cerrada (recursos liberados)");
+            log.info("Sesion cerrada y recursos liberados");
         } catch (error) {
-            console.error("Error en el cierre de sesión persistente:", error);
+            log.error({ err: error }, "Error en el cierre de sesión persistente");
         }
     })();
 
@@ -493,10 +495,10 @@ async function REGENERAR_IDENTIDAD_USUARIO() {
             await setUsuarioEnCache(procesarUsuario(updatedUser));
         }
 
-        console.warn("(!) ATENCIÓN: Regenerando identidad E2EE completa. Esto romperá la lectura de mensajes antiguos en todos los chats existentes.");
+        log.warn("ATENCIÓN: Regenerando identidad E2EE completa. Esto romperá la lectura de mensajes antiguos en todos los chats existentes.");
         return true;
     } catch (e) {
-        console.error("Error crítico regenerando identidad:", e);
+        log.fatal({ err: e }, "Error crítico regenerando identidad");
         return false;
     }
 }
