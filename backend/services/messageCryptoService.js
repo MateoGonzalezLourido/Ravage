@@ -69,7 +69,9 @@ export async function descifrarListaMensajes(mensajes, chat) {
                             asunto: data.asunto, 
                             archivos: (data.archivos || []).map(a => ({
                                 ...a,
-                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
+                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
+                                ratchet_info: m.ratchet_info,
+                                emisor_id: emisor_id
                             }))
                         }];
                         m.emisor = data.emisor; 
@@ -84,7 +86,9 @@ export async function descifrarListaMensajes(mensajes, chat) {
                             if (m.contenido[0].archivos) {
                                 m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
                                     ...a,
-                                    nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre
+                                    nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
+                                    ratchet_info: m.ratchet_info,
+                                    emisor_id: emisor_id
                                 }));
                             }
                         } else {

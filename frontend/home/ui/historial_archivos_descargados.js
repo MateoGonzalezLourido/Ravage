@@ -19,7 +19,7 @@ export async function crear_chat_historial_archivos_descargados(){
         
         if(_cache_archivos_descargados && Array.isArray(_cache_archivos_descargados)){
             for(const entry of _cache_archivos_descargados){
-                const { id_chat, nombre, url_img, id_archivo, iv, tag } = entry
+                const { id_chat, nombre, url_img, id_archivo, iv, tag, ratchet_info, emisor_id } = entry
                 
                 let chat_item = agrupar_chats.find(c => c.id_chat === id_chat)
                 if(!chat_item){
@@ -40,12 +40,16 @@ export async function crear_chat_historial_archivos_descargados(){
                         descargas: 1,
                         id_archivo,
                         iv,
-                        tag
+                        tag,
+                        ratchet_info,
+                        emisor_id
                     })
                 } else {
                     archivo_item.descargas++
                     archivo_item.iv = iv 
                     archivo_item.tag = tag
+                    archivo_item.ratchet_info = ratchet_info
+                    archivo_item.emisor_id = emisor_id
                 }
             }
         }
@@ -86,6 +90,8 @@ export async function crear_chat_historial_archivos_descargados(){
                                 data-nombre="${archivo.nombre}" 
                                 data-iv="${archivo.iv || ''}" 
                                 data-tag="${archivo.tag || ''}" 
+                                data-emisor="${archivo.emisor_id || ''}"
+                                data-ratchet="${archivo.ratchet_info ? encodeURIComponent(JSON.stringify(archivo.ratchet_info)) : ''}"
                                 data-id-chat="${chat.id_chat}" 
                                 title="Volver a descargar">
                             <img src="../recursos/carpeta.svg" alt="Descargar">
@@ -152,9 +158,10 @@ function crear_eventos(){
     document.querySelectorAll(".bt-descargar-directo-historial").forEach(btn => {
         btn.addEventListener("click", async (e) => {
             e.preventDefault()
-            const { id, nombre, iv, tag, idChat } = btn.dataset
+            const { id, nombre, iv, tag, idChat, emisor, ratchet } = btn.dataset
+            const ratchet_info = ratchet ? JSON.parse(decodeURIComponent(ratchet)) : null
             
-            const resultado = await window.chats.DESCARGAR_ARCHIVO(id, nombre, iv, tag, idChat)
+            const resultado = await window.chats.DESCARGAR_ARCHIVO(id, nombre, iv, tag, idChat, ratchet_info, emisor)
             if (!resultado) {
                 window.pushNotificacion({
                     prioridad: 1,
@@ -178,6 +185,8 @@ function crear_eventos(){
                     url_img,
                     iv,
                     tag,
+                    ratchet_info,
+                    emisor_id: emisor,
                     fecha: new Date().toISOString()
                 })
                 crear_chat_historial_archivos_descargados()
