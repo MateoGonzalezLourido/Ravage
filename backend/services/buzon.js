@@ -1,9 +1,15 @@
 import { BuzonUsuarios } from '../models/Buzon.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
+let changeStream = null;
+
 //TODO: terminar
 export async function iniciarBuzon(io, mainWindow) {
+    if (changeStream) {
+        await detenerBuzon();
+    }
+
     console.log("buzon iniciado")
-    const changeStream = BuzonUsuarios.watch([], { fullDocument: "updateLookup" });
+    changeStream = BuzonUsuarios.watch([], { fullDocument: "updateLookup" });
 
     changeStream.on("change", (change) => {
         const userId = change.documentKey._id;
@@ -22,13 +28,20 @@ export async function iniciarBuzon(io, mainWindow) {
 
     });
     changeStream.on("error", (err) => {
+        // Ignore the error if the stream is being closed deliberately
+        if (err.name === 'MongoClientClosedError') return;
         console.error("Error en Change Stream:", err);
     });
-    /* para mandar solo notificaciones sobre cosas especificas
-    changeStream.on("change", (change) => {
-        if (change.operationType === "insert") {
-            io.emit("nueva-notificacion", change.fullDocument);
+}
+
+export async function detenerBuzon() {
+    if (changeStream) {
+        try {
+            await changeStream.close();
+            changeStream = null;
+            console.log("buzon detenido")
+        } catch (err) {
+            console.error("Error al detener el buzon:", err);
         }
-    });
-    */
+    }
 }
