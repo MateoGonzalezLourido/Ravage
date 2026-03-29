@@ -1,6 +1,7 @@
 import { ipcMain, dialog } from '../utils/libs.js';
 import {
     getListaChats,
+    setListaChats,
     getIDMongodbUsuario
 } from '../STORAGE/Variables_sesion.js';
 import { 
@@ -14,6 +15,9 @@ import {
     SILENCIAR_CHAT_USUARIO,
     BLOQUEAR_CHAT_USUARIO
 } from '../repositories/ChatRepository.js';
+import {
+    obtenerChatsUsuarioDB
+} from '../repositories/UserRepository.js';
 import { 
     ENVIAR_MENSAJE, 
     DESCARGAR_ARCHIVO, 
@@ -27,8 +31,10 @@ import { comprobar_mensaje, comprobar_nombre_archivo } from '../services/validad
 const authorizedPaths = new Set();
 
 export function registerChatHandlers(mainWindow, socket) {
-    ipcMain.handle("obtener-chats-usuario", () => {
-        return getListaChats()
+    ipcMain.handle("obtener-chats-usuario", async () => {
+        const chats = await obtenerChatsUsuarioDB();
+        setListaChats(chats); // Sincronizar con la sesión en memoria por si se usa en otros sitios
+        return chats;
     })
 
     ipcMain.handle("obtener-datos-chats-grupales-usuario", async (_, { data, grupales, mensajes }) => {

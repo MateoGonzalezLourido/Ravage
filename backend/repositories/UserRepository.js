@@ -529,3 +529,30 @@ export async function toggleMostrarCorreoUsuario() {
         return { success: false };
     }
 }
+
+/**
+ * Obtiene la lista resumida de chats del usuario directamente de la DB.
+ * Útil para asegurar sincronización cuando se crean o modifican chats.
+ */
+export async function obtenerChatsUsuarioDB() {
+    try {
+        const id_propio = getIDMongodbUsuario();
+        if (!id_propio) return [];
+
+        const usuario = await User.findById(id_propio, "chats").lean();
+        if (!usuario || !usuario.chats) return [];
+
+        const procesado = procesarUsuario(usuario);
+        return procesado.chats.map(c => ({
+            id: c.id.toString(),
+            grupo: !!c.grupo,
+            ultimoCambio: c.ultimoCambio instanceof Date ? c.ultimoCambio.toISOString() : c.ultimoCambio,
+            ultimomensaje: c.ultimomensaje || "",
+            silenciado: !!c.silenciado,
+            bloqueado: !!c.bloqueado
+        }));
+    } catch (e) {
+        console.error("Error al obtener chats desde DB:", e);
+        return [];
+    }
+}
