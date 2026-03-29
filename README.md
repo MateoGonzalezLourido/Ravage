@@ -31,6 +31,7 @@
 - [Sistema de Cifrado en Profundidad](#-sistema-de-cifrado-en-profundidad)
 - [Sistema de Caché Multinivel](#-sistema-de-caché-multinivel)
 - [Sistema de Notificaciones en Tiempo Real](#-sistema-de-notificaciones-en-tiempo-real)
+- [Monitorización Estructurada](#-monitorización-estructurada)
 - [Seguridad Adicional](#-seguridad-adicional)
 
 ---
@@ -51,6 +52,7 @@
 | **Almacenamiento local cifrado** | Archivos de sesión, identidad y caché cifrados en disco con AES-256-GCM usando clave de sistema |
 | **Aislamiento de procesos** | `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false` — comunicación solo vía IPC tipado |
 | **Validación exhaustiva** | Capa de validación server-side para correos, apodos, contraseñas, IDs, códigos y nombres de archivo |
+| **Logging Estructurado** | Logs de alto rendimiento en JSON con Pino para monitorizar eventos E2EE, DB y Auth |
 
 ---
 
@@ -64,6 +66,7 @@ Tiempo real  → Socket.IO 4.x · MongoDB Change Streams
 Criptografía → AES-256-GCM · RSA-2048 (OAEP) · HMAC-SHA256 · bcrypt (14 rondas) · SHA-256
 Auth         → JSON Web Tokens · Brevo API (email transaccional)
 Sistema      → systeminformation · node-machine-id
+Monitor      → pino · pino-pretty
 ```
 
 ---
@@ -763,6 +766,20 @@ MongoDB (Colección "buzon")
 - Usa **MongoDB Change Streams** con `fullDocument: "updateLookup"` para observar cambios en la colección `buzon`
 - Filtra por usuario propio para no procesar notificaciones ajenas
 - Cierre graceful: al cerrar la app, se ejecuta `detenerBuzon()` que cierra el Change Stream antes de desconectar MongoDB
+
+---
+
+## 📊 Monitorización Estructurada
+
+Para asegurar la observabilidad de los procesos críticos (E2EE, Auth, DB, Servidores), el backend implementa un sistema de logging estructurado utilizando **Pino**, el logger más rápido de Node.js.
+
+- **Entorno de Desarrollo (`pino-pretty`):** Genera un *output* coloreado, claro y legible para humanos con timestamps locales, ideal para debugging.
+- **Entorno de Producción (JSON):** Emite trazas en formato de objeto JSON, listas para ser ingeridas, indexadas y analizadas por plataformas de monitorización y agregación de logs (Grafana, Datadog, Kibana).
+
+```json
+{"level":30,"time":1711752000000,"module":"session","msg":"Autologin completado correctamente"}
+{"level":50,"time":1711752001000,"module":"msg-crypto","err":{"message":"Tag mismatch"},"msg":"[E2EE] Fallo descifrando msg"}
+```
 
 ---
 
