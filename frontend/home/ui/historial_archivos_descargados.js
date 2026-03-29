@@ -1,4 +1,5 @@
 import { Encontrar_Nombre_Chat_Usuario, Crear_chat_html } from './chat.js'
+import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 
 let cache_grupos_historial = null
 
@@ -19,7 +20,10 @@ export async function crear_chat_historial_archivos_descargados(){
         
         if(_cache_archivos_descargados && Array.isArray(_cache_archivos_descargados)){
             for(const entry of _cache_archivos_descargados){
-                const { id_chat, nombre, url_img, id_archivo, iv, tag, ratchet_info, emisor_id } = entry
+                const { id_chat, nombre, id_archivo, iv, tag, ratchet_info, emisor_id } = entry
+                // Recomputar la imagen siempre por si el cache almacenaba una ruta fallida/defectuosa anterior
+                const ext = nombre.includes(".") ? nombre.split(".").pop() : "txt"
+                const [actual_url_img] = await url_icono_extension_img(ext)
                 
                 let chat_item = agrupar_chats.find(c => c.id_chat === id_chat)
                 if(!chat_item){
@@ -36,7 +40,7 @@ export async function crear_chat_historial_archivos_descargados(){
                 if(!archivo_item){
                     chat_item.archivos.push({
                         nombre,
-                        url_img,
+                        url_img: actual_url_img,
                         descargas: 1,
                         id_archivo,
                         iv,
@@ -76,7 +80,7 @@ export async function crear_chat_historial_archivos_descargados(){
                     <div class="archivo-historial-item" data-id-archivo="${archivo.id_archivo}" data-id-chat="${chat.id_chat}">
                         <div class="archivo-info-historial">
                             <div class="archivo-info-historial-avatar">
-                                <img src="${archivo.url_img}" alt="" onerror="this.src='../recursos/extensionesArchivos/cualquiera.svg'">
+                                <img src="${archivo.url_img}" alt="" class="img-historial-archivo">
                             </div>
                             <div class="archivo-info-historial-details">
                                 <span class="archivo-info-historial-name-text">${archivo.nombre}</span>
@@ -192,6 +196,15 @@ function crear_eventos(){
                 crear_chat_historial_archivos_descargados()
             }
         })
+    })
+
+    // Evento para errores de carga de imágenes (reemplaza a onerror inline por CSP)
+    document.querySelectorAll(".img-historial-archivo").forEach(img => {
+        img.addEventListener("error", function() {
+            if (this.src !== '../recursos/extensionesArchivos/cualquiera.svg') {
+                this.src = '../recursos/extensionesArchivos/cualquiera.svg'
+            }
+        }, { once: true })
     })
 }
 
