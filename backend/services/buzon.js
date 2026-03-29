@@ -1,5 +1,8 @@
 import { BuzonUsuarios } from '../models/Buzon.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('buzon');
+
 let changeStream = null;
 
 //TODO: terminar
@@ -8,7 +11,7 @@ export async function iniciarBuzon(io, mainWindow) {
         await detenerBuzon();
     }
 
-    console.log("buzon iniciado")
+    log.info("Buzón iniciado")
     changeStream = BuzonUsuarios.watch([], { fullDocument: "updateLookup" });
 
     changeStream.on("change", (change) => {
@@ -30,7 +33,7 @@ export async function iniciarBuzon(io, mainWindow) {
     changeStream.on("error", (err) => {
         // Ignore the error if the stream is being closed deliberately
         if (err.name === 'MongoClientClosedError') return;
-        console.error("Error en Change Stream:", err);
+        log.error({ err }, "Error en Change Stream");
     });
 }
 
@@ -39,9 +42,9 @@ export async function detenerBuzon() {
         try {
             await changeStream.close();
             changeStream = null;
-            console.log("buzon detenido")
+            log.info("Buzón detenido")
         } catch (err) {
-            console.error("Error al detener el buzon:", err);
+            log.error({ err }, "Error al detener el buzón");
         }
     }
 }

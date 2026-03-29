@@ -1,4 +1,6 @@
 import { express, Server, http, __dirname } from "../utils/libs.js";
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('server-local');
 //import { https, fs, path } from "../utils/libs.js";
 
 let appServer;
@@ -8,7 +10,7 @@ let io;
  * Inicia el servidor optimizado para desarrollo local.
  */
 async function startServer() {
-    console.log("- Iniciando servidor LOCAL...");
+    log.info("Iniciando servidor LOCAL...");
 
     const app = express();
     app.use(express.json());
@@ -56,29 +58,29 @@ async function startServer() {
     });
 
     io.on("connection", (socket) => {
-        console.log("Cliente conectado:", socket.id);
+        log.info({ socketId: socket.id }, "Cliente conectado");
 
         socket.on("identificar", (userId) => {
             socket.join(userId);
             socket.userId = userId;
-            console.log("Usuario conectado:", userId);
+            log.info({ userId }, "Usuario identificado");
         });
 
         socket.on("disconnect", () => {
             if (socket.userId) {
-                console.log("Usuario desconectado:", socket.userId);
+                log.info({ userId: socket.userId }, "Usuario desconectado");
             }
         });
     });
 
     appServer = server.listen(PORT, () =>
-        console.log(`* Servidor Express + Socket.IO en http://localhost:${PORT}`)
+        log.info({ port: PORT, protocol: 'http' }, `Servidor Express + Socket.IO activo`)
     );
     return io;
 }
 
 function stopServer() {
-    if (appServer) appServer.close(() => console.warn("* Servidor local cerrado"));
+    if (appServer) appServer.close(() => log.warn("Servidor local cerrado"));
 }
 
 export { startServer, stopServer, io };

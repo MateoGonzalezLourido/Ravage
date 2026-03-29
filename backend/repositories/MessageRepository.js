@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('msg-repo');
 import { MessagesRavage } from '../models/Message.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { User } from '../models/User.js';
@@ -37,14 +39,14 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         // Comprobar si el usuario tiene el chat bloqueado
         const chatUsuarioInfo = usuario.chats.find(c => c.id.toString() === id_chat.toString());
         if (chatUsuarioInfo && chatUsuarioInfo.bloqueado) {
-            console.warn(`[ENVIAR_MENSAJE] Intento de envío en chat bloqueado (${id_chat}) por el usuario ${id_emisor}`);
+            log.warn(`[ENVIAR_MENSAJE] Intento de envío en chat bloqueado (${id_chat}) por el usuario ${id_emisor}`);
             return false;
         }
 
         // E2EE: Obtener identidad de la caché en memoria (mucho más rápido que disco)
         const identity_data = await getIdentity();
         if (!identity_data || !identity_data.privateKey) {
-            console.error("No se encontró la llave privada local para E2EE");
+            log.error("No se encontró la llave privada local para E2EE");
             return false;
         }
 
@@ -55,7 +57,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         );
 
         if (!ratchet_entry) {
-            console.error("No se encontró la cadena de envío para el usuario actual");
+            log.error("No se encontró la cadena de envío para el usuario actual");
             return false;
         }
 
@@ -71,7 +73,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         try {
             current_ck_hex = await intentarDescifrado(active_entry);
         } catch (err) {
-            console.warn(`[E2EE] Fallo al descifrar propia llave de cadena en chat ${id_chat}. Intentando recuperación por rotación...`, err.message);
+            log.warn(`[E2EE] Fallo al descifrar propia llave de cadena en chat ${id_chat}. Intentando recuperación por rotación...`, err.message);
             
             try {
                 const { rotarClavesChat } = await import('./ChatRepository.js');
@@ -85,9 +87,9 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 
                 if (!active_entry) throw new Error("Ratchet entry not found after rotation.");
                 current_ck_hex = await intentarDescifrado(active_entry);
-                console.log("[E2EE] Recuperación por rotación exitosa.");
+                log.info("[E2EE] Recuperación por rotación exitosa.");
             } catch (err2) {
-                console.error("[E2EE] Rotación de chat insuficiente. Fallo crítico de identidad detectado.", err2.message);
+                log.error("[E2EE] Rotación de chat insuficiente. Fallo crítico de identidad detectado.", err2.message);
                 
                 // OPCIÓN NUCLEAR: Solo si la llave privada local ya no sirve para NADA.
                 // Esto romperá la retrocompatibilidad con TODOS los chats existentes.
@@ -106,9 +108,9 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                     );
                     
                     current_ck_hex = await intentarDescifrado(active_entry);
-                    console.warn("[E2EE] Recuperación nuclear completada. Los mensajes antiguos podrían no ser legibles.");
+                    log.warn("[E2EE] Recuperación nuclear completada. Los mensajes antiguos podrían no ser legibles.");
                 } catch (err3) {
-                    console.error("[E2EE] Fallo absoluto en el sistema criptográfico:", err3.message);
+                    log.error("[E2EE] Fallo absoluto en el sistema criptográfico:", err3.message);
                     return false;
                 }
             }
@@ -243,10 +245,10 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             ids: chat.usuarios?.filter(id => id.toString() !== id_emisor.toString()), 
             tipo: 0, 
             data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() } 
-        }).catch(e => console.error(e));
+        }).catch(e => log.error(e));
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return false;
     }
 }
@@ -264,7 +266,7 @@ export async function obtener_datos_mensaje(id_chat, id_mensaje) {
 
         return convertirObjectId(mensaje);
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -279,7 +281,7 @@ export async function limpiar_mensajes_chats_antiguos(chatIdsRaw) {
         await MessagesRavage.deleteMany({ id_chat: { $in: chatIds }, data: { $lt: haceUnAno } });
         return true;
     } catch (e) {
-        console.error(e);
+        log.error(e);
         return null;
     }
 }
@@ -290,7 +292,7 @@ export async function limpiar_mensajes_chats_antiguos(chatIdsRaw) {
  */
 export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-        console.error("ID de archivo no válido:", id);
+        log.error("ID de archivo no válido:", id);
         return false;
     }
     const bucket = new GridFSBucket(mongoose.connection.db, {

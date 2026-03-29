@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('crypto');
 import { 
     generateKeyPair,
     publicEncrypt, 
@@ -83,7 +85,7 @@ export function desencriptarDatosSistema(encriptado) {
         decrypted += decipher.final('utf8');
         return decrypted;
     } catch (e) {
-        console.error("Error al desencriptar datos del sistema:", e);
+        log.error({ err: e }, "Error al desencriptar datos del sistema");
         return encriptado; // Devolver original en caso de fallo crítico de desencriptado (opcional, pero más estable para la UI)
     }
 }

@@ -1,4 +1,6 @@
 import { mongoose } from "../utils/libs.js";
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('db');
 
 async function connectDB() {
     await mongoose.connect(process.env.URI_MONGODB, {
@@ -7,14 +9,14 @@ async function connectDB() {
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000
     })
-    .then(() => console.log("(+) Conectado a MongoDB Atlas"))
-    .catch((err) => console.error("(-) Error de conexión:", err));
+    .then(() => log.info("Conectado a MongoDB Atlas"))
+    .catch((err) => log.error({ err }, "Error de conexión a MongoDB"));
 }
 
 async function closeDB() {
     if (mongoose.connection.readyState === 0) return;
     await mongoose.disconnect();
-    console.warn("(-) Cerrado MongoDB");
+    log.warn("Conexión a MongoDB cerrada");
 }
 
 function estaConectado() {
@@ -22,7 +24,7 @@ function estaConectado() {
 }
 
 mongoose.connection.on('disconnected', () => {
-    console.warn('(-) MongoDB desconectado.');
+    log.warn('MongoDB desconectado');
 });
 
 export { connectDB, closeDB, estaConectado };

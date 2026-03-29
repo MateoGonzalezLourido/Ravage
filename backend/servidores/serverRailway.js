@@ -1,6 +1,7 @@
 import { express, Server, http } from "../utils/libs.js";
 import { connectDB } from "../db/mongo.js";
-
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('server-railway');
 
 let appServer;
 let io;
@@ -10,7 +11,7 @@ let io;
  * Maneja el puerto dinámico y expone un endpoint de salud.
  */
 async function startServer() {
-    console.log("- Iniciando servidor en modo PRODUCCIÓN (Railway)...");
+    log.info("Iniciando servidor en modo PRODUCCIÓN (Railway)...");
 
     const app = express();
     app.use(express.json());
@@ -50,24 +51,24 @@ async function startServer() {
 
 
     io.on("connection", (socket) => {
-        console.log("Cliente conectado:", socket.id);
+        log.info({ socketId: socket.id }, "Cliente conectado");
 
         socket.on("identificar", (userId) => {
             socket.join(userId);
             socket.userId = userId;
-            console.log("Usuario conectado:", userId);
+            log.info({ userId }, "Usuario identificado");
         });
 
         socket.on("disconnect", () => {
             if (socket.userId) {
-                console.log("Usuario desconectado:", socket.userId);
+                log.info({ userId: socket.userId }, "Usuario desconectado");
             }
         });
     });
 
     // Levantamos el servidor escuchando en todas las interfaces (0.0.0.0)
     appServer = server.listen(PORT, '0.0.0.0', () => {
-        console.log(`* Servidor Express + Socket.IO desplegado en puerto ${PORT}`);
+        log.info({ port: PORT, protocol: 'http', host: '0.0.0.0' }, "Servidor Express + Socket.IO desplegado");
     });
 
 
@@ -76,7 +77,7 @@ async function startServer() {
 
 function stopServer() {
     if (appServer) {
-        appServer.close(() => console.warn("* Servidor de producción cerrado"));
+        appServer.close(() => log.warn("Servidor de producción cerrado"));
     }
 }
 
@@ -87,7 +88,7 @@ if (process.argv[1]?.includes('serverRailway.js')) {
             await connectDB();
             await startServer();
         } catch (error) {
-            console.error("Error al iniciar el servidor en Railway:", error);
+            log.fatal({ err: error }, "Error al iniciar el servidor en Railway");
             process.exit(1);
         }
     })();
