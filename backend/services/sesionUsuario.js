@@ -240,7 +240,7 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
 
     //guardar llave privada localmente
     if (privateKey) {
-        await saveIdentityFile({ privateKey: privateKey })
+        await saveIdentityFile({ privateKey: privateKey, publicKey: publicKey })
     }
 
     (async () => await BorrarVC(correoStr))();
@@ -470,11 +470,43 @@ async function cerrarSesionUsuario(correo) {
 }
 
 
+async function REGENERAR_IDENTIDAD_USUARIO() {
+    try {
+        const id_propio = storage.getIDMongodbUsuario();
+        if (!id_propio) return false;
+
+        const { generarLlavesRSA } = await import('./cryptoService.js');
+        const keys = await generarLlavesRSA();
+
+        // Actualizar en DB
+        await User.updateOne({ _id: id_propio }, { $set: { publicKey: keys.publicKey } });
+
+        // Guardar localmente
+        await saveIdentityFile({ privateKey: keys.privateKey, publicKey: keys.publicKey });
+
+        // Limpiar cache del usuario propio para que refresque la public key
+        const { setUsuarioEnCache, getUsuarioDeCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
+        const updatedUser = await User.findById(id_propio).lean();
+        if (updatedUser) {
+            const { procesarUsuario } = await import('../repositories/UserRepository.js');
+            await setUsuarioEnCache(procesarUsuario(updatedUser));
+        }
+
+        console.warn("(!) Identidad E2EE regenerada por incompatibilidad de llaves.");
+        return true;
+    } catch (e) {
+        console.error("Error regenerando identidad:", e);
+        return false;
+    }
+}
+
+
 export {
     registerUsuario,
     loginUsuario,
     autoLoginUsuario,
     cerrarSesionUsuario,
     ValidarCodeRegistroUsuario,
-    ValidarCodeLogin
+    ValidarCodeLogin,
+    REGENERAR_IDENTIDAD_USUARIO
 };

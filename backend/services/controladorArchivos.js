@@ -73,8 +73,8 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {
     await guardarArchivoGenerico('dispositivoConfianza', { username, token }, 'global');
 }
 
-async function saveIdentityFile({ privateKey }) {
-    await guardarArchivoGenerico('identity', { privateKey }, 'global');
+async function saveIdentityFile({ privateKey, publicKey }) {
+    await guardarArchivoGenerico('identity', { privateKey, publicKey }, 'global');
 }
 
 async function saveCacheArchivosDescargadosFile(data) {

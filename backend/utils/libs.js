@@ -17,7 +17,8 @@ import {
     generateKeyPair,
     publicEncrypt, 
     privateDecrypt, 
-    createHmac 
+    createHmac,
+    constants
 } from "node:crypto";
 
 // ==========================================
@@ -89,6 +90,7 @@ export {
     publicEncrypt,
     privateDecrypt,
     createHmac,
+    constants,
 
     // Electron
     app,
