@@ -161,7 +161,7 @@ export function cifrarConPublica(datos, publicKey) {
     return publicEncrypt({
         key: publicKey,
         padding: constants.RSA_PKCS1_OAEP_PADDING,
-        oaepHash: 'sha1'
+        oaepHash: 'sha256'
     }, Buffer.from(datos)).toString('hex');
 }
 
@@ -173,7 +173,7 @@ export function descifrarConPrivada(datosHex, privateKey) {
     return privateDecrypt({
         key: privateKey,
         padding: constants.RSA_PKCS1_OAEP_PADDING,
-        oaepHash: 'sha1'
+        oaepHash: 'sha256'
     }, buffer).toString('utf8');
 }
 

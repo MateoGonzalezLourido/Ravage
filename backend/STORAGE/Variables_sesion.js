@@ -16,6 +16,7 @@ let VisibleUsuario = false
 let InvisibleUsuario = false
 let MostrarCorreoUsuario = true
 let IDamigo
+let mainWindow = null;
 
 export const setCorreoSesion = (correo) => Correo_Usuario_sesion = correo;
 export const getCorreoSesion = () => Correo_Usuario_sesion;
@@ -124,3 +125,5 @@ export const setInvisibleUsuario = (bool) => InvisibleUsuario = bool;
 export const getInvisibleUsuario = () => InvisibleUsuario;
 export const setMostrarCorreoUsuario = (bool) => MostrarCorreoUsuario = bool;
 export const getMostrarCorreoUsuario = () => MostrarCorreoUsuario;
+export const getMainWindow = () => mainWindow;
+export const setMainWindow = (window) => mainWindow = window;

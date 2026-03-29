@@ -435,6 +435,7 @@ async function ValidarCodeLogin({ correo, code }) {
 }
 
 async function cerrarSesionUsuario(correo) {
+    const mainWindow = await getMainWindow();
     mainWindow.webContents.send("cerrando-sesion", true);
     ACTUALIZAR_DATOS_LOGIN({ limpiar: true });
 

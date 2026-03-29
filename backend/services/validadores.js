@@ -1,6 +1,7 @@
 import { User } from '../models/User.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { compare,validator } from '../utils/libs.js';
+import { hashDatosSistema } from './cryptoService.js';
 
 function comprobaciones_Correo(correo) {
     if (typeof correo !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
@@ -36,7 +37,7 @@ function comprobar_apodo(apodo) {
 
 async function comprobar_contraseña_cuenta(contraseña) {
     const correo = storage.getCorreoSesion()
-    const usuario_data = await User.findOne({ correo: correo }).lean();
+    const usuario_data = await User.findOne({ correo_hash: hashDatosSistema(correo) }).lean();
     if (!usuario_data) return false
     const ok = await compare(String(contraseña), usuario_data.contrasena);
     return ok

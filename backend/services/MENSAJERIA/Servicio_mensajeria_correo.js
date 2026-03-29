@@ -1,7 +1,8 @@
 // Usando fetch nativo de Node.js v18+
+import { randomInt } from 'node:crypto';
 
 function generarCodigoVerificacion() {//generar codigo 6 digitos que se utilizara para verificar
-    const codigo_verificacion = Math.floor(100000 + Math.random() * 900000)
+    const codigo_verificacion = randomInt(100000, 1000000)
     return codigo_verificacion
 }
 
