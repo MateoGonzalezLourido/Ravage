@@ -35,7 +35,6 @@ body {
     flex-direction: column;
     padding: 20px;
     border-radius: 12px;
-    corner-shape: squircle;
 }
 
 .label-check {
@@ -165,7 +164,6 @@ input[type="number"]::-webkit-outer-spin-button {
     padding-left: 30px;
     padding-right: 30px;
     border-radius: 12px;
-    corner-shape: squircle;
     z-index: 100 !important;
 }
 
@@ -189,10 +187,7 @@ input[type="number"]::-webkit-outer-spin-button {
     padding-left: 30px;
     padding-right: 30px;
     border-radius: 12px;
-    corner-shape: squircle;
-    display: flex;
     text-align: center;
-    flex-direction: column;
     justify-content: center !important;
 }
 
