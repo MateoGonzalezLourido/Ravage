@@ -5,7 +5,6 @@ const log = createLogger('buzon');
 
 let changeStream = null;
 
-//TODO: terminar
 export async function iniciarBuzon(io, mainWindow) {
     if (changeStream) {
         await detenerBuzon();
