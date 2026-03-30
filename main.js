@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, path } from './backend/utils/libs.js';
+import { app, ipcMain, path } from './backend/utils/libs.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -6,24 +6,13 @@ const __dirname = path.dirname(__filename);
 // carga variables de entorno
 import 'dotenv/config';
 
-import { startServer } from './backend/servidores/serverLocalHost.js';
-import { connectDB, closeDB } from "./backend/db/mongo.js";
-import { autoLoginUsuario } from './backend/services/sesionUsuario.js';
-import { detenerBuzon } from './backend/services/buzon.js';
-import { setMainWindow } from './backend/STORAGE/Variables_sesion.js';
-
-// Import modular IPC handlers
-import { registerSessionHandlers } from './backend/ipc/session_ipc.js';
-import { registerChatHandlers } from './backend/ipc/chat_ipc.js';
-import { registerSocialHandlers } from './backend/ipc/social_ipc.js';
-import { registerValidadoresHandlers } from './backend/ipc/validadores_ipc.js';
-import { registerCacheImgExtensionesHandlers } from './backend/ipc/cache_img_extension_ipc.js';
-import { registerCacheArchivosDescargadosHandlers } from './backend/ipc/cache_archivos_descargados_ipc.js';
-import { registerCachePersistentHandlers } from './backend/ipc/cache_persistent_ipc.js';
 let socket;
 let mainWindow;
 
-function createMainWindowHome(AutoLogin = false) {
+
+async function createMainWindowHome(AutoLogin = false) {
+    const { BrowserWindow } = await import('./backend/utils/libs.js');
+
     mainWindow = new BrowserWindow({
         show: false,
         width: 800,
@@ -44,15 +33,36 @@ function createMainWindowHome(AutoLogin = false) {
     mainWindow.maximize();
     mainWindow.show();
     mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html'));
-    
-    // Register IPC handlers
+
+    const [registerSessionHandlers, registerValidadoresHandlers] = await Promise.allSettled([
+        import('./backend/ipc/session_ipc.js'),
+        import('./backend/ipc/validadores_ipc.js')
+    ]);
+
     registerSessionHandlers(mainWindow);
-    registerChatHandlers(mainWindow, socket);
-    registerSocialHandlers();
     registerValidadoresHandlers();
-    registerCacheImgExtensionesHandlers()
-    registerCacheArchivosDescargadosHandlers()
-    registerCachePersistentHandlers()
+
+    mainWindow.once('ready-to-show', async () => {
+        const [
+            { registerChatHandlers },
+            { registerSocialHandlers },
+            { registerCacheImgExtensionesHandlers },
+            { registerCacheArchivosDescargadosHandlers },
+            { registerCachePersistentHandlers }
+        ] = await Promise.allSettled([
+            import('./backend/ipc/chat_ipc.js'),
+            import('./backend/ipc/social_ipc.js'),
+            import('./backend/ipc/cache_img_extension_ipc.js'),
+            import('./backend/ipc/cache_archivos_descargados_ipc.js'),
+            import('./backend/ipc/cache_persistent_ipc.js')
+        ]);
+
+        registerChatHandlers(mainWindow, socket);
+        registerSocialHandlers();
+        registerCacheImgExtensionesHandlers();
+        registerCacheArchivosDescargadosHandlers();
+        registerCachePersistentHandlers();
+    });
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -68,17 +78,32 @@ if (!gotTheLock) {
     });
 
     app.whenReady().then(async () => {
+        const pServer = import('./backend/servidores/serverLocalHost.js');
+        const pDb = import("./backend/db/mongo.js");
+        const pSesion = import('./backend/services/sesionUsuario.js');
+        const pStorage = import('./backend/STORAGE/Variables_sesion.js');
+
+        const [{ startServer }, { connectDB }] = await Promise.all([pServer, pDb]);
+
         socket = await startServer();
         await connectDB();
+
+        const [{ autoLoginUsuario }, { setMainWindow }] = await Promise.all([pSesion, pStorage]);
+
         const AutoLogin = await autoLoginUsuario();
-        createMainWindowHome(AutoLogin.success);
-        setMainWindow(mainWindow)
+        createMainWindowHome(AutoLogin?.success || false);
+        setMainWindow(mainWindow);
     });
 }
 
-app.on('before-quit', async (e) => {
+app.on('before-quit', async () => {
     try {
-        await detenerBuzon(); // Cerrar change streams antes de cerrar la DB
+        const [{ closeDB }, { detenerBuzon }] = await Promise.allSettled([
+            import("./backend/db/mongo.js"),
+            import('./backend/services/buzon.js')
+        ]);
+
+        await detenerBuzon();
         await closeDB();
     } catch (err) {
         console.error(err);
@@ -97,5 +122,5 @@ ipcMain.on("cambiar-pagina-soporte", () => {
 
 ipcMain.on("cambiar-pagina-home", () => {
     mainWindow.setTitle("RAVAGE-Home");
-    mainWindow.loadFile(path.join(__dirname, 'frontend','home', 'home.html'));
+    mainWindow.loadFile(path.join(__dirname, 'frontend', 'home', 'home.html'));
 });
