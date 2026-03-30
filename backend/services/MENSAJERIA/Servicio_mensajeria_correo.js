@@ -1,7 +1,7 @@
 // Usando fetch nativo de Node.js v18+
 import { createLogger } from '../../utils/logger.js';
 const log = createLogger('mensajeria');
-import { randomInt } from 'node:crypto';
+import { randomInt } from '../../utils/libs.js';
 
 function generarCodigoVerificacion() {//generar codigo 6 digitos que se utilizara para verificar
     const codigo_verificacion = randomInt(100000, 1000000)

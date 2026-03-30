@@ -3,8 +3,6 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// carga variables de entorno
-import 'dotenv/config';
 
 let socket;
 let mainWindow;
@@ -34,7 +32,7 @@ async function createMainWindowHome(AutoLogin = false) {
     mainWindow.show();
     mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html'));
 
-    const [registerSessionHandlers, registerValidadoresHandlers] = await Promise.allSettled([
+    const [{registerSessionHandlers}, {registerValidadoresHandlers}] = await Promise.all([
         import('./backend/ipc/session_ipc.js'),
         import('./backend/ipc/validadores_ipc.js')
     ]);
@@ -49,7 +47,7 @@ async function createMainWindowHome(AutoLogin = false) {
             { registerCacheImgExtensionesHandlers },
             { registerCacheArchivosDescargadosHandlers },
             { registerCachePersistentHandlers }
-        ] = await Promise.allSettled([
+        ] = await Promise.all([
             import('./backend/ipc/chat_ipc.js'),
             import('./backend/ipc/social_ipc.js'),
             import('./backend/ipc/cache_img_extension_ipc.js'),
@@ -98,13 +96,17 @@ if (!gotTheLock) {
 
 app.on('before-quit', async () => {
     try {
-        const [{ closeDB }, { detenerBuzon }] = await Promise.allSettled([
+        const [dbRes, buzonRes] = await Promise.allSettled([
             import("./backend/db/mongo.js"),
             import('./backend/services/buzon.js')
         ]);
 
-        await detenerBuzon();
-        await closeDB();
+        if (buzonRes.status === 'fulfilled') {
+            await buzonRes.value.detenerBuzon();
+        }
+        if (dbRes.status === 'fulfilled') {
+            await dbRes.value.closeDB();
+        }
     } catch (err) {
         console.error(err);
     }
