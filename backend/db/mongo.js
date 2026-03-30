@@ -12,11 +12,16 @@ async function connectDB() {
     .then(() => log.info("Conectado a MongoDB Atlas"))
     .catch((err) => log.error({ err }, "Error de conexión a MongoDB"));
 }
-
 async function closeDB() {
     if (mongoose.connection.readyState === 0) return;
     await mongoose.disconnect();
-    log.warn("Conexión a MongoDB cerrada");
+    try {
+        log.warn("Conexión a MongoDB cerrada");
+    } catch {
+        // Si el logger falla por el cierre de app, usamos pino de forma directa si fuera posible 
+        // o consola como último recurso.
+        console.warn("LOG: Conexión a MongoDB cerrada");
+    }
 }
 
 function estaConectado() {
@@ -24,7 +29,11 @@ function estaConectado() {
 }
 
 mongoose.connection.on('disconnected', () => {
-    log.warn('MongoDB desconectado');
+    try {
+        log.warn('MongoDB desconectado');
+    } catch {
+        console.warn('LOG: MongoDB desconectado');
+    }
 });
 
 export { connectDB, closeDB, estaConectado };

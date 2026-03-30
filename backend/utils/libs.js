@@ -10,14 +10,17 @@ function lazy(nameOrFactory) {
     let cache;
     const load = () => {
         if (!cache) {
-            cache = typeof nameOrFactory === 'string'
-                ? require(nameOrFactory)
-                : nameOrFactory();
+            try {
+                cache = typeof nameOrFactory === 'string' ? require(nameOrFactory) : nameOrFactory();
+            } catch (err) {
+                console.error(`ERROR cargando ${nameOrFactory}:`, err);
+                throw err;
+            }
         }
         return cache;
     };
 
-    return new Proxy(() => { }, {
+    return new Proxy(function() {}, {
         apply: (target, thisArg, args) => load()(...args),
         construct: (target, args) => new (load())(...args),
         get: (target, prop) => load()[prop]
