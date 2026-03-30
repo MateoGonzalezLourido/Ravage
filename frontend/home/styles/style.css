@@ -74,7 +74,6 @@ input[type="number"]::-webkit-outer-spin-button {
     padding-left: 30px;
     padding-right: 30px;
     border-radius: 12px;
-    corner-shape: squircle;
     z-index: 100 !important;
 }
 
@@ -85,24 +84,6 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .menu-validacion-codigo .ayuda-texto {
     margin-bottom: 12px;
-}
-
-.menu-confirmacion-cuenta-creada {
-    background-color: var(--wa-panel-header-bg);
-    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
-    width: 325px;
-    height: 150px;
-    display: flex;
-    flex-direction: column;
-    padding: 18px;
-    padding-left: 30px;
-    padding-right: 30px;
-    border-radius: 12px;
-    corner-shape: squircle;
-    display: flex;
-    text-align: center;
-    flex-direction: column;
-    justify-content: center !important;
 }
 
 .text-error-form-causa {
@@ -117,7 +98,6 @@ input[type="number"]::-webkit-outer-spin-button {
     position: relative;
     cursor: pointer;
     border-radius: 7px;
-    corner-shape: squircle;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -342,7 +322,6 @@ input[type="number"]::-webkit-outer-spin-button {
     position: relative;
     padding: 20px;
     border-radius: 12px;
-    corner-shape: squircle;
 }
 
 
@@ -690,7 +669,6 @@ input[type="number"]::-webkit-outer-spin-button {
     flex-direction: column;
     padding: 14px;
     border-radius: 12px;
-    corner-shape: squircle;
     z-index: 100 !important;
 }
 
