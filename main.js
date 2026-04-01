@@ -1,3 +1,8 @@
+
+// Activa la caché de compilación de V8 para que Electron no tenga que
+// recompilar el JS cada vez que arrancas (hace que el 2do arranque sea más rápido)
+app.commandLine.appendSwitch('v8-cache-options', 'code');
+
 import { app, ipcMain, path } from './backend/utils/libs.js';
 import { fileURLToPath } from 'url';
 
@@ -18,21 +23,24 @@ async function createMainWindowHome(AutoLogin = false) {
         minHeight: 400,
         minWidth: 450,
         title: "RAVAGE",
+        backgroundColor: "#1e1e1e",
         autoHideMenuBar: true,
+        paintWhenInitiallyHidden: false,
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
-            additionalArguments: [`--start=${AutoLogin}`]
+            additionalArguments: [`--start=${AutoLogin}`],
+            spellcheck: false
         },
     });
+    mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html'));
 
     mainWindow.maximize();
     mainWindow.show();
-    mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html'));
-
-    const [{registerSessionHandlers}, {registerValidadoresHandlers}] = await Promise.all([
+    
+    const [{ registerSessionHandlers }, { registerValidadoresHandlers }] = await Promise.all([
         import('./backend/ipc/session_ipc.js'),
         import('./backend/ipc/validadores_ipc.js')
     ]);
@@ -40,7 +48,10 @@ async function createMainWindowHome(AutoLogin = false) {
     registerSessionHandlers(mainWindow);
     registerValidadoresHandlers();
 
+
     mainWindow.once('ready-to-show', async () => {
+
+
         const [
             { registerChatHandlers },
             { registerSocialHandlers },
@@ -60,6 +71,7 @@ async function createMainWindowHome(AutoLogin = false) {
         registerCacheImgExtensionesHandlers();
         registerCacheArchivosDescargadosHandlers();
         registerCachePersistentHandlers();
+
     });
 }
 
