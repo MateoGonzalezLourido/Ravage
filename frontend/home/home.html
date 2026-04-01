@@ -1,320 +1,337 @@
 <!DOCTYPE html>
 <html lang="en">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!--seguridad-->
-        <meta http-equiv="Content-Security-Policy"
-            content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://user-images.githubusercontent.com;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--seguridad-->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://user-images.githubusercontent.com;">
 
-        <meta http-equiv="X-Content-Type-Options" content="nosniff">
-        <meta http-equiv="Referrer-Policy" content="no-referrer">
-        <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
 
-        <title>RAVAGE</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="./styles/style.css">
-        <link rel="stylesheet" href="./styles/chat.css">
-        <link rel="stylesheet" href="../notificaciones/notificaciones.css">
-        <link rel="stylesheet" href="./styles/css_archivos.css">
-        <link rel="stylesheet" href="./styles/historial.css">
+    <title>RAVAGE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles/style.css">
+    <link rel="stylesheet" href="./styles/chat.css">
+    <link rel="stylesheet" href="../notificaciones/notificaciones.css">
+    <link rel="stylesheet" href="./styles/css_archivos.css">
+    <link rel="stylesheet" href="./styles/historial.css">
 
 
-    </head>
+</head>
 
-    <body>
-        <!--MENU INICIO-->
+<body>
+    <!--MENU INICIO-->
 
-        <div class="ocultar-display" id="seccion-menu-cuenta-ajustes">
-            <div id="bt-cerrar-menu-ajustes">
-                <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
-            </div>
-            <div class="menu-navegacion-ajustes">
-                <div id="bt-menu-navegacion-ajustes-cuenta">Cuenta</div>
-                <div id="bt-menu-navegacion-ajustes-general">General</div>
-                <div id="bt-menu-navegacion-ajustes-noti">Notificaciones</div>
-                <div id="bt-menu-navegacion-ajustes-soporte">Soporte</div>
-                <div id="bt-menu-navegacion-ajustes-saber">Saber más</div>
-            </div>
-            <div class="cuerpo-menu-ajustes">
-                <div class="menu-ajustes-sub flex-display" id="cuerpo-ajustes-cuenta">
-                    <div class="label">
-                        <span id="text-cuenta-apodo">Apodo: Usuario</span>
-                        <button id="bt-cambiar-apodo">Cambiar Apodo</button>
-                        <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-apodo"></span>
-                    </div>
-                    <div class="label">
-                        <span id="text-cuenta-correo">Correo electrónico: usuario@gmail.com</span>
-                        <button id="bt-cambiar-correo">Cambiar Correo</button>
-                        <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-correo"></span>
-                    </div>
-                    <div class="label">
-                        <span>Contraseña:</span>
-                        <button id="bt-cambiar-contraseña">Cambiar Contraseña</button>
-                        <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-contraseña"></span>
-                    </div>
-                    <div class="label">
-                        <button id="bt-cerrar-sesion">Cerrar Sesión</button>
-                    </div>
-                    <span id="text-cuenta-creada-fecha">*Cuenta creada el xx/xx/xx</span>
-                    <div class="label">
-                        <button id="bt-ver-chats-silenciados">Ver chats silenciados</button>
-                    </div>
-                    <div class="label">
-                        <button id="bt-ver-chats-bloqueados">Ver chats bloqueados</button>
-                    </div>
+    <div class="ocultar-display" id="seccion-menu-cuenta-ajustes">
+        <div id="bt-cerrar-menu-ajustes">
+            <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
+        </div>
+        <div class="menu-navegacion-ajustes">
+            <div id="bt-menu-navegacion-ajustes-cuenta">Cuenta</div>
+            <div id="bt-menu-navegacion-ajustes-general">General</div>
+            <div id="bt-menu-navegacion-ajustes-noti">Notificaciones</div>
+            <div id="bt-menu-navegacion-ajustes-soporte">Soporte</div>
+            <div id="bt-menu-navegacion-ajustes-saber">Saber más</div>
+        </div>
+        <div class="cuerpo-menu-ajustes">
+            <div class="menu-ajustes-sub flex-display" id="cuerpo-ajustes-cuenta">
+                <div class="label">
+                    <span id="text-cuenta-apodo">Apodo: Usuario</span>
+                    <button id="bt-cambiar-apodo">Cambiar Apodo</button>
+                    <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-apodo"></span>
                 </div>
-                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-general">
-                    <div>
-                        <span class="titulo-ajustes">Datos del dispotivo (actuales):</span>
-                        <span id="">Ip publica: 0.0.0.0</span>
-                        <span id="">Ip privada: 0.0.0.0</span>
-                        <span id="">MAC: 00:00:00:00:00:00</span>
-                        <span>Hash: *privado*</span>
-                    </div>
-                    <div>
-                        <span class="titulo-ajustes">Privacidad:</span>
-                        <label for="">
-                            <span>Mostrarse conectado:</span>
-                            <input type="checkbox" id="" checked>
-                        </label>
-                    </div>
-                    <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
-                        <span class="titulo-ajustes">Caché de Datos:</span>
-                        <div class="label-ajuste-inline">
-                            <span>Límite RAM Chats (MB):</span>
-                            <input type="number" id="input-cache-chats-ram" min="128" style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
-                        </div>
-                        <div class="label-ajuste-inline">
-                            <span>Límite Disco Chats (MB):</span>
-                            <input type="number" id="input-cache-chats-disk" min="128" style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
-                        </div>
-                        <div class="label-ajuste-inline">
-                            <span>Límite RAM Usuarios (MB):</span>
-                            <input type="number" id="input-cache-usuarios-ram" min="64" style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
-                        </div>
-                        <div class="label-ajuste-inline">
-                            <span>Límite Disco Usuarios (MB):</span>
-                            <input type="number" id="input-cache-usuarios-disk" min="64" style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
-                        </div>
-                        <label for="check-forzar-disco" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                            <span>Forzar Caché en Disco:</span>
-                            <input type="checkbox" id="check-forzar-disco">
-                        </label>
-                        <div style="display: flex; gap: 10px; margin-top: 15px;">
-                            <button id="bt-limpiar-cache-chats" style="background: #444; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Limpiar Chats</button>
-                            <button id="bt-limpiar-cache-usuarios" style="background: #444; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Limpiar Usuarios</button>
-                        </div>
-                    </div>
+                <div class="label">
+                    <span id="text-cuenta-correo">Correo electrónico: usuario@gmail.com</span>
+                    <button id="bt-cambiar-correo">Cambiar Correo</button>
+                    <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-correo"></span>
                 </div>
-                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-noti">
-                    <span class="titulo-ajustes">Recibir avisos:</span>
+                <div class="label">
+                    <span>Contraseña:</span>
+                    <button id="bt-cambiar-contraseña">Cambiar Contraseña</button>
+                    <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-contraseña"></span>
+                </div>
+                <div class="label">
+                    <button id="bt-cerrar-sesion">Cerrar Sesión</button>
+                </div>
+                <span id="text-cuenta-creada-fecha">*Cuenta creada el xx/xx/xx</span>
+                <div class="label">
+                    <button id="bt-ver-chats-silenciados">Ver chats silenciados</button>
+                </div>
+                <div class="label">
+                    <button id="bt-ver-chats-bloqueados">Ver chats bloqueados</button>
+                </div>
+            </div>
+            <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-general">
+                <div>
+                    <span class="titulo-ajustes">Datos del dispotivo (actuales):</span>
+                    <span id="">Ip publica: 0.0.0.0</span>
+                    <span id="">Ip privada: 0.0.0.0</span>
+                    <span id="">MAC: 00:00:00:00:00:00</span>
+                    <span>Hash: *privado*</span>
+                </div>
+                <div>
+                    <span class="titulo-ajustes">Privacidad:</span>
                     <label for="">
-                        <span>Cuando te mandan algo (chat individual)</span>
-                        <input type="checkbox" id="" checked>
-                    </label>
-                    <label for="">
-                        <span>Cuando te mandan algo (chat grupal)</span>
-                        <input type="checkbox" id="" checked>
-                    </label>
-                    <label for="">
-                        <span>Cuando descargan archivos tuyos (chat individual)</span>
-                        <input type="checkbox" id="" checked>
-                    </label>
-                    <label for="">
-                        <span>Cuando descargan archivos tuyos (chat grupal)</span>
+                        <span>Mostrarse conectado:</span>
                         <input type="checkbox" id="" checked>
                     </label>
                 </div>
-
-                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-soporte">
-
-                </div>
-                <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-saber">
-
-                </div>
-            </div>
-            <div class="ocultar-display" id="alineador-menu-cambiar-data-cuenta">
-                <div class="menu-cambiar-contraseña">
-                    <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-data">
-                        <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
+                <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
+                    <span class="titulo-ajustes">Caché de Datos:</span>
+                    <div class="label-ajuste-inline">
+                        <span>Límite RAM Chats (MB):</span>
+                        <input type="number" id="input-cache-chats-ram" min="128"
+                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
                     </div>
-                    <div class="seccion-cambiar-data-menu flex-display" id="seccion-cambiar-contraseña-menu">
-                        <h2>Cambio de Contraseña</h2>
-                        <form id="form-cambio-contraseña">
-                            <label for="cambio-pass">
-                                <span>Contraseña</span>
-                                <input id="cambio-pass" type="password" placeholder="Contraseña" required minlength="8" maxlength="128">
-                            </label>
-                            <label for="cambio-pass-confirm">
-                                <span id="span-repetir-contraseña-cambio">Repita la Contraseña</span>
-                                <input id="cambio-pass-confirm" type="password" placeholder="Contraseña" required
-                                    minlength="8" maxlength="128">
-                            </label>
-                            <span class="text-error-form-causa ocultar-display"
-                                id="text-error-form-causa-cambio-contraseña"></span>
-                            <div class="bt-cambiar-pass-alineador-button">
-                                <button type="submit" class="bt-validar-code">Cambiar</button>
-                            </div>
-                        </form>
+                    <div class="label-ajuste-inline">
+                        <span>Límite Disco Chats (MB):</span>
+                        <input type="number" id="input-cache-chats-disk" min="128"
+                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
                     </div>
-                    <div class="seccion-cambiar-data-menu ocultar-display" id="seccion-cambiar-correo-menu">
-                        <h2>Cambio de Correo</h2>
-                        <form id="form-cambio-correo">
-                            <label for="cambio-correo">
-                                <span>Correo</span>
-                                <input id="cambio-correo" type="email" placeholder="correo electrónico" required
-                                    maxlength="255">
-                            </label>
-                            <label for="confirmar-contraseña-correo">
-                                <span>Correo</span>
-                                <input id="confirmar-contraseña-correo" type="password" placeholder="contraseña"
-                                    required minlength="8" maxlength="128">
-                            </label>
-                            <span class="text-error-form-causa ocultar-display"
-                                id="text-error-form-causa-cambio-correo"></span>
-                            <div class="bt-cambiar-pass-alineador-button">
-                                <button type="submit" class="bt-validar-code">Cambiar</button>
-                            </div>
-                        </form>
+                    <div class="label-ajuste-inline">
+                        <span>Límite RAM Usuarios (MB):</span>
+                        <input type="number" id="input-cache-usuarios-ram" min="64"
+                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
                     </div>
-                    <div class="seccion-cambiar-data-menu  ocultar-display" id="seccion-cambiar-apodo-menu">
-                        <h2>Cambio de Apodo</h2>
-                        <form id="form-cambio-apodo">
-                            <label for="cambio-apodo">
-                                <span>Apodo</span>
-                                <input id="cambio-apodo" type="text" placeholder="(visible para todos)" required
-                                    minlength="3" maxlength="20">
-                            </label>
-                            <span class="text-error-form-causa ocultar-display"
-                                id="text-error-form-causa-cambio-apodo"></span>
-                            <div class="bt-cambiar-pass-alineador-button">
-                                <button type="submit" class="bt-validar-code">Cambiar</button>
-                            </div>
-                        </form>
+                    <div class="label-ajuste-inline">
+                        <span>Límite Disco Usuarios (MB):</span>
+                        <input type="number" id="input-cache-usuarios-disk" min="64"
+                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
+                    </div>
+                    <label for="check-forzar-disco"
+                        style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                        <span>Forzar Caché en Disco:</span>
+                        <input type="checkbox" id="check-forzar-disco">
+                    </label>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button id="bt-limpiar-cache-chats"
+                            style="background: #444; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Limpiar
+                            Chats</button>
+                        <button id="bt-limpiar-cache-usuarios"
+                            style="background: #444; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Limpiar
+                            Usuarios</button>
                     </div>
                 </div>
             </div>
-            <div class="ocultar-display" id="alineador-menu-cambiar-data-cuenta-validar-code">
-                <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-data-cuenta-cd">
+            <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-noti">
+                <span class="titulo-ajustes">Recibir avisos:</span>
+                <label for="">
+                    <span>Cuando te mandan algo (chat individual)</span>
+                    <input type="checkbox" id="" checked>
+                </label>
+                <label for="">
+                    <span>Cuando te mandan algo (chat grupal)</span>
+                    <input type="checkbox" id="" checked>
+                </label>
+                <label for="">
+                    <span>Cuando descargan archivos tuyos (chat individual)</span>
+                    <input type="checkbox" id="" checked>
+                </label>
+                <label for="">
+                    <span>Cuando descargan archivos tuyos (chat grupal)</span>
+                    <input type="checkbox" id="" checked>
+                </label>
+            </div>
+
+            <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-soporte">
+
+            </div>
+            <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-saber">
+
+            </div>
+        </div>
+        <div class="ocultar-display" id="alineador-menu-cambiar-data-cuenta">
+            <div class="menu-cambiar-contraseña">
+                <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-data">
                     <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
                 </div>
-                <div class="menu-validacion-codigo" id="seccion-validacion-codigo-ajustes">
-                    <h2>Cambiar Datos Cuenta</h2>
-                    <span class="ayuda-texto">Introduzca el codigo que se ha enviado a su correo.</span>
-                    <span class="span-aviso">Aviso: puede que se haya enviado a spam</span>
-                    <span class="span-aviso">Aviso: debes poner el último código generado</span>
-                    <form id="form-validation-correo-ajustes-datos-cuenta">
-                        <input id="bt-code-introducir-datos-cuenta" type="number" value="" placeholder="123456" required
-                            autocomplete="off" minlength="6" maxlength="6">
+                <div class="seccion-cambiar-data-menu flex-display" id="seccion-cambiar-contraseña-menu">
+                    <h2>Cambio de Contraseña</h2>
+                    <form id="form-cambio-contraseña">
+                        <label for="cambio-pass">
+                            <span>Contraseña</span>
+                            <input id="cambio-pass" type="password" placeholder="Contraseña" required minlength="8"
+                                maxlength="128">
+                        </label>
+                        <label for="cambio-pass-confirm">
+                            <span id="span-repetir-contraseña-cambio">Repita la Contraseña</span>
+                            <input id="cambio-pass-confirm" type="password" placeholder="Contraseña" required
+                                minlength="8" maxlength="128">
+                        </label>
                         <span class="text-error-form-causa ocultar-display"
-                            id="text-error-form-causa-codigo-validar"></span>
+                            id="text-error-form-causa-cambio-contraseña"></span>
                         <div class="bt-cambiar-pass-alineador-button">
-                            <button type="submit" class="bt-validar-code">validar</button>
+                            <button type="submit" class="bt-validar-code">Cambiar</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="seccion-cambiar-data-menu ocultar-display" id="seccion-cambiar-correo-menu">
+                    <h2>Cambio de Correo</h2>
+                    <form id="form-cambio-correo">
+                        <label for="cambio-correo">
+                            <span>Correo</span>
+                            <input id="cambio-correo" type="email" placeholder="correo electrónico" required
+                                maxlength="255">
+                        </label>
+                        <label for="confirmar-contraseña-correo">
+                            <span>Correo</span>
+                            <input id="confirmar-contraseña-correo" type="password" placeholder="contraseña" required
+                                minlength="8" maxlength="128">
+                        </label>
+                        <span class="text-error-form-causa ocultar-display"
+                            id="text-error-form-causa-cambio-correo"></span>
+                        <div class="bt-cambiar-pass-alineador-button">
+                            <button type="submit" class="bt-validar-code">Cambiar</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="seccion-cambiar-data-menu  ocultar-display" id="seccion-cambiar-apodo-menu">
+                    <h2>Cambio de Apodo</h2>
+                    <form id="form-cambio-apodo">
+                        <label for="cambio-apodo">
+                            <span>Apodo</span>
+                            <input id="cambio-apodo" type="text" placeholder="(visible para todos)" required
+                                minlength="3" maxlength="20">
+                        </label>
+                        <span class="text-error-form-causa ocultar-display"
+                            id="text-error-form-causa-cambio-apodo"></span>
+                        <div class="bt-cambiar-pass-alineador-button">
+                            <button type="submit" class="bt-validar-code">Cambiar</button>
                         </div>
                     </form>
                 </div>
             </div>
-            <div class="lista-bloqueados ocultar-display" id="lista-usuarios-bloqueados">
-                <div id="bt-cerrar-menu-lista-bloqueados">
-                    <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
-                </div>
-                <h2>LISTA USUARIOS BLOQUEADOS</h2>
-                <div id="principal-lista-usuarios-bloqueados">
-
-                </div>
+        </div>
+        <div class="ocultar-display" id="alineador-menu-cambiar-data-cuenta-validar-code">
+            <div class="bt-cerrar-menu" id="bt-cerrar-menu-cambio-data-cuenta-cd">
+                <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
             </div>
-            <div class="lista-bloqueados ocultar-display" id="lista-usuarios-silenciados">
-                <div id="bt-cerrar-menu-lista-silenciados">
-                    <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
-                </div>
-                <h2>LISTA USUARIOS SILENCIADOS</h2>
-                <div id="principal-lista-usuarios-silenciados">
-
-                </div>
+            <div class="menu-validacion-codigo" id="seccion-validacion-codigo-ajustes">
+                <h2>Cambiar Datos Cuenta</h2>
+                <span class="ayuda-texto">Introduzca el codigo que se ha enviado a su correo.</span>
+                <span class="span-aviso">Aviso: puede que se haya enviado a spam</span>
+                <span class="span-aviso">Aviso: debes poner el último código generado</span>
+                <form id="form-validation-correo-ajustes-datos-cuenta">
+                    <input id="bt-code-introducir-datos-cuenta" type="number" value="" placeholder="123456" required
+                        autocomplete="off" minlength="6" maxlength="6">
+                    <span class="text-error-form-causa ocultar-display"
+                        id="text-error-form-causa-codigo-validar"></span>
+                    <div class="bt-cambiar-pass-alineador-button">
+                        <button type="submit" class="bt-validar-code">validar</button>
+                    </div>
+                </form>
             </div>
         </div>
-        <!--CHATS-->
-        <div id="menu-chats-inicio">
-            <div id="lista-chats">
-                <div class="titulo-lista-chats-principal">
-                    <div class="text-titulo-lista-chats"><span>Chats</span></div>
-                    <div class="seccion-acciones-principales-lista-chat">
-                        <div id="bt-añadir-chat">
-                            <img draggable="false" src="../recursos/suma.png" alt="">
-                        </div>
+        <div class="lista-bloqueados ocultar-display" id="lista-usuarios-bloqueados">
+            <div id="bt-cerrar-menu-lista-bloqueados">
+                <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
+            </div>
+            <h2>LISTA USUARIOS BLOQUEADOS</h2>
+            <div id="principal-lista-usuarios-bloqueados">
+
+            </div>
+        </div>
+        <div class="lista-bloqueados ocultar-display" id="lista-usuarios-silenciados">
+            <div id="bt-cerrar-menu-lista-silenciados">
+                <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
+            </div>
+            <h2>LISTA USUARIOS SILENCIADOS</h2>
+            <div id="principal-lista-usuarios-silenciados">
+
+            </div>
+        </div>
+    </div>
+    <!--CHATS-->
+    <div id="menu-chats-inicio">
+        <div id="lista-chats">
+            <div class="titulo-lista-chats-principal">
+                <div class="text-titulo-lista-chats"><span>Chats</span></div>
+                <div class="seccion-acciones-principales-lista-chat">
+                    <div id="bt-añadir-chat">
+                        <img draggable="false" src="../recursos/suma.png" alt="">
                     </div>
                 </div>
-                <div class="seccion-buscar-chat-lista">
-                    <input type="text" id="input-buscar-chat" placeholder="Buscar chat..." maxlength="50">
+            </div>
+            <div class="seccion-buscar-chat-lista">
+                <input type="text" id="input-buscar-chat" placeholder="Buscar chat..." maxlength="50">
+            </div>
+            <div id="lista-chats-componentes">
+
+            </div>
+        </div>
+        <div class="division-2">
+            <!--navegacion de menu inicio-->
+            <div id="nav-menu-inicio">
+                <!--historial archivos descargados-->
+                <div id="bt-seccion-historial-archivos" title="Historial de descargas">
+                    <img src="../recursos/reciente.png" alt="" draggable="false">
                 </div>
-                <div id="lista-chats-componentes">
+                <!--ajustes-->
+                <div id="bt-seccion-menu-cuenta-ajustes" title="Ajustes">
+                    <img src="../recursos/engranaje.png" alt="" draggable="false">
+                </div>
+
+                <!--cambiar visibilidad (si es false nadie puede mandarte/conectarse para mandar archivos local ni ver si estas conectado)-->
+                <div id="bt-seccion-camibar-visibilidad">
 
                 </div>
             </div>
-            <div class="division-2">
-                <!--navegacion de menu inicio-->
-                <div id="nav-menu-inicio">
-                    <!--historial archivos descargados-->
-                    <div id="bt-seccion-historial-archivos" title="Historial de descargas">
-                        <img src="../recursos/carpeta.svg" alt="" draggable="false" style="width: 25px; height: 25px;">
-                    </div>
-                    <!--ajustes-->
-                    <div id="bt-seccion-menu-cuenta-ajustes" title="Ajustes">
-                        <img src="../recursos/engranaje.png" alt="" draggable="false">
-                    </div>
-                    
-                    <!--cambiar visibilidad (si es false nadie puede mandarte/conectarse para mandar archivos local ni ver si estas conectado)-->
-                    <div id="bt-seccion-camibar-visibilidad">
-
-                    </div>
-                </div>
-                <div class="seccion-cuerpo-chat">
-                    <!--chat-->
-                    <div id="chat-usuario"></div>
-                    <!--historial-->
-                    <div id="seccion-historial-archivos" class="ocultar-display">
+            <div class="seccion-cuerpo-chat">
+                <!--chat-->
+                <div id="chat-usuario"></div>
+                <!--historial-->
+                <div id="seccion-historial-archivos-alineador" class="ocultar-display">
+                    <div id="seccion-historial-archivos">
                         <div class="historial-header">
                             <h2>Historial de Archivos Descargados</h2>
                             <button id="bt-limpiar-historial-completo" class="bt-limpiar-historial">
                                 <img src="../recursos/escoba.png" alt="Limpiar Todo">
-                                <span>Limpiar Historial</span>
+                                <span>Limpiar</span>
                             </button>
                         </div>
                         <div id="historial-lista-contenido">
                             <!-- Se cargará dinámicamente -->
                         </div>
                     </div>
-                    <!--informacion chat-->
-                    <div id="info-chat-seccion"></div>
                 </div>
+                <!--informacion chat-->
+                <div id="info-chat-seccion"></div>
             </div>
         </div>
-        <div id="alineador-seccion-añadir-chat" class="ocultar-display">
-            <div class="seccion-añadir-chat">
-                <div class="nav-principal-añadir-chat">
-                    <input type="text" id="texto-buscar-chat-añadir" value="" placeholder="Usuario buscar" maxlength="255">
+    </div>
+    <div id="alineador-seccion-añadir-chat" class="ocultar-display">
+        <div class="seccion-añadir-chat">
+            <div class="nav-principal-añadir-chat">
+                <div class="seccion-texto-buscar-chat-añadir">
+                    <img src="../recursos/lupa.png" alt="buscar" draggable="false">
+                    <input type="text" id="texto-buscar-chat-añadir" value="" placeholder="Buscar usuario..."
+                        maxlength="255">
 
-                    <div id="bt-cerrar-menu-añadir-chats">
-                        <img src="../recursos/cruz.png" alt="">
-                    </div>
                 </div>
-
-                <div id="resultados-busqueda-usaurios"><span>*Sin resultados</span></div>
-                <div id="contactos-añadidos-grupo">*Agrega usuarios para el chat</div>
-                <div class="nombre-chat-crear">
-                    <input id="nombre-chat-nuevo-crear" type="text" value="" placeholder="Nombre para el chat" maxlength="50">
-                </div>
-                <div class="div-bt-agregar-contacto-nuevo"> <button id="bt-agregar-contacto-nuevo">Agregar</button>
+                <div id="bt-cerrar-menu-añadir-chats">
+                    <img src="../recursos/cruz.png" alt="">
                 </div>
             </div>
+
+            <div id="resultados-busqueda-usaurios"><span>*Sin resultados</span></div>
+            <div id="contactos-añadidos-grupo">*Agrega usuarios para el chat</div>
+            <div class="nombre-chat-crear">
+                <input id="nombre-chat-nuevo-crear" type="text" value="" placeholder="Nombre para el chat"
+                    maxlength="50">
+            </div>
+            <div class="div-bt-agregar-contacto-nuevo"> <button id="bt-agregar-contacto-nuevo">Agregar</button>
+            </div>
         </div>
-        <!--SCRIPTS-->
-        <script src="../notificaciones/notificaciones.js"></script>
-        <script type="module" src="./renderer.js"></script><!--CARGARLO AL FINAL DE TODO-->
-    </body>
+    </div>
+    <!--SCRIPTS-->
+    <script src="../notificaciones/notificaciones.js"></script>
+    <script type="module" src="./renderer.js"></script><!--CARGARLO AL FINAL DE TODO-->
+</body>
 
 </html>

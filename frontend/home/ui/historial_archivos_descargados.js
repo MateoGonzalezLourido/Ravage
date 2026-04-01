@@ -98,7 +98,7 @@ export async function crear_chat_historial_archivos_descargados(){
                                 data-ratchet="${archivo.ratchet_info ? encodeURIComponent(JSON.stringify(archivo.ratchet_info)) : ''}"
                                 data-id-chat="${chat.id_chat}" 
                                 title="Volver a descargar">
-                            <img src="../recursos/carpeta.svg" alt="Descargar">
+                            <img src="../recursos/descargar.png" alt="Descargar">
                         </button>
                     </div>
                 </div>
@@ -139,7 +139,7 @@ function crear_eventos(){
             const id_archivo = el.dataset.idArchivo
             
             // Ocultar historial, mostrar chat
-            document.querySelector("#seccion-historial-archivos").classList.add("ocultar-display")
+            document.querySelector("#seccion-historial-archivos-alineador").classList.add("ocultar-display")
             const chatUsuario = document.querySelector("#chat-usuario")
             chatUsuario.classList.remove("ocultar-display")
             const infoChatSeccion = document.querySelector("#info-chat-seccion")

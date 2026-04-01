@@ -908,7 +908,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     //historial archivos descargados
     document.querySelector("#bt-seccion-historial-archivos").addEventListener("click", () => {
-        const seccionHistorial = document.querySelector("#seccion-historial-archivos")
+        const seccionHistorial = document.querySelector("#seccion-historial-archivos-alineador")
         const chatUsuario = document.querySelector("#chat-usuario")
         const infoChatSeccion = document.querySelector("#info-chat-seccion")
 

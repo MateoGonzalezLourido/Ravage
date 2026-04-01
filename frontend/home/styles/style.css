@@ -102,7 +102,7 @@ input[type="number"]::-webkit-outer-spin-button {
     justify-content: center;
     align-items: center;
     user-select: none;
-    padding: 1px;
+    padding: 1.5px;
     margin-right: 4px;
 }
 
@@ -111,9 +111,9 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 #bt-seccion-menu-cuenta-ajustes img {
-    width: 32px;
-    height: 32px;
-    filter: invert(0.8);
+    width: 36px;
+    height: 36px;
+    filter: invert(0.9);
 }
 
 #seccion-menu-cuenta-ajustes {
@@ -139,7 +139,7 @@ input[type="number"]::-webkit-outer-spin-button {
     height: 28px;
     cursor: pointer;
     user-select: none;
-    filter: invert(0.8);
+    filter: invert(0.9);
 }
 
 #seccion-menu-cuenta-ajustes .menu-navegacion-ajustes {
@@ -307,7 +307,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .bt-cerrar-menu img {
     width: 24px;
     height: 24px;
-    filter: invert(0.8);
+    filter: invert(0.9);
 }
 
 #alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña {
@@ -571,13 +571,14 @@ input[type="number"]::-webkit-outer-spin-button {
 
 #input-buscar-chat {
     width: 100%;
-    height: 35px;
+    height: 37px;
     background-color: var(--wa-search-input-bg);
     color: var(--wa-text-primary);
     border: none;
     border-radius: 8px;
     padding: 0 12px;
-    font-size: 15px;
+    font-size: 15.4px;
+    letter-spacing: 0.7px;
     outline: none;
     box-sizing: border-box;
     transition: background-color 0.2s;
@@ -593,7 +594,7 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .text-titulo-lista-chats {
     width: 60%;
-    font-size: 19px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--wa-text-primary);
     margin: 0;
@@ -627,7 +628,13 @@ input[type="number"]::-webkit-outer-spin-button {
 .seccion-acciones-principales-lista-chat div img {
     width: 25px;
     height: 25px;
-    filter: invert(0.8);
+    filter: invert(0.9);
+    border-radius: 100%;
+    padding: 2px;
+}
+
+.seccion-acciones-principales-lista-chat div img:hover {
+    box-shadow: 0px 0px 3px rgba(136, 138, 138, 0.681);
 }
 
 @media (max-width: 768px) {
@@ -696,16 +703,30 @@ input[type="number"]::-webkit-outer-spin-button {
     height: 24px;
 }
 
+.seccion-texto-buscar-chat-añadir {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.seccion-texto-buscar-chat-añadir img {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin: 0;
+}
+
 #texto-buscar-chat-añadir {
     position: relative;
     width: calc(100% - 30px);
-    height: 35px;
+    height: 37px;
     background-color: var(--wa-search-input-bg);
     color: var(--wa-text-primary);
     border: none;
     border-radius: 8px;
     padding: 0 12px;
-    font-size: 15px;
+    letter-spacing: 0.6px;
+    font-size: 15.4px;
     outline: none;
 }
 
@@ -719,11 +740,15 @@ input[type="number"]::-webkit-outer-spin-button {
     height: 35px;
     background-color: var(--wa-search-input-bg);
     color: var(--wa-text-primary);
+    letter-spacing: 0.8px;
     border: none;
     border-radius: 8px;
     padding: 0 12px;
-    font-size: 15px;
+    margin-bottom: 3px;
+    font-size: 15.4px;
     outline: none;
+    display: flex;
+    align-items: center;
 }
 
 #nombre-chat-nuevo-crear::placeholder {
@@ -738,11 +763,20 @@ input[type="number"]::-webkit-outer-spin-button {
     align-items: center;
 }
 
+.nombre-chat-crear::before {
+    content: "~▶";
+    color: rgba(56, 161, 213, 0.892);
+    position: relative;
+    bottom: 3px;
+    left: 2px;
+}
+
 #resultados-busqueda-usaurios {
     position: relative;
     width: 100%;
     height: 150px;
     overflow-y: auto;
+    user-select: none;
 }
 
 #resultados-busqueda-usaurios span {
@@ -771,6 +805,7 @@ input[type="number"]::-webkit-outer-spin-button {
     align-content: flex-start;
     border-top: 1px solid rgba(255, 255, 255, 0.193);
     padding-top: 5px;
+    user-select: none;
 }
 
 .componente-lista-contactos-añadidos-chat-crear {
@@ -805,8 +840,9 @@ input[type="number"]::-webkit-outer-spin-button {
     border: none;
     border-radius: 20px;
     height: 36px;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
+    letter-spacing: 0.7px;
     transition: background-color 0.15s;
 }
 
@@ -882,7 +918,7 @@ input[type="number"]::-webkit-outer-spin-button {
 #bt-crear-conexion-p2p img {
     width: 20px;
     height: 20px;
-    filter: invert(0.8);
+    filter: invert(0.9);
 }
 
 /* =========================================
@@ -927,7 +963,7 @@ input[type="number"]::-webkit-outer-spin-button {
 #bt-añadir-archivo-mensaje-escritura img {
     width: 24px;
     height: 24px;
-    filter: invert(0.8);
+    filter: invert(0.9);
 }
 
 .seccion-escritura-mensaje-chat textarea {
@@ -1052,7 +1088,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .bt-cerrar-archivos-header img {
     width: 20px;
     height: 20px;
-    filter: invert(0.8);
+    filter: invert(0.9);
     opacity: 0.85;
     /* Soften the icon slightly */
 }
@@ -1187,7 +1223,8 @@ input[type="number"]::-webkit-outer-spin-button {
     display: flex;
     flex-direction: row;
 }
-.info-chat-lista-titulo div{
+
+.info-chat-lista-titulo div {
     width: min-content;
     margin-left: 10px;
     width: 15px;
@@ -1200,9 +1237,11 @@ input[type="number"]::-webkit-outer-spin-button {
     justify-content: center;
     align-items: center;
 }
+
 .info-chat-lista-titulo div:hover {
     background-color: var(--wa-list-item-hover);
 }
+
 .info-chat-lista-titulo {
     font-size: 12px;
     text-transform: uppercase;
@@ -1319,7 +1358,7 @@ input[type="number"]::-webkit-outer-spin-button {
 .ventana-archivos-mensaje .bt-accion-archivos img {
     width: 18px;
     height: 18px;
-    filter: invert(0.8);
+    filter: invert(0.9);
     opacity: 0.85;
     user-select: none;
     pointer-events: none;
