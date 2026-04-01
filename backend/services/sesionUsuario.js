@@ -149,43 +149,41 @@ async function registerUsuario(mainWindow, { apodo = "Usuario", correo = null, p
         return { success: false, message: "Usuario ya registrado" };
     }
 
-    mainWindow.webContents.send("icono-cargando", true);
+    // Proceso pesado (hashing, RSA y DB) en background para respuesta inmediata
+    ; (async () => {
+        try {
+            const [pass_hashed, keys] = await Promise.all([
+                hash(passwordStr, saltos_contraseña),
+                generarLlavesRSA()
+            ]);
 
-    try {
-        const [pass_hashed, keys] = await Promise.all([
-            hash(passwordStr, saltos_contraseña),
-            generarLlavesRSA()
-        ]);
+            const code_generado = String(generarCodigoVerificacion());
+            const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado });
 
-        const code_generado = String(generarCodigoVerificacion());
-        const { asunto, htmlContenido } = ValidarCorreoEstructura({ apodo: apodoStr, code: code_generado });
+            const deviceId = String(machineIdSync());
 
-        const deviceId = String(machineIdSync());
+            await InsertarVC({
+                correo: correoStr,
+                code: code_generado,
+                id: deviceId,
+                data: {
+                    passwordHash: pass_hashed,
+                    apodo: apodoStr,
+                    publicKey: keys.publicKey,
+                    privateKey: keys.privateKey,
+                    intentos: n_intentos_codigo_validacion
+                }
+            });
 
-        await InsertarVC({
-            correo: correoStr,
-            code: code_generado,
-            id: deviceId,
-            data: {
-                passwordHash: pass_hashed,
-                apodo: apodoStr,
-                publicKey: keys.publicKey,
-                privateKey: keys.privateKey,
-                intentos: n_intentos_codigo_validacion
-            }
-        });
+            enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido });
+        } catch (e) {
+            log.error({ err: e }, "Error asíncrono en proceso de registro");
+            mainWindow.webContents.send("fallo-correo-mandar");
+        }
+    })();
 
-        // El envío de email sigue siendo asíncrono "fire-and-forget" seguro
-        enviarEmail({ correoDestino: correoStr, asunto: asunto, htmlContenido: htmlContenido });
-
-        mainWindow.webContents.send("icono-cargando", false);
-        return { success: true };
-    } catch (e) {
-        log.error({ err: e }, "Error en el proceso de registro");
-        mainWindow.webContents.send("icono-cargando", false);
-        mainWindow.webContents.send("fallo-correo-mandar");
-        return { success: false, message: "Error interno al procesar el registro" };
-    }
+    mainWindow.webContents.send("icono-cargando", false);
+    return { success: true };
 }
 
 async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
