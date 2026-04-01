@@ -106,7 +106,7 @@ export async function descifrarListaMensajes(mensajes, chat) {
                 current_state.counter++;
                 
             } catch (err) {
-                log.error({ err: aesErr, msgId: m._id || m.id }, "[E2EE] Fallo descifrando msg");
+                log.error({ err, msgId: m._id || m.id }, "[E2EE] Fallo descifrando msg");
                 if (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string') {
                     m.contenido = [{ asunto: "[Error al descifrar: posible clave de dispositivo obsoleta]", archivos: [] }];
                 }

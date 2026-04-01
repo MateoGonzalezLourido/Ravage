@@ -28,13 +28,13 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
                 
                 if (emisorId) {
                     const strEmisor = emisorId.toString();
-                    if (usr.users_bloq && usr.users_bloq.some(id => id.toString() === strEmisor)) bloqueado_o_silenciado = true;
-                    if (usr.users_silence && usr.users_silence.some(id => id.toString() === strEmisor)) bloqueado_o_silenciado = true;
+                    if ((usr.users_bloq || []).some(id => id.toString() === strEmisor)) bloqueado_o_silenciado = true;
+                    if ((usr.users_silence || []).some(id => id.toString() === strEmisor)) bloqueado_o_silenciado = true;
                 }
                 
                 if (chatId) {
                     const strChat = chatId.toString();
-                    const chatInfo = usr.chats?.find(c => c.id.toString() === strChat);
+                    const chatInfo = (usr.chats || []).find(c => c.id.toString() === strChat);
                     if (chatInfo && (chatInfo.silenciado || chatInfo.bloqueado)) {
                         bloqueado_o_silenciado = true;
                     }

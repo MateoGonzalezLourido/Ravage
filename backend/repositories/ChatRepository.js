@@ -10,7 +10,7 @@ import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { randomBytes } from '../utils/libs.js';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
 import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
-import { getChatDeCache as getChatDeCacheRaw, setChatEnCache} from '../STORAGE/CACHE/_cache_chats.js';
+import { getChatDeCache as getChatDeCacheRaw, setChatEnCache } from '../STORAGE/CACHE/_cache_chats.js';
 
 /**
  * Helper para normalizar el chat antes de guardarlo en cache (sin contenido de mensajes).
@@ -21,7 +21,7 @@ export async function setChatEnCacheRaw(chat) {
     if (chatCopia.mensajes && Array.isArray(chatCopia.mensajes)) {
         // Guardar solo IDs para seguir la regla de "no contenido" y ahorrar espacio
         chatCopia.mensajes = chatCopia.mensajes.map(m => m._id || m.id);
-        chatCopia._hasFullMessages = false; 
+        chatCopia._hasFullMessages = false;
     }
     await setChatEnCache(chatCopia);
 }
@@ -74,7 +74,7 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
         for (let i = 0; i < result.length; i++) {
             let chat = result[i];
             const tieneMensajesFull = chat.mensajes && Array.isArray(chat.mensajes) && chat.mensajes.length > 0 && typeof chat.mensajes[0] === 'object';
-            
+
             if (mensajes && !tieneMensajesFull) {
                 // El cache solo tiene IDs o nada. Cargar de DB.
                 chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: 1 }).lean();
@@ -107,15 +107,15 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
             const cached = await getChatDeCache(id_chat);
             if (cached) {
                 chat_a_devolver = { ...cached, mensajes: [...(cached.mensajes || [])] };
-                
+
                 // Si el cache solo tiene IDs o está vacío (pero se esperan mensajes), cargar de DB
-                const tieneMensajesFull = chat_a_devolver.mensajes && 
-                                          chat_a_devolver.mensajes.length > 0 && 
-                                          typeof chat_a_devolver.mensajes[0] === 'object';
-                
+                const tieneMensajesFull = chat_a_devolver.mensajes &&
+                    chat_a_devolver.mensajes.length > 0 &&
+                    typeof chat_a_devolver.mensajes[0] === 'object';
+
                 if (!tieneMensajesFull) {
-                    chat_a_devolver.mensajes = await MessagesRavage.find({ 
-                        id_chat: new mongoose.Types.ObjectId(id_chat) 
+                    chat_a_devolver.mensajes = await MessagesRavage.find({
+                        id_chat: new mongoose.Types.ObjectId(id_chat)
                     }).sort({ data: 1 }).lean();
                     await descifrarListaMensajes(chat_a_devolver.mensajes, chat_a_devolver);
                 }
@@ -123,23 +123,23 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
                 const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
                 if (!data_obtenida) return null;
 
-                data_obtenida.mensajes = await MessagesRavage.find({ 
-                    id_chat: new mongoose.Types.ObjectId(id_chat) 
+                data_obtenida.mensajes = await MessagesRavage.find({
+                    id_chat: new mongoose.Types.ObjectId(id_chat)
                 }).sort({ data: 1 }).lean();
 
                 await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
                 await setChatEnCacheRaw(data_obtenida);
-                
+
                 chat_a_devolver = { ...data_obtenida, mensajes: [...(data_obtenida.mensajes || [])] };
             }
 
             const id_propio = getIDMongodbUsuario();
             const usr = await User.findById(id_propio, "chats").lean();
-            const miChatData = usr?.chats.find(c => c.id.toString() === id_chat.toString());
+            const miChatData = (usr?.chats || []).find(c => c.id.toString() === id_chat.toString());
 
             if (miChatData && miChatData.bloqueado && miChatData.mensaje_bloqueo_id) {
                 const stopId = miChatData.mensaje_bloqueo_id.toString();
-                chat_a_devolver.mensajes = chat_a_devolver.mensajes.filter(m => (m._id || m.id).toString() <= stopId);
+                chat_a_devolver.mensajes = (chat_a_devolver.mensajes || []).filter(m => (m._id || m.id).toString() <= stopId);
             }
 
             if (miChatData && miChatData.bloqueado) {
@@ -163,7 +163,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
             return convertirObjectId(data_con_nombre);
         }
     } catch (e) {
-        log.error(e);
+        log.error("Error en obtener_datos_chat_unico:", { err: e });
         return null;
     }
 }
@@ -209,7 +209,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     // Limpiar id_chat por si viene "null" como string
     let chatIdLimpio = id_chat;
     if (chatIdLimpio === "null" || chatIdLimpio === "undefined" || chatIdLimpio === "") chatIdLimpio = null;
-    
+
     // Validar si es un ObjectId real
     const esIdentificadorValido = chatIdLimpio && mongoose.Types.ObjectId.isValid(chatIdLimpio);
 
@@ -220,7 +220,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         const miUsuarioConChats = await User.findById(id_propio, "chats").lean();
         const chatMiInfo = miUsuarioConChats?.chats.find(c => c.id.toString() === chatIdLimpio.toString());
         if (chatMiInfo && chatMiInfo.bloqueado) {
-        log.warn(`[CREAR_CHAT_NUEVO] Intento de modificar chat bloqueado (${chatIdLimpio}) por el usuario ${id_propio}`);
+            log.warn(`[CREAR_CHAT_NUEVO] Intento de modificar chat bloqueado (${chatIdLimpio}) por el usuario ${id_propio}`);
             return false;
         }
 
@@ -322,16 +322,16 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         });
 
         const ids_notificar = ids_totales.filter(x => x.toString() !== id_propio.toString());
-        Añadir_Entrada_Buzon_Usuario({ 
-            ids: ids_notificar, 
-            tipo: 1, 
-            data: { 
-                chat: chatIdLimpio, 
-                emisor: id_propio, 
-                usuarios: ids_añadir, 
-                añadido: ids_añadir[0], 
-                mensaje: msgEspecial._id 
-            } 
+        Añadir_Entrada_Buzon_Usuario({
+            ids: ids_notificar,
+            tipo: 1,
+            data: {
+                chat: chatIdLimpio,
+                emisor: id_propio,
+                usuarios: ids_añadir,
+                añadido: ids_añadir[0],
+                mensaje: msgEspecial._id
+            }
         }).catch(e => log.error(e));
 
         return true;
@@ -340,7 +340,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     // CREAR CHAT NUEVO (Todos los chats se consideran expansibles/grupos)
     const ids_totales = [...new Set([...ids.map(id => id.toString()), id_propio.toString()])];
     const ids_objectid = ids_totales.map(id => new mongoose.Types.ObjectId(id));
-    
+
     // Preparar ratchet_keys iniciales (Sender Key por usuario)
     const ratchet_keys = [];
     const usuarios_data = await User.find({ _id: { $in: ids_objectid } }, "_id publicKey").lean();
@@ -353,13 +353,13 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
 
     for (const emisor of usuarios_data) {
         const chainKey = randomBytes(32).toString('hex');
-        
+
         for (const receptor of usuarios_data) {
             if (!receptor.publicKey) {
                 log.warn(`[Chat] Usuario ${receptor._id} no tiene llave pública, saltando entrada de ratchet.`);
                 continue;
             }
-            
+
             ratchet_keys.push({
                 emisor_id: emisor._id,
                 receptor_id: receptor._id,
@@ -402,10 +402,10 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             await AÑADIR_CONTACTO(ids[0], ""); // Añadir sin apodo definido para usar el global
         }
 
-        Añadir_Entrada_Buzon_Usuario({ 
-            ids: ids_totales.filter(id => id.toString() !== id_propio.toString()), 
-            tipo: 2, 
-            data: { creador: id_propio, chat: datos_chat._id } 
+        Añadir_Entrada_Buzon_Usuario({
+            ids: ids_totales.filter(id => id.toString() !== id_propio.toString()),
+            tipo: 2,
+            data: { creador: id_propio, chat: datos_chat._id }
         }).catch(e => log.error(e));
 
         // Actualizar cache con el nuevo chat
@@ -425,7 +425,7 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
         const id_propio = getIDMongodbUsuario();
         const existe = chat.usuarios.some(usuario => usuario.toHexString() === id_usuario);
         if (!existe) return false;
-        
+
         // Solo un admin puede expulsar
         if (!chat.admins.some(a => a.toString() === id_propio.toString())) return false;
 
@@ -463,10 +463,10 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
             especial: { tipo: 1, emisor: id_propio, expulsado: id_usuario }
         });
 
-        Añadir_Entrada_Buzon_Usuario({ 
-            ids: chat.usuarios, 
-            tipo: 4, 
-            data: { chat: id_chat, expulsado: id_usuario, id_mensaje: msgExpulsion._id?.toHexString(), mensaje: msgExpulsion._id, emisor: id_propio } 
+        Añadir_Entrada_Buzon_Usuario({
+            ids: chat.usuarios,
+            tipo: 4,
+            data: { chat: id_chat, expulsado: id_usuario, id_mensaje: msgExpulsion._id?.toHexString(), mensaje: msgExpulsion._id, emisor: id_propio }
         }).catch(e => log.error(e));
 
         return true;
@@ -543,13 +543,13 @@ export async function RESPONDER_SOLICITUD_AÑADIR(id_chat, id_mensaje, aceptar) 
  */
 async function resolverNombresChats(chats) {
     if (!chats || chats.length === 0) return chats;
-    
+
     const id_propio = getIDMongodbUsuario();
     const usuario_actual = await User.findById(id_propio, "contactos").lean();
     if (!usuario_actual) return chats;
 
     const ids_otros_necesarios = new Set();
-    
+
     // Identificar chats que necesitan resolución de nombre
     chats.forEach(chat => {
         if (!chat.nombre && chat.usuarios.length === 2) {
@@ -563,7 +563,7 @@ async function resolverNombresChats(chats) {
     if (ids_otros_necesarios.size > 0) {
         const missingIds = [];
         const { getUsuarioDeCache, setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
-        
+
         for (const id of ids_otros_necesarios) {
             const cached = await getUsuarioDeCache(id);
             if (cached) {
@@ -580,9 +580,9 @@ async function resolverNombresChats(chats) {
                 if (u.apodo && typeof u.apodo === 'object') {
                     u.apodo = desencriptarDatosSistema(u.apodo);
                 }
-                
+
                 globales[u._id.toString()] = u.apodo || "Usuario Ravage";
-                
+
                 // Cache miss: Actualizamos cache con el dato procesado
                 await setUsuarioEnCache(u);
             }
@@ -601,8 +601,8 @@ async function resolverNombresChats(chats) {
                 const id_otro = chat.usuarios.find(u => u.toString() !== id_propio.toString());
                 if (id_otro) {
                     const id_otro_str = id_otro.toString();
-                    const contacto = usuario_actual.contactos.find(c => c.id.toString() === id_otro_str);
-                    
+                    const contacto = (usuario_actual.contactos || []).find(c => c.id && c.id.toString() === id_otro_str);
+
                     if (contacto && contacto.apodo) {
                         chat.nombre = contacto.apodo;
                     } else if (globales[id_otro_str]) {
@@ -628,7 +628,7 @@ export async function HACER_ADMIN_CHAT(id_chat, id_usuario) {
         const chat = await ChatsRavage.findById(id_chat).lean();
         if (!chat) return false;
         const id_propio = getIDMongodbUsuario();
-        
+
         // Verificar permisos
         if (!chat.admins.some(a => a.toString() === id_propio.toString())) return false;
         // Verificar que el usuario está en el chat
@@ -664,7 +664,7 @@ export async function QUITAR_ADMIN_CHAT(id_chat, id_usuario) {
         const chat = await ChatsRavage.findById(id_chat).lean();
         if (!chat) return false;
         const id_propio = getIDMongodbUsuario();
-        
+
         // Verificar permisos
         if (!chat.admins.some(a => a.toString() === id_propio.toString())) return false;
 
@@ -679,7 +679,7 @@ export async function QUITAR_ADMIN_CHAT(id_chat, id_usuario) {
 
         Añadir_Entrada_Buzon_Usuario({
             ids: chat.usuarios.filter(u => u.toString() !== id_propio.toString()),
-            tipo: 5, 
+            tipo: 5,
             data: { chat: id_chat, accion: "quitar_admin", usuario: id_usuario }
         }).catch(e => log.error(e));
 
@@ -710,7 +710,7 @@ export async function rotarClavesChat(id_chat, id_emisor) {
         const updates = [];
         for (const receptor of usuarios_data) {
             if (!receptor.publicKey) continue;
-            
+
             updates.push({
                 emisor_id: id_emisor,
                 receptor_id: receptor._id,
@@ -722,14 +722,14 @@ export async function rotarClavesChat(id_chat, id_emisor) {
         // Reemplazar todas las entradas de este emisor en el array ratchet_keys
         await ChatsRavage.updateOne(
             { _id: id_chat },
-            { 
+            {
                 $pull: { ratchet_keys: { emisor_id: id_emisor } }
             }
         );
 
         await ChatsRavage.updateOne(
             { _id: id_chat },
-            { 
+            {
                 $push: { ratchet_keys: { $each: updates } }
             }
         );
@@ -750,10 +750,10 @@ export async function SILENCIAR_CHAT_USUARIO(id_chat) {
         const id_propio = getIDMongodbUsuario();
         const usr = await User.findById(id_propio, "chats").lean();
         if (!usr) return { success: false };
-        
+
         const index = usr.chats.findIndex(c => c.id.toString() === id_chat.toString());
         if (index === -1) return { success: false, message: "Chat no encontrado" };
-        
+
         const currentMuted = usr.chats[index].silenciado || false;
         const newMuted = !currentMuted;
 
@@ -781,10 +781,10 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
         const id_propio = getIDMongodbUsuario();
         const usr = await User.findById(id_propio, "chats").lean();
         if (!usr) return { success: false };
-        
+
         const index = usr.chats.findIndex(c => c.id.toString() === id_chat.toString());
         if (index === -1) return { success: false, message: "Chat no encontrado" };
-        
+
         const currentBlocked = usr.chats[index].bloqueado || false;
         const newBlocked = !currentBlocked;
 
@@ -809,12 +809,14 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
 
         await User.updateOne(
             { _id: id_propio, "chats.id": new mongoose.Types.ObjectId(id_chat) },
-            { $set: { 
-                "chats.$.bloqueado": newBlocked,
-                "chats.$.mensaje_bloqueo_id": mensaje_bloqueo_id,
-                "chats.$.nombre_bloqueo": nombre_bloqueo,
-                "chats.$.participantes_bloqueo": participantes_bloqueo
-            } }
+            {
+                $set: {
+                    "chats.$.bloqueado": newBlocked,
+                    "chats.$.mensaje_bloqueo_id": mensaje_bloqueo_id,
+                    "chats.$.nombre_bloqueo": nombre_bloqueo,
+                    "chats.$.participantes_bloqueo": participantes_bloqueo
+                }
+            }
         );
 
         const { setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
