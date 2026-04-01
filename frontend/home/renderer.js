@@ -140,10 +140,12 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                                         window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat),
                                         window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                                     ])
-                                    datos_chat._id = id_chat
-                                    document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
-                                    cerrar_paneles_al_abrir_chat()
-                                    scroll_fin_chat()
+                                    if (datos_chat) {
+                                        datos_chat._id = id_chat
+                                        document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+                                        cerrar_paneles_al_abrir_chat()
+                                        scroll_fin_chat()
+                                    }
                                 }
                             } else {
                                 window.pushNotificacion({ prioridad: 0, texto: "Error al bloquear chat", tipo: "error" })
@@ -164,6 +166,11 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                     window.chats.OBTENER_DATOS_CHAT_UNICO(id),
                     window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                 ])
+
+                if (!datos_chat) {
+                    window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
+                    return;
+                }
 
                 // El nombre ya viene resuelto por el backend
                 datos_chat._id = id
@@ -198,8 +205,10 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                                 window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_sol),
                                 window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                             ])
-                            datos_chat_nuevo._id = id_chat_sol
-                            document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat_nuevo, id_usr)
+                            if (datos_chat_nuevo) {
+                                datos_chat_nuevo._id = id_chat_sol
+                                document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat_nuevo, id_usr)
+                            }
                         } else {
                             window.pushNotificacion({
                                 prioridad: 0,
