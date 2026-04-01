@@ -39,7 +39,7 @@ async function createMainWindowHome(AutoLogin = false) {
 
     mainWindow.maximize();
     mainWindow.show();
-    
+
     const [{ registerSessionHandlers }, { registerValidadoresHandlers }] = await Promise.all([
         import('./backend/ipc/session_ipc.js'),
         import('./backend/ipc/validadores_ipc.js')
@@ -106,7 +106,8 @@ if (!gotTheLock) {
     });
 }
 
-app.on('before-quit', async () => {
+app.on('before-quit', async (event) => {
+    event.preventDefault();
     try {
         const [dbRes, buzonRes] = await Promise.allSettled([
             import("./backend/db/mongo.js"),
@@ -120,7 +121,10 @@ app.on('before-quit', async () => {
             await dbRes.value.closeDB();
         }
     } catch (err) {
-        console.error(err);
+        console.error("Error durante el cierre:", err);
+    } finally {
+        // Ahora sí cerramos la aplicación
+        app.exit(0);
     }
 });
 
