@@ -1,12 +1,45 @@
+#seccion-historial-archivos-alineador {
+    display: flex;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    background: #18252d;
+    box-sizing: border-box;
+    overflow-y: auto;
+    user-select: none;
+}
+
 #seccion-historial-archivos {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    background: #1a1a1a;
     color: #e0e0e0;
     padding: 20px;
-    box-sizing: border-box;
-    overflow-y: auto;
+}
+
+
+#seccion-historial-archivos::-webkit-scrollbar {
+    width: 6px;
+    border-radius: 8px;
+}
+
+#seccion-historial-archivos::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    /* Margin technique to add padding to thumb inside textarea */
+    border: 2px solid var(--wa-message-in);
+}
+
+#seccion-historial-archivos::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+#seccion-historial-archivos::-webkit-scrollbar-track {
+    background: transparent;
+    padding: 2px;
+}
+
+#seccion-historial-archivos::placeholder {
+    color: var(--wa-text-secondary);
 }
 
 .historial-header {
@@ -34,6 +67,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-left: 15px;
     transition: background 0.2s, transform 0.1s;
 }
 
@@ -55,17 +89,17 @@
     border-radius: 10px;
     margin-bottom: 20px;
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 5px rgb(0 0 0 / 25%);
 }
 
 .chat-historial-header {
-    background: #333;
-    padding: 10px 15px;
+    background: #3a3a3a;
+    padding: 6px 15px;
     font-weight: 600;
 }
 
 .chat-historial-name {
-    color: #aaa;
+    color: #bfbfbf;
     font-size: 0.9rem;
 }
 
@@ -145,8 +179,8 @@
 }
 
 .archivo-info-historial-descargas {
-    font-size: 0.8rem;
-    color: #888;
+    font-size: 0.85rem;
+    color: #9a9a9a;
 }
 
 .historial-vacio {
@@ -160,4 +194,27 @@
 
 .ocultar-display {
     display: none !important;
+}
+
+
+
+#bt-seccion-historial-archivos {
+    position: relative;
+    cursor: pointer;
+    border-radius: 7px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    padding: 4px !important;
+    margin-right: 4px;
+}
+
+#bt-seccion-historial-archivos:hover {
+    box-shadow: 0px 0px 3px rgba(136, 138, 138, 0.681);
+}
+
+#bt-seccion-historial-archivos img {
+    width: 28px !important;
+    height: 28px !important;
 }
