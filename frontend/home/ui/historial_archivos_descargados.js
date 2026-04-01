@@ -150,10 +150,18 @@ function crear_eventos(){
             if (navChat && navChat.dataset.id === id_chat) {
                 hacer_scroll_a_archivo(id_archivo)
             } else {
-                const [datos_chat, id_usuario] = await Promise.all([
+                const [datos_chat, id_usuario, lista_chats] = await Promise.all([
                     window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat),
-                    window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+                    window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
+                    window.cuenta_usuario.getListaChats()
                 ])
+
+                if(!datos_chat?._id) return; //no redireccionar porque no existe
+
+                //se mira usando los chats del usuario y no los participantes del grupo porque si es expulsado del grupo el usuario puede seguir viendo el chat hasta ese momento
+                const chat_encontrado = lista_chats.find(chat => chat.id_chat === id_chat)
+                if(!chat_encontrado) return; //no redireccionar porque el usuario no pertenece a ese chat
+
                 datos_chat._id = id_chat
                 chatUsuario.innerHTML = await Crear_chat_html(datos_chat, id_usuario)
                 hacer_scroll_a_archivo(id_archivo)
