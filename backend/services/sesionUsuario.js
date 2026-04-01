@@ -2,7 +2,7 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('session');
 import { User } from '../models/User.js';
 import { ValidationCode, TokenVC, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
-import { LoginUsuarioDB, InsertarUsuario } from '../repositories/UserRepository.js';
+import { LoginUsuarioDB, InsertarUsuario, procesarUsuario } from '../repositories/UserRepository.js';
 import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, BuscarVC, BuscarCuentaVC } from '../repositories/SecurityRepository.js';
 import {
     saveSessionFile,
@@ -24,7 +24,7 @@ import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, createHash, machineIdSync } from '../utils/libs.js';
 import { generarLlavesRSA, hashDatosSistema } from './cryptoService.js';
 import { clearCacheChats } from '../STORAGE/CACHE/_cache_chats.js';
-import { clearCacheUsuarios } from '../STORAGE/CACHE/_cache_usuarios.js';
+import { clearCacheUsuarios, setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 import { clearCacheArchivosDescargados } from '../STORAGE/CACHE/_cache_archivos_descargados.js';
 import { clearCacheUrlImgExtensiones } from '../STORAGE/CACHE/_cache_img_extensiones.js';
 
@@ -101,12 +101,14 @@ async function autoLoginUsuario() {
     const usuario_datos = await LoginUsuarioDB({ correo: username, token: token, id_dp: deviceId });
 
     if (usuario_datos.success && usuario_datos.data) {
-        ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data ,id_maquina: deviceId });
+        ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data, id_maquina: deviceId });
         log.info("Autologin completado correctamente");
         return { success: true };
     } else {
-        await LimpiarJWTUsuario(username, token);
-        await clearFileSession('sessionFile');
+        await Promise.all([
+            LimpiarJWTUsuario(username, token),
+            clearFileSession('sessionFile')
+        ]);
         log.warn("Auto login fallido: token no válido o usuario inexistente");
         return { success: false };
     }
@@ -239,13 +241,15 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         return { success: false, message: "Fallo al crear el usuario" }
     }
 
-    await saveIdentityFile({ privateKey: privateKey, publicKey: publicKey });
-    await BorrarVC(correoStr);
-
-    // Mandar correo confirmando creación de cuenta (no bloqueante)
-    const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo });
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
-
+    await Promise.all([
+        saveIdentityFile({ privateKey: privateKey, publicKey: publicKey }),
+        BorrarVC(correoStr)
+    ]);
+    ; (async () => {
+        // Mandar correo confirmando creación de cuenta (no bloqueante)
+        const { asunto, htmlContenido } = ConfirmacionCuentaCreadaEstructura({ apodo: apodo });
+        enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
+    })();
     return { success: true };
 }
 
@@ -333,7 +337,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
     }
 
     // Guardar datos en memoria de manera síncrona
-    ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data ,id_maquina: deviceId});
+    ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data, id_maquina: deviceId });
 
     if (autoverificacion) {
         // JWT, mantener sesion iniciada en cache (ejecutado en background)
@@ -348,7 +352,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
         }
         log.info("Autoverificacion de cuenta completada");
     } else {
-        (async () => {
+        ; (async () => {
             const code_generado = String(generarCodigoVerificacion());
             const { asunto, htmlContenido } = ValidarCuentaUsuario({ apodo: usuario_data.data.apodo, code: code_generado });
 
@@ -385,7 +389,7 @@ async function ValidarCodeLogin({ correo, code }) {
     // Buscar el código en la DB
     const code_db = await BuscarCuentaVC(correo, code, deviceId);
     if (!code_db) {
-        ACTUALIZAR_DATOS_LOGIN({ limpiar: true ,id_maquina: deviceId})
+        ACTUALIZAR_DATOS_LOGIN({ limpiar: true, id_maquina: deviceId })
         return { success: false, message: "Fallo al iniciar sesion: no existe ese código o ha expirado" };
     }
 
@@ -393,7 +397,7 @@ async function ValidarCodeLogin({ correo, code }) {
     let { intentos, mantenerSesion } = parsedData;
 
     if (intentos <= 0) {
-        ACTUALIZAR_DATOS_LOGIN({ limpiar: true ,id_maquina: deviceId});
+        ACTUALIZAR_DATOS_LOGIN({ limpiar: true, id_maquina: deviceId });
         await BorrarCuentaVC(correo);
         return { success: false, message: "Fallo al iniciar sesion: intentos acabados" }
     }
@@ -401,22 +405,28 @@ async function ValidarCodeLogin({ correo, code }) {
     //JWT , mantener sesion iniciada en cache
     if (mantenerSesion) {
         const token = await generarteToken('sesion');
-        await saveSessionFile({ username: correo, token: token });
-        await AñadirJWTUsuario(correo, token)
+        await Promise.all([
+            saveSessionFile({ username: correo, token: token }),
+            AñadirJWTUsuario(correo, token)
+        ]);
     }
 
     //guardar auto verificacion de cuenta en fichero local (omitir verificacion futura)
     const tokenVC = await generarteToken('cuenta');
-    await saveOmitirVerificacionCuentaFile({ username: correo, token: tokenVC });
-    await AñadirJWTUsuarioVC(correo, tokenVC)
+    await Promise.all([
+        saveOmitirVerificacionCuentaFile({ username: correo, token: tokenVC }),
+        AñadirJWTUsuarioVC(correo, tokenVC),
+        //borrar codigos
+        BorrarCuentaVC(correo)
+    ]);
 
-    //borrar codigos
-    await BorrarCuentaVC(correo);
 
-    //mandar correo confirmando inicio de sesion (no bloqueante)
-    const { asunto, htmlContenido } = ConfirmacionInicioSesion();
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
+    ; (async () => {
+        //mandar correo confirmando inicio de sesion (no bloqueante)
+        const { asunto, htmlContenido } = ConfirmacionInicioSesion();
+        enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
 
+    })()
     return { success: true };
 }
 
@@ -464,20 +474,17 @@ async function REGENERAR_IDENTIDAD_USUARIO() {
         const id_propio = storage.getIDMongodbUsuario();
         if (!id_propio) return false;
 
-        const { generarLlavesRSA } = await import('./cryptoService.js');
         const keys = await generarLlavesRSA();
 
-        // Actualizar en DB
-        await User.updateOne({ _id: id_propio }, { $set: { publicKey: keys.publicKey } });
+        // Actualizar en DB y Guardar localmente en paralelo
+        await Promise.all([
+            User.updateOne({ _id: id_propio }, { $set: { publicKey: keys.publicKey } }),
+            saveIdentityFile({ privateKey: keys.privateKey, publicKey: keys.publicKey })
+        ]);
 
-        // Guardar localmente
-        await saveIdentityFile({ privateKey: keys.privateKey, publicKey: keys.publicKey });
-
-        // Limpiar cache del usuario propio para que refresque la public key
-        const { setUsuarioEnCache, getUsuarioDeCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
+        // Refrescar caché del usuario propio para que incluya la nueva public key
         const updatedUser = await User.findById(id_propio).lean();
         if (updatedUser) {
-            const { procesarUsuario } = await import('../repositories/UserRepository.js');
             await setUsuarioEnCache(procesarUsuario(updatedUser));
         }
 
