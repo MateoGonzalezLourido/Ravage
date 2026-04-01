@@ -123,7 +123,6 @@ app.on('before-quit', async (event) => {
     } catch (err) {
         console.error("Error durante el cierre:", err);
     } finally {
-        // Ahora sí cerramos la aplicación
         app.exit(0);
     }
 });
@@ -132,7 +131,6 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
 
-// Navigation handlers (kept here as they directly affect main window)
 ipcMain.on("cambiar-pagina-soporte", () => {
     mainWindow.setTitle("RAVAGE-Soporte");
     mainWindow.loadFile(path.join(__dirname, 'frontend', 'soporte', 'soporte.html'));
