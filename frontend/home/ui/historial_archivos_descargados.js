@@ -8,7 +8,7 @@ export function invalidar_cache_historial() {
 }
 
 
-export async function crear_chat_historial_archivos_descargados(){
+export async function crear_chat_historial_archivos_descargados() {
     let agrupar_chats = []
 
     // Comprobar si la caché es válida en RAM
@@ -17,16 +17,16 @@ export async function crear_chat_historial_archivos_descargados(){
     } else {
         // Obtener cache de archivos descargados desde el backend
         const _cache_archivos_descargados = await window.cache_archivos_descargados.getCacheArchivosDescargados()
-        
-        if(_cache_archivos_descargados && Array.isArray(_cache_archivos_descargados)){
-            for(const entry of _cache_archivos_descargados){
+
+        if (_cache_archivos_descargados && Array.isArray(_cache_archivos_descargados)) {
+            for (const entry of _cache_archivos_descargados) {
                 const { id_chat, nombre, id_archivo, iv, tag, ratchet_info, emisor_id } = entry
                 // Recomputar la imagen siempre por si el cache almacenaba una ruta fallida/defectuosa anterior
                 const ext = nombre.includes(".") ? nombre.split(".").pop() : "txt"
                 const [actual_url_img] = await url_icono_extension_img(ext)
-                
+
                 let chat_item = agrupar_chats.find(c => c.id_chat === id_chat)
-                if(!chat_item){
+                if (!chat_item) {
                     const nombre_chat = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_chat })
                     chat_item = {
                         id_chat,
@@ -37,7 +37,7 @@ export async function crear_chat_historial_archivos_descargados(){
                 }
 
                 let archivo_item = chat_item.archivos.find(a => a.nombre === nombre)
-                if(!archivo_item){
+                if (!archivo_item) {
                     chat_item.archivos.push({
                         nombre,
                         url_img: actual_url_img,
@@ -50,7 +50,7 @@ export async function crear_chat_historial_archivos_descargados(){
                     })
                 } else {
                     archivo_item.descargas++
-                    archivo_item.iv = iv 
+                    archivo_item.iv = iv
                     archivo_item.tag = tag
                     archivo_item.ratchet_info = ratchet_info
                     archivo_item.emisor_id = emisor_id
@@ -61,13 +61,13 @@ export async function crear_chat_historial_archivos_descargados(){
         // Guardar en caché directamente (la limpieza se delega al backend)
         cache_grupos_historial = agrupar_chats
     }
-    
-    let html=``
+
+    let html = ``
     if (agrupar_chats.length === 0) {
         html = `<div class="historial-vacio">No hay archivos descargados</div>`
     } else {
-        for(const chat of agrupar_chats){
-            html+=`
+        for (const chat of agrupar_chats) {
+            html += `
             <div class="chat-historial-bloque" data-id="${chat.id_chat}">
                 <div class="chat-historial-header">
                     <span class="chat-historial-name">${chat.nombre_chat}</span>
@@ -119,7 +119,7 @@ export async function crear_chat_historial_archivos_descargados(){
     crear_eventos()
 }
 
-function crear_eventos(){
+function crear_eventos() {
     // Evento limpiar historial (usar onclick para no acumular listeners si se recrean los eventos multiples veces sin destruir este boton estatico)
     const btnLimpiar = document.querySelector("#bt-limpiar-historial-completo")
     if (btnLimpiar) {
@@ -132,12 +132,12 @@ function crear_eventos(){
     }
 
     // Click en un archivo para volver al chat
-    document.querySelectorAll(".archivo-historial-item").forEach(el=>{
-        el.addEventListener("click", async (e)=>{
+    document.querySelectorAll(".archivo-historial-item").forEach(el => {
+        el.addEventListener("click", async (e) => {
             e.preventDefault()
             const id_chat = el.dataset.idChat
             const id_archivo = el.dataset.idArchivo
-            
+
             // Ocultar historial, mostrar chat
             document.querySelector("#seccion-historial-archivos-alineador").classList.add("ocultar-display")
             const chatUsuario = document.querySelector("#chat-usuario")
@@ -150,23 +150,24 @@ function crear_eventos(){
             if (navChat && navChat.dataset.id === id_chat) {
                 hacer_scroll_a_archivo(id_archivo)
             } else {
-                const [datos_chat, id_usuario, lista_chats] = await Promise.all([
-                    window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat),
+                const [id_usuario, lista_chats] = await Promise.all([
                     window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
                     window.cuenta_usuario.getListaChats()
                 ])
 
-                if(!datos_chat?._id) return; //no redireccionar porque no existe
-
                 //se mira usando los chats del usuario y no los participantes del grupo porque si es expulsado del grupo el usuario puede seguir viendo el chat hasta ese momento
                 const chat_encontrado = lista_chats.find(chat => chat.id_chat === id_chat)
-                if(!chat_encontrado) return; //no redireccionar porque el usuario no pertenece a ese chat
+                if (!chat_encontrado) return; //no redireccionar porque el usuario no pertenece a ese chat
+
+                const datos_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat)
+
+                if (!datos_chat?._id) return; //no redireccionar porque no existe
 
                 datos_chat._id = id_chat
                 chatUsuario.innerHTML = await Crear_chat_html(datos_chat, id_usuario)
                 hacer_scroll_a_archivo(id_archivo)
             }
-        })  
+        })
     })
 
     // Evento para descarga directa desde historial
@@ -180,7 +181,7 @@ function crear_eventos(){
             try {
                 const { id, nombre, iv, tag, idChat, emisor, ratchet } = btn.dataset
                 const ratchet_info = ratchet ? JSON.parse(decodeURIComponent(ratchet)) : null
-                
+
                 const resultado = await window.chats.DESCARGAR_ARCHIVO(id, nombre, iv, tag, idChat, ratchet_info, emisor)
                 if (!resultado) {
                     window.pushNotificacion({
@@ -218,7 +219,7 @@ function crear_eventos(){
 
     // Evento para errores de carga de imágenes (reemplaza a onerror inline por CSP)
     document.querySelectorAll(".img-historial-archivo").forEach(img => {
-        img.addEventListener("error", function() {
+        img.addEventListener("error", function () {
             if (this.src !== '../recursos/extensionesArchivos/cualquiera.svg') {
                 this.src = '../recursos/extensionesArchivos/cualquiera.svg'
             }
@@ -228,12 +229,12 @@ function crear_eventos(){
 
 function hacer_scroll_a_archivo(id_archivo) {
     if (!id_archivo) return
-    
+
     // Buscar el elemento del archivo en el chat
     // En chat.js, los archivos tienen data-id="${archivo.id}"
     const selector = `.archivo-mensaje-div-archivos[data-id="${id_archivo}"]`
     const el_archivo = document.querySelector(selector)
-    
+
     if (el_archivo) {
         el_archivo.scrollIntoView({ behavior: 'smooth', block: 'center' })
         // Efecto visual para resaltar
