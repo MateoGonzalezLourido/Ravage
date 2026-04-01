@@ -30,8 +30,8 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
     try {
         // Ejecución en paralelo de la búsqueda de chat y usuario
         const [chat, usuario] = await Promise.all([
-            ChatsRavage.findById(id_chat),
-            User.findById(id_emisor)
+            ChatsRavage.findById(id_chat).lean(),
+            User.findById(id_emisor).lean()
         ]);
 
         if (!chat || !usuario) return false;
