@@ -72,7 +72,7 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
 export async function Revisar_Buzon_Usuario() {
     const userId = getIDMongodbUsuario();
     try {
-        const buzon = await BuzonUsuarios.findById(userId);
+        const buzon = await BuzonUsuarios.findById(userId).lean();
         if (!buzon || buzon.entrada.length === 0) return [];
         
         const entradas = buzon.entrada.map(ent => ({

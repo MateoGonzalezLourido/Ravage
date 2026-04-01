@@ -99,7 +99,7 @@ export async function LoginUsuarioDB({ correo = null, contrasena = null, token =
         const correoHash = hashDatosSistema(correoStr);
         // Al hacer login con contraseña, necesitamos el campo contrasena para comparar,
         // además de los campos necesarios para la sesión.
-        const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada })
+        const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).lean()
             .select(`${LOGIN_FIELDS} contrasena`)
             .lean();
             

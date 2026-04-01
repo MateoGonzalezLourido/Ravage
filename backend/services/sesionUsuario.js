@@ -36,7 +36,7 @@ import {
 } from './validadores.js'
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 //vairables de usuario de sesion
-function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
+function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false, id_maquina = null }) {
     storage.setIDMongodbUsuario(!limpiar ? String(data._id) : null);
     storage.setApodoSesion(!limpiar ? data.apodo : null);
     storage.setCorreoSesion(!limpiar ? data.correo : null);
@@ -46,7 +46,7 @@ function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false }) {
     storage.setFechaBloqueoContraseña(!limpiar ? data.exp_bloq_contrasena : null)
     storage.setUsuariosSilence(!limpiar ? data.users_silence : []);
     storage.setUsuariosBloqueados(!limpiar ? data.users_bloq : []);
-    storage.setIdDispositivo(!limpiar ? String(machineIdSync()) : null)
+    storage.setIdDispositivo(!limpiar ? id_maquina ? id_maquina : String(machineIdSync()) : null)
     storage.setSecretKEY(!limpiar ? data.secretKey : null)
     storage.setListaChats(
         !limpiar
@@ -101,7 +101,7 @@ async function autoLoginUsuario() {
     const usuario_datos = await LoginUsuarioDB({ correo: username, token: token, id_dp: deviceId });
 
     if (usuario_datos.success && usuario_datos.data) {
-        ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data });
+        ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data ,id_maquina: deviceId });
         log.info("Autologin completado correctamente");
         return { success: true };
     } else {
@@ -259,7 +259,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
     try {
         const resultado = comprobaciones_Correo(usernameStr);
         if (!resultado.success) throw new Error(resultado.message);
-        
+
         const password_valido = comprobarContrasenaValidaciones(contraseñaStr);
         if (!password_valido.success) throw new Error(password_valido.message);
     } catch (e) {
@@ -275,11 +275,11 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
     const dpConfianzaDataPromise = readFileSession('dispositivoConfianza').catch(() => null);
     const dataAutoverificacionPromise = readFileSession("omitirVerificacionCuentaFile").catch(() => null);
 
-    const checkBloqueadoPromise = DispositivosBloqueados.exists({ 
-        correo_hash: usernameHash, 
-        id_dp_hash: deviceIdHash 
+    const checkBloqueadoPromise = DispositivosBloqueados.exists({
+        correo_hash: usernameHash,
+        id_dp_hash: deviceIdHash
     });
-    
+
     const loginPromise = LoginUsuarioDB({ correo: usernameStr, contrasena: contraseñaStr });
 
     // Esperar a que terminen las tareas principales simultáneamente
@@ -333,7 +333,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
     }
 
     // Guardar datos en memoria de manera síncrona
-    ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data });
+    ACTUALIZAR_DATOS_LOGIN({ data: usuario_data.data ,id_maquina: deviceId});
 
     if (autoverificacion) {
         // JWT, mantener sesion iniciada en cache (ejecutado en background)
@@ -385,7 +385,7 @@ async function ValidarCodeLogin({ correo, code }) {
     // Buscar el código en la DB
     const code_db = await BuscarCuentaVC(correo, code, deviceId);
     if (!code_db) {
-        ACTUALIZAR_DATOS_LOGIN({ limpiar: true })
+        ACTUALIZAR_DATOS_LOGIN({ limpiar: true ,id_maquina: deviceId})
         return { success: false, message: "Fallo al iniciar sesion: no existe ese código o ha expirado" };
     }
 
@@ -393,7 +393,7 @@ async function ValidarCodeLogin({ correo, code }) {
     let { intentos, mantenerSesion } = parsedData;
 
     if (intentos <= 0) {
-        ACTUALIZAR_DATOS_LOGIN({ limpiar: true });
+        ACTUALIZAR_DATOS_LOGIN({ limpiar: true ,id_maquina: deviceId});
         await BorrarCuentaVC(correo);
         return { success: false, message: "Fallo al iniciar sesion: intentos acabados" }
     }

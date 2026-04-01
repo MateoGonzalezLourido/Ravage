@@ -420,7 +420,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
 
 export async function expulsar_usuario_chat(id_usuario, id_chat) {
     try {
-        const chat = await ChatsRavage.findById(id_chat);
+        const chat = await ChatsRavage.findById(id_chat).lean();
         if (!chat) return false;
         const id_propio = getIDMongodbUsuario();
         const existe = chat.usuarios.some(usuario => usuario.toHexString() === id_usuario);
@@ -485,7 +485,7 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
 export async function RESPONDER_SOLICITUD_AÑADIR(id_chat, id_mensaje, aceptar) {
     try {
         const id_propio = getIDMongodbUsuario();
-        const chat = await ChatsRavage.findById(id_chat);
+        const chat = await ChatsRavage.findById(id_chat).lean();
         if (!chat) return { success: false, message: "Chat no encontrado" };
 
         // Verificar que el usuario es miembro del chat
@@ -494,7 +494,7 @@ export async function RESPONDER_SOLICITUD_AÑADIR(id_chat, id_mensaje, aceptar) 
         }
 
         // Buscar el mensaje de solicitud
-        const mensaje = await MessagesRavage.findOne({ _id: id_mensaje, id_chat: new mongoose.Types.ObjectId(id_chat) });
+        const mensaje = await MessagesRavage.findOne({ _id: id_mensaje, id_chat: new mongoose.Types.ObjectId(id_chat) }).lean();
         if (!mensaje || !mensaje.especial || mensaje.especial.tipo !== 2) {
             return { success: false, message: "Solicitud no encontrada" };
         }
@@ -625,7 +625,7 @@ async function resolverNombresChats(chats) {
 
 export async function HACER_ADMIN_CHAT(id_chat, id_usuario) {
     try {
-        const chat = await ChatsRavage.findById(id_chat);
+        const chat = await ChatsRavage.findById(id_chat).lean();
         if (!chat) return false;
         const id_propio = getIDMongodbUsuario();
         
@@ -661,7 +661,7 @@ export async function HACER_ADMIN_CHAT(id_chat, id_usuario) {
 
 export async function QUITAR_ADMIN_CHAT(id_chat, id_usuario) {
     try {
-        const chat = await ChatsRavage.findById(id_chat);
+        const chat = await ChatsRavage.findById(id_chat).lean();
         if (!chat) return false;
         const id_propio = getIDMongodbUsuario();
         
@@ -701,7 +701,7 @@ export async function rotarClavesChat(id_chat, id_emisor) {
         const { randomBytes } = await import('../utils/libs.js');
         const { cifrarConPublica } = await import('../services/cryptoService.js');
 
-        const chat = await ChatsRavage.findById(id_chat);
+        const chat = await ChatsRavage.findById(id_chat).lean();
         if (!chat) return false;
 
         const newChainKey = randomBytes(32).toString('hex');
