@@ -3,6 +3,23 @@
 // recompilar el JS cada vez que arrancas (hace que el 2do arranque sea más rápido)
 app.commandLine.appendSwitch('v8-cache-options', 'code');
 
+// Mejorar el rendimiento de animaciones y scroll
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+
+// Reducir la memoria (Memory footprint)
+// Desactiva el aislamiento estricto de sitios para reducir la cantidad de procesos de Chromium
+// (Solo usar esto si NO cargas sitios web externos inseguros
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+
+// Optimiza el uso de memoria de Chromium siendo más agresivo con la recolección
+app.commandLine.appendSwitch('memory-pressure-off');
+
+//Limitar y optimizar la memoria de V8 (Node.js)
+// max-old-space-size: Limita la RAM máxima que puede usar Node.js (ej. 512MB). Evita que Chromium/Node traguen RAM infinita.
+// expose-gc: Permite llamar a `global.gc()` manualmente en tu código si necesitas liberar memoria en momentos clave.
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=2048 --expose-gc');
+
 import { app, ipcMain, path } from './backend/utils/libs.js';
 import { fileURLToPath } from 'url';
 
@@ -32,8 +49,10 @@ async function createMainWindowHome(AutoLogin = false) {
             contextIsolation: true,
             sandbox: true,
             additionalArguments: [`--start=${AutoLogin}`],
-            spellcheck: false
-        },
+            spellcheck: false,
+            v8CacheOptions: 'bypassHeatCheck',
+            backgroundThrottling: false
+        }
     });
     mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html'));
 
