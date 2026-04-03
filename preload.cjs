@@ -284,5 +284,8 @@ contextBridge.exposeInMainWorld("escaneres_seguridad_app", {
     },
     eliminar_url: (text) => {
         return ipcRenderer.invoke("escaneres-seguridad-app-eliminar-url", text)
+    },
+    detectar_url_maliciosa: (text) => {
+        return ipcRenderer.invoke("escaneres-seguridad-app-detectar-url-maliciosa", text)
     }
 })

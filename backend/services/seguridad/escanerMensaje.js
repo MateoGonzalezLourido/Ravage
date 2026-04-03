@@ -4,7 +4,8 @@ avisando al usuario de que puede ser inseguro copiar ese mensaje
 
 En el backend lo que hace es bloquear mandar el mensaje si detecta algo peligroso
 */
-
+import { createLogger } from '../utils/logger.js';
+const log = createLogger('escanerMensaje');
 // --- 1. DETECCION DE ESTEGANOGRAFIA Y CARACTERES INVISIBLES ---
 const hiddenCharsRegex = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\uE0000-\uE007F]/g;
 function detectSteganography(text) {
@@ -25,6 +26,57 @@ function detectUrl(text) {
 //eliminar enlaces
 function removeUrl(text) {
     return text.replace(urlRegex, '');
+}
+
+// Escáner asíncrono con Google Safe Browsing
+async function detectarUrlMaliciosa(text) {
+    const urls = text.match(urlRegex);
+    if (!urls || urls.length === 0) {
+        return { esMaliciosa: false, urlsPeligrosas: [] };
+    }
+
+    const apiKey = process.env.GOOGLE_SAFE_BROWSING_API_KEY;
+    if (!apiKey) {
+        log.error('Sin API Key');
+        return { esMaliciosa: false, urlsPeligrosas: [] };
+    }
+
+    try {
+        const payload = {
+            client: {
+                clientId: "ravage-app",
+                clientVersion: "1.0.0"
+            },
+            threatInfo: {
+                threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
+                platformTypes: ["ANY_PLATFORM"],
+                threatEntryTypes: ["URL"],
+                threatEntries: urls.map(url => ({ url }))
+            }
+        };
+
+        const response = await fetch(`https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            log.error("Error al validar con Safe Browsing API:", response);
+            return { esMaliciosa: false, urlsPeligrosas: [] };
+        }
+
+        const data = await response.json();
+        if (data && data.matches && data.matches.length > 0) {
+            const maliciosas = data.matches.map(match => match.threat.url);
+            return { esMaliciosa: true, urlsPeligrosas: maliciosas };
+        }
+
+        return { esMaliciosa: false, urlsPeligrosas: [] };
+    } catch (error) {
+        log.error("Error al validar con Safe Browsing API:", error);
+        return { esMaliciosa: false, urlsPeligrosas: [] };
+    }
 }
 
 // --- 3. DETECCION DE CODIGO FUENTE MALICIOSO Y XSS ---
@@ -84,6 +136,7 @@ export {
     removeSteganography,
     detectUrl,
     removeUrl,
+    detectarUrlMaliciosa,
     detectarXSS,
     detectarCodigo,
     detectarZalgo,
