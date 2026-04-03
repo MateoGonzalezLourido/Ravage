@@ -10,3 +10,5 @@ node_modules/
 *.csr
 pino-*.log
 # package-lock.json NO debe ignorarse para consistencia de versiones en equipo
+
+cosasHacer/
