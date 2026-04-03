@@ -6,9 +6,9 @@ import {
     setListaChats,
     getIDMongodbUsuario
 } from '../STORAGE/Variables_sesion.js';
-import { 
-    obtener_datos_chats, 
-    obtener_datos_chat_unico, 
+import {
+    obtener_datos_chats,
+    obtener_datos_chat_unico,
     CREAR_CHAT_NUEVO,
     expulsar_usuario_chat,
     RESPONDER_SOLICITUD_AÑADIR,
@@ -20,15 +20,15 @@ import {
 import {
     obtenerChatsUsuarioDB
 } from '../repositories/UserRepository.js';
-import { 
-    ENVIAR_MENSAJE, 
-    DESCARGAR_ARCHIVO, 
-    limpiar_mensajes_chats_antiguos, 
-    obtener_datos_mensaje 
+import {
+    ENVIAR_MENSAJE,
+    DESCARGAR_ARCHIVO,
+    limpiar_mensajes_chats_antiguos,
+    obtener_datos_mensaje
 } from '../repositories/MessageRepository.js';
 import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js';
-import { iniciarBuzon } from '../services/buzon.js';
+import { iniciarBuzon } from '../services/buzonAPI.js';
 import { comprobar_mensaje, comprobar_nombre_archivo } from '../services/validadores.js';
 const authorizedPaths = new Set();
 

@@ -1,5 +1,5 @@
 import { ipcMain } from "../utils/libs.js"
-import { detectSteganography, removeSteganography, detectUrl, removeUrl, detectarUrlMaliciosa } from "../services/seguridad/escanerMensaje.js"
+import { detectSteganography, removeSteganography, detectUrl, removeUrl, detectarUrlMaliciosa, detectarXSS, detectarCodigo, detectarZalgo, removeZalgo, detectarComandosTerminal, detectarCryptoBilleteras, detectarDireccionesIP, detectarHomoglifos } from "../services/seguridad/escanerMensaje.js"
 import { obtenerPrevisualizacionUrl } from "../services/previsualizacion_url.js"
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('escanerMensaje');
@@ -31,5 +31,37 @@ export function registerEscaneresAppHandlers() {
 
     ipcMain.handle("utilidades-app-previsualizar-url", async (_, text) => {
         return await obtenerPrevisualizacionUrl(text);
+    })
+
+    ipcMain.handle("escaneres-seguridad-app-detectar-xss", (_, text) => {
+        return detectarXSS(text)
+    })
+
+    ipcMain.handle("escaneres-seguridad-app-detectar-codigo", (_, text) => {
+        return detectarCodigo(text)
+    })
+
+    ipcMain.handle("escaneres-seguridad-app-detectar-zalgo", (_, text) => {
+        return detectarZalgo(text)
+    })
+
+    ipcMain.handle("escaneres-seguridad-app-eliminar-zalgo", (_, text) => {
+        return removeZalgo(text)
+    })
+
+    ipcMain.handle("escaneres-seguridad-app-detectar-comandos-terminal", (_, text) => {
+        return detectarComandosTerminal(text)
+    })
+
+    ipcMain.handle("escaneres-seguridad-app-detectar-crypto-billeteras", (_, text) => {
+        return detectarCryptoBilleteras(text)
+    })
+
+    ipcMain.handle("escaneres-seguridad-app-detectar-direcciones-ip", (_, text) => {
+        return detectarDireccionesIP(text)
+    })
+
+    ipcMain.handle("escaneres-seguridad-app-detectar-homoglifos", (_, text) => {
+        return detectarHomoglifos(text)
     })
 }

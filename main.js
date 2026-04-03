@@ -132,7 +132,7 @@ app.on('before-quit', async (event) => {
     try {
         const [dbRes, buzonRes] = await Promise.allSettled([
             import("./backend/db/mongo.js"),
-            import('./backend/services/buzon.js')
+            import('./backend/services/buzonAPI.js')
         ]);
 
         if (buzonRes.status === 'fulfilled') {

@@ -83,3 +83,36 @@ export async function obtenerPrevisualizacionUrl(targetUrl) {
         return null;
     }
 }
+
+/**
+ * =========================================================
+ * EJEMPLO DE USO Y RENDERIZADO EN EL FRONTEND:
+ * =========================================================
+ * 
+ * En el frontend, tras recibir la URL:
+ * const p = await window.utilidades_app.obtener_previsualizacion_url("https://github.com");
+ * 
+ * Si `p` no es nulo, puedes crear y mapear cada dato de la siguiente manera
+ * para construir un componente tipo tarjeta (Link Preview):
+ * 
+ * <!-- Estructura HTML sugerida -->
+ * <a href="${p.urlActiva}" class="url-preview-card" target="_blank" rel="noopener noreferrer">
+ * 
+ *    <!-- PORTADA DE LA PÁGINA (Si existe) -->
+ *    ${p.imagen ? `<img src="${p.imagen}" class="url-preview-img" alt="Vista previa">` : ''}
+ * 
+ *    <div class="url-preview-contenido">
+ *       <!-- TÍTULO PRINCIPAL DE LA PÁGINA -->
+ *       <strong class="url-preview-titulo">${p.titulo}</strong>
+ *       
+ *       <!-- DESCRIPCIÓN (Resumen) DE LA PÁGINA -->
+ *       <p class="url-preview-desc">${p.descripcion}</p>
+ *       
+ *       <!-- DOMINIO LIMPIO DE LA URL COMO REFERENCIA (ej. github.com) -->
+ *       <small class="url-preview-dominio">${new URL(p.urlActiva).hostname}</small>
+ *    </div>
+ *    
+ * </a>
+ * 
+ * (También recuerda darles estilos CSS para que luzca como discord/telegram limitando el texto con `text-overflow: ellipsis`)
+ */
