@@ -270,3 +270,19 @@ contextBridge.exposeInMainWorld("cache_archivos_descargados", {
         return ipcRenderer.invoke("clear-cache-archivos-descargados")
     }
 })
+
+
+contextBridge.exposeInMainWorld("escaneres_seguridad_app", {
+    detectar_escenografia: (text) => {
+        return ipcRenderer.invoke("escaneres-seguridad-app-detectar-escenografia", text)
+    },
+    eliminar_escenografia: (text) => {
+        return ipcRenderer.invoke("escaneres-seguridad-app-eliminar-escenografia", text)
+    },
+    detectar_url: (text) => {
+        return ipcRenderer.invoke("escaneres-seguridad-app-detectar-url", text)
+    },
+    eliminar_url: (text) => {
+        return ipcRenderer.invoke("escaneres-seguridad-app-eliminar-url", text)
+    }
+})

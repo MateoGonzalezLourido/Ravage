@@ -76,13 +76,15 @@ async function createMainWindowHome(AutoLogin = false) {
             { registerSocialHandlers },
             { registerCacheImgExtensionesHandlers },
             { registerCacheArchivosDescargadosHandlers },
-            { registerCachePersistentHandlers }
+            { registerCachePersistentHandlers },
+            { registerEscaneresAppHandlers }
         ] = await Promise.all([
             import('./backend/ipc/chat_ipc.js'),
             import('./backend/ipc/social_ipc.js'),
             import('./backend/ipc/cache_img_extension_ipc.js'),
             import('./backend/ipc/cache_archivos_descargados_ipc.js'),
-            import('./backend/ipc/cache_persistent_ipc.js')
+            import('./backend/ipc/cache_persistent_ipc.js'),
+            import('./backend/ipc/escaneres_app_ipc.js')
         ]);
 
         registerChatHandlers(mainWindow, socket);
@@ -90,7 +92,7 @@ async function createMainWindowHome(AutoLogin = false) {
         registerCacheImgExtensionesHandlers();
         registerCacheArchivosDescargadosHandlers();
         registerCachePersistentHandlers();
-
+        registerEscaneresAppHandlers();
     });
 }
 

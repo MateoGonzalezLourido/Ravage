@@ -43,6 +43,7 @@ async function comprobar_contraseña_cuenta(contraseña) {
     return ok
 }
 
+//aqui se valida que haya un mensaje que enviar, pero no protege al usuario
 function comprobarContrasenaValidaciones(contraseña) {
     if (typeof contraseña !== 'string') return { success: false, message: "Investigación de tipos no autorizada" };
     
