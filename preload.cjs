@@ -289,3 +289,10 @@ contextBridge.exposeInMainWorld("escaneres_seguridad_app", {
         return ipcRenderer.invoke("escaneres-seguridad-app-detectar-url-maliciosa", text)
     }
 })
+
+// ─── UTILIDADES ───────────────────────────────────────────────────────────────
+contextBridge.exposeInMainWorld("utilidades_app", {
+    obtener_previsualizacion_url: (text) => {
+        return ipcRenderer.invoke("utilidades-app-previsualizar-url", text)
+    }
+})
