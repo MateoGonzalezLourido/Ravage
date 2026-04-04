@@ -1,11 +1,14 @@
 import { ipcMain } from '../utils/libs.js';
-import { getChatDeCache, setConfigCacheChats, clearCacheChats } from '../STORAGE/CACHE/_cache_chats.js';
+import { getChatDeCache, setChatEnCache, setConfigCacheChats, clearCacheChats } from '../STORAGE/CACHE/_cache_chats.js';
 import { getUsuarioDeCache, setConfigCacheUsuarios, clearCacheUsuarios } from '../STORAGE/CACHE/_cache_usuarios.js';
 
 export function registerCachePersistentHandlers() {
     // Chat Cache
     ipcMain.handle('get-chat-cache', async (_, id_chat) => {
         return await getChatDeCache(id_chat);
+    });
+    ipcMain.handle('set-chat-cache', async (_, chat) => {
+        return await setChatEnCache(chat);
     });
     ipcMain.handle('set-config-cache-chats', async (_, config) => {
         return await setConfigCacheChats(config);

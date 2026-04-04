@@ -36,6 +36,80 @@ function scroll_fin_chat() {
         behavior: "smooth"
     })
 }
+/*
+   *@param id: id del chat
+   *@proceso:buscar todos los datos en cache->obtener datos faltantes->actualizar caches->devolver datos
+*/
+async function Get_datos_chat_abrir(id_chat) {
+    // 1. Cargas iniciales en paralelo
+    const resultados = await Promise.allSettled([
+        window.chats.OBTENER_MODELO_DATOS_NECESARIOS_CHAT(),
+        window.cache_persistente.getChatCache(id_chat),
+        window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat)
+    ]);
+
+    const res = resultados.map(r => r.status === 'fulfilled' ? r.value : null);
+    const [template, cachePer, cacheAct] = res;
+
+    if (!template) return null;
+    let datos_necesarios = { ...template };
+
+    // 2. Identificar participantes y datos faltantes
+    let ids_usuarios = cachePer?.usuarios || cacheAct?.participantes || null;
+    let campos_chat_faltantes = [];
+    
+    for (const key of Object.keys(datos_necesarios)) {
+        if (cacheAct?.[key]) datos_necesarios[key] = cacheAct[key];
+        else if (cachePer?.[key]) datos_necesarios[key] = cachePer[key];
+        else if (key !== 'd_usuarios' && key !== 'usuarios') campos_chat_faltantes.push(key);
+    }
+
+    // 3. Lanzar peticiones de DB/Externas en paralelo (LA CLAVE DE LA OPTIMIZACIÓN)
+    const promesas_opt = [];
+    
+    // Si faltan datos del chat (convertir array a string para el backend)
+    const campos_str = campos_chat_faltantes.join(" ");
+    const indice_chat = campos_chat_faltantes.length > 0 ? promesas_opt.push(window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, campos_str)) - 1 : -1;
+    
+    // Si no tenemos los IDs de usuarios, los pedimos ahora
+    const indice_ids = !ids_usuarios ? promesas_opt.push(window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, 'usuarios')) - 1 : -1;
+
+    // Ejecutar peticiones en paralelo
+    const resultados_db = await Promise.all(promesas_opt);
+
+    // Procesar resultados de chat e IDs
+    if (indice_chat !== -1 && resultados_db[indice_chat]) {
+        Object.assign(datos_necesarios, resultados_db[indice_chat]);
+    }
+    if (indice_ids !== -1 && resultados_db[indice_ids]?.usuarios) {
+        ids_usuarios = resultados_db[indice_ids].usuarios;
+    }
+
+    // 4. Ahora que tenemos los IDs (sí o sí), pedimos los datos de cada usuario
+    let usuarios_detalles = cacheAct?.d_participantes || null;
+    if (!usuarios_detalles && ids_usuarios) {
+        usuarios_detalles = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(ids_usuarios, "apodo correo");
+    }
+
+    // 5. Consolidar y Guardar
+    datos_necesarios.d_usuarios = usuarios_detalles;
+    datos_necesarios.usuarios = ids_usuarios;
+    datos_necesarios._id = id_chat;
+
+    // Actualizar caches de fondo
+    window.cache_persistente.setChatCache(datos_necesarios);
+    window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
+        _id: id_chat,
+        seguridad: datos_necesarios.seguridad,
+        participantes: ids_usuarios,
+        admin: datos_necesarios.admin,
+        fecha_creacion: datos_necesarios.fecha_creacion,
+        n_mensajes: datos_necesarios.mensajes?.length || 0,
+        d_participantes: usuarios_detalles
+    });
+
+    return datos_necesarios;
+}
 async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     try {
         archivo_cambiando_nombre = null
@@ -161,26 +235,14 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 // OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
                 const id = e.currentTarget.dataset.id
                 //obtener info de ese chat
-                //AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
                 const [datos_chat, id_usuario] = await Promise.all([
-                    window.chats.OBTENER_DATOS_CHAT_UNICO(id),
+                    Get_datos_chat_abrir(id),
                     window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                 ])
-
                 if (!datos_chat) {
                     window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
                     return;
                 }
-                if (datos_chat) {
-                    const datos_a_guardar = { ...datos_chat };
-                    if (datos_chat.escaneres_seguridad) {
-                        Object.assign(datos_a_guardar, datos_chat.escaneres_seguridad);
-                    }
-                    window.chats.GUARDAR_CACHE_CHAT_ACTIVO(datos_a_guardar)
-                }
-
-                // El nombre ya viene resuelto por el backend
-                datos_chat._id = id
                 //limpiar residuos de otros chats
                 archivos_mensaje = []
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
@@ -586,7 +648,7 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
         // 2. Iniciar la creación del HTML (sin el incorrecto 'new Promise')
         // Esto permite que el HTML se genere mientras hacemos lógica de DOM y fechas
         const escaneres_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE({ id_chat: chat, id_emisor: id_emisor })
-        const htmlPromise = crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin,escaneres_seguridad)
+        const htmlPromise = crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin, escaneres_seguridad)
 
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;
@@ -833,12 +895,13 @@ async function hacer_cambios_buzon(entrada) {
 }
 async function mensaje_bienvenida_usuario() {
     // Obtener ajuste que guarda si se ha enviado el mensaje de bienvenida y apodo simultáneamente
+    // NOTA: llamar sin argumento devuelve el objeto completo de ajustes
     const [ajustes_app, apodo] = await Promise.all([
-        window.ajustes_app.OBTENER_AJUSTES_APP("MSBienvenida"),
+        window.ajustes_app.OBTENER_AJUSTES_APP(),
         window.cuenta_usuario.GET_APODO_SESION()
     ])
     //mandar notificacion si es la primera vez
-    if (ajustes_app.MSBienvenida) {
+    if (ajustes_app?.MSBienvenida) {
         window.pushNotificacion({
             prioridad: 0,
             texto: `Benvido ${apodo} `,
@@ -846,8 +909,7 @@ async function mensaje_bienvenida_usuario() {
         })
 
         //marcar como hecho en ajustes para no volver a mostrarlo
-        ajustes_app.MSBienvenida = false
-        window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes_app)
+        window.ajustes_app.GUARDAR_AJUSTES_APP({ MSBienvenida: false })
     }
 }
 

@@ -59,13 +59,26 @@ async function createMainWindowHome(AutoLogin = false) {
     mainWindow.maximize();
     mainWindow.show();
 
-    const [{ registerSessionHandlers }, { registerValidadoresHandlers }] = await Promise.all([
+    const [
+        { registerSessionHandlers },
+        { registerValidadoresHandlers },
+        { getAjustesAppFile, saveAjustesAppFile }
+    ] = await Promise.all([
         import('./backend/ipc/session_ipc.js'),
-        import('./backend/ipc/validadores_ipc.js')
+        import('./backend/ipc/validadores_ipc.js'),
+        import('./backend/services/controladorArchivos.js')
     ]);
 
     registerSessionHandlers(mainWindow);
     registerValidadoresHandlers();
+
+    // Registrar ajustes ANTES de que cargue la página para evitar race condition con el renderer
+    ipcMain.handle("obtener-ajustes-app", async (_, nombre) => {
+        return await getAjustesAppFile(nombre)
+    })
+    ipcMain.handle("guardar-ajustes-app", async (_, data) => {
+        return await saveAjustesAppFile({ data })
+    })
 
 
     mainWindow.once('ready-to-show', async () => {
