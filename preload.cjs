@@ -273,6 +273,9 @@ contextBridge.exposeInMainWorld("cache_archivos_descargados", {
 
 
 contextBridge.exposeInMainWorld("escaneres_seguridad_app", {
+    ESCANERES_SEGURIDAD_MENSAJE: (id_chat) => {
+        return ipcRenderer.invoke("escaneres-seguridad-app-mensaje", id_chat)
+    },
     detectar_escenografia: (text) => {
         return ipcRenderer.invoke("escaneres-seguridad-app-detectar-escenografia", text)
     },

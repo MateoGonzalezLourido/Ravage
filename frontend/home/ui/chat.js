@@ -91,7 +91,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
 
     return html
 }
-export const crear_mensaje_html = async (fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false) => {
+export const crear_mensaje_html = async ({fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = []}) => {
     const class_mensajes = ["soy-emisor", "soy-receptor"]
 
     //funciones de componentes
@@ -203,6 +203,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
         const dias_reversos = [...grupos_por_dia].reverse();
         let es_primer_dia = true;
 
+        const escaneres_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(datos._id)
         for (const grupo of dias_reversos) {
             if (controller.abort) return;
 
@@ -216,7 +217,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
                     const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor);
                     const nombre = map_nombres[id_emisor] || nombre_defecto;
 
-                    return await crear_mensaje_html(m.data, m?.contenido[0]?.asunto || "", m?.contenido[0]?.archivos || [], propio, nombre, esAdmin);
+                    return await crear_mensaje_html({fecha: m.data, asunto: m?.contenido[0]?.asunto || "", archivos: m?.contenido[0]?.archivos || [], propio, nombre, esAdmin,escaneres_seguridad});
                 } catch (err) {
                     console.error("Error al renderizar un mensaje individual:", err, m);
                     return "";

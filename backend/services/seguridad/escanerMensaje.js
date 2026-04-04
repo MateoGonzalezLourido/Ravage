@@ -6,6 +6,35 @@ En el backend lo que hace es bloquear mandar el mensaje si detecta algo peligros
 */
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('escanerMensaje');
+
+import { getAjustesAppFile } from '../controladorArchivos.js';
+import { getListaChats } from '../../STORAGE/Variables_sesion.js'
+import { obtenerCacheChatActivo } from '../../STORAGE/CACHE/_cache_chat_activo.js'
+async function escaneres_seguridad_mensaje_activados(id_chat = null) {
+    //conseguir ajustes por defecto
+    let escaneres_seguridad = await getAjustesAppFile([
+        'ESCANER_ESTEGANOGRAFIA', 'ESCANER_URL', 'ESCANER_URL_MALICIOSA', 'ESCANER_XSS',
+        'ESCANER_CODIGO', 'ESCANER_ZALGO', 'ESCANER_COMANDOS_TERMINAL', 'ESCANER_CRYPTO_BILLETERAS',
+        'ESCANER_DIRECCIONES_IP', 'ESCANER_HOMOGLIFOS'
+    ]);
+    //obtener ajustes propios del chat globales en db
+    const ajustes_chat_globales = obtenerCacheChatActivo("seguridad")
+
+    //obtener datos del chat
+    const lista_chats = getListaChats()
+    const chat = lista_chats.find(c => c.id === id_chat)
+    if (chat && chat.escaneres_seguridad) {
+        for (const key in chat.escaneres_seguridad) {
+            if (chat.escaneres_seguridad[key] !== null && key in escaneres_seguridad) {
+                escaneres_seguridad[key] = chat.escaneres_seguridad[key];
+            }
+        }
+    }
+
+    //pasar ajustes de usaurio y del chat
+    return { escaneres_seguridad, ajustes_chat_globales };
+}
+
 // --- 1. DETECCION DE ESTEGANOGRAFIA Y CARACTERES INVISIBLES ---
 const hiddenCharsRegex = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\uE0000-\uE007F]/g;
 function detectSteganography(text) {
@@ -132,6 +161,7 @@ function detectarHomoglifos(text) {
 }
 
 export {
+    escaneres_seguridad_mensaje_activados,
     detectSteganography,
     removeSteganography,
     detectUrl,
