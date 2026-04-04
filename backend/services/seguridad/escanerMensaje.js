@@ -4,7 +4,7 @@ avisando al usuario de que puede ser inseguro copiar ese mensaje
 
 En el backend lo que hace es bloquear mandar el mensaje si detecta algo peligroso
 */
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '../../utils/logger.js';
 const log = createLogger('escanerMensaje');
 
 import { getAjustesAppFile } from '../controladorArchivos.js';
