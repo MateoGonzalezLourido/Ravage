@@ -30,6 +30,21 @@ const ChatSchema = new mongoose.Schema({
         clave_envuelta: String, // ChainKey del emisor cifrada con RSA pública del receptor
         counter: { type: Number, default: 0 }
     }],
+    escaneres_seguridad: {
+        type: Object,
+        default: {
+            ESCANER_ESTEGANOGRAFIA: true,
+            ESCANER_URL: true,
+            ESCANER_URL_MALICIOSA: true,
+            ESCANER_XSS: true,
+            ESCANER_CODIGO: true,
+            ESCANER_ZALGO: true,
+            ESCANER_COMANDOS_TERMINAL: true,
+            ESCANER_CRYPTO_BILLETERAS: true,
+            ESCANER_DIRECCIONES_IP: true,
+            ESCANER_HOMOGLIFOS: true
+        }
+    },
     fecha_creacion: { type: Date, default: Date.now }
 });
 
