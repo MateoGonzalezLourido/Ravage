@@ -171,6 +171,13 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                     window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
                     return;
                 }
+                if (datos_chat) {
+                    const datos_a_guardar = { ...datos_chat };
+                    if (datos_chat.escaneres_seguridad) {
+                        Object.assign(datos_a_guardar, datos_chat.escaneres_seguridad);
+                    }
+                    window.chats.GUARDAR_CACHE_CHAT_ACTIVO(datos_a_guardar)
+                }
 
                 // El nombre ya viene resuelto por el backend
                 datos_chat._id = id
@@ -547,15 +554,28 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
     if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
         const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
 
-        // 1. Obtener datos base en paralelo (Corregido: Encontrar_Nombre_Chat_Usuario requiere nombres_contactos)
-        const [nombres_contactos, id_propio, info_chat] = await Promise.all([
+        // 1. Obtener datos base en paralelo
+        const [nombres_contactos, id_propio, info_chat_cache] = await Promise.all([
             window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
             window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
-            window.chats.OBTENER_DATOS_CHAT_UNICO(chat)
-        ]).catch((e) => {
-            console.error("Error al obtener datos para renderizar mensaje:", e);
-            return [[], null, null];
-        })
+            window.cache_persistente.getChatCache(chat)
+        ]).catch(() => [[], null, null])
+
+        let info_chat = await window.chats.OBTENER_CACHE_CHAT_ACTIVO()
+        if (info_chat && info_chat._id !== chat && info_chat.id !== chat) {
+            info_chat = null;
+        }
+
+        if (!info_chat) {
+            info_chat = info_chat_cache
+        }
+
+        if (!info_chat) {
+            info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(chat).catch((e) => {
+                console.error("Error al obtener datos para renderizar mensaje:", e);
+                return null;
+            })
+        }
 
         const propio = id_propio && id_emisor == id_propio.toString()
         const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(admin_id => admin_id.toString() === id_emisor.toString());

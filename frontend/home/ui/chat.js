@@ -92,7 +92,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     return html
 }
 //TODO: seguridad
-export const crear_mensaje_html = async ({fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = []}) => {
+export const crear_mensaje_html = async ({fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = {}}) => {
     const class_mensajes = ["soy-emisor", "soy-receptor"]
 
     //funciones de componentes
@@ -258,7 +258,17 @@ export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, 
     //si grupal: false->es un usuario, true->puede ser un chat grupal
     if (grupal) {
         //buscar en tabla general de chats
-        const chat_grupal = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_buscar, "nombre")
+        let chat_grupal = await window.cache_persistente.getChatCache(id_buscar)
+        if (!chat_grupal) {
+            chat_grupal = await window.chats.OBTENER_CACHE_CHAT_ACTIVO()
+            // Validar que el cache activo sea del chat que buscamos
+            if (chat_grupal && chat_grupal._id !== id_buscar && chat_grupal.id !== id_buscar) {
+                chat_grupal = null;
+            }
+        }
+        if (!chat_grupal) {
+            chat_grupal = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_buscar, "nombre")
+        }
         if (chat_grupal?.nombre) return chat_grupal.nombre
         //como no existe, puede ser un usuario
     }
@@ -313,7 +323,25 @@ export async function mostrar_datos_chat_usaurios(e) {
     e.preventDefault()
     // MOSTRAR DATOS DEL USUARIO Y DEL CHAT
     const id_chat = e.currentTarget.dataset.id || document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
-    const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat)
+    
+    let info_chat = await window.cache_persistente.getChatCache(id_chat)
+    if (!info_chat) {
+        info_chat = await window.chats.OBTENER_CACHE_CHAT_ACTIVO()
+        if (info_chat && info_chat._id !== id_chat && info_chat.id !== id_chat) {
+            info_chat = null;
+        }
+    }
+    if (!info_chat) {
+        info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat)
+    }
+
+    if (info_chat) {
+        const datos_a_guardar = { ...info_chat };
+        if (info_chat.escaneres_seguridad) {
+            Object.assign(datos_a_guardar, info_chat.escaneres_seguridad);
+        }
+        window.chats.GUARDAR_CACHE_CHAT_ACTIVO(datos_a_guardar)
+    }
     const infoSeccion = document.querySelector("#info-chat-seccion")
 
     //crear html de la seccion

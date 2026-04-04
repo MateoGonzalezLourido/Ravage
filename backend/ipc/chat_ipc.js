@@ -27,6 +27,7 @@ import {
     obtener_datos_mensaje
 } from '../repositories/MessageRepository.js';
 import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
+import { crearCacheChatActivo, obtenerCacheChatActivo } from '../STORAGE/CACHE/_cache_chat_activo.js';
 import { getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js';
 import { iniciarBuzon } from '../services/buzonAPI.js';
 import { comprobar_mensaje, comprobar_nombre_archivo } from '../services/validadores.js';
@@ -133,5 +134,13 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("bloquear-chat", async (_, id_chat) => {
         return await BLOQUEAR_CHAT_USUARIO(id_chat)
+    })
+
+    ipcMain.handle("guardar-cache-chat-activo", async (_, data) => {
+        crearCacheChatActivo(data)
+    })
+
+    ipcMain.handle("obtener-cache-chat-activo", async (_, bloque) => {
+        return obtenerCacheChatActivo(bloque)
     })
 }

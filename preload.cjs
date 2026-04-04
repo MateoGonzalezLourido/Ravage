@@ -186,6 +186,12 @@ contextBridge.exposeInMainWorld('chats', {
     },
     BLOQUEAR_CHAT: (id_chat) => {
         return ipcRenderer.invoke("bloquear-chat", id_chat)
+    },
+    GUARDAR_CACHE_CHAT_ACTIVO: (data) => {
+        return ipcRenderer.invoke("guardar-cache-chat-activo", data)
+    },
+    OBTENER_CACHE_CHAT_ACTIVO: (bloque) => {
+        return ipcRenderer.invoke("obtener-cache-chat-activo", bloque)
     }
 
 
