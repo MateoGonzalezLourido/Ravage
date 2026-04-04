@@ -28,7 +28,7 @@ import {
 } from '../repositories/MessageRepository.js';
 import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { crearCacheChatActivo, obtenerCacheChatActivo } from '../STORAGE/CACHE/_cache_chat_activo.js';
-
+import { modelo_datos_necesarios_chat } from '../STORAGE/modelo_datos_necesarios_chat.js';
 import { iniciarBuzon } from '../services/buzonAPI.js';
 import { comprobar_mensaje, comprobar_nombre_archivo } from '../services/validadores.js';
 const authorizedPaths = new Set();
@@ -134,5 +134,8 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("obtener-cache-chat-activo", async (_, bloque) => {
         return obtenerCacheChatActivo(bloque)
+    })
+    ipcMain.handle("obtener-modelo-datos-necesarios-chat", async () => {
+        return modelo_datos_necesarios_chat
     })
 }

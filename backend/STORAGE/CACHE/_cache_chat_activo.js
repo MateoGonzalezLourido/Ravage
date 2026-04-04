@@ -6,7 +6,6 @@ const log = createLogger('cache-chat-activo');
  * Cache temporal para almacenar datos ligeros del chat que se está visualizando/usando.
  * Se auto-elimina cada 3 minutos o cuando se solicita explícitamente.
  */
-
 let _cache_datos_chat_activo = null;
 let _timer = null;
 const TIEMPO_VIDA_MS = 3 * 60 * 1000; // 3 Minutos
@@ -20,9 +19,20 @@ export function crearCacheChatActivo(datos) {
     if (!_cache_datos_chat_activo) {
         _cache_datos_chat_activo = {};
     }
+    //esquema: key y su nombre en la cache
+    const mapeo_campos = {
+        seguridad: 'seguridad',
+        participantes: 'participantes',
+        Admin: 'admin',
+        fecha_creacion: 'fecha_creacion',
+        n_mensajes: 'n_mensajes',
+        d_participantes: 'd_participantes'
+    };
 
-    for (const key in datos) {
-        _cache_datos_chat_activo[key] = datos[key];
+    for (let key in mapeo_campos) {
+        if (datos[key]) {
+            _cache_datos_chat_activo[mapeo_campos[key]] = datos[key];
+        }
     }
 
     //el ciclo de vida no cambia, solo se actualizan los datos
@@ -44,21 +54,12 @@ export function crearCacheChatActivo(datos) {
 export function obtenerCacheChatActivo(bloque = null) {
     //puedes añadir tus propios bloques de salida
     let salida = {}
-    if (!bloque||!_cache_datos_chat_activo) {
+    if (!bloque || !_cache_datos_chat_activo) {
         return _cache_datos_chat_activo;
     }
-    
+
     if (bloque === "seguridad") {
-        salida.ESCANER_ESTEGANOGRAFIA = _cache_datos_chat_activo.ESCANER_ESTEGANOGRAFIA
-        salida.ESCANER_URL = _cache_datos_chat_activo.ESCANER_URL
-        salida.ESCANER_URL_MALICIOSA = _cache_datos_chat_activo.ESCANER_URL_MALICIOSA
-        salida.ESCANER_XSS = _cache_datos_chat_activo.ESCANER_XSS
-        salida.ESCANER_CODIGO = _cache_datos_chat_activo.ESCANER_CODIGO
-        salida.ESCANER_ZALGO = _cache_datos_chat_activo.ESCANER_ZALGO
-        salida.ESCANER_COMANDOS_TERMINAL = _cache_datos_chat_activo.ESCANER_COMANDOS_TERMINAL
-        salida.ESCANER_CRYPTO_BILLETERAS = _cache_datos_chat_activo.ESCANER_CRYPTO_BILLETERAS
-        salida.ESCANER_DIRECCIONES_IP = _cache_datos_chat_activo.ESCANER_DIRECCIONES_IP
-        salida.ESCANER_HOMOGLIFOS = _cache_datos_chat_activo.ESCANER_HOMOGLIFOS
+       return _cache_datos_chat_activo.seguridad
     }
 
     return salida;
