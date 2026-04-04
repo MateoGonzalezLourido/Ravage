@@ -9,7 +9,14 @@ let _last_used_chats = new Map(); // Tracking de tiempo
 const LIMITE_FRECUENTES_MB = 128;
 const PERIODO_PROTECCION_MS = 5 * 60 * 1000; // 5 minutos de protección para "uso muy corto"
 let _cache_frecuentes_cargada = false;
-
+const ESQUEMA_CACHE_CHAT = {
+    _id:                null,       // ObjectId
+    nombre:             null,       // { data, iv, tag } cifrado
+    usuarios:           [],         // [ObjectId]
+    admins:             [],         // [ObjectId]
+    escaneres_seguridad: {},        // Object con flags de escaneres
+    fecha_creacion:     null        // Date
+};
 /**
  * Estima el tamaño en MB de un objeto.
  */
@@ -89,10 +96,10 @@ async function _asegurar_inicio() {
 async function _obtener_limite_actual() {
     const ajustes = await getAjustesAppFile();
     const recommended = await getRecommendedCacheStrategy();
-    
+
     const forceDisk = ajustes.FORCE_DISK_CACHE || recommended.type === 'disk';
     const limitRAM = ajustes.LIMITE_CHAT_CACHE_RAM || recommended.sizeMB;
-    const limitDisk = ajustes.LIMITE_CHAT_CACHE_DISK || 2048; 
+    const limitDisk = ajustes.LIMITE_CHAT_CACHE_DISK || 2048;
 
     return { forceDisk, limitRAM, limitDisk };
 }
@@ -104,7 +111,7 @@ async function _verificar_recursos_sistema(limite, tipo) {
         return totalRamGB > limiteGB;
     } else {
         const limiteGB = limite / 1024;
-        return freeDiskGB > (limiteGB + 50); 
+        return freeDiskGB > (limiteGB + 50);
     }
 }
 
@@ -120,7 +127,7 @@ export async function getChatDeCache(id_chat) {
         const chat = _cache_chats.get(id);
         chat._frequency = f;
         chat._last_used = _last_used_chats.get(id);
-        
+
         _gestionar_persistencia_frecuentes();
         return chat;
     }
@@ -130,18 +137,23 @@ export async function getChatDeCache(id_chat) {
 export async function setChatEnCache(chat) {
     await _asegurar_inicio();
     if (!chat || !chat._id) return;
-    
+
+    // Solo se guardan los campos definidos en el esquema (+ metadatos internos de caché)
+   //crear un array de pares de valores y luego parsearlo a objeto js
+    const chatFiltrado = Object.fromEntries(
+        Object.keys(ESQUEMA_CACHE_CHAT).map(k => [k, chat[k] ?? ESQUEMA_CACHE_CHAT[k]])
+    );
+
     const id = chat._id.toString();
-    // En caso de CACHE MISS / ACTUALIZACION: suma +1 al contador
     const f = (_frecuencia_chats.get(id) || 0) + 1;
     _frecuencia_chats.set(id, f);
     _last_used_chats.set(id, Date.now());
 
-    chat._frequency = f;
-    chat._last_used = _last_used_chats.get(id);
-    
-    _cache_chats.set(id, chat);
-    
+    chatFiltrado._frequency = f;
+    chatFiltrado._last_used = _last_used_chats.get(id);
+
+    _cache_chats.set(id, chatFiltrado);
+
     await _aplicar_limites_cache();
     _gestionar_persistencia_frecuentes();
 }
@@ -149,32 +161,32 @@ async function _aplicar_limites_cache() {
     const { forceDisk, limitRAM, limitDisk } = await _obtener_limite_actual();
     const isRAMOk = await _verificar_recursos_sistema(limitRAM, 'ram');
     const isDiskOk = await _verificar_recursos_sistema(limitDisk, 'disk');
-    
+
     // Si forzamos disco, el límite de RAM de la Map debe ser pequeño (ej 256MB)
     // Pero si el disco está al límite (isDiskOk = false), bajamos la RAM aún más para ser cautos.
-    const maxRAM_MB = forceDisk 
-        ? (isDiskOk ? 256 : 128) 
+    const maxRAM_MB = forceDisk
+        ? (isDiskOk ? 256 : 128)
         : (isRAMOk ? limitRAM : 128);
-    
+
     let currentMB = _estimar_tamano_mb(Array.from(_cache_chats.values()));
-    
+
     if (currentMB > maxRAM_MB) {
         const now = Date.now();
         const sorted = Array.from(_cache_chats.keys()).sort((a, b) => {
             const freqA = _frecuencia_chats.get(a) || 0;
             const freqB = _frecuencia_chats.get(b) || 0;
-            
+
             if (freqA !== freqB) return freqA - freqB;
-            
+
             // Tie-break: el más viejo primero
             const timeA = _last_used_chats.get(a) || 0;
             const timeB = _last_used_chats.get(b) || 0;
             return timeA - timeB;
         });
-        
+
         while (currentMB > maxRAM_MB && sorted.length > 0) {
             const id = sorted.shift();
-            
+
             // Protección: si es muy reciente, intentamos no borrarlo a menos que no haya otra opción
             const lastUsed = _last_used_chats.get(id) || 0;
             if (now - lastUsed < PERIODO_PROTECCION_MS && sorted.length > 0) {
@@ -192,12 +204,12 @@ async function _aplicar_limites_cache() {
 let _timer_persistencia = null;
 async function _gestionar_persistencia_frecuentes() {
     if (_timer_persistencia) return;
-    
+
     _timer_persistencia = setTimeout(async () => {
         try {
             const { forceDisk, limitDisk } = await _obtener_limite_actual();
             const isDiskOk = await _verificar_recursos_sistema(limitDisk, 'disk');
-            
+
             // Si el disco está bajo en espacio, usamos el límite mínimo incluso en modo forceDisk
             const persistentLimitMB = (forceDisk && isDiskOk) ? limitDisk : LIMITE_FRECUENTES_MB;
 
@@ -208,10 +220,10 @@ async function _gestionar_persistencia_frecuentes() {
                 }
                 return (b._last_used || 0) - (a._last_used || 0);
             });
-            
+
             const frecuentes = [];
             let currentMB = 0;
-            
+
             for (const chat of sorted) {
                 const itemSize = _estimar_tamano_mb(chat);
                 if (currentMB + itemSize <= persistentLimitMB) {
@@ -221,14 +233,14 @@ async function _gestionar_persistencia_frecuentes() {
                     break;
                 }
             }
-            
+
             await saveCacheChatsFile(frecuentes);
         } catch (e) {
             log.error({ err: e }, "Error persistiendo chats frecuentes");
         } finally {
             _timer_persistencia = null;
         }
-    }, 10000); 
+    }, 10000);
 }
 
 export async function setConfigCacheChats({ limitRAM, limitDisk, forceDisk }) {
@@ -236,7 +248,7 @@ export async function setConfigCacheChats({ limitRAM, limitDisk, forceDisk }) {
     if (limitRAM !== undefined) settings.LIMITE_CHAT_CACHE_RAM = limitRAM;
     if (limitDisk !== undefined) settings.LIMITE_CHAT_CACHE_DISK = limitDisk;
     if (forceDisk !== undefined) settings.FORCE_DISK_CACHE = forceDisk;
-    
+
     await saveAjustesAppFile({ data: settings, create: false });
     await _aplicar_limites_cache(); // Re-aplicar con los nuevos ajustes
     return true;

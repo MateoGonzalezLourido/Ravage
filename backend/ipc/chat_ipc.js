@@ -28,7 +28,7 @@ import {
 } from '../repositories/MessageRepository.js';
 import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { crearCacheChatActivo, obtenerCacheChatActivo } from '../STORAGE/CACHE/_cache_chat_activo.js';
-import { getAjustesAppFile, saveAjustesAppFile } from '../services/controladorArchivos.js';
+import { modelo_datos_necesarios_chat } from '../STORAGE/modelo_datos_necesarios_chat.js';
 import { iniciarBuzon } from '../services/buzonAPI.js';
 import { comprobar_mensaje, comprobar_nombre_archivo } from '../services/validadores.js';
 const authorizedPaths = new Set();
@@ -61,14 +61,6 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("responder-solicitud-añadir", async (_, id_chat, id_mensaje, aceptar) => {
         return await RESPONDER_SOLICITUD_AÑADIR(id_chat, id_mensaje, aceptar)
-    })
-
-    ipcMain.handle("obtener-ajustes-app", async (_, nombre) => {
-        return await getAjustesAppFile(nombre)
-    })
-
-    ipcMain.handle("guardar-ajustes-app", async (_, data) => {
-        return await saveAjustesAppFile({ data })
     })
 
     ipcMain.handle("seleccionar-archivos", async () => {
@@ -140,7 +132,10 @@ export function registerChatHandlers(mainWindow, socket) {
         crearCacheChatActivo(data)
     })
 
-    ipcMain.handle("obtener-cache-chat-activo", async (_, bloque) => {
-        return obtenerCacheChatActivo(bloque)
+    ipcMain.handle("obtener-cache-chat-activo", async (_, id, bloque) => {
+        return obtenerCacheChatActivo(id, bloque)
+    })
+    ipcMain.handle("obtener-modelo-datos-necesarios-chat", async () => {
+        return modelo_datos_necesarios_chat
     })
 }

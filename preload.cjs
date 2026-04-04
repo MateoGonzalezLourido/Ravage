@@ -41,14 +41,14 @@ contextBridge.exposeInMainWorld('sesion_usuario', {
     CERRAR_SESION: () => {
         return ipcRenderer.invoke('cerrar-sesion-usuario')
     },
-    ICONO_CARGANDO:(callback)=>{ //se envia al log.js
-           ipcRenderer.on("icono-cargando", (_, mostrar) => callback(mostrar));
+    ICONO_CARGANDO: (callback) => { //se envia al log.js
+        ipcRenderer.on("icono-cargando", (_, mostrar) => callback(mostrar));
     },
-    FALLO_CORREO_MANDAR:(callback)=>{ //se envia al log.js
-           ipcRenderer.on("fallo-correo-mandar", () => callback());
+    FALLO_CORREO_MANDAR: (callback) => { //se envia al log.js
+        ipcRenderer.on("fallo-correo-mandar", () => callback());
     },
-    CERRANDO_SESION:(callback)=>{ //se envia al log.js
-           ipcRenderer.on("cerrando-sesion", (_, mostrar) => callback(mostrar));
+    CERRANDO_SESION: (callback) => { //se envia al log.js
+        ipcRenderer.on("cerrando-sesion", (_, mostrar) => callback(mostrar));
     },
 });
 
@@ -187,14 +187,16 @@ contextBridge.exposeInMainWorld('chats', {
     BLOQUEAR_CHAT: (id_chat) => {
         return ipcRenderer.invoke("bloquear-chat", id_chat)
     },
+    //cache
     GUARDAR_CACHE_CHAT_ACTIVO: (data) => {
         return ipcRenderer.invoke("guardar-cache-chat-activo", data)
     },
-    OBTENER_CACHE_CHAT_ACTIVO: (bloque) => {
-        return ipcRenderer.invoke("obtener-cache-chat-activo", bloque)
+    OBTENER_CACHE_CHAT_ACTIVO: (id, bloque) => {
+        return ipcRenderer.invoke("obtener-cache-chat-activo", id, bloque)
+    },
+    OBTENER_MODELO_DATOS_NECESARIOS_CHAT: () => {
+        return ipcRenderer.invoke("obtener-modelo-datos-necesarios-chat")
     }
-
-
 });
 
 // ─── AJUSTES DE LA APP ───────────────────────────────────────────────────────
@@ -226,10 +228,10 @@ contextBridge.exposeInMainWorld("buzonAPI", {
         ipcRenderer.send("iniciar-buzon");
     },
     onNuevaNotificacion: (callback) => {//esto es para enviar los cambios del socket(backend) al renderer(frontend)
-        ipcRenderer.on("nueva-notificacion", (event, data) => callback(data));
+        ipcRenderer.on("nueva-notificacion", (_, data) => callback(data));
     },
     onNotificarRender: (callback) => {
-        ipcRenderer.on("notificar-render", (event, data) => callback(data));
+        ipcRenderer.on("notificar-render", (_, data) => callback(data));
     }
 });
 
@@ -253,6 +255,7 @@ contextBridge.exposeInMainWorld("cache_url_img_extensiones", {
 contextBridge.exposeInMainWorld("cache_persistente", {
     // Chat Cache
     getChatCache: (id) => ipcRenderer.invoke("get-chat-cache", id),
+    setChatCache: (chat) => ipcRenderer.invoke("set-chat-cache", chat),
     setConfigCacheChats: (config) => ipcRenderer.invoke("set-config-cache-chats", config),
     clearCacheChats: () => ipcRenderer.invoke("clear-cache-chats"),
 
