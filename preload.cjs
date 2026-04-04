@@ -191,6 +191,9 @@ contextBridge.exposeInMainWorld('chats', {
     GUARDAR_CACHE_CHAT_ACTIVO: (data) => {
         return ipcRenderer.invoke("guardar-cache-chat-activo", data)
     },
+    OBTENER_CACHE_CHAT_ACTIVO: (id, bloque) => {
+        return ipcRenderer.invoke("obtener-cache-chat-activo", id, bloque)
+    },
     OBTENER_MODELO_DATOS_NECESARIOS_CHAT: () => {
         return ipcRenderer.invoke("obtener-modelo-datos-necesarios-chat")
     }
