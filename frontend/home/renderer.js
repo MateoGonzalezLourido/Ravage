@@ -565,7 +565,8 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
 
         // 2. Iniciar la creación del HTML (sin el incorrecto 'new Promise')
         // Esto permite que el HTML se genere mientras hacemos lógica de DOM y fechas
-        const htmlPromise = crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin)
+        const escaneres_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE({ id_chat: chat, id_emisor: id_emisor })
+        const htmlPromise = crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin,escaneres_seguridad)
 
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;

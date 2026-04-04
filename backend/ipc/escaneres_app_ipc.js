@@ -1,9 +1,12 @@
 import { ipcMain } from "../utils/libs.js"
-import { detectSteganography, removeSteganography, detectUrl, removeUrl, detectarUrlMaliciosa, detectarXSS, detectarCodigo, detectarZalgo, removeZalgo, detectarComandosTerminal, detectarCryptoBilleteras, detectarDireccionesIP, detectarHomoglifos } from "../services/seguridad/escanerMensaje.js"
+import {escaneres_seguridad_mensaje_activados, detectSteganography, removeSteganography, detectUrl, removeUrl, detectarUrlMaliciosa, detectarXSS, detectarCodigo, detectarZalgo, removeZalgo, detectarComandosTerminal, detectarCryptoBilleteras, detectarDireccionesIP, detectarHomoglifos } from "../services/seguridad/escanerMensaje.js"
 import { obtenerPrevisualizacionUrl } from "../services/previsualizacion_url.js"
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('escanerMensaje');
 export function registerEscaneresAppHandlers() {
+    ipcMain.handle("escaneres-seguridad-app-mensaje", async (_, id_chat) => {
+        return await escaneres_seguridad_mensaje_activados(id_chat)
+    })
     ipcMain.handle("escaneres-seguridad-app-detectar-escenografia", (_, text) => {
         return detectSteganography(text)
     })

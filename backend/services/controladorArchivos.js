@@ -160,8 +160,9 @@ async function readFileSession(rutaKey, cifrado = true) {
         return null;
     }
 }
-
+//@param nombre: string | array | null
 async function getAjustesAppFile(nombre = null) {
+    
     if (!fs.existsSync(RTDF.ajustesAPP)) {
         await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT });
         return nombre ? AJUSTES_APP_DEFAULT[nombre] : { ...AJUSTES_APP_DEFAULT };
@@ -190,7 +191,16 @@ async function getAjustesAppFile(nombre = null) {
         }
 
         const merged = { ...AJUSTES_APP_DEFAULT, ...obj };
+        
         if (!nombre) return merged;
+        
+        if (Array.isArray(nombre)) {
+            return nombre.reduce((acc, key) => {
+                acc[key] = merged[key];
+                return acc;
+            }, {});
+        }
+
         return merged[nombre];
     } catch (e) {
         log.error({ err: e }, "Error al leer ajustes de app");
