@@ -191,9 +191,6 @@ contextBridge.exposeInMainWorld('chats', {
     GUARDAR_CACHE_CHAT_ACTIVO: (data) => {
         return ipcRenderer.invoke("guardar-cache-chat-activo", data)
     },
-    OBTENER_CACHE_CHAT_ACTIVO: (bloque) => {
-        return ipcRenderer.invoke("obtener-cache-chat-activo", bloque)
-    },
     OBTENER_MODELO_DATOS_NECESARIOS_CHAT: () => {
         return ipcRenderer.invoke("obtener-modelo-datos-necesarios-chat")
     }
@@ -228,10 +225,10 @@ contextBridge.exposeInMainWorld("buzonAPI", {
         ipcRenderer.send("iniciar-buzon");
     },
     onNuevaNotificacion: (callback) => {//esto es para enviar los cambios del socket(backend) al renderer(frontend)
-        ipcRenderer.on("nueva-notificacion", (event, data) => callback(data));
+        ipcRenderer.on("nueva-notificacion", (_, data) => callback(data));
     },
     onNotificarRender: (callback) => {
-        ipcRenderer.on("notificar-render", (event, data) => callback(data));
+        ipcRenderer.on("notificar-render", (_, data) => callback(data));
     }
 });
 
@@ -255,6 +252,7 @@ contextBridge.exposeInMainWorld("cache_url_img_extensiones", {
 contextBridge.exposeInMainWorld("cache_persistente", {
     // Chat Cache
     getChatCache: (id) => ipcRenderer.invoke("get-chat-cache", id),
+    setChatCache: (chat) => ipcRenderer.invoke("set-chat-cache", chat),
     setConfigCacheChats: (config) => ipcRenderer.invoke("set-config-cache-chats", config),
     clearCacheChats: () => ipcRenderer.invoke("clear-cache-chats"),
 

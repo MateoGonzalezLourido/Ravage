@@ -37,64 +37,77 @@ function scroll_fin_chat() {
     })
 }
 /*
-   @param id: id del chat
-   proceso:buscar todos los datos en cache->obtener datos faltantes->actualizar caches->devolver datos
+   *@param id: id del chat
+   *@proceso:buscar todos los datos en cache->obtener datos faltantes->actualizar caches->devolver datos
 */
-async function Get_datos_chat_abrir(id) {
-    //datos chat
-    let [datos_necesarios, datosCachePersistente, datosCachesActivos] = await Promise.all([
+async function Get_datos_chat_abrir(id_chat) {
+    // 1. Obtener datos base y caches en paralelo
+    const resultados = await Promise.allSettled([
         window.chats.OBTENER_MODELO_DATOS_NECESARIOS_CHAT(),
-        //obtener datos caches
-        window.cache_persistente.getChatCache(id),
-        window.chats.OBTENER_CACHE_CHAT_ACTIVO(id)
+        window.cache_persistente.getChatCache(id_chat),
+        window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat)
     ])
 
-    //usuarios (anticipar coger datos usuarios)
+    // Extraer valores con seguridad
+    const datos_necesarios_template = resultados[0].status === 'fulfilled' ? resultados[0].value : null
+    const datosCachePersistente = resultados[1].status === 'fulfilled' ? resultados[1].value : null
+    const datosCachesActivos = resultados[2].status === 'fulfilled' ? resultados[2].value : null
+
+    //no se puede continuar si no se tiene el modelo de datos
+    if (!datos_necesarios_template)return null
+    
+    // Crear una copia del modelo de datos para trabajar
+    let datos_necesarios = { ...datos_necesarios_template }
+
+    // 2.Anticipar cojer datos de usuarios: Identificar quiénes son los participantes (priorizando cache persistente si existe)
+    let ids_usuarios = datosCachePersistente?.usuarios || datosCachesActivos?.participantes || null
     let usuarios_datos = null
-    if (!datosCachesActivos.d_participantes) {
-        let ids_usuarios = datosCachePersistente.usuarios
-        if (!ids_usuarios) ids_usuarios = datosCachesActivos.participantes
-        if (ids_usuarios) {
-            usuarios_datos = window.chats.OBTENER_USUARIOS_CHAT(id)
+    if (ids_usuarios) {
+        if (datosCachesActivos?.d_participantes) {
+            // Si ya estaban en la cache activa, los usamos
+            usuarios_datos = datosCachesActivos.d_participantes
+        }
+        else usuarios_datos = window.chats.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(ids_usuarios)
+    }
+
+    // 3. Conseguir datos restantes (seguridad, admin, fecha, etc.)
+    let datos_solicitar = ""
+    for (const key of Object.keys(datos_necesarios)) {
+        if (datosCachesActivos?.[key]) datos_necesarios[key] = datosCachesActivos[key]
+        else if (datosCachePersistente?.[key]) datos_necesarios[key] = datosCachePersistente[key]
+        //los datos de usuarios no se solicitan desde aqui
+        else if (key !== 'd_usuarios') datos_solicitar += key + " "
+    }
+
+    // 4. Si faltan datos, solicitarlos a db
+    if (datos_solicitar.trim() !== "") {
+        const datos_restantes = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, datos_solicitar)
+        if (datos_restantes) {
+            for (const key of Object.keys(datos_restantes)) {
+                datos_necesarios[key] = datos_restantes[key]
+            }
         }
     }
 
-    //conseguir datos restantes
-    let datos_solicitar = ""
-    for (let key in Object.keys(datos_necesarios)) {
-        if (datosCachesActivos[key]) {
-            //añadir a los datos necesarios
-            datos_necesarios[key] = datosCachesActivos[key]
-        }
-        else if (datosCachePersistente[key]) {
-            //añadir a los datos necesarios
-            datos_necesarios[key] = datosCachePersistente[key]
-        }
-        else {
-            //obtener datos restantes
-            datos_solicitar += key + " "
-        }
-    }
-    if (datos_solicitar.trim() !== "") {
-        const datos_restantes = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(datosCachePersistente.participantes, datos_solicitar)
-        for (let key in Object.keys(datos_restantes)) {
-            datos_necesarios[key] = datos_restantes[key]
-        }
-    }
-    //conseguir datos participantes
+    // 5. Asegurarse de tener los detalles de los usuarios (nombres, avatares, etc.)
     if (!usuarios_datos) {
-        usuarios_datos = await window.chats.OBTENER_USUARIOS_CHAT(datos_necesarios.usuarios)
-    }
-    else if (isPromise(usuarios_datos)) usuarios_datos = await usuarios_datos
+        ids_usuarios = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat,'usuarios')
+         usuarios_datos= await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(ids_usuarios, datos_solicitar)
+    } else if (usuarios_datos && typeof usuarios_datos.then === 'function') {// Si ya era una promesa en vuelo, la esperamos ahora
+        usuarios_datos = await usuarios_datos
+    } 
 
     datos_necesarios.d_usuarios = usuarios_datos
+    datos_necesarios.usuarios = ids_usuarios || datos_necesarios.usuarios // Asegurar que guardamos los IDs
 
-    //actualizar caches
-    window.cache_persistente.setChatCache(id, datos_necesarios)
-    //preparar datos para cache
+    // 6. Actualizar caches para la próxima vez
+    datos_necesarios._id = id_chat
+    window.cache_persistente.setChatCache(datos_necesarios)
+
     const datos_cache_chat_activo = {
+        _id: id_chat, // Añadimos el ID para que la cache sepa a qué chat corresponde
         seguridad: datos_necesarios.seguridad,
-        participantes: datos_necesarios.usuarios,
+        participantes: ids_usuarios,
         admin: datos_necesarios.admin,
         fecha_creacion: datos_necesarios.fecha_creacion,
         n_mensajes: datos_necesarios.mensajes?.length || 0,
@@ -102,7 +115,8 @@ async function Get_datos_chat_abrir(id) {
     }
 
     window.chats.GUARDAR_CACHE_CHAT_ACTIVO(datos_cache_chat_activo)
-    //retornar datos necesarios
+
+    //retornar datos completos
     return datos_necesarios
 }
 async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
