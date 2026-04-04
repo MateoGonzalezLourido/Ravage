@@ -1,4 +1,4 @@
-<span>Ravage actualmente está sufriendo grandes cambios constantemente, debido a la falta de un release estable no podemos garantizar que este readme documente todo lo necesario para poder usar la ultima versión disponible</span>
+<font style="font-size:10px">Ravage actualmente está sufriendo grandes cambios constantemente. Debido a la falta de un release estable no podemos garantizar que este readme documente todo lo necesario para poder usar la ultima versión disponible</font>
 <div align="center">
 
 # 🔒 RAVAGE
