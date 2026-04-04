@@ -44,9 +44,10 @@ export function crearCacheChatActivo(datos) {
 export function obtenerCacheChatActivo(bloque = null) {
     //puedes añadir tus propios bloques de salida
     let salida = {}
-    if (!bloque) {
+    if (!bloque||!_cache_datos_chat_activo) {
         return _cache_datos_chat_activo;
     }
+    
     if (bloque === "seguridad") {
         salida.ESCANER_ESTEGANOGRAFIA = _cache_datos_chat_activo.ESCANER_ESTEGANOGRAFIA
         salida.ESCANER_URL = _cache_datos_chat_activo.ESCANER_URL

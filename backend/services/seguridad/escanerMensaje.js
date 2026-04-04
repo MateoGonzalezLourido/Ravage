@@ -9,7 +9,8 @@ const log = createLogger('escanerMensaje');
 
 import { getAjustesAppFile } from '../controladorArchivos.js';
 import { getListaChats } from '../../STORAGE/Variables_sesion.js'
-import { obtenerCacheChatActivo } from '../../STORAGE/CACHE/_cache_chat_activo.js'
+import { obtenerCacheChatActivo, crearCacheChatActivo } from '../../STORAGE/CACHE/_cache_chat_activo.js'
+import { obtener_datos_chat_unico } from '../../repositories/ChatRepository.js'
 async function escaneres_seguridad_mensaje_activados(id_chat = null) {
     //conseguir ajustes por defecto
     let escaneres_seguridad = await getAjustesAppFile([
@@ -18,8 +19,16 @@ async function escaneres_seguridad_mensaje_activados(id_chat = null) {
         'ESCANER_DIRECCIONES_IP', 'ESCANER_HOMOGLIFOS'
     ]);
     //obtener ajustes propios del chat globales en db
-    const ajustes_chat_globales = obtenerCacheChatActivo("seguridad")
-
+    let ajustes_chat_globales = obtenerCacheChatActivo("seguridad")
+    
+    if (!ajustes_chat_globales && id_chat) {
+        // cargar a db y guardar en cache
+        const chatDB = await obtener_datos_chat_unico(id_chat, 'escaneres_seguridad');
+        if (chatDB && chatDB.escaneres_seguridad) {
+            ajustes_chat_globales = chatDB.escaneres_seguridad;
+            crearCacheChatActivo(ajustes_chat_globales);
+        }
+    }
     //obtener datos del chat
     const lista_chats = getListaChats()
     const chat = lista_chats.find(c => c.id === id_chat)

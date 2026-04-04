@@ -91,6 +91,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
 
     return html
 }
+//TODO: seguridad
 export const crear_mensaje_html = async ({fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = []}) => {
     const class_mensajes = ["soy-emisor", "soy-receptor"]
 
