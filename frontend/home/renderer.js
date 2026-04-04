@@ -36,6 +36,80 @@ function scroll_fin_chat() {
         behavior: "smooth"
     })
 }
+/*
+   @param id: id del chat
+   proceso:buscar todos los datos en cache->obtener datos faltantes->actualizar caches->devolver datos
+*/
+async function Get_datos_chat_abrir(id) {
+    //datos chat
+    let [datos_necesarios, datosCachePersistente, datosCachesActivos] = await Promise.all([
+        window.chats.OBTENER_MODELO_DATOS_NECESARIOS_CHAT(),
+        //obtener datos caches
+        window.cache_persistente.getChatCache(id),
+        window.chats.OBTENER_CACHE_CHAT_ACTIVO(id)
+    ])
+
+    //usuarios (anticipar coger datos usuarios)
+    let usuarios_datos = null
+    if (!datosCachesActivos.d_participantes) {
+        let ids_usuarios = datosCachePersistente.usuarios
+        if (!ids_usuarios) ids_usuarios = datosCachesActivos.participantes
+        if (ids_usuarios) {
+            usuarios_datos = window.chats.OBTENER_USUARIOS_CHAT(id)
+        }
+    }
+
+    //conseguir datos restantes
+    let datos_solicitar = ""
+    for (let key in Object.keys(datos_necesarios)) {
+        if (datosCachesActivos[key]) {
+            //añadir a los datos necesarios
+            datos_necesarios[key] = datosCachesActivos[key]
+        }
+        else if (datosCachePersistente[key]) {
+            //añadir a los datos necesarios
+            datos_necesarios[key] = datosCachePersistente[key]
+        }
+        else {
+            //obtener datos restantes
+            datos_solicitar += key + " "
+        }
+    }
+    if (datos_solicitar.trim() !== "") {
+        const datos_restantes = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(datosCachePersistente.participantes, datos_solicitar)
+        for (let key in Object.keys(datos_restantes)) {
+            datos_necesarios[key] = datos_restantes[key]
+        }
+    }
+    //conseguir datos participantes
+    if (!usuarios_datos) {
+        usuarios_datos = await window.chats.OBTENER_USUARIOS_CHAT(datos_necesarios.usuarios)
+    }
+    else if (isPromise(usuarios_datos)) usuarios_datos = await usuarios_datos
+
+    datos_necesarios.d_usuarios = usuarios_datos
+
+    //actualizar caches
+    window.cache_persistente.setChatCache(id, datos_necesarios)
+    //preparar datos para cache
+    const datos_cache_chat_activo = {
+        seguridad: datos_necesarios.seguridad,
+        participantes: datos_necesarios.usuarios,
+        admin: datos_necesarios.admin,
+        fecha_creacion: datos_necesarios.fecha_creacion,
+        n_mensajes: datos_necesarios.mensajes?.length || 0,
+        d_participantes: datos_necesarios.d_usuarios
+    }
+
+    window.chats.GUARDAR_CACHE_CHAT_ACTIVO(datos_cache_chat_activo)
+    //retornar datos necesarios
+    if (!datos_necesarios) {
+        window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
+        return null;
+    }
+
+    return datos_necesarios
+}
 async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     try {
         archivo_cambiando_nombre = null
@@ -161,24 +235,10 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 // OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
                 const id = e.currentTarget.dataset.id
                 //obtener info de ese chat
-                //AÑADIR METODO DE GUARDADO EN CACHE DE ALGUNOS CHATS USADOS
                 const [datos_chat, id_usuario] = await Promise.all([
-                    window.chats.OBTENER_DATOS_CHAT_UNICO(id),
+                    Get_datos_chat_abrir(id),
                     window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                 ])
-
-                if (!datos_chat) {
-                    window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
-                    return;
-                }
-                if (datos_chat) {
-                    const datos_a_guardar = { ...datos_chat };
-                    if (datos_chat.escaneres_seguridad) {
-                        Object.assign(datos_a_guardar, datos_chat.escaneres_seguridad);
-                    }
-                    window.chats.GUARDAR_CACHE_CHAT_ACTIVO(datos_a_guardar)
-                }
-
                 // El nombre ya viene resuelto por el backend
                 datos_chat._id = id
                 //limpiar residuos de otros chats
@@ -586,7 +646,7 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
         // 2. Iniciar la creación del HTML (sin el incorrecto 'new Promise')
         // Esto permite que el HTML se genere mientras hacemos lógica de DOM y fechas
         const escaneres_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE({ id_chat: chat, id_emisor: id_emisor })
-        const htmlPromise = crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin,escaneres_seguridad)
+        const htmlPromise = crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin, escaneres_seguridad)
 
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;
