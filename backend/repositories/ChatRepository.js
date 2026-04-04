@@ -104,70 +104,74 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
             fields.forEach(f => { if (f) projection[f] = 1; });
         }
 
-        if (!datos_buscar) {
-            let chat_a_devolver;
-            const cached = await getChatDeCache(id_chat);
-            if (cached) {
-                chat_a_devolver = { ...cached, mensajes: [...(cached.mensajes || [])] };
+        // 1. Intentar obtener de CACHE primero
+        const cached = await getChatDeCache(id_chat);
+        const fields = Array.isArray(datos_buscar) ? datos_buscar : (typeof datos_buscar === 'string' ? datos_buscar.trim().split(/\s+/) : []);
 
-                // Si el cache solo tiene IDs o está vacío (pero se esperan mensajes), cargar de DB
-                const tieneMensajesFull = chat_a_devolver.mensajes &&
-                    chat_a_devolver.mensajes.length > 0 &&
-                    typeof chat_a_devolver.mensajes[0] === 'object';
-
+        if (cached) {
+            if (!datos_buscar) {
+                // Caso: Pedir chat completo
+                let chat_a_devolver = { ...cached, mensajes: [...(cached.mensajes || [])] };
+                const tieneMensajesFull = chat_a_devolver.mensajes.length > 0 && typeof chat_a_devolver.mensajes[0] === 'object';
+                
                 if (!tieneMensajesFull) {
-                    chat_a_devolver.mensajes = await MessagesRavage.find({
-                        id_chat: new mongoose.Types.ObjectId(id_chat)
-                    }).sort({ data: 1 }).lean();
+                    chat_a_devolver.mensajes = await MessagesRavage.find({ id_chat }).sort({ data: 1 }).lean();
                     await descifrarListaMensajes(chat_a_devolver.mensajes, chat_a_devolver);
                 }
+                return await resolverNombresYBloqueos(chat_a_devolver, id_chat);
             } else {
-                const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
-                if (!data_obtenida) return null;
+                // Caso: Campos específicos
+                let filtered = { _id: cached._id };
+                let missingSome = false;
+                let pedir_mensajes = false;
 
-                data_obtenida.mensajes = await MessagesRavage.find({
-                    id_chat: new mongoose.Types.ObjectId(id_chat)
-                }).sort({ data: 1 }).lean();
+                fields.forEach(f => {
+                    if (f === "mensajes") pedir_mensajes = true;
+                    else if (f && f in cached) filtered[f] = cached[f];
+                    else if (f) missingSome = true;
+                });
 
-                await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
-                await setChatEnCacheRaw(data_obtenida);
-
-                chat_a_devolver = { ...data_obtenida, mensajes: [...(data_obtenida.mensajes || [])] };
-            }
-
-            const id_propio = getIDMongodbUsuario();
-            const usr = await User.findById(id_propio, "chats").lean();
-            const miChatData = (usr?.chats || []).find(c => c.id.toString() === id_chat.toString());
-
-            if (miChatData && miChatData.bloqueado && miChatData.mensaje_bloqueo_id) {
-                const stopId = miChatData.mensaje_bloqueo_id.toString();
-                chat_a_devolver.mensajes = (chat_a_devolver.mensajes || []).filter(m => (m._id || m.id).toString() <= stopId);
-            }
-
-            if (miChatData && miChatData.bloqueado) {
-                // Congelar nombre
-                if (miChatData.nombre_bloqueo != null) {
-                    chat_a_devolver.nombre = miChatData.nombre_bloqueo;
-                }
-                // Congelar participantes
-                if (miChatData.participantes_bloqueo != null && miChatData.participantes_bloqueo.length > 0) {
-                    chat_a_devolver.usuarios = miChatData.participantes_bloqueo;
+                if (!missingSome && !pedir_mensajes) {
+                    const [res] = await resolverNombresChats([filtered]);
+                    return convertirObjectId(res);
                 }
             }
-
-            const [data_con_nombre] = await resolverNombresChats([chat_a_devolver]);
-            return convertirObjectId(data_con_nombre);
-        } else {
-            const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
-            if (!data_obtenida) return null;
-
-            const [data_con_nombre] = await resolverNombresChats([data_obtenida]);
-            return convertirObjectId(data_con_nombre);
         }
+
+        // 2. Ir a DB
+        const data_obtenida = await ChatsRavage.findById(id_chat, projection).lean();
+        if (!data_obtenida) return null;
+
+        if (!datos_buscar || (Array.isArray(fields) && fields.includes("mensajes"))) {
+            data_obtenida.mensajes = await MessagesRavage.find({ id_chat }).sort({ data: 1 }).lean();
+            await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
+        }
+
+        const [final] = await resolverNombresChats([data_obtenida]);
+        return convertirObjectId(final);
     } catch (e) {
         log.error("Error en obtener_datos_chat_unico:", { err: e });
         return null;
     }
+}
+
+// Helper para limpiar el código repetitivo de bloqueos
+async function resolverNombresYBloqueos(chat, id_chat) {
+    const id_propio = getIDMongodbUsuario();
+    const usr = await User.findById(id_propio, "chats").lean();
+    const miChatData = (usr?.chats || []).find(c => c.id.toString() === id_chat.toString());
+
+    if (miChatData && miChatData.bloqueado) {
+        if (miChatData.mensaje_bloqueo_id) {
+            const stopId = miChatData.mensaje_bloqueo_id.toString();
+            chat.mensajes = (chat.mensajes || []).filter(m => (m._id || m.id).toString() <= stopId);
+        }
+        if (miChatData.nombre_bloqueo != null) chat.nombre = miChatData.nombre_bloqueo;
+        if (miChatData.participantes_bloqueo?.length > 0) chat.usuarios = miChatData.participantes_bloqueo;
+    }
+
+    const [data_con_nombre] = await resolverNombresChats([chat]);
+    return convertirObjectId(data_con_nombre);
 }
 
 export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, solicitudAceptada = false) {

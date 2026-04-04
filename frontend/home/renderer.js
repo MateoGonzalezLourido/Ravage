@@ -243,8 +243,6 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                     window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
                     return;
                 }
-                // El nombre ya viene resuelto por el backend
-                datos_chat._id = id
                 //limpiar residuos de otros chats
                 archivos_mensaje = []
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
