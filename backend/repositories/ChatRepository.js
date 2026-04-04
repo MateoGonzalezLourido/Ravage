@@ -98,9 +98,11 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
     try {
         if (!id_chat || !mongoose.Types.ObjectId.isValid(id_chat)) return null;
 
-        const projection = datos_buscar
-            ? { [datos_buscar]: 1 }
-            : {};
+        let projection = {};
+        if (datos_buscar) {
+            const fields = typeof datos_buscar === 'string' ? datos_buscar.trim().split(/\s+/) : (Array.isArray(datos_buscar) ? datos_buscar : [datos_buscar]);
+            fields.forEach(f => { if (f) projection[f] = 1; });
+        }
 
         if (!datos_buscar) {
             let chat_a_devolver;
