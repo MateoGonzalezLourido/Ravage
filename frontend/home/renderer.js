@@ -833,12 +833,13 @@ async function hacer_cambios_buzon(entrada) {
 }
 async function mensaje_bienvenida_usuario() {
     // Obtener ajuste que guarda si se ha enviado el mensaje de bienvenida y apodo simultáneamente
+    // NOTA: llamar sin argumento devuelve el objeto completo de ajustes
     const [ajustes_app, apodo] = await Promise.all([
-        window.ajustes_app.OBTENER_AJUSTES_APP("MSBienvenida"),
+        window.ajustes_app.OBTENER_AJUSTES_APP(),
         window.cuenta_usuario.GET_APODO_SESION()
     ])
     //mandar notificacion si es la primera vez
-    if (ajustes_app.MSBienvenida) {
+    if (ajustes_app?.MSBienvenida) {
         window.pushNotificacion({
             prioridad: 0,
             texto: `Benvido ${apodo} `,
@@ -846,8 +847,7 @@ async function mensaje_bienvenida_usuario() {
         })
 
         //marcar como hecho en ajustes para no volver a mostrarlo
-        ajustes_app.MSBienvenida = false
-        window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes_app)
+        window.ajustes_app.GUARDAR_AJUSTES_APP({ MSBienvenida: false })
     }
 }
 
