@@ -103,11 +103,6 @@ async function Get_datos_chat_abrir(id) {
 
     window.chats.GUARDAR_CACHE_CHAT_ACTIVO(datos_cache_chat_activo)
     //retornar datos necesarios
-    if (!datos_necesarios) {
-        window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
-        return null;
-    }
-
     return datos_necesarios
 }
 async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
@@ -239,6 +234,10 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                     Get_datos_chat_abrir(id),
                     window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
                 ])
+                if (!datos_chat) {
+                    window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
+                    return;
+                }
                 // El nombre ya viene resuelto por el backend
                 datos_chat._id = id
                 //limpiar residuos de otros chats
