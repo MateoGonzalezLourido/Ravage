@@ -15,15 +15,15 @@ export const AJUSTES_APP_DEFAULT = {
     //utilidades
     PREVISUALIZACION_URL: true,
 
-    // Configuración por defecto de Escáneres de Seguridad
-    ESCANER_ESTEGANOGRAFIA: true,
-    ESCANER_URL: false,
-    ESCANER_URL_MALICIOSA: true,
-    ESCANER_XSS: false,
-    ESCANER_CODIGO: false,
-    ESCANER_ZALGO: true,
-    ESCANER_COMANDOS_TERMINAL: true,
-    ESCANER_CRYPTO_BILLETERAS: true,
-    ESCANER_DIRECCIONES_IP: false,
-    ESCANER_HOMOGLIFOS: true
+    // Configuración por defecto de Escáneres de Seguridad(0:desactivado,1:escanear,2:borrar peligro)
+    ESCANER_ESTEGANOGRAFIA: 1,
+    ESCANER_URL: 0,
+    ESCANER_URL_MALICIOSA: 1,
+    ESCANER_XSS: 0,
+    ESCANER_CODIGO: 0,
+    ESCANER_ZALGO: 1,
+    ESCANER_COMANDOS_TERMINAL: 1,
+    ESCANER_CRYPTO_BILLETERAS: 1,
+    ESCANER_DIRECCIONES_IP: 0,
+    ESCANER_HOMOGLIFOS: 1
 };

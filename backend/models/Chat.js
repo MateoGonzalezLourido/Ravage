@@ -33,16 +33,16 @@ const ChatSchema = new mongoose.Schema({
     escaneres_seguridad: {
         type: Object,
         default: {
-            ESCANER_ESTEGANOGRAFIA: true,
-            ESCANER_URL: true,
-            ESCANER_URL_MALICIOSA: true,
-            ESCANER_XSS: true,
-            ESCANER_CODIGO: true,
-            ESCANER_ZALGO: true,
-            ESCANER_COMANDOS_TERMINAL: true,
-            ESCANER_CRYPTO_BILLETERAS: true,
-            ESCANER_DIRECCIONES_IP: true,
-            ESCANER_HOMOGLIFOS: true
+            ESCANER_ESTEGANOGRAFIA: 1,
+            ESCANER_URL: 0,
+            ESCANER_URL_MALICIOSA: 1,
+            ESCANER_XSS: 0,
+            ESCANER_CODIGO: 0,
+            ESCANER_ZALGO: 1,
+            ESCANER_COMANDOS_TERMINAL: 1,
+            ESCANER_CRYPTO_BILLETERAS: 1,
+            ESCANER_DIRECCIONES_IP: 0,
+            ESCANER_HOMOGLIFOS: 1
         }
     },
     fecha_creacion: { type: Date, default: Date.now }
