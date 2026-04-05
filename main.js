@@ -43,6 +43,7 @@ async function createMainWindowHome(AutoLogin = false) {
         backgroundColor: "#1e1e1e",
         autoHideMenuBar: true,
         paintWhenInitiallyHidden: false,
+        icon: path.join(__dirname, 'frontend/recursos/RavageIcono.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
             nodeIntegration: false,
