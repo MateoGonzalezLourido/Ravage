@@ -20,7 +20,7 @@ async function escaneres_seguridad_mensaje_activados(id_chat = null) {
     ]);
     //obtener ajustes propios del chat globales en db
     let ajustes_chat_globales = obtenerCacheChatActivo("seguridad")
-    
+
     if (!ajustes_chat_globales && id_chat) {
         // cargar a db y guardar en cache
         const chatDB = await obtener_datos_chat_unico(id_chat, 'escaneres_seguridad');
@@ -45,21 +45,42 @@ async function escaneres_seguridad_mensaje_activados(id_chat = null) {
 }
 
 // --- 1. DETECCION DE ESTEGANOGRAFIA Y CARACTERES INVISIBLES ---
-const hiddenCharsRegex = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\uE0000-\uE007F]/g;
+const STEGO_PATTERNS = {
+    zwc: /[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\u{E0000}-\u{E007F}]/u,
+    softHyphen: /\u00AD/,
+    fullWidth: /[\uFF01-\uFF60]/,   // letras y símbolos full-width
+    homoglyph: /[\u0400-\u04FF\u0370-\u03FF]/,  // cirílico y griego mezclados con latín
+};
+
 function detectSteganography(text) {
-    return hiddenCharsRegex.test(text);
+    if (typeof text !== 'string') return false;
+    const results = {};
+    for (const [name, re] of Object.entries(STEGO_PATTERNS)) {
+        results[name] = re.test(text);
+    }
+    return Object.values(results).some(Boolean);
 }
 //eliminar caracteres peligrosos
 function removeSteganography(text) {
-    // Regex que agrupa todos los caracteres invisibles y problematicos
-    const nuevo = text.replace(hiddenCharsRegex, '')
-    return { texto: nuevo, cambios: nuevo.length !== text.length }
+    if (typeof text !== 'string') return { text: '', cambios: false };
+    
+    // Combinamos todos los patrones de STEGO_PATTERNS en una sola expresión regular global
+    const allPatterns = Object.values(STEGO_PATTERNS).map(re => re.source).join('|');
+    const stegoRegex = new RegExp(allPatterns, 'gu');
+    
+    const nuevo = text.replace(stegoRegex, '');
+    
+    // IMPORTANTE: Devolvemos 'text' (en lugar de 'texto') para que el frontend coincida
+    // y no muestre 'undefined' en los mensajes.
+    return { text: nuevo, cambios: nuevo.length !== text.length };
 }
 
 // --- 2. DETECCION DE ENLACES (URLs) ---
 const urlRegex = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g;
 function detectUrl(text) {
-    return urlRegex.test(text);
+    if (!text) return false;
+    const regexLocal = new RegExp(urlRegex.source, urlRegex.flags.replace('g', ''));
+    return regexLocal.test(text);
 }
 //eliminar enlaces
 function removeUrl(text) {
@@ -134,7 +155,9 @@ function detectarCodigo(text) {
 // Detecta 3 o mas caracteres combinados diacriticos (suele usarse para romper interfaces o entorpecer los chats)
 const zalgoRegex = /[\u0300-\u036F\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]{3,}/g;
 function detectarZalgo(text) {
-    return zalgoRegex.test(text);
+    if (!text) return false;
+    const regexLocal = new RegExp(zalgoRegex.source, zalgoRegex.flags.replace('g', ''));
+    return regexLocal.test(text);
 }
 function removeZalgo(text) {
     const logitudOriginal = text.length;
@@ -153,7 +176,9 @@ function detectarComandosTerminal(text) {
 // Detecta BTC (P2PKH, P2SH, Bech32) y ETH (0x...), muy comunes en intentos de scam/phishing
 const cryptoRegex = /\b(?:1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{39,59}|0x[a-fA-F0-9]{40})\b/g;
 function detectarCryptoBilleteras(text) {
-    return cryptoRegex.test(text);
+    if (!text) return false;
+    const regexLocal = new RegExp(cryptoRegex.source, cryptoRegex.flags.replace('g', ''));
+    return regexLocal.test(text);
 }
 
 // --- 7. DETECCION DE DIRECCIONES IP (Riesgo de privacidad/Phishing) ---
