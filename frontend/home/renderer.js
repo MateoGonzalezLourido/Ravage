@@ -297,8 +297,21 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 //cambio altura del textarea del mensaje , segun lo grande que sea el mensaje, para facilitar su lectura y escritura
                 const textarea_msg = document.querySelector("#textarea-mensaje-escritura")
                 if (textarea_msg) {
-                    // Crecimiento dinámico
-                    textarea_msg.addEventListener("input", function () {
+                    // Crecimiento dinámico y limpieza de esteganografía
+                    textarea_msg.addEventListener("input", async function () {
+                        const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id;
+                        const escaneres = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
+                        
+                        if (escaneres?.ESCANER_ESTEGANOGRAFIA === 3) {
+                            const result = await window.escaneres_seguridad_app.eliminar_escenografia(this.value);
+                            if (result.cambios) {
+                                const start = this.selectionStart;
+                                const end = this.selectionEnd;
+                                this.value = result.text;
+                                this.setSelectionRange(start, end);
+                            }
+                        }
+
                         if (this.value.length > 1000) {
                             this.value = this.value.substring(0, 1000);
                         }
@@ -310,12 +323,19 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                         // Enviar con Enter, pero permitir salto de línea con Shift+Enter
                         if (e.key == "Enter" && !e.shiftKey) {
                             e.preventDefault() // Evitar salto de línea artificial al enviar
-                            const mensaje = textarea_msg.value.trim()
+                            let mensaje = textarea_msg.value.trim()
                             const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
                             const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
 
                             // Si el mensaje está vacío y no hay archivos, evitar enviar nada
                             if (!mensaje && archivos_mensaje.length === 0) return;
+
+                            // Limpieza final antes de enviar si el nivel es 3
+                            const escaneres = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
+                            if (escaneres?.ESCANER_ESTEGANOGRAFIA === 3) {
+                                const result = await window.escaneres_seguridad_app.eliminar_escenografia(mensaje);
+                                mensaje = result.text;
+                            }
 
                             // Validar mensaje antes de enviar
                             const esValido = await window.validadores.VALIDAR_MENSAJE(mensaje)
@@ -648,7 +668,7 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
         // 2. Iniciar la creación del HTML (sin el incorrecto 'new Promise')
         // Esto permite que el HTML se genere mientras hacemos lógica de DOM y fechas
         const escaneres_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE({ id_chat: chat, id_emisor: id_emisor })
-        const htmlPromise = crear_mensaje_html(fecha, mensaje, archivos, propio, nombre_emisor, esAdmin, escaneres_seguridad)
+        const htmlPromise = crear_mensaje_html({ fecha, asunto: mensaje, archivos, propio, nombre_emisor, esAdmin, escaneres_seguridad })
 
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;
