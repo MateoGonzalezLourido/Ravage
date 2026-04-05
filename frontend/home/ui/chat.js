@@ -412,6 +412,26 @@ export async function Crear_chat_html(datos, id_propio) {
 `
 }
 
+// Helper para normalizar IDs que vienen del IPC (pueden ser strings o buffers serializados)
+const normalizeIdHelper = (id) => {
+    if (!id) return id;
+    if (typeof id === 'string' && id !== "[object Object]") return id;
+    if (id && typeof id === 'object') {
+        if (id.buffer && typeof id.buffer === 'object') {
+            const vals = Object.values(id.buffer);
+            if (vals.length === 12) return vals.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        if (id._id) return normalizeIdHelper(id._id);
+        if (id.id) return normalizeIdHelper(id.id);
+        // Caso de objeto con llaves '0'...'11' directamente
+        if (id['0'] !== undefined && id['11'] !== undefined) {
+             const vals = Object.values(id);
+             if (vals.length === 12) return vals.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+    }
+    return id.toString();
+}
+
 export async function mostrar_datos_chat_usaurios(e) {
     e.preventDefault()
     // MOSTRAR DATOS DEL USUARIO Y DEL CHAT
@@ -518,8 +538,8 @@ export async function mostrar_datos_chat_usaurios(e) {
                     return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes (0)</div><div class="info-chat-lista-items">No se pudieron cargar los participantes.</div></div>`
                 }
                 
-                let participantes_ids = [...new Set(info_chat.usuarios)]//quitar repetidos
-                participantes_ids = participantes_ids.filter(id => id && id.toString() !== id_mio?.toString())//quitar el id propio
+                let participantes_ids = [...new Set(info_chat.usuarios.map(u => normalizeIdHelper(u)))]// normalizar a string y quitar repetidos
+                participantes_ids = participantes_ids.filter(id => id && id !== id_mio?.toString())//quitar el id propio
 
                 // Obtener datos de todos los participantes en paralelo
                 const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id).catch(() => null))
@@ -533,7 +553,7 @@ export async function mostrar_datos_chat_usaurios(e) {
                         <div class="info-chat-participante-info">
                             <span class="info-chat-participante-nombre">Tú</span>
                             <span class="info-chat-participante-correo">${(await window.cuenta_usuario.OBTENER_CORREO_USUARIO().catch(() => "")) || ""}</span>
-                            ${info_chat.admins?.some(a => a?.toString() === id_mio?.toString()) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
+                            ${info_chat.admins?.some(a => normalizeIdHelper(a) === id_mio?.toString()) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
                         </div>
                     </div>
                 `
@@ -541,8 +561,8 @@ export async function mostrar_datos_chat_usaurios(e) {
                     const originalId = participantes_ids[index];
                     const nombre = p?.apodo || "Usuario Ravage";
                     const correo = p?.correo || "";
-                    const idStr = originalId?.toString();
-                    const esAdmin = info_chat.admins?.some(a => a?.toString() === idStr);
+                    const idStr = normalizeIdHelper(originalId);
+                    const esAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === idStr);
                     const estaBloqueado = ids_bloqueados.includes(idStr);
                     const estaSilenciado = ids_silenciados.includes(idStr);
 
