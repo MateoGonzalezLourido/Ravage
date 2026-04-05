@@ -7,29 +7,81 @@ const nombre_defecto = "~no encontrado~"
 // - sync: Modifican el texto durante el renderizado.
 // - async: Corren después del renderizado para añadir iconos/avisos.
 const SCANNER_DEFINITIONS = {
-    zalgo: {
-        id: "zalgo",
+    ESCANER_ZALGO: {
+        id: "ESCANER_ZALGO",
         type: "sync",
-        sync: async (text) => {
-            const detectado = await window.escaneres_seguridad_app.detectar_zalgo(text);
-            if (detectado) {
-                return { text: await window.escaneres_seguridad_app.eliminar_zalgo(text), detected: true };
+        sync: async (text, level) => {
+            if (level === 0) return { text, detected: false };
+            const detected = await window.escaneres_seguridad_app.detectar_zalgo(text);
+            if (detected) {
+                if (level === 3) {
+                    return { text: await window.escaneres_seguridad_app.eliminar_zalgo(text), detected: true };
+                }
+                return { text, detected: true };
             }
             return { text, detected: false };
         },
-        render: () => `<img src="../recursos/seguridad/zalgo.png" class="icono-seguridad" title="Zalgo detectado y eliminado">`
+        render: () => `<img src="../recursos/seguridad/zalgo.svg" class="icono-seguridad" title="Zalgo detectado">`
     },
-    url_maliciosa: {
-        id: "url_maliciosa",
+    ESCANER_ESTEGANOGRAFIA: {
+        id: "ESCANER_ESTEGANOGRAFIA",
+        type: "sync",
+        sync: async (text, level) => {
+            if (!level || level === 0) return { text, detected: false };
+            const detected = await window.escaneres_seguridad_app.detectar_escenografia(text);
+            if (detected) {
+                if (level === 3) {
+                    const result = await window.escaneres_seguridad_app.eliminar_escenografia(text);
+                    return { text: result.text, detected: true };
+                }
+                // Nivel 1 u otros: Solo avisar
+                return { text, detected: true };
+            }
+            return { text, detected: false };
+        },
+        render: () => `<img src="../recursos/seguridad/escudo.svg" class="icono-seguridad" title="Caracteres invisibles detectados (posible esteganografía)">`
+    },
+    ESCANER_URL_MALICIOSA: {
+        id: "ESCANER_URL_MALICIOSA",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_url_maliciosa(text),
-        render: () => `<img src="../recursos/seguridad/url_peligro.png" class="icono-seguridad" title="URL potencialmente maliciosa detectada">`
+        render: () => `<img src="../recursos/seguridad/url_peligro.svg" class="icono-seguridad" title="URL potencialmente maliciosa detectada">`
     },
-    xss: {
-        id: "xss",
+    ESCANER_XSS: {
+        id: "ESCANER_XSS",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_xss(text),
-        render: () => `<img src="../recursos/seguridad/xss.png" class="icono-seguridad" title="Posible inyección de código detectada">`
+        render: () => `<img src="../recursos/seguridad/xss.svg" class="icono-seguridad" title="Posible inyección de código detectada">`
+    },
+    ESCANER_CODIGO: {
+        id: "ESCANER_CODIGO",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_codigo(text),
+        render: () => `<img src="../recursos/seguridad/codigo.svg" class="icono-seguridad" title="Fragmento de código detectado">`
+    },
+    ESCANER_COMANDOS_TERMINAL: {
+        id: "ESCANER_COMANDOS_TERMINAL",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_comandos_terminal(text),
+        render: () => `<img src="../recursos/seguridad/terminal.svg" class="icono-seguridad" title="Comando de terminal peligroso detectado">`
+    },
+    ESCANER_CRYPTO_BILLETERAS: {
+        id: "ESCANER_CRYPTO_BILLETERAS",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_crypto_billeteras(text),
+        render: () => `<img src="../recursos/seguridad/crypto.svg" class="icono-seguridad" title="Dirección de criptomoneda detectada (posible estafa)">`
+    },
+    ESCANER_DIRECCIONES_IP: {
+        id: "ESCANER_DIRECCIONES_IP",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_direcciones_ip(text),
+        render: () => `<img src="../recursos/seguridad/ip.svg" class="icono-seguridad" title="Dirección IP detectada (posible riesgo de privacidad)">`
+    },
+    ESCANER_HOMOGLIFOS: {
+        id: "ESCANER_HOMOGLIFOS",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_homoglifos(text),
+        render: () => `<img src="../recursos/seguridad/homoglifo.svg" class="icono-seguridad" title="Caracteres homoglifos detectados (posible suplantación)">`
     }
 };
 
@@ -40,9 +92,11 @@ async function aplicar_escaneres_sincronos(texto, escaneres_habilitados = {}) {
     let textoFinal = texto;
     const tagsDetectados = [];
 
+    const habilitados = escaneres_habilitados.escaneres_seguridad || escaneres_habilitados;
+
     for (const [id, scanner] of Object.entries(SCANNER_DEFINITIONS)) {
-        if (escaneres_habilitados[id] && scanner.type === "sync") {
-            const { text, detected } = await scanner.sync(textoFinal);
+        if (habilitados[id] && scanner.type === "sync") {
+            const { text, detected } = await scanner.sync(textoFinal, habilitados[id]);
             textoFinal = text;
             if (detected) tagsDetectados.push(id);
         }
@@ -57,7 +111,8 @@ export async function aplicar_escaneres_asincronos(mensajeElement, texto, escane
     if (!mensajeElement) return;
     
     // Obtener lo que ya se detectó en la fase síncrona (optimización)
-    const tagsYaDetectados = mensajeElement.dataset.scannerTags ? mensajeElement.dataset.scannerTags.split(",") : [];
+    const tagsStr = mensajeElement.dataset.scannerTags || "";
+    const tagsYaDetectados = tagsStr ? tagsStr.split(",").filter(t => t) : [];
     const contenedorIconos = document.createElement("div");
     contenedorIconos.className = "contenedor-iconos-seguridad";
     
@@ -70,10 +125,25 @@ export async function aplicar_escaneres_asincronos(mensajeElement, texto, escane
         }
     }
 
+    const habilitados = escaneres_habilitados.escaneres_seguridad || escaneres_habilitados;
+
     // 2. Correr escáneres puramente asíncronos
     for (const [id, scanner] of Object.entries(SCANNER_DEFINITIONS)) {
-        if (escaneres_habilitados[id] && scanner.type === "async" && !tagsYaDetectados.includes(id)) {
-            const detectado = await scanner.async_detect(texto);
+        if (habilitados[id] && scanner.type === "async" && !tagsYaDetectados.includes(id)) {
+            const result = await scanner.async_detect(texto);
+            
+            // Evaluar si es una detección real (manejando objetos y booleanos)
+            let detectado = false;
+            
+            if (result && typeof result === "object") {
+                // Si el objeto tiene propiedades específicas de detección, las usamos
+                // (Priorizamos la propiedad más común para cada tipo de escáner)
+                detectado = !!(result.esMaliciosa || result.suspicious || result.detected);
+            } else {
+                // Si es un valor simple (booleano), lo convertimos a booleano real
+                detectado = !!result;
+            }
+
             if (detectado) {
                 huboDeteccion = true;
                 if (scanner.render) {
