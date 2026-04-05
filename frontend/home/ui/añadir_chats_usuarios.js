@@ -38,6 +38,9 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
         $btnAgregar.removeEventListener("click", crear_chat_nuevo)
     }
     if (mostrar) {
+        //cancelar limpiar cache historial busquedas
+        window.cache_persistente.cancelarLimpiezaVariableCacheHistorial().catch(e => console.error(e));
+
         //cambiar el idchat del boton crear chat, para en vez de crear chat añadir usuario a ese chat
         $btnAgregar.dataset.id_chat = id_chat
 
@@ -64,6 +67,7 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
         desactivar_eventos_menu_añadir_chat()
         //limpiar cache
         actualizar_cache_listas_usuarios_añadir(null,true)
+        window.cache_persistente.limpiarVariableCacheHistorial().catch(e => console.error(e))
     }
 }
 

@@ -37,8 +37,17 @@ const DIAS_2_MS = 2 * 24 * 60 * 60 * 1000;
 const DIAS_90_MS = 90 * 24 * 60 * 60 * 1000;
 
 let _cache_historial = null;
+let _timeout_limpieza_ram = null;
+
+export function cancelar_limpieza_variable_cache() {
+    if (_timeout_limpieza_ram) {
+        clearTimeout(_timeout_limpieza_ram);
+        _timeout_limpieza_ram = null;
+    }
+}
 
 async function _asegurar_inicio() {
+    cancelar_limpieza_variable_cache();
     if (_cache_historial) return;
     try {
         const guardado = await readFileSession('cacheHistorialBusquedasAñadir');
@@ -231,6 +240,10 @@ export async function obtener_historial() {
  * Limpiar variable cache (RAM)
  */
 export function limpiar_variable_cache() {
-    _cache_historial = null;
+    if (_timeout_limpieza_ram) clearTimeout(_timeout_limpieza_ram);
+    _timeout_limpieza_ram = setTimeout(() => {
+        _cache_historial = null;
+        _timeout_limpieza_ram = null;
+    }, 5000);
 }
-
+
