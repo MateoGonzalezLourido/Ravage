@@ -101,8 +101,8 @@ async function Get_datos_chat_abrir(id_chat) {
     window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
         _id: id_chat,
         seguridad: datos_necesarios.seguridad,
-        participantes: ids_usuarios,
-        admin: datos_necesarios.admin,
+        usuarios: ids_usuarios,
+        admins: datos_necesarios.admins,
         fecha_creacion: datos_necesarios.fecha_creacion,
         n_mensajes: datos_necesarios.mensajes?.length || 0,
         d_participantes: usuarios_detalles

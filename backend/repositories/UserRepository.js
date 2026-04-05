@@ -24,6 +24,7 @@ import {
     getMostrarCorreoUsuario,
     setMostrarCorreoUsuario
 } from '../STORAGE/Variables_sesion.js';
+import { convertirObjectId } from '../utils/conversores.js';
 
 /**
  * Helper para desencriptar un objeto de usuario de la DB.
@@ -144,8 +145,9 @@ export async function InsertarUsuario({ apodo = "Usuario", contrasena, correo, s
 
 export async function añadirUsuariosBloqueados(id) {
     const correo = getCorreoSesion();
-    let lista_bloqueados = getUsuariosBloqueados(); // Esta lista ya debería tener solo IDs (strings o ObjectIds)
-    const idStr = id.toString();
+    let lista_bloqueados = getUsuariosBloqueados();
+    const res = convertirObjectId(id);
+    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
     
     if (lista_bloqueados.some(bid => bid.toString() === idStr)) return false;
 
@@ -178,7 +180,8 @@ export async function añadirUsuariosBloqueados(id) {
 export async function eliminarUsuariosBloqueados(id) {
     const correo = getCorreoSesion();
     let lista_bloqueados = getUsuariosBloqueados();
-    const idStr = id.toString();
+    const res = convertirObjectId(id);
+    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
     const index = lista_bloqueados.findIndex(bid => bid.toString() === idStr);
     if (index === -1) return false;
 
@@ -301,7 +304,8 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
 
 
 export async function obtener_datos_usuario(id, datos_usar = null) {
-    const idStr = id.toString();
+    const res = convertirObjectId(id);
+    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
     const id_propio = getIDMongodbUsuario();
     const esMiPropioUsuario = id_propio && idStr === id_propio.toString();
 
@@ -319,7 +323,7 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
     }
 
     const datos_buscar = datos_usar || "correo apodo visible idamigo mostrarCorreo";
-    const usuario = await User.findById(id, datos_buscar).lean();
+    const usuario = await User.findById(idStr, datos_buscar).lean();
     if (!usuario) return null;
     
     const procesado = procesarUsuario(usuario);
@@ -340,12 +344,21 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
 
 export async function obtener_varios_usuarios(ids, datos_usar = null) {
     if (!Array.isArray(ids) || ids.length === 0) return [];
+    
+    // Normalize IDs using the improved converter
+    const normalizedIds = ids.map(id => {
+        const res = convertirObjectId(id);
+        if (res && typeof res === 'object') {
+            return res.id || res._id || res.toString();
+        }
+        return res?.toString();
+    }).filter(id => id && id !== "[object Object]");
 
     const id_propio = getIDMongodbUsuario();
     const query_datos = datos_usar || "correo apodo visible idamigo mostrarCorreo";
     
     // Buscar en DB todos los IDs
-    const usuarios_db = await User.find({ _id: { $in: ids } }, query_datos).lean();
+    const usuarios_db = await User.find({ _id: { $in: normalizedIds } }, query_datos).lean();
     
     const resultados = usuarios_db.map(u => {
         const procesado = procesarUsuario(u);
@@ -408,14 +421,17 @@ export async function AÑADIR_CONTACTO(id, nombre) {
 
         // Comprobar bloqueo bidireccional
         const mis_bloqueados = getUsuariosBloqueados() || [];
-        if (mis_bloqueados.some(b => b.toString() === id.toString())) return false;
+        const res = convertirObjectId(id);
+        const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
+        
+        if (mis_bloqueados.some(b => b.toString() === idStr)) return false;
 
-        const targetUser = await User.findById(id, "users_bloq").lean();
+        const targetUser = await User.findById(idStr, "users_bloq").lean();
         if (targetUser && (targetUser.users_bloq || []).some(b => b.toString() === id_propio.toString())) return false;
 
         const r = await User.updateOne(
-            { _id: id_propio, "contactos.id": { $ne: id } },
-            { $push: { contactos: { id, apodo: encriptarDatosSistema(nombre) } } }
+            { _id: id_propio, "contactos.id": { $ne: idStr } },
+            { $push: { contactos: { id: idStr, apodo: encriptarDatosSistema(nombre) } } }
         );
         if (r.modifiedCount > 0) {
             // Actualizar cache propia por el cambio en contactos
@@ -436,7 +452,8 @@ export async function eliminarUsuariosSilenciados(id) {
     const correo = getCorreoSesion();
     const correoHash = hashDatosSistema(correo);
     let lista_silenciados = getUsuariosSilence();
-    const idStr = id.toString();
+    const res = convertirObjectId(id);
+    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
     const index = lista_silenciados.findIndex(sid => sid.toString() === idStr);
     if (index === -1) return false;
 
@@ -462,7 +479,8 @@ export async function añadirUsuariosSilenciados(id) {
     const correo = getCorreoSesion();
     const correoHash = hashDatosSistema(correo);
     let lista_silenciados = getUsuariosSilence();
-    const idStr = id.toString();
+    const res = convertirObjectId(id);
+    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
     if (lista_silenciados.some(sid => sid.toString() === idStr)) return false;
 
     lista_silenciados.push(new mongoose.Types.ObjectId(idStr));
