@@ -262,7 +262,14 @@ contextBridge.exposeInMainWorld("cache_persistente", {
     // User Cache
     getUsuarioCache: (id) => ipcRenderer.invoke("get-usuario-cache", id),
     setConfigCacheUsuarios: (config) => ipcRenderer.invoke("set-config-cache-usuarios", config),
-    clearCacheUsuarios: () => ipcRenderer.invoke("clear-cache-usuarios")
+    clearCacheUsuarios: () => ipcRenderer.invoke("clear-cache-usuarios"),
+
+    // Historial Busquedas Cache
+    obtenerHistorialBusquedas: () => ipcRenderer.invoke("obtener-historial-busquedas"),
+    anadirHistorialBusquedas: (id, datoUsado) => ipcRenderer.invoke("anadir-historial-busquedas", id, datoUsado),
+    borrarHistorialBusquedas: (id_o_dato) => ipcRenderer.invoke("borrar-historial-busquedas", id_o_dato),
+    limpiarHistorialCompleto: () => ipcRenderer.invoke("limpiar-historial-completo"),
+    limpiarVariableCacheHistorial: () => ipcRenderer.invoke("limpiar-variable-cache-historial")
 })
 contextBridge.exposeInMainWorld("cache_archivos_descargados", {
 

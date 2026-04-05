@@ -21,7 +21,8 @@ const RTDF = {
     identity: path.join(ruta_app_data, name_carpeta, 'identity.json'),
     cacheArchivosDescargados: path.join(ruta_app_data, name_carpeta, 'cache_archivos.json'),
     cacheChatsFrecuentes: path.join(ruta_app_data, name_carpeta, 'cache_chats_frec.json'),
-    cacheUsuariosFrecuentes: path.join(ruta_app_data, name_carpeta, 'cache_users_frec.json')
+    cacheUsuariosFrecuentes: path.join(ruta_app_data, name_carpeta, 'cache_users_frec.json'),
+    cacheHistorialBusquedasAñadir: path.join(ruta_app_data, name_carpeta, 'cache_hist_buscar_add.json')
 };
 
 import {AJUSTES_APP_DEFAULT} from '../STORAGE/ajustes_defecto.js'
@@ -94,6 +95,10 @@ async function saveCacheUsuariosFile(data) {
     await guardarArchivoGenerico('cacheUsuariosFrecuentes', data, 'global');
 }
 
+async function saveCacheHistorialBusquedasAñadirFile(data) {
+    await guardarArchivoGenerico('cacheHistorialBusquedasAñadir', data, 'global');
+}
+
 
 async function saveAjustesAppFile({ data = {}, create = true }) {
     await asegurarCarpeta();
@@ -129,7 +134,7 @@ async function readFileSession(rutaKey, cifrado = true) {
 
         // Determinar la clave secreta a usar
         let secretKey;
-        const useGlobalKey = ['sessionFile', 'identity', 'cacheChatsFrecuentes', 'cacheUsuariosFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile'].includes(rutaKey);
+        const useGlobalKey = ['sessionFile', 'identity', 'cacheChatsFrecuentes', 'cacheUsuariosFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile', 'cacheHistorialBusquedasAñadir'].includes(rutaKey);
         
         if (useGlobalKey) {
             secretKey = SECRET_KEY_COKKIE;
@@ -266,5 +271,6 @@ export {
     saveIdentityFile,
     saveCacheArchivosDescargadosFile,
     saveCacheChatsFile,
-    saveCacheUsuariosFile
+    saveCacheUsuariosFile,
+    saveCacheHistorialBusquedasAñadirFile
 };
