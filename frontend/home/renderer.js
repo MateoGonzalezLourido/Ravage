@@ -1,9 +1,10 @@
 //importar componentes js
-import { desplegar_menu_añadir_chat } from './ui/añadir_chats_usuarios.js'
+import { desplegar_menu_añadir_chat, set_callback_actualizar_listas } from './ui/añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './ui/url_icono_extensiones_archivos.js'
 import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion, texto_mostrar_fecha_mensajes_bloque, aplicar_escaneres_asincronos } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes } from './ui/ajustes.js'
 import { crear_chat_historial_archivos_descargados, invalidar_cache_historial } from './ui/historial_archivos_descargados.js'
+set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
 
 let archivos_mensaje = []//{ruta,nombre,extension}
 let archivo_cambiando_nombre; //es para guardar el archivo que se esta editando ya
@@ -57,7 +58,7 @@ async function Get_datos_chat_abrir(id_chat) {
     // 2. Identificar participantes y datos faltantes
     let ids_usuarios = cachePer?.usuarios || cacheAct?.participantes || null;
     let campos_chat_faltantes = [];
-    
+
     for (const key of Object.keys(datos_necesarios)) {
         if (cacheAct?.[key]) datos_necesarios[key] = cacheAct[key];
         else if (cachePer?.[key]) datos_necesarios[key] = cachePer[key];
@@ -66,11 +67,11 @@ async function Get_datos_chat_abrir(id_chat) {
 
     // 3. Lanzar peticiones de DB/Externas en paralelo (LA CLAVE DE LA OPTIMIZACIÓN)
     const promesas_opt = [];
-    
+
     // Si faltan datos del chat (convertir array a string para el backend)
     const campos_str = campos_chat_faltantes.join(" ");
     const indice_chat = campos_chat_faltantes.length > 0 ? promesas_opt.push(window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, campos_str)) - 1 : -1;
-    
+
     // Si no tenemos los IDs de usuarios, los pedimos ahora
     const indice_ids = !ids_usuarios ? promesas_opt.push(window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, 'usuarios')) - 1 : -1;
 
@@ -302,7 +303,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                         const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id;
                         const result_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
                         const escaneres = result_seguridad.escaneres_seguridad || result_seguridad;
-                        
+
                         if (escaneres?.ESCANER_ESTEGANOGRAFIA === 3) {
                             const result = await window.escaneres_seguridad_app.eliminar_escenografia(this.value);
                             if (result.cambios) {
@@ -631,7 +632,6 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
         throw e
     }
 }
-window.ACTUALIZAR_LISTAS_CHAT = ACTUALIZAR_LISTAS_CHAT;
 
 async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {} }) {
     //chat, emisor son ids
