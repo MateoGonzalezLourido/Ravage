@@ -6,7 +6,8 @@ import {
     añadir_historial, 
     borrar_historial_usuario, 
     limpiar_historial_completo,
-    limpiar_variable_cache 
+    limpiar_variable_cache,
+    cancelar_limpieza_variable_cache
 } from '../STORAGE/CACHE/_cache_historial_busquedas_añadir_usuario.js';
 
 export function registerCachePersistentHandlers() {
@@ -54,6 +55,10 @@ export function registerCachePersistentHandlers() {
     });
     ipcMain.handle('limpiar-variable-cache-historial', () => {
         limpiar_variable_cache();
+        return true;
+    });
+    ipcMain.handle('cancelar-limpieza-variable-cache-historial', () => {
+        cancelar_limpieza_variable_cache();
         return true;
     });
 }

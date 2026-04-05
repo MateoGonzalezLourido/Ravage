@@ -269,7 +269,8 @@ contextBridge.exposeInMainWorld("cache_persistente", {
     anadirHistorialBusquedas: (id, datoUsado) => ipcRenderer.invoke("anadir-historial-busquedas", id, datoUsado),
     borrarHistorialBusquedas: (id_o_dato) => ipcRenderer.invoke("borrar-historial-busquedas", id_o_dato),
     limpiarHistorialCompleto: () => ipcRenderer.invoke("limpiar-historial-completo"),
-    limpiarVariableCacheHistorial: () => ipcRenderer.invoke("limpiar-variable-cache-historial")
+    limpiarVariableCacheHistorial: () => ipcRenderer.invoke("limpiar-variable-cache-historial"),
+    cancelarLimpiezaVariableCacheHistorial: () => ipcRenderer.invoke("cancelar-limpieza-variable-cache-historial")
 })
 contextBridge.exposeInMainWorld("cache_archivos_descargados", {
 
