@@ -1,7 +1,7 @@
 //importar componentes js
 import { desplegar_menu_añadir_chat } from './ui/añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './ui/url_icono_extensiones_archivos.js'
-import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion, texto_mostrar_fecha_mensajes_bloque } from './ui/chat.js'
+import { chat_componente_lista_estructura_html, crear_mensaje_html, Crear_chat_html, mostrar_datos_chat_usaurios, Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion, texto_mostrar_fecha_mensajes_bloque, aplicar_escaneres_asincronos } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes } from './ui/ajustes.js'
 import { crear_chat_historial_archivos_descargados, invalidar_cache_historial } from './ui/historial_archivos_descargados.js'
 
@@ -673,6 +673,13 @@ async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [
             // añadir mensaje al bloque ya existente (Corregido: usar el html resuelto)
             lastBlock.insertAdjacentHTML("beforeend", html);
         }
+
+        // Aplicar escáneres asíncronos al último mensaje añadido
+        const nuevoMensaje = chatContainer.querySelector(".mensaje-chat:last-child");
+        if (nuevoMensaje) {
+            aplicar_escaneres_asincronos(nuevoMensaje, mensaje, escaneres_seguridad);
+        }
+
         scroll_fin_chat()
     }
 }
