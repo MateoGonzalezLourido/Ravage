@@ -2,6 +2,93 @@ import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 const nombre_defecto = "~no encontrado~"
 
+// ─── DEFINICIÓN DE ESCÁNERES DE SEGURIDAD ──────────────────────────────────
+// Tipos: 
+// - sync: Modifican el texto durante el renderizado.
+// - async: Corren después del renderizado para añadir iconos/avisos.
+const SCANNER_DEFINITIONS = {
+    zalgo: {
+        id: "zalgo",
+        type: "sync",
+        sync: async (text) => {
+            const detectado = await window.escaneres_seguridad_app.detectar_zalgo(text);
+            if (detectado) {
+                return { text: await window.escaneres_seguridad_app.eliminar_zalgo(text), detected: true };
+            }
+            return { text, detected: false };
+        },
+        render: () => `<img src="../recursos/seguridad/zalgo.png" class="icono-seguridad" title="Zalgo detectado y eliminado">`
+    },
+    url_maliciosa: {
+        id: "url_maliciosa",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_url_maliciosa(text),
+        render: () => `<img src="../recursos/seguridad/url_peligro.png" class="icono-seguridad" title="URL potencialmente maliciosa detectada">`
+    },
+    xss: {
+        id: "xss",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_xss(text),
+        render: () => `<img src="../recursos/seguridad/xss.png" class="icono-seguridad" title="Posible inyección de código detectada">`
+    }
+};
+
+/**
+ * Aplica escáneres que modifican el texto antes de generar el HTML.
+ */
+async function aplicar_escaneres_sincronos(texto, escaneres_habilitados = {}) {
+    let textoFinal = texto;
+    const tagsDetectados = [];
+
+    for (const [id, scanner] of Object.entries(SCANNER_DEFINITIONS)) {
+        if (escaneres_habilitados[id] && scanner.type === "sync") {
+            const { text, detected } = await scanner.sync(textoFinal);
+            textoFinal = text;
+            if (detected) tagsDetectados.push(id);
+        }
+    }
+    return { textoFinal, tagsDetectados };
+}
+
+/**
+ * Aplica escáneres post-renderizado para añadir iconos sin re-escanear si ya se detectó en sync.
+ */
+export async function aplicar_escaneres_asincronos(mensajeElement, texto, escaneres_habilitados = {}) {
+    if (!mensajeElement) return;
+    
+    // Obtener lo que ya se detectó en la fase síncrona (optimización)
+    const tagsYaDetectados = mensajeElement.dataset.scannerTags ? mensajeElement.dataset.scannerTags.split(",") : [];
+    const contenedorIconos = document.createElement("div");
+    contenedorIconos.className = "contenedor-iconos-seguridad";
+    
+    let huboDeteccion = tagsYaDetectados.length > 0;
+
+    // 1. Mostrar iconos de lo ya detectado
+    for (const id of tagsYaDetectados) {
+        if (SCANNER_DEFINITIONS[id]?.render) {
+            contenedorIconos.insertAdjacentHTML("beforeend", SCANNER_DEFINITIONS[id].render());
+        }
+    }
+
+    // 2. Correr escáneres puramente asíncronos
+    for (const [id, scanner] of Object.entries(SCANNER_DEFINITIONS)) {
+        if (escaneres_habilitados[id] && scanner.type === "async" && !tagsYaDetectados.includes(id)) {
+            const detectado = await scanner.async_detect(texto);
+            if (detectado) {
+                huboDeteccion = true;
+                if (scanner.render) {
+                    contenedorIconos.insertAdjacentHTML("beforeend", scanner.render());
+                }
+            }
+        }
+    }
+
+    if (huboDeteccion) {
+        mensajeElement.classList.add("amenaza-detectada");
+        mensajeElement.appendChild(contenedorIconos);
+    }
+}
+
 export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
     //mirar si es hoy
     if (fecha_param.toDateString() === new Date().toDateString()) return "Hoy"
@@ -137,10 +224,12 @@ export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], pr
         else return ``
     }
 
+    const { textoFinal, tagsDetectados } = await aplicar_escaneres_sincronos(asunto, escaneres_seguridad);
+
     return (`
-    <div class="mensaje-chat ${emisor_mensaje(propio)}">
+    <div class="mensaje-chat ${emisor_mensaje(propio)}" data-scanner-tags="${tagsDetectados.join(",")}">
         ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin)}
-        ${asunto_mensaje(asunto)}
+        ${asunto_mensaje(textoFinal)}
         ${await archivos_mensaje(archivos)}
         ${hora_mandado(fecha)}
     </div> `)
@@ -248,6 +337,14 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 
             // Dejar respirar al UI entre días
             await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Aplicar escáneres asíncronos a los mensajes recién insertados
+            const nuevosMensajes = chatContainer.querySelectorAll(".mensaje-chat:not(.scanned)");
+            for (const msgEl of nuevosMensajes) {
+                msgEl.classList.add("scanned");
+                const textoOriginal = msgEl.querySelector(".asunto-mensaje-chat")?.textContent || "";
+                aplicar_escaneres_asincronos(msgEl, textoOriginal, escaneres_seguridad);
+            }
         }
     } catch (e) {
         console.error("Error crítico en renderizar_chat_progresivo_plano:", e);
