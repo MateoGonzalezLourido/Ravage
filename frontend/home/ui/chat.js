@@ -21,7 +21,7 @@ const SCANNER_DEFINITIONS = {
             }
             return { text, detected: false };
         },
-        render: () => `<img src="../recursos/seguridad/zalgo.png" class="icono-seguridad" title="Zalgo detectado">`
+        render: () => `<img src="../recursos/seguridad/zalgo.svg" class="icono-seguridad" title="Zalgo detectado">`
     },
     ESCANER_ESTEGANOGRAFIA: {
         id: "ESCANER_ESTEGANOGRAFIA",
@@ -39,19 +39,49 @@ const SCANNER_DEFINITIONS = {
             }
             return { text, detected: false };
         },
-        render: () => `<img src="../recursos/seguridad/escudo.png" class="icono-seguridad" title="Caracteres invisibles detectados (posible esteganografía)">`
+        render: () => `<img src="../recursos/seguridad/escudo.svg" class="icono-seguridad" title="Caracteres invisibles detectados (posible esteganografía)">`
     },
     ESCANER_URL_MALICIOSA: {
         id: "ESCANER_URL_MALICIOSA",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_url_maliciosa(text),
-        render: () => `<img src="../recursos/seguridad/url_peligro.png" class="icono-seguridad" title="URL potencialmente maliciosa detectada">`
+        render: () => `<img src="../recursos/seguridad/url_peligro.svg" class="icono-seguridad" title="URL potencialmente maliciosa detectada">`
     },
     ESCANER_XSS: {
         id: "ESCANER_XSS",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_xss(text),
-        render: () => `<img src="../recursos/seguridad/xss.png" class="icono-seguridad" title="Posible inyección de código detectada">`
+        render: () => `<img src="../recursos/seguridad/xss.svg" class="icono-seguridad" title="Posible inyección de código detectada">`
+    },
+    ESCANER_CODIGO: {
+        id: "ESCANER_CODIGO",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_codigo(text),
+        render: () => `<img src="../recursos/seguridad/codigo.svg" class="icono-seguridad" title="Fragmento de código detectado">`
+    },
+    ESCANER_COMANDOS_TERMINAL: {
+        id: "ESCANER_COMANDOS_TERMINAL",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_comandos_terminal(text),
+        render: () => `<img src="../recursos/seguridad/terminal.svg" class="icono-seguridad" title="Comando de terminal peligroso detectado">`
+    },
+    ESCANER_CRYPTO_BILLETERAS: {
+        id: "ESCANER_CRYPTO_BILLETERAS",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_crypto_billeteras(text),
+        render: () => `<img src="../recursos/seguridad/crypto.svg" class="icono-seguridad" title="Dirección de criptomoneda detectada (posible estafa)">`
+    },
+    ESCANER_DIRECCIONES_IP: {
+        id: "ESCANER_DIRECCIONES_IP",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_direcciones_ip(text),
+        render: () => `<img src="../recursos/seguridad/ip.svg" class="icono-seguridad" title="Dirección IP detectada (posible riesgo de privacidad)">`
+    },
+    ESCANER_HOMOGLIFOS: {
+        id: "ESCANER_HOMOGLIFOS",
+        type: "async",
+        async_detect: (text) => window.escaneres_seguridad_app.detectar_homoglifos(text),
+        render: () => `<img src="../recursos/seguridad/homoglifo.svg" class="icono-seguridad" title="Caracteres homoglifos detectados (posible suplantación)">`
     }
 };
 
