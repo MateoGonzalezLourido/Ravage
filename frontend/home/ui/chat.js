@@ -92,7 +92,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     return html
 }
 //TODO: seguridad
-export const crear_mensaje_html = async ({fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = {}}) => {
+export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = {} }) => {
     const class_mensajes = ["soy-emisor", "soy-receptor"]
 
     //funciones de componentes
@@ -173,7 +173,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             const emisor = Array.isArray(m.emisor) ? m.emisor[0] : m.emisor;
             return emisor ? emisor.toString() : null;
         }).filter(id => id))];
-        
+
         const data_usuarios = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(uniqueEmitterIds);
         const map_nombres = {};
         const map_contactos = {};
@@ -213,12 +213,12 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
                 try {
                     const id_emisor = (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString();
                     if (!id_emisor) return "";
-                    
+
                     const propio = id_emisor === id_propio.toString();
                     const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor);
                     const nombre = map_nombres[id_emisor] || nombre_defecto;
 
-                    return await crear_mensaje_html({fecha: m.data, asunto: m?.contenido[0]?.asunto || "", archivos: m?.contenido[0]?.archivos || [], propio, nombre, esAdmin,escaneres_seguridad});
+                    return await crear_mensaje_html({ fecha: m.data, asunto: m?.contenido[0]?.asunto || "", archivos: m?.contenido[0]?.archivos || [], propio, nombre, esAdmin, escaneres_seguridad });
                 } catch (err) {
                     console.error("Error al renderizar un mensaje individual:", err, m);
                     return "";
@@ -260,11 +260,7 @@ export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, 
         //buscar en tabla general de chats
         let chat_grupal = await window.cache_persistente.getChatCache(id_buscar)
         if (!chat_grupal) {
-            chat_grupal = await window.chats.OBTENER_CACHE_CHAT_ACTIVO()
-            // Validar que el cache activo sea del chat que buscamos
-            if (chat_grupal && chat_grupal._id !== id_buscar && chat_grupal.id !== id_buscar) {
-                chat_grupal = null;
-            }
+            chat_grupal = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_buscar)
         }
         if (!chat_grupal) {
             chat_grupal = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_buscar, "nombre")
@@ -323,25 +319,42 @@ export async function mostrar_datos_chat_usaurios(e) {
     e.preventDefault()
     // MOSTRAR DATOS DEL USUARIO Y DEL CHAT
     const id_chat = e.currentTarget.dataset.id || document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
-    
-    let info_chat = await window.cache_persistente.getChatCache(id_chat)
-    if (!info_chat) {
-        info_chat = await window.chats.OBTENER_CACHE_CHAT_ACTIVO()
-        if (info_chat && info_chat._id !== id_chat && info_chat.id !== id_chat) {
-            info_chat = null;
-        }
+    if (!id_chat) return;
+
+    const [cache_persistente, cache_activo] = await Promise.all([
+        window.cache_persistente.getChatCache(id_chat),
+        window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat)
+    ])
+
+    // Combinar cachespriorizando el activo para datos más frescos
+    let info_chat = { ...(cache_persistente || {}), ...(cache_activo || {}) }
+
+    // Campos necesarios para la vista de info
+    const campos_necesarios = ["usuarios", "admins", "fecha_creacion"]
+    const faltantes = campos_necesarios.filter(f => !info_chat[f])
+
+    // Si no tenemos n_mensajes ni el array de mensajes, pedirlo
+    if (info_chat.n_mensajes === undefined && (!info_chat.mensajes || info_chat.mensajes.length === 0)) {
+        faltantes.push("mensajes")
     }
-    if (!info_chat) {
-        info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat)
+
+    if (faltantes.length > 0) {
+        const datos_extra = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, faltantes.join(" "))
+        info_chat = { ...info_chat, ...datos_extra }
     }
 
     if (info_chat) {
-        const datos_a_guardar = { ...info_chat };
-        if (info_chat.escaneres_seguridad) {
-            Object.assign(datos_a_guardar, info_chat.escaneres_seguridad);
-        }
-        window.chats.GUARDAR_CACHE_CHAT_ACTIVO(datos_a_guardar)
+        // Asegurar que el cache activo tenga la última versión de los datos críticos
+        window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
+            ...info_chat,
+            seguridad: info_chat.seguridad || info_chat.escaneres_seguridad,
+            n_mensajes: info_chat.n_mensajes ?? info_chat.mensajes?.length ?? 0
+        })
     }
+
+    const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+    const soyAdmin = info_chat?.admins?.includes(id_mio)
+
     const infoSeccion = document.querySelector("#info-chat-seccion")
 
     //crear html de la seccion
@@ -360,6 +373,10 @@ export async function mostrar_datos_chat_usaurios(e) {
             <img src="../recursos/cruz.png" alt="cerrar">
         </div>
         <span>Información del chat</span>
+        ${soyAdmin ? `
+        <div id="bt-abrir-ajustes-chat">
+            <img src="../recursos/engranaje.png" alt="ajustes" title="Ajustes del chat" style="width: 18px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+        </div>` : ''}
     </div>
 
     <div class="info-chat-cuerpo">
@@ -375,7 +392,7 @@ export async function mostrar_datos_chat_usaurios(e) {
         <div class="info-chat-detalles">
             <div class="info-chat-item">
                 <span class="info-chat-label">Mensajes</span>
-                <span class="info-chat-valor">${info_chat?.mensajes?.length || 0}</span>
+                <span class="info-chat-valor">${info_chat?.n_mensajes ?? info_chat?.mensajes?.length ?? 0}</span>
             </div>
             <div class="info-chat-item">
                 <span class="info-chat-label">Creado el</span>
@@ -390,7 +407,6 @@ export async function mostrar_datos_chat_usaurios(e) {
         </div>
 
         ${await (async () => {
-            const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
             let participantes_ids = [...new Set(info_chat.usuarios)]//quitar repetidos
             participantes_ids = participantes_ids.filter(id => id !== id_mio)//quitar el id propio
 
@@ -443,6 +459,26 @@ export async function mostrar_datos_chat_usaurios(e) {
     // Eventos de la sección de información
     document.querySelector("#bt-cerrar-info-chat")?.addEventListener("click", () => {
         infoSeccion.classList.remove("abierto")
+    })
+
+    document.querySelector("#bt-abrir-ajustes-chat")?.addEventListener("click", () => {
+        // Crear el overlay y el contenedor usando las clases de chat.css
+        const overlay = document.createElement("div");
+        overlay.className = "overlay-ajustes-chat-full";
+
+        const menuInterior = document.createElement("div");
+        menuInterior.className = "menu-ajustes-chat-interior";
+
+        // Inyectar el menú en el overlay y el overlay en el body
+        overlay.appendChild(menuInterior);
+        document.body.appendChild(overlay);
+
+        // Cerrar al hacer clic en el fondo (fuera del menú)
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
+
+        // TODO: Contenido del menú...
     })
 
     document.querySelector("#bt-ver-archivos-chat")?.addEventListener("click", () => {

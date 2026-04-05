@@ -29,8 +29,8 @@ export function crearCacheChatActivo(datos) {
 
     const mapeo_campos = {
         seguridad: 'seguridad',
-        participantes: 'participantes',
-        admin: 'admin',
+        usuarios: 'usuarios',
+        admins: 'admins',
         fecha_creacion: 'fecha_creacion',
         n_mensajes: 'n_mensajes',
         d_participantes: 'd_participantes'
