@@ -160,6 +160,26 @@ async function buscar_usuario_añadir_chat(e) {
     /*Buscar el id o correo de un usuario; solo se busca coincidencias exactas, por lo que el resultado es 1 o 0 usuarios*/
     const clase_cp_posible_usuario_añadir = "componente-posible-usaurio-añadir"
 
+    async function buscar_y_procesar_cache(dato, esCorreo) {
+        try {
+            const history = await window.cache_persistente.obtenerHistorialBusquedas();
+            const hit = history?.datos?.find(d => d.datoUsadoBuscar === dato);
+            if (hit) {
+                const user = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(hit._id, null);
+                if (user && user.apodo) {
+                    window.cache_persistente.anadirHistorialBusquedas(hit._id, dato).catch(e => console.error(e));
+                    return { id: hit._id, nombre: user.apodo };
+                }
+            }
+            const res = await window.social_usuario.ENCONTRAR_USUARIOS_EXTERNOS(dato, esCorreo);
+            if (res) {
+                window.cache_persistente.anadirHistorialBusquedas(res.id, dato).catch(e => console.error(e));
+                return res;
+            }
+        } catch (e) { console.error(e); }
+        return null;
+    }
+
     //buscar
     const texto_buscar = document.querySelector("#texto-buscar-chat-añadir").value.trim()
     let resultado;
@@ -172,7 +192,7 @@ async function buscar_usuario_añadir_chat(e) {
         }
         const correo_usuario = await window.cuenta_usuario.OBTENER_CORREO_USUARIO()
         if (texto_buscar === correo_usuario) return null
-        else resultado = await window.social_usuario.ENCONTRAR_USUARIOS_EXTERNOS(texto_buscar, true)
+        else resultado = await buscar_y_procesar_cache(texto_buscar, true)
     }
     else if (/[#]/.test(texto_buscar)) {//id amigo
         const idLimpio = texto_buscar.replace("#", "")
@@ -184,7 +204,7 @@ async function buscar_usuario_añadir_chat(e) {
         }
         const idamigo_usuario = await window.cuenta_usuario.OBTENER_IDAMIGO_USUARIO()
         if (texto_buscar === idamigo_usuario) return null
-        else resultado = await window.social_usuario.ENCONTRAR_USUARIOS_EXTERNOS(idLimpio, false)
+        else resultado = await buscar_y_procesar_cache(idLimpio, false)
     }
 
     //excluir usuarios ya existentes si es añadir usuario a un chat existente
