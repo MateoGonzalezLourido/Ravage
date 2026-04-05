@@ -374,7 +374,7 @@ export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, 
     if (indice_contacto === -1) {
         // Si no es contacto, intentamos obtener su apodo externo
         const data_externo = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
-        return data_externo?.apodo || nombre_defecto
+        return data_externo?.apodo || "Usuario desconocido"
     }
     else return nombres_contactos[indice_contacto].apodo
 }
@@ -452,6 +452,14 @@ export async function mostrar_datos_chat_usaurios(e) {
     const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
     const soyAdmin = info_chat?.admins?.includes(id_mio)
 
+    // Pre-obtener silenciados y bloqueados
+    const [silenciados, bloqueados] = await Promise.all([
+        window.social_usuario.OBTENER_USUARIOS_SILENCIADOS(),
+        window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
+    ])
+    const ids_silenciados = (silenciados || []).map(u => typeof u === "string" ? u : u.id || u._id || u);
+    const ids_bloqueados = (bloqueados || []).map(u => typeof u === "string" ? u : u.id || u._id || u);
+
     const infoSeccion = document.querySelector("#info-chat-seccion")
 
     //crear html de la seccion
@@ -460,8 +468,9 @@ export async function mostrar_datos_chat_usaurios(e) {
         return `<div> ${[...new Set(info_chat?.usuarios)]?.length || 0} integrantes</div> `
     }
 
-    const fecha_formateada = info_chat?.fecha_creacion
-        ? new Date(info_chat.fecha_creacion).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const fecha_final = info_chat?.fecha_creacion || info_chat?.createdAt;
+    const fecha_formateada = fecha_final
+        ? new Date(fecha_final).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
         : "*No disponible";
 
     let html = `
@@ -504,50 +513,58 @@ export async function mostrar_datos_chat_usaurios(e) {
         </div>
 
         ${await (async () => {
-            let participantes_ids = [...new Set(info_chat.usuarios)]//quitar repetidos
-            participantes_ids = participantes_ids.filter(id => id !== id_mio)//quitar el id propio
+            try {
+                if (!info_chat?.usuarios || !Array.isArray(info_chat.usuarios)) {
+                    return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes (0)</div><div class="info-chat-lista-items">No se pudieron cargar los participantes.</div></div>`
+                }
+                
+                let participantes_ids = [...new Set(info_chat.usuarios)]//quitar repetidos
+                participantes_ids = participantes_ids.filter(id => id && id.toString() !== id_mio?.toString())//quitar el id propio
 
-            // Obtener datos de todos los participantes en paralelo
-            const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id))
-            const participantes_datos = await Promise.all(participantes_promesas)
+                // Obtener datos de todos los participantes en paralelo
+                const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id).catch(() => null))
+                const participantes_datos = await Promise.all(participantes_promesas)
 
-            const [silenciados, bloqueados] = await Promise.all([
-                window.social_usuario.OBTENER_USUARIOS_SILENCIADOS(),
-                window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
-            ])
-            const ids_silenciados = (silenciados || []).map(u => typeof u === "string" ? u : u.id || u._id || u);
-            const ids_bloqueados = (bloqueados || []).map(u => typeof u === "string" ? u : u.id || u._id || u);
-
-            let lista_html = `
-            <div class="info-chat-lista-participantes">
-                <div class="info-chat-lista-titulo">Participantes (${participantes_datos.length + 1}) <div id="bt-anadir-participante-chat">+</div></div>
-                <div class="info-chat-lista-items">
-                <div class="info-chat-participante-item">
-                    <div class="info-chat-participante-info">
-                        <span class="info-chat-participante-nombre">Tú</span>
-                        <span class="info-chat-participante-correo">${await window.cuenta_usuario.OBTENER_CORREO_USUARIO()}</span>
-                        ${info_chat.admins?.includes(id_mio) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
+                let lista_html = `
+                <div class="info-chat-lista-participantes">
+                    <div class="info-chat-lista-titulo">Participantes (${participantes_datos.length + 1}) <div id="bt-anadir-participante-chat">+</div></div>
+                    <div class="info-chat-lista-items">
+                    <div class="info-chat-participante-item" data-id="${id_mio}">
+                        <div class="info-chat-participante-info">
+                            <span class="info-chat-participante-nombre">Tú</span>
+                            <span class="info-chat-participante-correo">${(await window.cuenta_usuario.OBTENER_CORREO_USUARIO().catch(() => "")) || ""}</span>
+                            ${info_chat.admins?.some(a => a?.toString() === id_mio?.toString()) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
+                        </div>
                     </div>
-                </div>
-            `
-            participantes_datos.forEach(p => {
-                if (p) {
+                `
+                participantes_datos.forEach((p, index) => {
+                    const originalId = participantes_ids[index];
+                    const nombre = p?.apodo || "Usuario Ravage";
+                    const correo = p?.correo || "";
+                    const idStr = originalId?.toString();
+                    const esAdmin = info_chat.admins?.some(a => a?.toString() === idStr);
+                    const estaBloqueado = ids_bloqueados.includes(idStr);
+                    const estaSilenciado = ids_silenciados.includes(idStr);
+
                     lista_html += `
-                    <div class="info-chat-participante-item" data-id="${p.id}"data-idamigo="${p.idamigo}">
+                    <div class="info-chat-participante-item" data-id="${idStr}" data-idamigo="${p?.idamigo || ""}">
                         <div class="info-chat-participante-info">
                             <span class="info-chat-participante-nombre">
-                                ${p.apodo || "Sin apodo"}
-                                ${ids_bloqueados.includes(p.id) ? '<img src="../recursos/bloqueado.png" class="icono-bloqueado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario bloqueado">' : (ids_silenciados.includes(p.id) ? '<img src="../recursos/silenciar.png" class="icono-silenciado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario silenciado">' : '')}
+                                ${nombre}
+                                ${estaBloqueado ? '<img src="../recursos/bloqueado.png" class="icono-bloqueado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario bloqueado">' : (estaSilenciado ? '<img src="../recursos/silenciar.png" class="icono-silenciado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario silenciado">' : '')}
                             </span>
-                            <span class="info-chat-participante-correo">${p.correo || ""}</span>
-                            ${info_chat.admins?.includes(p.id) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
+                            <span class="info-chat-participante-correo">${correo}</span>
+                            ${esAdmin ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
                         </div>
                     </div>
                     `
-                }
-            })
-            lista_html += `</div></div>`
-            return lista_html
+                })
+                lista_html += `</div></div>`
+                return lista_html
+            } catch (err) {
+                console.error("Error al renderizar participantes:", err);
+                return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes</div><div class="info-chat-lista-items">Error al cargar la lista.</div></div>`
+            }
         })()}
     </div>
 `
