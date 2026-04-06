@@ -1,4 +1,12 @@
 :root {
+    --animate: running;
+}
+
+* {
+    animation-play-state: var(--animate, running) !important;
+}
+
+:root {
     --background-fondo-claro: #111b21;
     --wa-bg-default: #0b141a;
     --wa-panel-header-bg: #202c33;

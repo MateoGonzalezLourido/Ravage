@@ -1,3 +1,7 @@
+* {
+    animation-play-state: var(--animate, running) !important;
+}
+
 /* Base Layout */
 #chat-usuario {
     flex-grow: 1;

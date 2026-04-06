@@ -1,3 +1,7 @@
+* {
+    animation-play-state: var(--animate, running) !important;
+}
+
 /* =========================================
    SECCIÓN DE ARCHIVOS DEL CHAT (Detaillado)
    ========================================= */

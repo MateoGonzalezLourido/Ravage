@@ -15,6 +15,10 @@ app.commandLine.appendSwitch('disable-site-isolation-trials');
 // Optimiza el uso de memoria de Chromium siendo más agresivo con la recolección
 app.commandLine.appendSwitch('memory-pressure-off');
 
+// Flags para ahorro de batería y throttling en el renderizador
+app.commandLine.appendSwitch('disable-renderer-backgrounding', 'false');
+app.commandLine.appendSwitch('enable-features', 'ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes');
+
 //Limitar y optimizar la memoria de V8 (Node.js)
 // max-old-space-size: Limita la RAM máxima que puede usar Node.js (ej. 512MB). Evita que Chromium/Node traguen RAM infinita.
 // expose-gc: Permite llamar a `global.gc()` manualmente en tu código si necesitas liberar memoria en momentos clave.
@@ -52,13 +56,25 @@ async function createMainWindowHome(AutoLogin = false) {
             additionalArguments: [`--start=${AutoLogin}`],
             spellcheck: false,
             v8CacheOptions: 'bypassHeatCheck',
-            backgroundThrottling: false
+            backgroundThrottling: true
         }
     });
     mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html'));
 
     mainWindow.maximize();
     mainWindow.show();
+
+    // Pausar animaciones CSS cuando está minimizado
+    mainWindow.on('minimize', () => {
+        mainWindow.webContents.executeJavaScript(
+            `document.body.style.setProperty('--animate', 'paused')`
+        );
+    });
+    mainWindow.on('restore', () => {
+        mainWindow.webContents.executeJavaScript(
+            `document.body.style.setProperty('--animate', 'running')`
+        );
+    });
 
     const [
         { registerSessionHandlers },
@@ -174,4 +190,16 @@ ipcMain.on("cambiar-pagina-soporte", () => {
 ipcMain.on("cambiar-pagina-home", () => {
     mainWindow.setTitle("RAVAGE-Home");
     mainWindow.loadFile(path.join(__dirname, 'frontend', 'home', 'home.html'));
+});
+
+// Reducir frame rate cuando no está en foco
+app.on('browser-window-blur', () => {
+    if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.setFrameRate(10); // 10fps en segundo plano
+    }
+});
+app.on('browser-window-focus', () => {
+    if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.setFrameRate(60);
+    }
 });

@@ -1,3 +1,7 @@
+* {
+    animation-play-state: var(--animate, running) !important;
+}
+
 /* ===========================
    NOTIFICACIONES - Ravage
    =========================== */

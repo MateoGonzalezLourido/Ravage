@@ -1,4 +1,12 @@
 :root {
+    --animate: running;
+}
+
+* {
+    animation-play-state: var(--animate, running) !important;
+}
+
+:root {
     --background-fondo-claro: rgb(220, 224, 228);
 }
 
