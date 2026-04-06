@@ -7,7 +7,6 @@ import { crear_chat_historial_archivos_descargados, invalidar_cache_historial } 
 set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
 
 let archivos_mensaje = []//{ruta,nombre,extension}
-let archivo_cambiando_nombre; //es para guardar el archivo que se esta editando ya
 //chat
 
 function cerrar_paneles_al_abrir_chat() {
@@ -151,488 +150,385 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
             .join("")
 
         document.querySelector("#lista-chats-componentes").innerHTML = html
-
-        //eventos doom
-        document.querySelector("#lista-chats-componentes").addEventListener("click", e => {
-            const componente = e.target.closest('.chat-componente-lista-chats')
-            if (!componente) return;
-            // Evento contextmenu para mutear/bloquear chats
-            componente.addEventListener("contextmenu", (e) => {
-                e.preventDefault()
-                const id_chat = componente.dataset.id
-
-                // Eliminar menú previo si existe
-                document.querySelector(".context-menu-chat")?.remove()
-
-                const chatInfo = lista_chats.find(c => (c.id || c._id) === id_chat)
-                const esta_silenciado = chatInfo?.silenciado || false
-                const esta_bloqueado = chatInfo?.bloqueado || false
-
-                const texto_silenciar = esta_silenciado ? "Desilenciar chat" : "Silenciar chat"
-                const texto_bloquear = esta_bloqueado ? "Desbloquear chat" : "Bloquear chat"
-
-                const html_contextMenu = `
-            <div class="context-menu context-menu-chat" style="position: fixed; z-index: 1000;">
-                <div class="context-menu-item" data-action="silenciar">${texto_silenciar}</div>
-                <div class="context-menu-item" data-action="bloquear">${texto_bloquear}</div>
-            </div>
-        `
-
-                document.body.insertAdjacentHTML("beforeend", html_contextMenu)
-
-                const menu = document.querySelector(".context-menu-chat")
-                if (menu) {
-                    menu.style.left = e.clientX + "px"
-                    menu.style.top = e.clientY + "px"
-
-                    const cerrarMenuClickFuera = (event) => {
-                        if (!menu.contains(event.target)) {
-                            menu.remove()
-                            document.removeEventListener("mousedown", cerrarMenuClickFuera)
-                        }
-                    }
-                    setTimeout(() => document.addEventListener("mousedown", cerrarMenuClickFuera), 0)
-
-                    menu.addEventListener("click", async (ev) => {
-                        const action = ev.target.dataset.action
-                        if (!action) return;
-
-                        if (action === "silenciar") {
-                            const res = await window.chats.SILENCIAR_CHAT(id_chat)
-                            if (res && res.success) {
-                                window.pushNotificacion({ prioridad: 1, texto: res.silenciado ? "Chat silenciado" : "Chat desilenciado", tipo: "success" })
-                                await ACTUALIZAR_LISTAS_CHAT(document.querySelector("#input-buscar-chat")?.value?.trim() || "")
-                            } else {
-                                window.pushNotificacion({ prioridad: 0, texto: "Error al cambiar silencio", tipo: "error" })
-                            }
-                        } else if (action === "bloquear") {
-                            const res = await window.chats.BLOQUEAR_CHAT(id_chat)
-                            if (res && res.success) {
-                                window.pushNotificacion({ prioridad: 1, texto: res.bloqueado ? "Chat bloqueado" : "Chat desbloqueado", tipo: "success" })
-                                await ACTUALIZAR_LISTAS_CHAT(document.querySelector("#input-buscar-chat")?.value?.trim() || "")
-
-                                // Si el chat bloqueado es el que está abierto, re-renderizarlo para bloquear/desbloquear escritura
-                                if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
-                                    const [datos_chat, id_usuario] = await Promise.all([
-                                        window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat),
-                                        window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-                                    ])
-                                    if (datos_chat) {
-                                        datos_chat._id = id_chat
-                                        document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
-                                        cerrar_paneles_al_abrir_chat()
-                                        scroll_fin_chat()
-                                    }
-                                }
-                            } else {
-                                window.pushNotificacion({ prioridad: 0, texto: "Error al bloquear chat", tipo: "error" })
-                            }
-                        }
-                        menu.remove()
-                    })
-                }
-            })
-            componente.addEventListener("click", async (e) => {
-                e.preventDefault()
-                // OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
-                const id = e.currentTarget.dataset.id
-                //obtener info de ese chat
-                const [datos_chat, id_usuario] = await Promise.all([
-                    Get_datos_chat_abrir(id),
-                    window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-                ])
-                if (!datos_chat) {
-                    window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos del chat", tipo: "error" })
-                    return;
-                }
-                //limpiar residuos de otros chats
-                archivos_mensaje = []
-                document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
-                //cerrar paneles laterales si están abiertos
-                cerrar_paneles_al_abrir_chat()
-                //TODO:REVISAR FUNCION
-                // Eventos de botones de solicitud (añadir usuario a chat de 2)
-                document.querySelectorAll(".bt-solicitud-aceptar, .bt-solicitud-rechazar").forEach(btn => {
-                    btn.addEventListener("click", async (ev) => {
-                        ev.preventDefault()
-                        const id_chat_sol = ev.target.dataset.chat
-                        const id_mensaje_sol = ev.target.dataset.mensaje
-                        const aceptar = ev.target.classList.contains("bt-solicitud-aceptar")
-
-                        // Deshabilitar botones para evitar doble click
-                        const contenedor_botones = ev.target.closest(".solicitud-botones")
-                        if (contenedor_botones) contenedor_botones.querySelectorAll("button").forEach(b => b.disabled = true)
-
-                        const resultado = await window.chats.RESPONDER_SOLICITUD_AÑADIR(id_chat_sol, id_mensaje_sol, aceptar)
-                        if (resultado?.success) {
-                            window.pushNotificacion({
-                                prioridad: 1,
-                                texto: aceptar ? "Usuario añadido al chat" : "Solicitud rechazada",
-                                tipo: aceptar ? "success" : "info"
-                            })
-                            // Recargar el chat y la lista
-                            await ACTUALIZAR_LISTAS_CHAT()
-                            const [datos_chat_nuevo, id_usr] = await Promise.all([
-                                window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_sol),
-                                window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-                            ])
-                            if (datos_chat_nuevo) {
-                                datos_chat_nuevo._id = id_chat_sol
-                                document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat_nuevo, id_usr)
-                            }
-                        } else {
-                            window.pushNotificacion({
-                                prioridad: 0,
-                                texto: resultado?.message || "Error al procesar la solicitud",
-                                tipo: "error"
-                            })
-                            // Rehabilitar botones
-                            if (contenedor_botones) contenedor_botones.querySelectorAll("button").forEach(b => b.disabled = false)
-                        }
-                    })
-                })
-
-                //scroll al final
-                scroll_fin_chat()
-                //otros eventos
-                document.querySelector("#nav-prinicpal-chat-usaurio")?.addEventListener("click", mostrar_datos_chat_usaurios)
-                //cambio altura del textarea del mensaje , segun lo grande que sea el mensaje, para facilitar su lectura y escritura
-                const textarea_msg = document.querySelector("#textarea-mensaje-escritura")
-                if (textarea_msg) {
-                    // Crecimiento dinámico y limpieza de esteganografía
-                    textarea_msg.addEventListener("input", async function () {
-                        const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id;
-                        const result_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
-                        const escaneres = result_seguridad.escaneres_seguridad || result_seguridad;
-
-                        if (escaneres?.ESCANER_ESTEGANOGRAFIA === 3) {
-                            const result = await window.escaneres_seguridad_app.eliminar_escenografia(this.value);
-                            if (result.cambios) {
-                                const start = this.selectionStart;
-                                const end = this.selectionEnd;
-                                this.value = result.text;
-                                this.setSelectionRange(start, end);
-                            }
-                        }
-
-                        if (this.value.length > 1000) {
-                            this.value = this.value.substring(0, 1000);
-                        }
-                        this.style.height = "38px" // Vuelve al tamaño mínimo base para recalcular la caída recta
-                        this.style.height = (this.scrollHeight) + "px"
-                    })
-
-                    textarea_msg.addEventListener("keypress", async (e) => {
-                        // Enviar con Enter, pero permitir salto de línea con Shift+Enter
-                        if (e.key == "Enter" && !e.shiftKey) {
-                            e.preventDefault() // Evitar salto de línea artificial al enviar
-                            let mensaje = textarea_msg.value.trim()
-                            const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
-                            const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-
-                            // Si el mensaje está vacío y no hay archivos, evitar enviar nada
-                            if (!mensaje && archivos_mensaje.length === 0) return;
-
-                            // Limpieza final antes de enviar si el nivel es 3
-                            const result_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
-                            const escaneres = result_seguridad.escaneres_seguridad || result_seguridad;
-
-                            if (escaneres?.ESCANER_ESTEGANOGRAFIA === 3) {
-                                const result = await window.escaneres_seguridad_app.eliminar_escenografia(mensaje);
-                                mensaje = result.text;
-                            }
-
-                            // Validar mensaje antes de enviar
-                            const esValido = await window.validadores.VALIDAR_MENSAJE(mensaje)
-                            if (!esValido && archivos_mensaje.length === 0) {
-                                window.pushNotificacion({ PRIORIDAD: 2, texto: "Mensaje no válido", tipo: "info" })
-                                return;
-                            }
-
-                            const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: archivos_mensaje, id_chat: id_chat, id_emisor: id_usuario })
-                            if (result) {//limpiar seccion mensaje escritura
-                                const copia_archivos = archivos_mensaje
-
-                                    //reinicar datos mensaje html
-                                    ; (async () => {
-                                        archivos_mensaje = []
-                                        textarea_msg.value = ""
-                                        textarea_msg.style.height = "38px" // Restaurar tamaño original base
-                                        document.querySelectorAll(".ventana-archivos-mensaje")?.forEach(x => x.remove())
-                                    })()
-
-
-                                //reactualizar chat (render)
-                                await Actualizar_render_chat({ emisor: id_usuario.toString(), chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date().toISOString() })
-
-                                // Actualizar componente en la lista de chats
-                                const chatC = document.querySelector(`.chat-componente-lista-chats[data-id="${id_chat}"]`)
-                                if (chatC) {
-                                    await refrescar_componente_lista_chats(id_chat, chatC)
-                                }
-                            }
-                        }
-                    })
-                }
-                //guardar archivos(al hacer click mostrar una ventana para subir archivos)
-                document.querySelector("#bt-añadir-archivo-mensaje-escritura")?.addEventListener("click", async () => {
-                    //si existe cerrarla con animación
-                    const existente = document.querySelector(".ventana-archivos-mensaje")
-                    if (existente) {
-                        existente.classList.remove("abierto")
-                        setTimeout(() => existente.remove(), 310)
-                        return;
-                    }
-                    //crear ventana
-                    async function mostrar_lista_archivos(archivos) {
-                        let html = ``
-                        for (const archivo of archivos) {
-                            const [url, identificado] = await url_icono_extension_img(archivo.extension)
-
-                            html += `
-                    <div class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
-                        <div data-indice="${archivos.indexOf(archivo)}" class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
-                            <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
-                                <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
-                                <span class="info-chat-participante-nombre">${identificado ? archivo.nombre : archivo.nombre + "." + archivo.extension}</span>
-                            </div>
-                        </div>
-                    </div>
-                    `
-                        }
-                        return html
-                    }
-                    const html_lista_archivos = await mostrar_lista_archivos(archivos_mensaje)
-                    const ventana = document.createElement("div")
-                    ventana.className = "ventana-archivos-mensaje"
-                    // HTML Structure mimicking #info-chat-seccion
-                    ventana.innerHTML = `
-            <div class="info-chat-header">
-                <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header">
-                    <img src="../recursos/cruz.png" alt="cerrar">
-                </div>
-                <div> <span>Archivos Adjuntos</span></div>
-                <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos"title="añadir-archivo">
-                    <img src="../recursos/suma.png" alt="añadir">
-                </div>
-                <div  id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro">
-                    <img src="../recursos/escoba.png" alt="limpiar">
-                </div>
-            </div>
-            
-            <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
-                <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-componente">
-                    ${html_lista_archivos}
-                </div>
-            </div>`
-
-                    // Insertar en DOM con transición y ancho bloqueados en inline style
-                    ventana.style.transition = "none"
-                    ventana.style.width = "0"
-                    document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
-
-                    // Cerrar el panel de info si está abierto (snap sin animación)
-                    const infoSeccion = document.querySelector("#info-chat-seccion")
-                    if (infoSeccion && infoSeccion.classList.contains("abierto")) {
-                        infoSeccion.style.transition = "none"
-                        infoSeccion.classList.remove("abierto")
-                        infoSeccion.style.width = "0"
-                        requestAnimationFrame(() => requestAnimationFrame(() => {
-                            infoSeccion.style.transition = ""
-                            infoSeccion.style.width = "" // Limpiar inline para que el CSS controle
-                        }))
-                    }
-
-                    // Doble rAF: el navegador pinta a width:0, luego borramos los
-                    // inline styles y añadimos .abierto para que la transición CSS anime a 350px
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            ventana.style.transition = ""
-                            ventana.style.width = ""  // CLAVE: limpiar inline, la clase .abierto ya define 350px
-                            ventana.classList.add("abierto")
-                        })
-                    })
-
-                    // Event to close this menu
-                    document.querySelector("#bt-cerrar-archivos-mensaje").addEventListener("click", () => {
-                        ventana.classList.remove("abierto")
-                        setTimeout(() => ventana.remove(), 310)
-                    })
-                    //eventos
-                    //contextmenu de cada archivo(borrar, editar nombre/extension)
-                    document.querySelector(".ventana-archivos-mensaje-cuerpo").addEventListener("click", e => {
-                        const el = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente")
-                        el.addEventListener("click", (e) => {
-                            e.preventDefault()
-
-                            // Obtener el item específico clicado para sacar su índice y el elemento del DOM
-                            const itemClicado = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente-item-nombre")
-                            if (!itemClicado) return
-
-                            const indice = itemClicado.dataset.indice
-                            const archivo = archivos_mensaje[indice]
-
-                            if (!archivo) {
-                                //marcarlo en rojo para que el usuario vea que esta fallando ese archivo
-                                itemClicado.style.color = "orange"
-                                itemClicado.style.fontStyle = "italic"
-                                itemClicado.style.textDecoration = "line-through";
-                                return;
-                            }
-
-                            // Eliminar menú previo si existe para evitar duplicados
-                            document.querySelector(".context-menu")?.remove()
-
-                            const html_contextMenu = `
-                        <div class="context-menu" style="position: fixed; z-index: 1000;">
-                            <div class="context-menu-item" data-action="borrar"> Borrar</div>
-                            <div class="context-menu-item" data-action="editar">Editar</div>
-                        </div>
-                    `
-
-                            const ventanaContenedor = document.querySelector(".ventana-archivos-mensaje")
-                            ventanaContenedor.insertAdjacentHTML("beforeend", html_contextMenu)
-
-                            const menu = ventanaContenedor.querySelector(".context-menu")
-                            if (menu) {
-                                menu.style.left = e.clientX + "px"
-                                menu.style.top = e.clientY + "px"
-
-                                // Cerrar al hacer click fuera
-                                const cerrarMenuClickFuera = (event) => {
-                                    if (!menu.contains(event.target)) {
-                                        menu.remove()
-                                        document.removeEventListener("mousedown", cerrarMenuClickFuera)
-                                    }
-                                }
-                                document.addEventListener("mousedown", cerrarMenuClickFuera)
-                            }
-
-                            menu.addEventListener("click", (ev) => {
-                                const action = ev.target.dataset.action
-                                if (action === "borrar") {
-                                    //borar de la lista de datos
-                                    archivos_mensaje.splice(indice, 1)
-                                    //borrar del html (el item padre)
-                                    itemClicado.closest(".ventana-archivos-mensaje-cuerpo-componente-item").remove()
-                                    //actualizar indices
-                                    let indice_actual = -1
-                                    for (el_item of document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-componente-item-nombre")) {
-                                        indice_actual++
-                                        if (indice_actual >= indice) {
-                                            el_item.dataset.indice = indice_actual
-                                        }
-                                    }
-                                }
-                                else if (action === "editar") { //editar nombre/extension
-                                    const name_textarea_class = "seccion-cambiar-nombre-archivo-mensaje"
-
-                                    // Si ya hay uno editándose en otro lado, lo cerramos
-                                    if (archivo_cambiando_nombre) {
-                                        const prevTextarea = document.querySelector(`.${name_textarea_class}`)
-                                        if (prevTextarea) {
-                                            const nuevoNombre = prevTextarea.value.trim()
-                                            const prevIndice = archivo_cambiando_nombre.dataset.indice
-                                            if (archivos_mensaje[prevIndice]) archivos_mensaje[prevIndice].nombre = nuevoNombre
-
-                                            const span = archivo_cambiando_nombre.querySelector("span")
-                                            if (span) {
-                                                span.innerHTML = nuevoNombre
-                                                span.style.display = "flex"
-                                            }
-                                            prevTextarea.remove()
-                                        }
-                                    }
-
-                                    // Guardar el item actual que se está editando
-                                    archivo_cambiando_nombre = itemClicado
-
-                                    const spanActual = itemClicado.querySelector("span")
-                                    if (spanActual) spanActual.style.display = "none"
-
-                                    const textarea = document.createElement("textarea")
-                                    textarea.className = name_textarea_class
-                                    textarea.value = archivo.nombre
-                                    itemClicado.querySelector(".contenido-item-archivo-lista").appendChild(textarea)
-                                    textarea.focus()
-                                    textarea.addEventListener("keypress", async (event) => {
-                                        if (event.key == "Enter" && !event.shiftKey) {
-                                            event.preventDefault()
-                                            let nombre_nuevo = textarea.value.trim()
-
-                                            // Regla especial de archivo
-                                            const esNombreValido = await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nombre_nuevo)
-                                            if (!esNombreValido) {
-                                                nombre_nuevo = "Archivo"
-                                            }
-
-                                            archivo.nombre = nombre_nuevo
-                                            if (spanActual) {
-                                                spanActual.innerHTML = nombre_nuevo
-                                                spanActual.style.display = "flex"
-                                            }
-                                            textarea.remove()
-                                            archivo_cambiando_nombre = null
-                                        }
-                                    })
-                                }
-                                menu.remove()
-                            })
-                        })
-                    })
-
-                    //añadir archivos
-                    document.querySelector("#bt-añadir-archivos-mensaje-escritura").addEventListener("click", async () => {
-                        const archivos = await window.chats.SELECCIONAR_ARCHIVOS()//[ruta]
-                        //añadir archivos a la lista
-                        for (const archivo of archivos) {
-                            try {
-                                const estructura = archivo.includes('\\') ? archivo.split('\\') : archivo.split('/')
-                                const fullFilename = estructura[estructura.length - 1]
-                                let parts = fullFilename.split('.')
-                                let extension = parts.length > 1 ? parts.pop() : "txt"
-                                let nombre = parts.join('.')
-
-                                // Validaciones y reglas especiales
-                                if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nombre))) {
-                                    nombre = "Archivo"
-                                }
-                                if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(extension))) { // Reutilizamos el validador de nombre para la extensión
-                                    extension = "txt"
-                                }
-
-                                archivos_mensaje.push({
-                                    nombre: nombre,
-                                    extension: extension,
-                                    ruta: archivo
-                                })
-                            }
-                            catch (e) {// MOSTRAR ERROR PANTALLA
-                                console.error(e)
-                                window.pushNotificacion({
-                                    prioridad: 1,        // menor número = más importante
-                                    texto: `Error al añadir archivo${archivo.nombre + archivo.extension} \nRuta: ${archivo.ruta} `,
-                                    tipo: "error"      // "info", "error", "success"
-                                })
-                            }
-                        }
-                        //actualizar vista seccion archivos
-                        document.querySelector(".ventana-archivos-mensaje-cuerpo-componente").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
-                    })
-                    //limpiar arhivos
-                    document.querySelector("#bt-limpiar-archivos-mensaje-escritura").addEventListener("click", async () => {
-                        archivos_mensaje = []//limpiar
-                        //actualziar seccion
-                        document.querySelector(".ventana-archivos-mensaje-cuerpo-componente").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
-                    })
-                })
-                //descargar archivos mensaje (movido a evento delegado en DOMContentLoaded)
-            })
-        })
+        
+        // LOS EVENTOS SE HAN EXTRAIDO A inicializar_eventos_globales() PARA EVITAR FUGA DE MEMORIA
     }
     catch (e) {
         throw e
     }
+}
+
+
+// ==========================================
+// DELEGACIÓN GLOBAL DE EVENTOS (NUEVO SISTEMA)
+// ==========================================
+function inicializar_eventos_globales() {
+    // ----------------------------------------------------
+    // EVENTOS PANÉL IZQUIERDO (Lista de Chats)
+    // ----------------------------------------------------
+    const listaChats = document.querySelector("#lista-chats-componentes")
+    if (listaChats) {
+        listaChats.addEventListener("click", async (e) => {
+            const componente = e.target.closest('.chat-componente-lista-chats')
+            if (componente) {
+                e.preventDefault()
+                abrir_chat_item(componente.dataset.id)
+            }
+        })
+
+        listaChats.addEventListener("contextmenu", async (e) => {
+            const componente = e.target.closest('.chat-componente-lista-chats')
+            if (componente) {
+                e.preventDefault()
+                mostrar_menu_contextual_lista_chats(e, componente.dataset.id)
+            }
+        })
+    }
+
+    // ----------------------------------------------------
+    // EVENTOS PANÉL DERECHO (Chat Activo & Inputs)
+    // ----------------------------------------------------
+    const divChatUsuario = document.querySelector("#chat-usuario")
+    if (divChatUsuario) {
+        // Clics aislados dentro del visor de chat
+        divChatUsuario.addEventListener("click", async (e) => {
+            // Aceptar solicitud
+            const btnAceptarSol = e.target.closest(".bt-solicitud-aceptar")
+            if (btnAceptarSol) {
+                e.preventDefault()
+                manejar_solicitud_chat(btnAceptarSol, true)
+                return
+            }
+            // Rechazar solicitud
+            const btnRechazarSol = e.target.closest(".bt-solicitud-rechazar")
+            if (btnRechazarSol) {
+                e.preventDefault()
+                manejar_solicitud_chat(btnRechazarSol, false)
+                return
+            }
+            // Boton nav ver detalles (top bar)
+            if (e.target.closest("#nav-prinicpal-chat-usaurio")) {
+                mostrar_datos_chat_usaurios()
+                return
+            }
+            // Abrir ventana añadir archivos
+            if (e.target.closest("#bt-añadir-archivo-mensaje-escritura")) {
+                abrir_ventana_archivos()
+                return
+            }
+        })
+
+        // Inputs del textarea de mensajes
+        divChatUsuario.addEventListener("input", async (e) => {
+            if (e.target.id === "textarea-mensaje-escritura") {
+                manejar_input_escribiendo(e.target)
+            }
+        })
+
+        // Keypress (Enviar mensaje)
+        divChatUsuario.addEventListener("keypress", async (e) => {
+            if (e.target.id === "textarea-mensaje-escritura") {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    enviar_mensaje_chat(e.target)
+                }
+            }
+        })
+    }
+
+    // ----------------------------------------------------
+    // EVENTOS MENÚ DE ARCHIVOS ADJUNTOS
+    // ----------------------------------------------------
+    document.querySelector(".seccion-cuerpo-chat")?.addEventListener("click", async (e) => {
+        // Cerrar ventana archivos
+        if (e.target.closest("#bt-cerrar-archivos-mensaje")) {
+            cerrar_ventana_archivos()
+            return
+        }
+
+        // Añadir nuevos archivos desde PC
+        if (e.target.closest("#bt-añadir-archivos-mensaje-escritura")) {
+            añadir_archivos_dialogo()
+            return
+        }
+
+        // Limpiar lista cache de archivos actual
+        if (e.target.closest("#bt-limpiar-archivos-mensaje-escritura")) {
+            archivos_mensaje = []
+            actualizar_html_lista_archivos()
+            return
+        }
+        
+        // Hacer clic izquierdo sobre un adjunto (Para mostrar su menú)
+        const nombreAdjunto = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente-item-nombre")
+        if (nombreAdjunto) {
+            e.preventDefault()
+            mostrar_menu_contextual_archivo(e, nombreAdjunto)
+            return
+        }
+    })
+}
+
+// ==========================================
+// BLOQUES MODULARES DE UI EXTRACTADOS
+// ==========================================
+
+// 1. ABRIR UN CHAT Y RENDERIZAR
+async function abrir_chat_item(id_chat) {
+    const [datos_chat, id_usuario] = await Promise.all([
+        Get_datos_chat_abrir(id_chat),
+        window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+    ])
+    if (!datos_chat) {
+        window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos", tipo: "error" })
+        return;
+    }
+    
+    // Limpiar residuos
+    archivos_mensaje = []
+    document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+    cerrar_paneles_al_abrir_chat()
+    scroll_fin_chat()
+}
+
+// 2. MENÚ CONTEXTUAL LISTA DE CHATS
+async function mostrar_menu_contextual_lista_chats(e, id_chat) {
+    document.querySelector(".context-menu-chat")?.remove()
+
+    const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
+    const chatInfo = lista_chats.find(c => (c.id || c._id) === id_chat)
+    
+    const texto_silenciar = chatInfo?.silenciado ? "Desilenciar" : "Silenciar"
+    const texto_bloquear = chatInfo?.bloqueado ? "Desbloquear" : "Bloquear"
+
+    const html = `
+        <div class="context-menu context-menu-chat" style="position: fixed; z-index: 1000;">
+            <div class="context-menu-item" data-action="silenciar">${texto_silenciar}</div>
+            <div class="context-menu-item" data-action="bloquear">${texto_bloquear}</div>
+        </div>
+    `
+    document.body.insertAdjacentHTML("beforeend", html)
+
+    const menu = document.querySelector(".context-menu-chat")
+    if (menu) {
+        menu.style.left = e.clientX + "px"
+        menu.style.top = e.clientY + "px"
+
+        const cerrar = (ev) => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener("mousedown", cerrar) }}
+        setTimeout(() => document.addEventListener("mousedown", cerrar), 0)
+
+        menu.addEventListener("click", async (ev) => {
+            const action = ev.target.dataset.action
+            if (action === "silenciar") {
+                const res = await window.chats.SILENCIAR_CHAT(id_chat)
+                if (res?.success) window.pushNotificacion({ prioridad: 1, texto: "Chat alterado", tipo: "success" })
+            } else if (action === "bloquear") {
+                const res = await window.chats.BLOQUEAR_CHAT(id_chat)
+                if (res?.success) {
+                    window.pushNotificacion({ prioridad: 1, texto: "Bloqueo alterado", tipo: "success" })
+                    if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) await abrir_chat_item(id_chat)
+                }
+            }
+            await ACTUALIZAR_LISTAS_CHAT()
+            menu.remove()
+        })
+    }
+}
+
+// 3. ENVIAR MENSAJES Y FILTROS ESTEGANOGRAFÍA
+async function manejar_input_escribiendo(textarea) {
+    const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id;
+    const result_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
+    const esteg = result_seguridad.escaneres_seguridad?.ESCANER_ESTEGANOGRAFIA || result_seguridad?.ESCANER_ESTEGANOGRAFIA;
+
+    if (esteg === 3) {
+        const r = await window.escaneres_seguridad_app.eliminar_escenografia(textarea.value);
+        if (r.cambios) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = r.text;
+            textarea.setSelectionRange(start, end);
+        }
+    }
+    if (textarea.value.length > 1000) textarea.value = textarea.value.substring(0, 1000);
+    textarea.style.height = "38px"
+    textarea.style.height = (textarea.scrollHeight) + "px"
+}
+
+async function enviar_mensaje_chat(textarea) {
+    let mensaje = textarea.value.trim()
+    const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
+    const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+
+    if (!mensaje && archivos_mensaje.length === 0) return;
+
+    const req_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
+    if ((req_seguridad.escaneres_seguridad?.ESCANER_ESTEGANOGRAFIA || 0) === 3) {
+        const resc = await window.escaneres_seguridad_app.eliminar_escenografia(mensaje);
+        mensaje = resc.text;
+    }
+
+    const esValido = await window.validadores.VALIDAR_MENSAJE(mensaje)
+    if (!esValido && archivos_mensaje.length === 0) {
+        window.pushNotificacion({ PRIORIDAD: 2, texto: "Mensaje no válido", tipo: "info" }); return;
+    }
+
+    const copia_archivos = [...archivos_mensaje]
+    archivos_mensaje = [] // Reset instantaneo de UI
+    textarea.value = ""
+    textarea.style.height = "38px"
+    document.querySelectorAll(".ventana-archivos-mensaje")?.forEach(x => x.remove())
+
+    const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: copia_archivos, id_chat: id_chat, id_emisor: id_usuario })
+    if (result) {
+        await Actualizar_render_chat({ emisor: id_usuario.toString(), chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date().toISOString() })
+    }
+}
+
+// 4. SOLICITUDES DE AÑADIDO
+async function manejar_solicitud_chat(btn, aceptar) {
+    const id_chat_sol = btn.dataset.chat
+    const id_mensaje_sol = btn.dataset.mensaje
+    
+    btn.closest(".solicitud-botones")?.querySelectorAll("button").forEach(b => b.disabled = true)
+    
+    const res = await window.chats.RESPONDER_SOLICITUD_AÑADIR(id_chat_sol, id_mensaje_sol, aceptar)
+    if (res?.success) {
+        window.pushNotificacion({ prioridad: 1, texto: aceptar ? "Usuario añadido" : "Rechazado", tipo: "success" })
+        await ACTUALIZAR_LISTAS_CHAT()
+        await abrir_chat_item(id_chat_sol)
+    } else {
+        window.pushNotificacion({ prioridad: 0, texto: "Error al procesar", tipo: "error" })
+        btn.closest(".solicitud-botones")?.querySelectorAll("button").forEach(b => b.disabled = false)
+    }
+}
+
+// 5. MANEJADORES DE ARCHIVOS ADJUNTOS
+async function render_html_lista_archivos() {
+    let html = ``
+    for (const activo of archivos_mensaje) {
+        const [url, idn] = await url_icono_extension_img(activo.extension)
+        html += `
+        <div class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
+            <div data-indice="${archivos_mensaje.indexOf(activo)}" class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
+                <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
+                    <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
+                    <span class="info-chat-participante-nombre">${idn ? activo.nombre : activo.nombre + "." + activo.extension}</span>
+                </div>
+            </div>
+        </div>`
+    }
+    return html
+}
+
+async function actualizar_html_lista_archivos() {
+    const contenedor = document.querySelector(".ventana-archivos-mensaje-cuerpo-componente")
+    if (contenedor) contenedor.innerHTML = await render_html_lista_archivos()
+}
+
+async function abrir_ventana_archivos() {
+    if (document.querySelector(".ventana-archivos-mensaje")) return cerrar_ventana_archivos()
+    
+    const html_lista = await render_html_lista_archivos()
+    const ventana = document.createElement("div")
+    ventana.className = "ventana-archivos-mensaje"
+    ventana.innerHTML = `
+        <div class="info-chat-header">
+            <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header"><img src="../recursos/cruz.png"></div>
+            <div> <span>Archivos Adjuntos</span></div>
+            <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos" title="añadir archivo"><img src="../recursos/suma.png"></div>
+            <div id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro"><img src="../recursos/escoba.png"></div>
+        </div>
+        <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
+            <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-componente">${html_lista}</div>
+        </div>`
+
+    ventana.style.transition = "none"; ventana.style.width = "0"
+    document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
+
+    // Ocultar modal info si existe
+    const infoSec = document.querySelector("#info-chat-seccion")
+    if (infoSec && infoSec.classList.contains("abierto")) {
+        infoSec.style.transition = "none"; infoSec.classList.remove("abierto"); infoSec.style.width = "0";
+        requestAnimationFrame(() => requestAnimationFrame(() => { infoSec.style.transition = ""; infoSec.style.width = "" }))
+    }
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        ventana.style.transition = ""; ventana.style.width = ""; ventana.classList.add("abierto")
+    }))
+}
+
+function cerrar_ventana_archivos() {
+    const ven = document.querySelector(".ventana-archivos-mensaje")
+    if (ven) {
+        ven.classList.remove("abierto")
+        setTimeout(() => ven.remove(), 310)
+    }
+}
+
+async function añadir_archivos_dialogo() {
+    const archivos = await window.chats.SELECCIONAR_ARCHIVOS()
+    for (const activo of archivos) {
+        const est = activo.includes('\\') ? activo.split('\\') : activo.split('/')
+        const fn = est[est.length - 1]
+        let parts = fn.split('.'), ext = parts.length > 1 ? parts.pop() : "txt", no = parts.join('.')
+        if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(no))) no = "Archivo"
+        if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(ext))) ext = "txt"
+        archivos_mensaje.push({ nombre: no, extension: ext, ruta: activo })
+    }
+    actualizar_html_lista_archivos()
+}
+
+function mostrar_menu_contextual_archivo(e, clkNode) {
+    document.querySelector(".context-menu")?.remove()
+    const indice = clkNode.dataset.indice
+    const archivo = archivos_mensaje[indice]
+    if (!archivo) return;
+
+    const mx = `
+        <div class="context-menu" style="position: fixed; z-index: 1000;">
+            <div class="context-menu-item" data-action="borrar">Borrar</div>
+            <div class="context-menu-item" data-action="editar">Editar Nombre</div>
+        </div>`
+    document.querySelector(".ventana-archivos-mensaje").insertAdjacentHTML("beforeend", mx)
+
+    const menu = document.querySelector(".context-menu")
+    menu.style.left = e.clientX + "px"; menu.style.top = e.clientY + "px";
+    
+    const cr = (ev) => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener("mousedown", cr) }}
+    setTimeout(() => document.addEventListener("mousedown", cr), 0)
+
+    menu.addEventListener("click", (ev) => {
+        const acc = ev.target.dataset.action
+        if (acc === "borrar") {
+            archivos_mensaje.splice(indice, 1)
+            actualizar_html_lista_archivos()
+        } else if (acc === "editar") {
+            // Edición inline simplificada
+            const span = clkNode.querySelector("span")
+            span.style.display = "none"
+            const tx = document.createElement("input")
+            tx.className = "seccion-cambiar-nombre-archivo-mensaje"
+            tx.value = archivo.nombre
+            tx.addEventListener("keypress", async (evt) => {
+                if (evt.key === "Enter") {
+                    let nn = tx.value.trim()
+                    if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nn))) nn = "Archivo"
+                    archivo.nombre = nn
+                    actualizar_html_lista_archivos()
+                }
+            })
+            tx.addEventListener("blur", async () => {
+                let nn = tx.value.trim()
+                if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nn))) nn = "Archivo"
+                archivo.nombre = nn
+                actualizar_html_lista_archivos()
+            })
+            clkNode.querySelector(".contenido-item-archivo-lista").appendChild(tx)
+            tx.focus()
+        }
+        menu.remove()
+    })
 }
 
 async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {} }) {
@@ -1010,8 +906,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     //evento ajustes
     document.querySelector("#bt-seccion-menu-cuenta-ajustes").addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
 
-    //cargar chat
+    //cargar chat inicial
     INICIO_CHAT_MENU_PRINCIPAL()
+
+    // ACTIVACIÓN RED GLOBAL DE EVENTOS DELEGADOS 
+    inicializar_eventos_globales()
 
     //añadir chat
     document.querySelector("#bt-añadir-chat").addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
