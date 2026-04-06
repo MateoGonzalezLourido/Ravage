@@ -238,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // --- External Handlers ---
-    window.sesion_usuario.ICONO_CARGANDO((mostrar) => {
+    window.avisos_ui.ICONO_CARGANDO((mostrar) => {
         if (mostrar) {
             elements.syncBar.classList.add("visible");
         } else {
@@ -246,7 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    window.sesion_usuario.FALLO_CORREO_MANDAR(() => {
+    window.avisos_ui.FALLO_CORREO_MANDAR(() => {
         window.pushNotificacion({
             prioridad: 0,
             texto: `Fallo al enviar correo`,
