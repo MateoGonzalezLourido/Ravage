@@ -259,10 +259,10 @@ function inicializar_eventos_globales() {
         }
         
         // Hacer clic izquierdo sobre un adjunto (Para mostrar su menú)
-        const nombreAdjunto = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente-item-nombre")
-        if (nombreAdjunto) {
+        const itemAdjunto = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente-item")
+        if (itemAdjunto) {
             e.preventDefault()
-            mostrar_menu_contextual_archivo(e, nombreAdjunto)
+            mostrar_menu_contextual_archivo(e, itemAdjunto)
             return
         }
     })
@@ -408,8 +408,8 @@ async function render_html_lista_archivos() {
     for (const activo of archivos_mensaje) {
         const [url, idn] = await url_icono_extension_img(activo.extension)
         html += `
-        <div class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
-            <div data-indice="${archivos_mensaje.indexOf(activo)}" class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
+        <div data-indice="${archivos_mensaje.indexOf(activo)}" class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
+            <div class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
                 <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
                     <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
                     <span class="info-chat-participante-nombre">${idn ? activo.nombre : activo.nombre + "." + activo.extension}</span>
