@@ -1,3 +1,8 @@
+
+> [!NOTE]
+> Electron se instala como devDependency. En conexiones lentas puede tardar unos minutos porque descarga los binarios del motor Chromium.
+
+
 > [!WARN]
 > Ravage actualmente está sufriendo grandes cambios constantemente. Debido a la falta de un release estable no podemos garantizar que este readme documente todo lo necesario para poder usar la ultima versión disponible.
 
