@@ -15,7 +15,8 @@
   "type": "module",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run build-preload && electron .",
+    "build-preload": "esbuild preload.cjs --bundle --platform=node --external:electron --outfile=preload.bundle.cjs",
     "start-railway": "node backend/servidores/serverRailway.js",
     "test": "vitest run"
   },
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "electron": "^41.1.1",
+    "esbuild": "^0.27.7",
     "standard": "^17.1.2",
     "vitest": "^4.1.2"
   },

@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('./libs.js');
+const { ipcRenderer } = require('electron');
 
 module.exports = {
     LOGIN_USUARIO: (usuario, contraseña, mantener_sesion_iniciada) => {

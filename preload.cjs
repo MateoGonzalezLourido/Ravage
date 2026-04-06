@@ -5,20 +5,20 @@
   OBLIGATORIAMENTE DEBE SER UN CJS (CommonJS)
 */
 
-const { contextBridge } = require('./preload/libs.js');
+const { contextBridge } = require('electron');
 
 // Importar módulos de la carpeta preload
-const auth = require('./preload/auth.js');
-const navigation = require('./preload/navigation.js');
-const user = require('./preload/user.js');
-const social = require('./preload/social.js');
-const chat = require('./preload/chat.js');
-const storage = require('./preload/storage.js');
-const app_settings = require('./preload/app_settings.js');
-const validators = require('./preload/validators.js');
-const mailbox = require('./preload/mailbox.js');
-const security = require('./preload/security.js');
-const utils = require('./preload/utils.js');
+const auth = require('./preload/auth.cjs');
+const navigation = require('./preload/navigation.cjs');
+const user = require('./preload/user.cjs');
+const social = require('./preload/social.cjs');
+const chat = require('./preload/chat.cjs');
+const storage = require('./preload/storage.cjs');
+const app_settings = require('./preload/app_settings.cjs');
+const validators = require('./preload/validators.cjs');
+const mailbox = require('./preload/mailbox.cjs');
+const security = require('./preload/security.cjs');
+const utils = require('./preload/utils.cjs');
 
 // Argumentos de inicio para determinar el estado inicial en el bloque boot
 const startArg = process.argv.find(a => a.startsWith('--start='));
