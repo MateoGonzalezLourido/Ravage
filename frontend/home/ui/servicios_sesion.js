@@ -1,4 +1,4 @@
-export function manejar_ui_cierre_sesion(mostrar) {
+export async function manejar_ui_cierre_sesion(mostrar) {
     const clase_sync_bar = "sync-mailbox-bar"
     if (mostrar) {
         if (!document.querySelector(`.${clase_sync_bar}`)) {
