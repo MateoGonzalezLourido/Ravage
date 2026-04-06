@@ -207,7 +207,7 @@ function inicializar_eventos_globales() {
             }
             // Boton nav ver detalles (top bar)
             if (e.target.closest("#nav-prinicpal-chat-usaurio")) {
-                mostrar_datos_chat_usaurios()
+                mostrar_datos_chat_usaurios(e)
                 return
             }
             // Abrir ventana añadir archivos
