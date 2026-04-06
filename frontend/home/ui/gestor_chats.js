@@ -130,7 +130,11 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     }
 }
 
-export async function abrir_chat_item(id_chat) {
+export async function abrir_chat_item(id_chat, force = false) {
+    if (!force && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
+        return;
+    }
+
     const [datos_chat, id_usuario] = await Promise.all([
         Get_datos_chat_abrir(id_chat),
         window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
@@ -180,7 +184,7 @@ export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
                 const res = await window.chats.BLOQUEAR_CHAT(id_chat)
                 if (res?.success) {
                     window.pushNotificacion({ prioridad: 1, texto: "Bloqueo alterado", tipo: "success" })
-                    if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) await abrir_chat_item(id_chat)
+                    if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) await abrir_chat_item(id_chat, true)
                 }
             }
             await ACTUALIZAR_LISTAS_CHAT()
