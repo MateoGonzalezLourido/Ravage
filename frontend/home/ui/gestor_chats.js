@@ -19,15 +19,7 @@ export function cerrar_paneles_al_abrir_chat() {
     }
 }
 
-export function scroll_fin_chat() {
-    const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
-    if (chatCuerpo) {
-        chatCuerpo.scrollTo({
-            top: chatCuerpo.scrollHeight,
-            behavior: "smooth"
-        })
-    }
-}
+
 
 export async function Get_datos_chat_abrir(id_chat) {
     const resultados = await Promise.allSettled([
@@ -147,7 +139,6 @@ export async function abrir_chat_item(id_chat, force = false) {
     limpiar_archivos_mensaje()
     document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
     cerrar_paneles_al_abrir_chat()
-    scroll_fin_chat()
 }
 
 export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
@@ -301,7 +292,15 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
         scroll_fin_chat()
     }
 }
-
+export function scroll_fin_chat() {
+    const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
+    if (chatCuerpo) {
+        chatCuerpo.scrollTo({
+            top: chatCuerpo.scrollHeight,
+            behavior: "smooth"
+        })
+    }
+}
 export async function INICIO_CHAT_MENU_PRINCIPAL() {
     try {
         await ACTUALIZAR_LISTAS_CHAT()

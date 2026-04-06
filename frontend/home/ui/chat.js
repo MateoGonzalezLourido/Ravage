@@ -1,5 +1,6 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
+import { scroll_fin_chat } from './gestor_chats.js'
 const nombre_defecto = "~no encontrado~"
 
 // ─── DEFINICIÓN DE ESCÁNERES DE SEGURIDAD ──────────────────────────────────
@@ -416,6 +417,9 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
                 aplicar_escaneres_asincronos(msgEl, textoOriginal, escaneres_seguridad);
             }
         }
+        setTimeout(() => {
+            scroll_fin_chat()
+        }, 10);
     } catch (e) {
         console.error("Error crítico en renderizar_chat_progresivo_plano:", e);
     }
