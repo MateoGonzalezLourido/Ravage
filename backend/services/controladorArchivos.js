@@ -100,14 +100,15 @@ async function saveCacheHistorialBusquedasAñadirFile(data) {
 }
 
 
-async function saveAjustesAppFile({ data = {}, create = true }) {
+async function saveAjustesAppFile({ data = {}, create = false }) {
     await asegurarCarpeta();
-    let data_usar = create ? AJUSTES_APP_DEFAULT : await getAjustesAppFile();
     
-    if (!create) {
-        // Combinar datos actuales con los nuevos
-        data_usar = { ...data_usar, ...data };
-    }
+    // Si create es true, empezamos de cero con los valores por defecto.
+    // Si create es false (por defecto ahora), leemos lo que ya hay.
+    let data_usar = create ? { ...AJUSTES_APP_DEFAULT } : await getAjustesAppFile();
+    
+    // Combinar con los nuevos datos recibidos
+    data_usar = { ...data_usar, ...data };
 
     try {
         const encrypted = await CifrarDatosArchivos(data_usar, 'global');
@@ -116,8 +117,10 @@ async function saveAjustesAppFile({ data = {}, create = true }) {
             JSON.stringify(encrypted, null, 2), 
             { encoding: "utf8" }
         );
+        return true;
     } catch (err) {
         log.error({ err }, "Error al guardar ajustes de app");
+        return false;
     }
 }
 

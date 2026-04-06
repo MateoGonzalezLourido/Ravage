@@ -78,7 +78,7 @@ async function createMainWindowHome(AutoLogin = false) {
         return await getAjustesAppFile(nombre)
     })
     ipcMain.handle("guardar-ajustes-app", async (_, data) => {
-        return await saveAjustesAppFile({ data })
+        return await saveAjustesAppFile({ data, create: false })
     })
 
 
