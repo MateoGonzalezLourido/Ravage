@@ -19,7 +19,7 @@ const validators = require('./preload/validators.cjs');
 const mailbox = require('./preload/mailbox.cjs');
 const security = require('./preload/security.cjs');
 const utils = require('./preload/utils.cjs');
-
+const avisosUI=require('./preload/avisos.cjs');
 // Argumentos de inicio para determinar el estado inicial en el bloque boot
 const startArg = process.argv.find(a => a.startsWith('--start='));
 const startPage = startArg?.split('=')[1] ?? 'true';
@@ -65,3 +65,6 @@ contextBridge.exposeInMainWorld('escaneres_seguridad_app', security);
 
 // Utilidades generales
 contextBridge.exposeInMainWorld('utilidades_app', utils);
+
+//avisos en UI
+contextBridge.exposeInMainWorld('avisos_ui', avisosUI);
