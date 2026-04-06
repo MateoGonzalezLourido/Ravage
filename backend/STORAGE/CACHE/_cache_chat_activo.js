@@ -68,8 +68,6 @@ export function crearCacheChatActivo(datos) {
 
     // Reiniciar timer en cada creación/actualización
     resetearTimerExpiracion(id);
-    
-    log.debug(`Cache activa del chat ${id} actualizada/creada`);
 }
 
 /**
