@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('./libs.js');
+const { ipcRenderer } = require('electron');
 
 module.exports = {
     ENCONTRAR_USUARIOS_EXTERNOS: (texto, correo = false) => {

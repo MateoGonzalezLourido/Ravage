@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('./libs.js');
+const { ipcRenderer } = require('electron');
 
 module.exports = {
     CAMBIAR_PAGINA_SOPORTE: () => ipcRenderer.send("cambiar-pagina-soporte"),

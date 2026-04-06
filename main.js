@@ -45,7 +45,7 @@ async function createMainWindowHome(AutoLogin = false) {
         paintWhenInitiallyHidden: false,
         icon: path.join(__dirname, 'frontend/recursos/RavageIcono.png'),
         webPreferences: {
-            preload: path.join(__dirname, 'preload.cjs'),
+            preload: path.join(__dirname, 'preload.bundle.cjs'),
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
