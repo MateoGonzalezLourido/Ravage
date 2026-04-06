@@ -153,7 +153,9 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
         document.querySelector("#lista-chats-componentes").innerHTML = html
 
         //eventos doom
-        document.querySelectorAll(".chat-componente-lista-chats").forEach(componente => {
+        document.querySelector("#lista-chats-componentes").addEventListener("click", e => {
+            const componente = e.target.closest('.chat-componente-lista-chats')
+            if (!componente) return;
             // Evento contextmenu para mutear/bloquear chats
             componente.addEventListener("contextmenu", (e) => {
                 e.preventDefault()
@@ -170,11 +172,11 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 const texto_bloquear = esta_bloqueado ? "Desbloquear chat" : "Bloquear chat"
 
                 const html_contextMenu = `
-                    <div class="context-menu context-menu-chat" style="position: fixed; z-index: 1000;">
-                        <div class="context-menu-item" data-action="silenciar">${texto_silenciar}</div>
-                        <div class="context-menu-item" data-action="bloquear">${texto_bloquear}</div>
-                    </div>
-                `
+            <div class="context-menu context-menu-chat" style="position: fixed; z-index: 1000;">
+                <div class="context-menu-item" data-action="silenciar">${texto_silenciar}</div>
+                <div class="context-menu-item" data-action="bloquear">${texto_bloquear}</div>
+            </div>
+        `
 
                 document.body.insertAdjacentHTML("beforeend", html_contextMenu)
 
@@ -230,7 +232,6 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                     })
                 }
             })
-
             componente.addEventListener("click", async (e) => {
                 e.preventDefault()
                 // OBTENER LA INFORMACION DEL CHAT Y CREAR EL CHAT EN EL HTML 
@@ -249,7 +250,7 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
                 //cerrar paneles laterales si están abiertos
                 cerrar_paneles_al_abrir_chat()
-
+                //TODO:REVISAR FUNCION
                 // Eventos de botones de solicitud (añadir usuario a chat de 2)
                 document.querySelectorAll(".bt-solicitud-aceptar, .bt-solicitud-rechazar").forEach(btn => {
                     btn.addEventListener("click", async (ev) => {
@@ -389,15 +390,15 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                             const [url, identificado] = await url_icono_extension_img(archivo.extension)
 
                             html += `
-                            <div class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-cuerpo-item">
-                                <div data-indice="${archivos.indexOf(archivo)}" class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre">
-                                    <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
-                                        <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
-                                        <span class="info-chat-participante-nombre">${identificado ? archivo.nombre : archivo.nombre + "." + archivo.extension}</span>
-                                    </div>
-                                </div>
+                    <div class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
+                        <div data-indice="${archivos.indexOf(archivo)}" class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
+                            <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
+                                <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
+                                <span class="info-chat-participante-nombre">${identificado ? archivo.nombre : archivo.nombre + "." + archivo.extension}</span>
                             </div>
-                            `
+                        </div>
+                    </div>
+                    `
                         }
                         return html
                     }
@@ -406,24 +407,24 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                     ventana.className = "ventana-archivos-mensaje"
                     // HTML Structure mimicking #info-chat-seccion
                     ventana.innerHTML = `
-                    <div class="info-chat-header">
-                        <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header">
-                            <img src="../recursos/cruz.png" alt="cerrar">
-                        </div>
-                        <div> <span>Archivos Adjuntos</span></div>
-                        <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos"title="añadir-archivo">
-                            <img src="../recursos/suma.png" alt="añadir">
-                        </div>
-                        <div  id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro">
-                            <img src="../recursos/escoba.png" alt="limpiar">
-                        </div>
-                    </div>
-                    
-                    <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
-                        <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-cuerpo">
-                            ${html_lista_archivos}
-                        </div>
-                    </div>`
+            <div class="info-chat-header">
+                <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header">
+                    <img src="../recursos/cruz.png" alt="cerrar">
+                </div>
+                <div> <span>Archivos Adjuntos</span></div>
+                <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos"title="añadir-archivo">
+                    <img src="../recursos/suma.png" alt="añadir">
+                </div>
+                <div  id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro">
+                    <img src="../recursos/escoba.png" alt="limpiar">
+                </div>
+            </div>
+            
+            <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
+                <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-componente">
+                    ${html_lista_archivos}
+                </div>
+            </div>`
 
                     // Insertar en DOM con transición y ancho bloqueados en inline style
                     ventana.style.transition = "none"
@@ -459,12 +460,13 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                     })
                     //eventos
                     //contextmenu de cada archivo(borrar, editar nombre/extension)
-                    document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-cuerpo").forEach(el => {
+                    document.querySelector(".ventana-archivos-mensaje-cuerpo").addEventListener("click", e => {
+                        const el = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente")
                         el.addEventListener("click", (e) => {
                             e.preventDefault()
 
                             // Obtener el item específico clicado para sacar su índice y el elemento del DOM
-                            const itemClicado = e.target.closest(".ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre")
+                            const itemClicado = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente-item-nombre")
                             if (!itemClicado) return
 
                             const indice = itemClicado.dataset.indice
@@ -482,11 +484,11 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                             document.querySelector(".context-menu")?.remove()
 
                             const html_contextMenu = `
-                                <div class="context-menu" style="position: fixed; z-index: 1000;">
-                                    <div class="context-menu-item" data-action="borrar"> Borrar</div>
-                                    <div class="context-menu-item" data-action="editar">Editar</div>
-                                </div>
-                            `
+                        <div class="context-menu" style="position: fixed; z-index: 1000;">
+                            <div class="context-menu-item" data-action="borrar"> Borrar</div>
+                            <div class="context-menu-item" data-action="editar">Editar</div>
+                        </div>
+                    `
 
                             const ventanaContenedor = document.querySelector(".ventana-archivos-mensaje")
                             ventanaContenedor.insertAdjacentHTML("beforeend", html_contextMenu)
@@ -512,10 +514,10 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                                     //borar de la lista de datos
                                     archivos_mensaje.splice(indice, 1)
                                     //borrar del html (el item padre)
-                                    itemClicado.closest(".ventana-archivos-mensaje-cuerpo-cuerpo-item").remove()
+                                    itemClicado.closest(".ventana-archivos-mensaje-cuerpo-componente-item").remove()
                                     //actualizar indices
                                     let indice_actual = -1
-                                    for (el_item of document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-cuerpo-item-nombre")) {
+                                    for (el_item of document.querySelectorAll(".ventana-archivos-mensaje-cuerpo-componente-item-nombre")) {
                                         indice_actual++
                                         if (indice_actual >= indice) {
                                             el_item.dataset.indice = indice_actual
@@ -615,13 +617,13 @@ async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                             }
                         }
                         //actualizar vista seccion archivos
-                        document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
+                        document.querySelector(".ventana-archivos-mensaje-cuerpo-componente").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
                     })
                     //limpiar arhivos
                     document.querySelector("#bt-limpiar-archivos-mensaje-escritura").addEventListener("click", async () => {
                         archivos_mensaje = []//limpiar
                         //actualziar seccion
-                        document.querySelector(".ventana-archivos-mensaje-cuerpo-cuerpo").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
+                        document.querySelector(".ventana-archivos-mensaje-cuerpo-componente").innerHTML = await mostrar_lista_archivos(archivos_mensaje)
                     })
                 })
                 //descargar archivos mensaje (movido a evento delegado en DOMContentLoaded)
@@ -771,32 +773,27 @@ async function refrescar_componente_lista_chats(id_chat, componente, notificacio
 
 
 //buzon api
+//procesar lotes del buzon de manera directa (Backend ya filtró silenciados y bloqueados)
+async function procesar_entradas_buzon(entradas) {
+    if (!entradas || entradas.length === 0) return;
+    try {
+        for (const entrada of entradas) {
+            await hacer_cambios_buzon(entrada);
+        }
+    } catch (e) {
+        console.error("Error al procesar lote de buzón", e);
+    }
+}
+
 //realizar cambios en la app segun la entrada del buzon
 async function hacer_cambios_buzon(entrada) {
     //TODO: CAMBIO DE NOMBRE CHATGRUPO, AÑADIDO USUARIO A UN GRUPO, ELIMINADO USUARIO DE UN CHAT, MENSAJE ACTUALIZAR APP
     const tp = Number(entrada.tipo)
 
-    const id_chat_entrada = entrada.data?.chat || entrada.chat;
-    const id_emisor_entrada = entrada.data?.emisor || entrada.data?.creador;
+    const esta_silenciado = entrada.silenciado || false; // Injectado por el backend
 
-    let esta_silenciado = false;
-    let esta_bloqueado = false;
-    if (id_chat_entrada) {
-        const chats_usuario = await window.chats.OBTENER_CHATS_USUARIO();
-        const chatInfo = chats_usuario.find(c => (c.id || c._id) == id_chat_entrada);
-        if (chatInfo) {
-            if (chatInfo.silenciado) esta_silenciado = true;
-            if (chatInfo.bloqueado) esta_bloqueado = true;
-        }
-    } else if (id_emisor_entrada) {
-        const silenciados = await window.social_usuario.OBTENER_USUARIOS_SILENCIADOS() || [];
-        const ids_silenciados = silenciados.map(u => typeof u === "string" ? u : u.id || u._id || u);
-        if (ids_silenciados.includes(id_emisor_entrada)) esta_silenciado = true;
-    }
-
-    if (esta_bloqueado) return; // Ignorar completamente si el chat está bloqueado
     if (tp === 0) { //mensaje chat
-        const id_chat = id_chat_entrada;
+        const id_chat = entrada.data?.chat || entrada.chat;
         const id_mensaje = entrada.data?.id_mensaje;
 
         // 1. Buscar el componente en la lista para actualizar vista previa
@@ -840,7 +837,8 @@ async function hacer_cambios_buzon(entrada) {
         //notificacion
         if (!esta_silenciado) {
             //si el usuario es a quien añadieron
-            if (entrada.data.usuarios.includes(await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO())) {
+            const mi_id = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO();
+            if (entrada.data.usuarios.includes(mi_id)) {
                 window.pushNotificacion({
                     prioridad: 0, // menor número = más importante
                     texto: `Te has unido a un nuevo chat${nombreChat ? `\n${nombreChat}` : ``}`,
@@ -852,7 +850,7 @@ async function hacer_cambios_buzon(entrada) {
                 const nombreAñadido = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.añadido })
                 window.pushNotificacion({
                     prioridad: 0, // menor número = más importante
-                    texto: `${nombreEmisor} añadio a ${nombreAñadido} al grupo${nombreChat ? `\n${nombreChat}` : ``}`,
+                    texto: `${nombreEmisor} añadió a ${nombreAñadido} al grupo${nombreChat ? `\n${nombreChat}` : ``}`,
                     tipo: "info" // "info", "error", "success"
                 })
             }
@@ -957,7 +955,7 @@ async function iniciar_buzonAPI() {
     }, 1000)
 
     const cambios = await window.buzonAPI.REVISAR_BUZON()
-    for (const entrada of cambios?.entrada || []) await hacer_cambios_buzon(entrada)
+    await procesar_entradas_buzon(cambios?.entrada || [])
 
     await window.buzonAPI.INICIAR_BUZON()
 
@@ -1056,7 +1054,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     //buzon API
     window.buzonAPI.onNuevaNotificacion(async (data) => {
         //realizar cambios en la app segun la entrada del buzon
-        for (const entrada of data.entrada) await hacer_cambios_buzon(entrada)
+        await procesar_entradas_buzon(data.entrada)
     });
 
     window.buzonAPI.onNotificarRender((data) => {
