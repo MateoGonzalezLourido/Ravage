@@ -61,7 +61,7 @@ export async function manejar_solicitud_chat(btn, aceptar) {
     if (res?.success) {
         window.pushNotificacion({ prioridad: 1, texto: aceptar ? "Usuario añadido" : "Rechazado", tipo: "success" })
         await ACTUALIZAR_LISTAS_CHAT()
-        await abrir_chat_item(id_chat_sol)
+        await abrir_chat_item(id_chat_sol, true)
     } else {
         window.pushNotificacion({ prioridad: 0, texto: "Error al procesar", tipo: "error" })
         btn.closest(".solicitud-botones")?.querySelectorAll("button").forEach(b => b.disabled = false)
