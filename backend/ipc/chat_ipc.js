@@ -135,6 +135,7 @@ export function registerChatHandlers(mainWindow, socket) {
     ipcMain.handle("obtener-cache-chat-activo", async (_, id, bloque) => {
         return obtenerCacheChatActivo(id, bloque)
     })
+
     ipcMain.handle("obtener-modelo-datos-necesarios-chat", async () => {
         return modelo_datos_necesarios_chat
     })

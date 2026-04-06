@@ -12,6 +12,26 @@ const TIEMPO_VIDA_MS = 3 * 60 * 1000; // 3 Minutos
 const MAX_CHATS = 2;
 
 /**
+ * Gestiona el timer de expiración para un chat.
+ * Si ya existe, lo reinicia.
+ */
+function resetearTimerExpiracion(id) {
+    if (_timers.has(id)) {
+        clearTimeout(_timers.get(id));
+    }
+    
+    const timer = setTimeout(() => {
+        // Solo borrar si realmente existe algo para evitar logs fantasmas
+        if (_cache_chats_activos.has(id)) {
+            log.debug(`Cache del chat ${id} expirada automáticamente`);
+            borrarCacheChatActivo(id);
+        }
+    }, TIEMPO_VIDA_MS);
+    
+    _timers.set(id, timer);
+}
+
+/**
  * Crea o actualiza la cache de un chat activo específico.
  * @param {Object} datos - Nuevos datos temporales. Debe incluir _id.
  */
@@ -42,21 +62,13 @@ export function crearCacheChatActivo(datos) {
         }
     }
 
-    // Guardar/Actualizar en el Map (esto también lo mueve al final en términos de orden si se re-inserta)
-    _cache_chats_activos.delete(id); 
+    // Guardar/Actualizar en el Map
+    _cache_chats_activos.delete(id);
     _cache_chats_activos.set(id, chat_data);
 
-    // Gestionar Timer individual
-    if (_timers.has(id)) {
-        clearTimeout(_timers.get(id));
-    }
+    // Reiniciar timer en cada creación/actualización
+    resetearTimerExpiracion(id);
     
-    const timer = setTimeout(() => {
-        log.debug(`Cache del chat ${id} expirada automáticamente`);
-        borrarCacheChatActivo(id);
-    }, TIEMPO_VIDA_MS);
-    
-    _timers.set(id, timer);
     log.debug(`Cache activa del chat ${id} actualizada/creada`);
 }
 
@@ -67,12 +79,16 @@ export function crearCacheChatActivo(datos) {
  */
 export function obtenerCacheChatActivo(id, bloque = null) {
     if (!id) return null;
-    const chat = _cache_chats_activos.get(id.toString());
-    
+    const id_str = id.toString();
+    const chat = _cache_chats_activos.get(id_str);
+
     if (!chat) return null;
 
+    // Sliding Expiration: Reiniciar timer al acceder (leer) a la cache
+    resetearTimerExpiracion(id_str);
+
     if (bloque === "seguridad") {
-       return chat.seguridad;
+        return chat.seguridad;
     }
 
     return chat;
@@ -85,6 +101,10 @@ export function obtenerCacheChatActivo(id, bloque = null) {
 export function borrarCacheChatActivo(id = null) {
     if (id) {
         const id_str = id.toString();
+
+        // Solo proceder si existe en la cache de datos o de timers
+        if (!_cache_chats_activos.has(id_str) && !_timers.has(id_str)) return;
+
         if (_timers.has(id_str)) {
             clearTimeout(_timers.get(id_str));
             _timers.delete(id_str);
@@ -93,6 +113,8 @@ export function borrarCacheChatActivo(id = null) {
         log.debug(`Cache activa del chat ${id_str} borrada`);
     } else {
         // Borrar todo
+        if (_cache_chats_activos.size === 0 && _timers.size === 0) return;
+
         for (const timer of _timers.values()) clearTimeout(timer);
         _timers.clear();
         _cache_chats_activos.clear();
