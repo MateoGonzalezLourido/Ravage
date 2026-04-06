@@ -1,5 +1,5 @@
 > [!WARN]
-> Ravage actualmente está sufriendo grandes cambios constantemente. Debido a la falta de un release estable no podemos garantizar que este readme documente todo lo necesario para poder usar la ultima versión disponible
+> Ravage actualmente está sufriendo grandes cambios constantemente. Debido a la falta de un release estable no podemos garantizar que este readme documente todo lo necesario para poder usar la ultima versión disponible.
 
 <div align="center">
 
