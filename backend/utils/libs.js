@@ -84,6 +84,8 @@ function createElectronProxy(name) {
 export const app = createElectronProxy('app');
 export const BrowserWindow = createElectronProxy('BrowserWindow');
 export const ipcMain = createElectronProxy('ipcMain');
+export const ipcRenderer = createElectronProxy('ipcRenderer');
+export const contextBridge = createElectronProxy('contextBridge');
 export const dialog = createElectronProxy('dialog');
 
 // ==========================================
