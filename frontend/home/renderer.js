@@ -112,7 +112,6 @@ async function Get_datos_chat_abrir(id_chat) {
 }
 async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     try {
-        archivo_cambiando_nombre = null
         const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
         window.chats.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)//!importante: esto hay que hacerlo asincrono porque puede tardar mucho, no importa que el usaurio pueda ver mensajes de hace un año, esto se hace para limpiar el DB
 
@@ -518,10 +517,8 @@ function mostrar_menu_contextual_archivo(e, clkNode) {
                     actualizar_html_lista_archivos()
                 }
             })
-            tx.addEventListener("blur", async () => {
-                let nn = tx.value.trim()
-                if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nn))) nn = "Archivo"
-                archivo.nombre = nn
+            tx.addEventListener("blur", () => {
+                // Si pulsa fuera (blur), se cancela la edición restaurando el HTML original
                 actualizar_html_lista_archivos()
             })
             clkNode.querySelector(".contenido-item-archivo-lista").appendChild(tx)
