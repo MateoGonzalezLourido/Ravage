@@ -1,5 +1,5 @@
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
-import { invalidar_cache_historial } from './chat.js'
+import { invalidar_cache_historial } from './historial_archivos_descargados.js'
 
 export async function manejar_descarga_archivo(e) {
     const el = e.target.closest(".archivo-mensaje-div-archivos")
