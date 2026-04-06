@@ -13,6 +13,12 @@ module.exports = {
     OBTENER_CONTACTOS_USUARIO: () => {
         return ipcRenderer.invoke("obtener-contactos-usuario")
     },
+    OBTENER_USUARIOS_BLOQUEADOS: () => {
+        return ipcRenderer.invoke("obtener-usuarios-bloqueados")
+    },
+    OBTENER_USUARIOS_SILENCIADOS: () => {
+        return ipcRenderer.invoke("obtener-usuarios-silenciados")
+    },
     AÑADIR_CONTACTO: (id, apodo) => {
         return ipcRenderer.invoke("añadir-contacto", id, apodo)
     },
@@ -27,5 +33,11 @@ module.exports = {
     },
     ELIMINAR_USUARIO_SILENCIADOS: (id) => {
         return ipcRenderer.invoke("eliminar-usuarios-silenciados", id)
+    },
+    TOGGLE_INVISIBLE_USUARIO: () => {
+        return ipcRenderer.invoke("toggle-invisible-usuario")
+    },
+    TOGGLE_MOSTRAR_CORREO_USUARIO: () => {
+        return ipcRenderer.invoke("toggle-mostrar-correo-usuario")
     }
 };

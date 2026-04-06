@@ -11,20 +11,34 @@ export function obtener_archivos_mensaje() {
 }
 
 export async function render_html_lista_archivos() {
-    let html = ``
-    for (const activo of archivos_mensaje) {
-        const [url, idn] = await url_icono_extension_img(activo.extension)
-        html += `
-        <div data-indice="${archivos_mensaje.indexOf(activo)}" class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
+    const html = []
+    //crear una cache que ayude a renderizar mas rapido
+    const cache_propia_url_iconos = {}
+    let guardados = 0
+    for (let i = 0; i < archivos_mensaje.length; i++) {
+        const activo = archivos_mensaje[i]
+        let [url, idn] = [cache_propia_url_iconos[activo.extension] || null, true]
+        if (!url) {
+            [url, idn] = await url_icono_extension_img(activo.extension)
+            cache_propia_url_iconos[activo.extension] = url
+            guardados++
+        }
+        //borrar ultimo si guardados>=200
+        if (guardados >= 200) {
+            delete cache_propia_url_iconos[Object.keys(cache_propia_url_iconos)[0]]
+            guardados--
+        }
+        html.push(`
+        <div data-indice="${i}" class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
             <div class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
                 <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
                     <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
                     <span class="info-chat-participante-nombre">${idn ? activo.nombre : activo.nombre + "." + activo.extension}</span>
                 </div>
             </div>
-        </div>`
+        </div>`)
     }
-    return html
+    return html.join("")
 }
 
 export async function actualizar_html_lista_archivos() {
@@ -34,7 +48,7 @@ export async function actualizar_html_lista_archivos() {
 
 export async function abrir_ventana_archivos() {
     if (document.querySelector(".ventana-archivos-mensaje")) return cerrar_ventana_archivos()
-    
+
     const html_lista = await render_html_lista_archivos()
     const ventana = document.createElement("div")
     ventana.className = "ventana-archivos-mensaje"
@@ -100,8 +114,8 @@ export function mostrar_menu_contextual_archivo(e, clkNode) {
 
     const menu = document.querySelector(".context-menu")
     menu.style.left = e.clientX + "px"; menu.style.top = e.clientY + "px";
-    
-    const cr = (ev) => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener("mousedown", cr) }}
+
+    const cr = (ev) => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener("mousedown", cr) } }
     setTimeout(() => document.addEventListener("mousedown", cr), 0)
 
     menu.addEventListener("click", (ev) => {
