@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('./libs.js');
+const { ipcRenderer } = require('electron');
 
 module.exports = {
     ENCONTRAR_USUARIOS_EXTERNOS: (texto, correo = false) => {
@@ -12,12 +12,6 @@ module.exports = {
     },
     OBTENER_CONTACTOS_USUARIO: () => {
         return ipcRenderer.invoke("obtener-contactos-usuario")
-    },
-    OBTENER_USUARIOS_BLOQUEADOS: () => {
-        return ipcRenderer.invoke("obtener-usuarios-bloqueados")
-    },
-    OBTENER_USUARIOS_SILENCIADOS: () => {
-        return ipcRenderer.invoke("obtener-usuarios-silenciados")
     },
     AÑADIR_CONTACTO: (id, apodo) => {
         return ipcRenderer.invoke("añadir-contacto", id, apodo)

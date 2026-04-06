@@ -13,3 +13,4 @@ pino-*.log
 
 cosasHacer/
 .vscode/
+preload.bundle.cjs

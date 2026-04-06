@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('./libs.js');
+const { ipcRenderer } = require('electron');
 
 module.exports = {
     cache_url_img_extensiones: {

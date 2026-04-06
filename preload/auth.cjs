@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('./libs.js');
+const { ipcRenderer } = require('electron');
 
 module.exports = {
     LOGIN_USUARIO: (usuario, contraseña, mantener_sesion_iniciada) => {
@@ -21,14 +21,5 @@ module.exports = {
     },
     CERRAR_SESION: () => {
         return ipcRenderer.invoke('cerrar-sesion-usuario')
-    },
-    ICONO_CARGANDO: (callback) => {
-        ipcRenderer.on("icono-cargando", (_, mostrar) => callback(mostrar));
-    },
-    FALLO_CORREO_MANDAR: (callback) => {
-        ipcRenderer.on("fallo-correo-mandar", () => callback());
-    },
-    CERRANDO_SESION: (callback) => {
-        ipcRenderer.on("cerrando-sesion", (_, mostrar) => callback(mostrar));
-    },
+    }
 };

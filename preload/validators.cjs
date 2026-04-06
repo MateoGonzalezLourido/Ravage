@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('./libs.js');
+const { ipcRenderer } = require('electron');
 
 module.exports = {
     VALIDAR_CORREO: (correo) => ipcRenderer.invoke('validar-correo', correo),

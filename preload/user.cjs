@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('./libs.js');
+const { ipcRenderer } = require('electron');
 
 module.exports = {
     GET_APODO_SESION: () => {
@@ -33,5 +33,11 @@ module.exports = {
     },
     OBTENER_FECHA_BLOQUEO_CONTRASEÑA: () => {
         return ipcRenderer.invoke("obtener-fecha-bloqueo-contraseña")
-    }
+    },
+    OBTENER_USUARIOS_BLOQUEADOS: () => {
+        return ipcRenderer.invoke("obtener-usuarios-bloqueados")
+    },
+    OBTENER_USUARIOS_SILENCIADOS: () => {
+        return ipcRenderer.invoke("obtener-usuarios-silenciados")
+    },
 };
