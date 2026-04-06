@@ -417,6 +417,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
                 aplicar_escaneres_asincronos(msgEl, textoOriginal, escaneres_seguridad);
             }
         }
+        //parche para mover el scroll para abajo del chat al abrirlo
         setTimeout(() => {
             scroll_fin_chat()
         }, 10);
