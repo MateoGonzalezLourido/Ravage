@@ -109,7 +109,7 @@ async function preparar_interfaz_y_servicios() {
     })
 
     // 2. Gestión global de fin de sesión (Listener)
-    window.sesion_usuario.CERRANDO_SESION(manejar_ui_cierre_sesion)
+    window.avisos_ui.CERRANDO_SESION(manejar_ui_cierre_sesion)
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
