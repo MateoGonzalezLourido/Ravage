@@ -24,7 +24,7 @@ export async function url_icono_extension_img(extension) {
     const extension_usar = (extension[0] === '.' ? extension.replace(".", "") : extension).toLowerCase()
 
     let _cache_img_extensiones = null;
-    if (window.cache_url_img_extensiones && typeof window.cache_url_img_extensiones.getCacheUrlImgExtensiones === 'function') {
+    if (typeof window.cache_url_img_extensiones.getCacheUrlImgExtensiones === 'function') {
         _cache_img_extensiones = await window.cache_url_img_extensiones.getCacheUrlImgExtensiones();
     }
 
@@ -40,7 +40,7 @@ export async function url_icono_extension_img(extension) {
             img_usar = _cache_img_extensiones[extension_usar] || img_defecto
         }
 
-        if (img_usar !== img_defecto && window.cache_url_img_extensiones) {
+        if (img_usar !== img_defecto) {
             window.cache_url_img_extensiones.setCacheUrlImgExtensiones({ [extension_usar]: img_usar })
         }
     }
@@ -62,8 +62,6 @@ async function getDataImgExtensiones() {
         data = {}
     }
 
-    if (window.cache_url_img_extensiones) {
-        window.cache_url_img_extensiones.setCacheUrlImgExtensiones(data)
-    }
+    window.cache_url_img_extensiones.setCacheUrlImgExtensiones(data)
     return data
 }
