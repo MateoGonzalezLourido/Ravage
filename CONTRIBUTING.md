@@ -26,7 +26,7 @@
 - **Rate Limiting**: Mejoras en el sistema de rate limiting.
 - **Servidores**: Mejoras en los servidores.
 
-**Nota**: si quieres hacer otra cosa, no dudes en proponerlo.
+**Nota**: si quieres hacer otra cosa, no dudes en proponerlo. La gran mayoría de ideas y cosas que se desarrollarán/cambiarán/implementarán en la app no están puestos en Issues ni en ningún sitio público, por lo que no dudes en preguntar si no aparece lo que quieres hacer en el Repositorio.
 
 ## 📤 Enviar tus cambios
 
