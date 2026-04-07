@@ -126,7 +126,7 @@ async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
     if (isMe) {
         await ACTUALIZAR_LISTAS_CHAT();
         if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
-            document.querySelector("#chat-usuario").innerHTML = "";
+            document.querySelector("#chat-usuario").replaceChildren();
         }
         if (!esta_silenciado) {
             window.pushNotificacion({ prioridad: 0, texto: `Has sido expulsado del chat ${chatNombre || ""}`, tipo: "error" });

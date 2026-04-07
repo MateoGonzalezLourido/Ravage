@@ -82,11 +82,11 @@ function actualizar_lista_usuarios_añadir({ conjunto = null, remove = false, cl
     const $span_text_contactos_añadidos = $lista_contactos_añadir?.querySelector(clase_span_lista_contactos_añadidos) || null
     const $bt_agregar_contacto_nuevo = document.querySelector("#bt-agregar-contacto-nuevo")
 
-    if (clean) $lista_contactos_añadir.innerHTML = ""
+    if (clean) $lista_contactos_añadir.replaceChildren()
     else if (remove) remove.currentTarget.remove()
     else if (Array.isArray(conjunto) && conjunto.length > 0) {
         //borrar
-        $lista_contactos_añadir.innerHTML = ""
+        $lista_contactos_añadir.replaceChildren()
         //añadir contacto a la lista
         conjunto.forEach(c => {
             $lista_contactos_añadir.innerHTML += `<div class="${clase_cp_lista_contactos_añadidos}" data-id="${c.id}">${c.nombre}</div>`

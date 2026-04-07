@@ -28,7 +28,7 @@
     width: 6px;
 }
 #cuerpo-mensajes-chat::-webkit-scrollbar-thumb {
-    background-color: rgba(235, 36, 36, 0.279);
+    background-color: #1ae51f;
     border-radius: 10px;
 }
 #cuerpo-mensajes-chat::-webkit-scrollbar-track {

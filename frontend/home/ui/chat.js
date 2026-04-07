@@ -477,7 +477,7 @@ export async function Crear_chat_html(datos, id_propio) {
 
     <div class="seccion-escritura-mensaje-chat" ${datos.bloqueado ? 'style="background: rgba(255,0,0,0.05);"' : ''}>
         <div id="bt-añadir-archivo-mensaje-escritura" ${datos.bloqueado ? 'style="display:none;"' : ''}>        
-            <img src="../recursos/carpeta.svg" alt="">
+            <img src="../recursos/carpeta.svg" alt="" draggable="false">
         </div>
         <textarea id="textarea-mensaje-escritura" 
             placeholder="${datos.bloqueado ? 'Este chat está bloqueado' : 'Escribe un mensaje'}" 
@@ -661,9 +661,9 @@ export async function mostrar_datos_chat_usaurios(e) {
                 return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes</div><div class="info-chat-lista-items">Error al cargar la lista.</div></div>`
             }
         })()}
-    </div>
-`
-    infoSeccion.insertAdjacentHTML("beforeend", html)
+    </div>`
+    infoSeccion.replaceChildren();
+    infoSeccion.insertAdjacentHTML("beforeend", html);
 
     // Eventos de la sección de información
     document.querySelector("#bt-cerrar-info-chat")?.addEventListener("click", () => {
