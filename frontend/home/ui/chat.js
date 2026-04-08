@@ -551,7 +551,7 @@ export async function mostrar_datos_chat_usaurios(e) {
     }
 
     const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-    const soyAdmin = info_chat?.admins?.includes(id_mio)
+    const soyAdmin = info_chat?.admins?.includes(id_mio) || false
 
     // Pre-obtener silenciados y bloqueados
     const [silenciados, bloqueados] = await Promise.all([
@@ -714,14 +714,14 @@ export async function mostrar_datos_chat_usaurios(e) {
         if (await Es_usuario_Sesion(id)) return;
 
         //menu contextual participantes
-        const soyAdmin = info_chat.admins?.includes(await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO());
-        const targetEsAdmin = info_chat.admins?.includes(id);
+        const soyAdmin = info_chat.admins?.includes(id_mio) || false;
+        const targetEsAdmin = info_chat.admins?.includes(id) || false;
 
         let html_contextMenu = `
-                                    <div class="context-menu context-menu-participantes" style="position: fixed; z-index: 1000;">
-                                        ${await Es_Contacto_Usuario(id) ? `<div class="context-menu-item" data-action="añadir-contacto">Añadir Contacto</div>` : ``}
-                                    </div>
-                                `
+            <div class="context-menu context-menu-participantes" style="position: fixed; z-index: 1000;">
+                ${!(await Es_Contacto_Usuario(id)) ? `<div class="context-menu-item" data-action="añadir-contacto">Añadir Contacto</div>` : ``}
+            </div>
+        `
         // Inyectar opciones de admin
         const divContent = [];
         if (soyAdmin) {
@@ -746,7 +746,7 @@ export async function mostrar_datos_chat_usaurios(e) {
         divContent.push(`<div class="context-menu-item" data-action="${action_bloquear}">${texto_bloquear}</div>`);
 
         if (divContent.length > 0) {
-            html_contextMenu = html_contextMenu.replace('</div>\n                                `', `${divContent.join('')}\n                                    </div>\n                                `);
+            html_contextMenu = html_contextMenu.replace('</div>\n`', `${divContent.join('')}\n</div>\n`);
         }
 
         const ventanaContenedor = document.querySelector(".info-chat-cuerpo")
