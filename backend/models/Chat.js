@@ -20,10 +20,6 @@ const ChatSchema = new mongoose.Schema({
         type: [mongoose.Schema.Types.ObjectId],
         default: []
     },
-    grupo: {
-        type: Boolean,
-        default: false
-    },
     ratchet_keys: [{
         emisor_id: mongoose.Schema.Types.ObjectId,
         receptor_id: mongoose.Schema.Types.ObjectId, // A quien va dirigida esta copia de la clave

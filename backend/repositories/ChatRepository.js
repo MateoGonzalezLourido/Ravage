@@ -40,7 +40,6 @@ async function getChatDeCache(id) {
     return await getChatDeCacheRaw(id);
 }
 
-
 export async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
     try {
         const chatIds = (data || [])
@@ -321,7 +320,6 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
                         chats: {
                             id: new mongoose.Types.ObjectId(chatIdLimpio),
                             nombre: chat.nombre,
-                            grupo: chat.grupo,
                             ultimoCambio: new Date(),
                             ultimomensaje: encriptarDatosSistema("Bienvenido al chat")
                         }
@@ -391,7 +389,6 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             nombre: nombre ? encriptarDatosSistema(nombre) : null,
             usuarios: ids_objectid,
             admins: ids_totales.length === 2 ? ids_objectid : [new mongoose.Types.ObjectId(id_propio)],
-            grupo: true,
             ratchet_keys
         });
 
@@ -403,7 +400,6 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
                     chats: {
                         id: datos_chat._id,
                         nombre: datos_chat.nombre,
-                        grupo: datos_chat.grupo,
                         ultimoCambio: new Date(),
                         ultimomensaje: encriptarDatosSistema("Chat recién creado")
                     }

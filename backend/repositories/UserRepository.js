@@ -66,7 +66,7 @@ export function procesarUsuario(usuario) {
 
 export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {    
     // Campos mínimos necesarios para el login y la inicialización de la sesión según sesionUsuario.js
-    const LOGIN_FIELDS = "_id apodo correo createdAt exp_bloq_apodo exp_bloq_correo exp_bloq_contrasena users_silence users_bloq secretKey chats.id chats.grupo chats.ultimoCambio contactos.id contactos.apodo idamigo visible invisible mostrarCorreo";
+    const LOGIN_FIELDS = "_id apodo correo createdAt exp_bloq_apodo exp_bloq_correo exp_bloq_contrasena users_silence users_bloq secretKey chats.id chats.ultimoCambio contactos.id contactos.apodo idamigo visible invisible mostrarCorreo";
 
     try {
         if (token && correo && id_dp) {
@@ -565,7 +565,6 @@ export async function obtenerChatsUsuarioDB() {
         const procesado = procesarUsuario(usuario);
         return procesado.chats.map(c => ({
             id: c.id.toString(),
-            grupo: !!c.grupo,
             ultimoCambio: c.ultimoCambio instanceof Date ? c.ultimoCambio.toISOString() : c.ultimoCambio,
             ultimomensaje: c.ultimomensaje || "",
             silenciado: !!c.silenciado,

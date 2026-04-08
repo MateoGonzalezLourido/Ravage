@@ -2,7 +2,6 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('chat-ipc');
 import { ipcMain, dialog } from '../utils/libs.js';
 import {
-    getListaChats,
     setListaChats,
     getIDMongodbUsuario
 } from '../STORAGE/Variables_sesion.js';
