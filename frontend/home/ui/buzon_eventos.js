@@ -25,6 +25,9 @@ export async function hacer_cambios_buzon(entrada) {
     else if (tp === 2) {//crear grupo
         await Cambio_buzonApi_crear_grupo(entrada, esta_silenciado)
     }
+    else if (tp === 3) {//usuario añadido
+        await Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado)
+    }
     else if (tp === 4) {//expulsar usuario
         await Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado)
     }
@@ -62,6 +65,7 @@ export async function inicializar_buzon_notificaciones() {
 async function Cambio_buzonApi_mensaje(entrada) {
     const id_chat = entrada.data?.chat || entrada.chat;
     const id_mensaje = entrada.data?.id_mensaje;
+    if(!id_chat || !id_mensaje) return;
 
     const chatC = Array.from(document.querySelectorAll(".chat-componente-lista-chats")).find(el => el.dataset.id == id_chat);
     //actualizar chat render si esta activo
@@ -136,6 +140,27 @@ async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
     } else {
         if (!esta_silenciado) {
             window.pushNotificacion({ prioridad: 1, texto: `${nombreExpulsado} ha sido expulsado del chat ${chatNombre || ""}`, tipo: "info" });
+        }
+    }
+    await Actualizar_render_chat({ emisor: entrada.data.emisor, chat: entrada.data.chat, fecha: entrada.data.data, especial: 1, data: entrada.data })
+}
+async function Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado) {
+    const añadidoId = entrada.data.añadido;
+    const isMe = await Es_usuario_Sesion(añadidoId);
+    const nombreAñadido = isMe ? "Te" : await Encontrar_Nombre_Chat_Usuario({ id_buscar: añadidoId });
+    const chatNombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat });
+
+    if (isMe) {
+        await ACTUALIZAR_LISTAS_CHAT();
+        if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
+            document.querySelector("#chat-usuario").replaceChildren();
+        }
+        if (!esta_silenciado) {
+            window.pushNotificacion({ prioridad: 0, texto: `Has sido añadido al chat ${chatNombre || ""}`, tipo: "error" });
+        }
+    } else {
+        if (!esta_silenciado) {
+            window.pushNotificacion({ prioridad: 1, texto: `${nombreAñadido} ha sido añadido al chat ${chatNombre || ""}`, tipo: "info" });
         }
     }
     await Actualizar_render_chat({ emisor: entrada.data.emisor, chat: entrada.data.chat, fecha: entrada.data.data, especial: 1, data: entrada.data })

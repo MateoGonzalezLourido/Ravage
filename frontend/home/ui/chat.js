@@ -523,7 +523,7 @@ export async function mostrar_datos_chat_usaurios(e) {
         window.cache_persistente.getChatCache(id_chat),
         window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat)
     ])
-
+    console.log(cache_persistente, cache_activo)
     // Combinar cachespriorizando el activo para datos más frescos
     let info_chat = { ...(cache_persistente || {}), ...(cache_activo || {}) }
 
@@ -724,6 +724,7 @@ export async function mostrar_datos_chat_usaurios(e) {
         `
         // Inyectar opciones de admin
         const divContent = [];
+
         if (soyAdmin) {
             divContent.push(`<div class="context-menu-item" data-action="expulsar">Expulsar</div>`);
             if (targetEsAdmin) {
