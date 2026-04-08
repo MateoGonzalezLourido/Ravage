@@ -11,7 +11,7 @@ export function cerrar_paneles_al_abrir_chat() {
         ventanaArchivos.classList.remove("abierto")
         setTimeout(() => ventanaArchivos.remove(), 310)
     }
-    const seccionHistorial = document.querySelector("#seccion-historial-archivos")
+    const seccionHistorial = document.querySelector("#seccion-historial-archivos-alineador")
     const chatUsuario = document.querySelector("#chat-usuario")
     if (seccionHistorial && !seccionHistorial.classList.contains("ocultar-display")) {
         seccionHistorial.classList.add("ocultar-display")

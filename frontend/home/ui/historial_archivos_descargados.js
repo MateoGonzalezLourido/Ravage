@@ -135,7 +135,7 @@ async function crear_eventos() {
     }
 
     // Click en un archivo para volver al chat
-    document.querySelector("historial-lista-contenido").addEventListener("click", async e => {
+    document.querySelector("#historial-lista-contenido")?.addEventListener("click", async e => {
         e.preventDefault()
         const el = e.target.closest(".archivo-historial-item")
         if (!el) return
