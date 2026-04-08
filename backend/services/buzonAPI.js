@@ -86,8 +86,8 @@ function filtrar_entradas_ipc(doc, ForceSilenciar = false) {
             }
         }
         // Comprobar usuario individual
-        else if (id_emisor_entrada) {
-            if (ids_silenciados.includes(id_emisor_entrada.toString()) || ForceSilenciar) esta_silenciado = true;
+        else if (id_emisor_entrada && !esta_bloqueado) {
+            if (!esta_silenciado && (ids_silenciados.includes(id_emisor_entrada.toString()) || ForceSilenciar)) esta_silenciado = true;
             if (ids_bloqueados.includes(id_emisor_entrada.toString())) esta_bloqueado = true;
         }
 
@@ -95,9 +95,7 @@ function filtrar_entradas_ipc(doc, ForceSilenciar = false) {
         if (esta_bloqueado) continue;
 
         // Si está silenciado, le añadimos el flag para que el frontend no la haga sonar/saltar visualmente
-        if (esta_silenciado) {
-            entrada.silenciado = true;
-        }
+        if (esta_silenciado) entrada.silenciado = true;
 
         entradas_filtradas.push(entrada);
     }
