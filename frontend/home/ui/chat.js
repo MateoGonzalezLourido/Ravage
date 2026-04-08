@@ -632,8 +632,7 @@ export async function mostrar_datos_chat_usaurios(e) {
                     <div class="info-chat-lista-items">
                     <div class="info-chat-participante-item" data-id="${id_mio}">
                         <div class="info-chat-participante-info">
-                            <span class="info-chat-participante-nombre">Tú</span>
-                            <span class="info-chat-participante-correo">${(await window.cuenta_usuario.OBTENER_CORREO_USUARIO().catch(() => "")) || ""}</span>
+                            <span class="info-chat-participante-nombre">Tú <span class="apodo-usuario-lista-participantes">(${await window.cuenta_usuario.GET_APODO_SESION().catch(() => "")})</span></span>
                             ${info_chat.admins?.some(a => normalizeIdHelper(a) === id_mio?.toString()) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
                         </div>
                     </div>

@@ -19,7 +19,8 @@
     padding: 10px 6%;
     display: flex;
     flex-direction: column;
-    gap: 4px; /* Default gap between messages */
+    gap: 4px;
+    /* Default gap between messages */
     scroll-behavior: smooth;
     /* Custom scrollbar for message body */
 }
@@ -27,10 +28,12 @@
 #cuerpo-mensajes-chat::-webkit-scrollbar {
     width: 6px;
 }
+
 #cuerpo-mensajes-chat::-webkit-scrollbar-thumb {
     background-color: #1ae51f;
     border-radius: 10px;
 }
+
 #cuerpo-mensajes-chat::-webkit-scrollbar-track {
     background: transparent;
 }
@@ -63,8 +66,15 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 
@@ -75,7 +85,8 @@
     align-self: flex-end;
     margin-left: auto;
     border-bottom-right-radius: 4px;
-    color: #ffffff; /* Contrast text */
+    color: #ffffff;
+    /* Contrast text */
 }
 
 /* Receptor (Received messages -> Left side) */
@@ -101,13 +112,15 @@
 .nombre-mensaje-chat-usuario {
     font-size: 13px;
     font-weight: 600;
-    color: #53bdeb; /* Bright blue for better visibility on dark mode */
+    color: #53bdeb;
+    /* Bright blue for better visibility on dark mode */
     margin-bottom: 4px;
     display: flex;
 }
 
 .soy-emisor .nombre-mensaje-chat-usuario {
-    display: none; /* Usually we don't show our own name in sent bubbles */
+    display: none;
+    /* Usually we don't show our own name in sent bubbles */
 }
 
 /* Message Text (Asunto) */
@@ -127,7 +140,8 @@
     display: flex;
     align-items: center;
     margin-top: 2px;
-    margin-bottom: -2px; /* Pulls time tighter to bottom */
+    margin-bottom: -2px;
+    /* Pulls time tighter to bottom */
     user-select: none;
 }
 
@@ -139,7 +153,8 @@
 .fecha-bloque-mensajes {
     user-select: none;
     align-self: center;
-    background-color: rgba(32, 44, 51, 0.85); /* Matches wa-panel-header-bg */
+    background-color: rgba(32, 44, 51, 0.85);
+    /* Matches wa-panel-header-bg */
     backdrop-filter: blur(8px);
     color: var(--wa-text-secondary);
     padding: 6px 14px;
@@ -156,7 +171,7 @@
 
 
 /* Files / Attachments styling inside messages */
-.file-mensaje-chat, 
+.file-mensaje-chat,
 .mensaje-div-archivos {
     margin-top: 6px;
     background: rgba(0, 0, 0, 0.18);
@@ -335,13 +350,25 @@
 }
 
 @keyframes fadeInOverlay {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes slideUpMenu {
-    from { opacity: 0; transform: translateY(30px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 /* ─── Escáneres de Seguridad ─────────────────────────────────────────── */
@@ -368,10 +395,22 @@
 }
 
 @keyframes popIn_seguridad {
-    from { opacity: 0; transform: scale(0.5); }
-    to { opacity: 1; transform: scale(1); }
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .mensaje-chat.amenaza-detectada {
     border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.apodo-usuario-lista-participantes {
+    font-size: 13px;
+    font-weight: 400;
 }
