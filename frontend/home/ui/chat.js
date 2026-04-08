@@ -161,34 +161,41 @@ export async function aplicar_escaneres_asincronos(mensajeElement, texto, escane
 }
 
 export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
+    //evitar errores
+    let fecha_param_usar;
+    let fecha_param_usar_string;
+    if (!fecha_param) return ""
+    else {
+        try {
+            fecha_param_usar = new Date(fecha_param)
+            fecha_param_usar_string=fecha_param_usar.toDateString()
+        } catch (e) {
+            return ""
+        }
+    }
     //mirar si es hoy
-    if (fecha_param.toDateString() === new Date().toDateString()) return "Hoy"
+    if (fecha_param_usar_string === new Date().toDateString()) return "Hoy"
     //mirar si fue ayer
-    else if (fecha_param.toDateString() === new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString()) return "Ayer"
+    else if (fecha_param_usar_string === new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString()) return "Ayer"
     //mirar si es de la misma semana
-    else if (fecha_param.getDay() === new Date().getDay() && (Date.now() - fecha_param.getTime() < 7 * 24 * 60 * 60 * 1000)) return fecha_param.toLocaleString("es-ES", {
+    else if (fecha_param_usar.getDay() === new Date().getDay() && (Date.now() - fecha_param_usar.getTime() < 7 * 24 * 60 * 60 * 1000)) return fecha_param_usar.toLocaleString("es-ES", {
         weekday: "long"
     })
     // mirar si es del mismo mes y año
-    else if (fecha_param.getMonth() === new Date().getMonth() && fecha_param.getFullYear() === new Date().getFullYear()) {
+    else if (fecha_param_usar.getMonth() === new Date().getMonth() && fecha_param_usar.getFullYear() === new Date().getFullYear()) {
         //devolver el dia del mes y nombre del dia de la semana
-        return fecha_param.toLocaleString("es-ES", {
+        return fecha_param_usar.toLocaleString("es-ES", {
             weekday: "long"
-        }) + " " + fecha_param.getDate() + ", " + fecha_param.toLocaleString("es-ES", {
+        }) + " " + fecha_param_usar.getDate() + ", " + fecha_param_usar.toLocaleString("es-ES", {
             month: "long"
-        }) + " " + fecha_param.getFullYear()
+        }) + " " + fecha_param_usar.getFullYear()
     }
-    else return fecha_param.toDateString()
+    else return fecha_param_usar_string
 }
 
 export const chat_componente_lista_estructura_html = (datos_usar) => {
     //recuperar nombre del chat
     const nombre = (datos_usar) => { return datos_usar?.nombre || `<<no encontrado>>` }
-    //recuperar numero de integrantes
-    const usuarios = (datos_usar) => {
-        if (datos_usar.usuarios.length > 2 && datos_usar.usuarios.length) return (`<div class="numero-integrantes-chat-lista"><span>${[...new Set(datos_usar?.usuarios)]?.length || 0} integrantes</span></div>`)
-        else return ``
-    }
     //recuperar ultima vez
     const ultima_vez = (datos_usar) => {
         if (datos_usar.usuarios.length <= 2 && datos_usar.ultimoCambio) {
@@ -225,7 +232,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
                 resultado = `${hora}, ${dia} ${mes}`;
             }
 
-            return `<div class="numero-integrantes-chat-lista"><span>${resultado}</span></div>`;
+            return `<div class="fecha-chat-lista"><span>${resultado}</span></div>`;
         }
         else {
             return ``;
@@ -242,7 +249,6 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
             <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${nombre(datos_usar)}</span>
             ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" style="width: 16px;z-index:2 !important; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat bloqueado">' : (datos_usar.silenciado ? '<img src="../recursos/silenciar.png" style="width: 16px;z-index:2 !important; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat silenciado">' : '')}
         </div>
-        ${usuarios(datos_usar)}
         ${ultimo_mensaje(datos_usar)}
         ${ultima_vez(datos_usar)}
     </div>`

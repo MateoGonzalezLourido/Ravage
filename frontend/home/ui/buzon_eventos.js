@@ -1,4 +1,4 @@
-import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, refrescar_componente_lista_chats } from './gestor_chats.js'
+import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, refrescar_componente_lista_chats, cambiar_datos_componente_lista_chats } from './gestor_chats.js'
 import { Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion } from './chat.js'
 
 export async function procesar_entradas_buzon(entradas) {
@@ -64,7 +64,7 @@ async function Cambio_buzonApi_mensaje(entrada) {
     const id_mensaje = entrada.data?.id_mensaje;
 
     const chatC = Array.from(document.querySelectorAll(".chat-componente-lista-chats")).find(el => el.dataset.id == id_chat);
-
+    //actualizar chat render si esta activo
     if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
         const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(id_chat, id_mensaje)
         await Actualizar_render_chat({
@@ -75,7 +75,7 @@ async function Cambio_buzonApi_mensaje(entrada) {
             fecha: respuesta.data
         })
     }
-
+    //notificacion
     if (chatC) {
         const chatAbierto = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat;
         await refrescar_componente_lista_chats(id_chat, chatC, !esta_silenciado && !chatAbierto)
@@ -89,6 +89,8 @@ async function Cambio_buzonApi_mensaje(entrada) {
             })
         }
     }
+    //actualizar ultimo mensaje
+    cambiar_datos_componente_lista_chats({ id_chat, data: entrada,notificacion:true })
 }
 
 async function Cambio_buzonApi_unirse_grupo(entrada, esta_silenciado) {

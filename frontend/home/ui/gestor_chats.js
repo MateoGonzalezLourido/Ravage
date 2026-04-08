@@ -229,6 +229,7 @@ export async function refrescar_componente_lista_chats(id_chat, componente, noti
 }
 
 export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {} }) {
+
     if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
         const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
 
@@ -307,5 +308,14 @@ export async function INICIO_CHAT_MENU_PRINCIPAL() {
     }
     catch (e) {
         throw e
+    }
+}
+
+export async function cambiar_datos_componente_lista_chats({ id_chat, data,notificacion=false }) {
+    const componente_lista = document.querySelector(`#lista-chats-componentes [data-id="${id_chat}"]`)
+    componente_lista.querySelector(".ultimo-mensaje-chat-lista span").innerHTML = data?.asunto || "";
+    componente_lista.querySelector(".fecha-chat-lista span").innerHTML = texto_mostrar_fecha_mensajes_bloque(data?.data);
+    if (notificacion) {
+        componente_lista.classList.add("nuevo-mensaje-notificacion")
     }
 }

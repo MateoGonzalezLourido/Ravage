@@ -510,7 +510,7 @@ input[type="number"]::-webkit-outer-spin-button {
     margin-bottom: 2px;
 }
 
-.numero-integrantes-chat-lista {
+.fecha-chat-lista {
     position: absolute;
     top: 15px;
     right: 16px;
