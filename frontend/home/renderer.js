@@ -4,27 +4,27 @@ import { mostrar_datos_chat_usaurios } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes } from './ui/ajustes.js'
 
 // ─── IMPORTS DE MÓDULOS REFACTORIZADOS (NUEVA ARQUITECTURA) ───────────────
-import { 
-    abrir_chat_item, 
-    ACTUALIZAR_LISTAS_CHAT, 
+import {
+    abrir_chat_item,
+    ACTUALIZAR_LISTAS_CHAT,
     INICIO_CHAT_MENU_PRINCIPAL,
     mostrar_menu_contextual_lista_chats
 } from './ui/gestor_chats.js'
 
-import { 
-    abrir_ventana_archivos, 
-    cerrar_ventana_archivos, 
-    añadir_archivos_dialogo, 
-    mostrar_menu_contextual_archivo 
+import {
+    abrir_ventana_archivos,
+    cerrar_ventana_archivos,
+    añadir_archivos_dialogo,
+    mostrar_menu_contextual_archivo
 } from './ui/manejador_archivos.js'
 
-import { 
-    manejar_input_escribiendo, 
-    enviar_mensaje_chat, 
-    manejar_solicitud_chat 
+import {
+    manejar_input_escribiendo,
+    enviar_mensaje_chat,
+    manejar_solicitud_chat
 } from './ui/mensajes_eventos.js'
 
-import { 
+import {
     inicializar_buzon_notificaciones
 } from './ui/buzon_eventos.js'
 
@@ -62,7 +62,7 @@ function inicializar_eventos_globales() {
 
             if (e.target.closest("#nav-prinicpal-chat-usaurio")) { mostrar_datos_chat_usaurios(e); return }
             if (e.target.closest("#bt-añadir-archivo-mensaje-escritura")) { abrir_ventana_archivos(); return }
-            
+
             // Delegación descarga archivos
             if (e.target.closest(".archivo-mensaje-div-archivos")) { manejar_descarga_archivo(e); return }
         })
@@ -86,7 +86,7 @@ function inicializar_eventos_globales() {
             import('./ui/manejador_archivos.js').then(m => { m.limpiar_archivos_mensaje(); m.actualizar_html_lista_archivos() })
             return
         }
-        
+
         const itemAdjunto = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente-item")
         if (itemAdjunto) { e.preventDefault(); mostrar_menu_contextual_archivo(e, itemAdjunto); return }
     })
@@ -103,9 +103,14 @@ async function preparar_interfaz_y_servicios() {
     document.querySelector("#bt-añadir-chat")?.addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
     document.querySelector("#bt-seccion-historial-archivos")?.addEventListener("click", toggle_historial_descargas)
 
+    let cache_input_buscar_chat_ultimo = ""
     const input_buscar_chat = document.querySelector("#input-buscar-chat")
-    input_buscar_chat?.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") ACTUALIZAR_LISTAS_CHAT(input_buscar_chat.value.trim())
+    input_buscar_chat?.addEventListener("keyup", (e) => {
+        e.preventDefault()
+        if (input_buscar_chat.value.trim() !== cache_input_buscar_chat_ultimo) {
+            ACTUALIZAR_LISTAS_CHAT(input_buscar_chat.value.trim())
+            cache_input_buscar_chat_ultimo = input_buscar_chat.value.trim()
+        }
     })
 
     // 2. Gestión global de fin de sesión (Listener)
@@ -116,7 +121,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 1. Procesos de arranque
     mensaje_bienvenida_usuario().catch(e => console.error("Error bienvenida:", e))
     INICIO_CHAT_MENU_PRINCIPAL()
-    
+
     // 2. Preparar el entorno
     preparar_interfaz_y_servicios()
 
