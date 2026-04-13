@@ -1,254 +1,284 @@
 :root {
-    --animate: running;
+    --primary: #9333ea;
+    --primary-glow: rgba(147, 51, 234, 0.5);
+    --glass-bg: rgba(20, 20, 25, 0.7); /* Much darker and more opaque for better contrast */
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    --text-primary: #ffffff;
+    --text-secondary: #cbd5e1; /* Gray-300 for better legibility than pure translucent white */
+    --input-bg: rgba(255, 255, 255, 0.07);
 }
 
 * {
-    animation-play-state: var(--animate, running) !important;
-}
-
-:root {
-    --background-fondo-claro: rgb(220, 224, 228);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-    background-color: var(--background-fondo-claro);
-    margin: 0;
-    padding: 0;
+    background: #0a0a0c;
     min-height: 100vh;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Fondo animado */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(14, 165, 233, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 60%);
+    z-index: -1;
 }
 
 #seccion-registro-login {
-    position: absolute;
-    top: 0px;
-    left: 0px;
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    z-index: 100 !important;
-    background-color: rgb(230, 234, 236);
-    backdrop-filter: blur(10px);
+    display: flex;
     justify-content: center;
     align-items: center;
-    user-select: none;
-    display: flex;
+    z-index: 100;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 20px;
+    overflow-y: auto;
 }
 
-
-.menu-registro-login {
-    background-color: rgba(249, 249, 249, 0.642);
-    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
-    width: 325px;
-    height: 320px;
+.menu-registro-login,
+.menu-validacion-codigo,
+.menu-confirmacion-cuenta-creada {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    width: 100%;
+    max-width: 400px; /* Tamaño base */
+    padding: 40px;
+    border-radius: 24px;
+    color: var(--text-primary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeIn 0.6s ease-out;
     display: flex;
     flex-direction: column;
-    padding: 20px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h2 {
+    display: block;
+    width: 100%;
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 30px;
+    text-align: center;
+    letter-spacing: -1px;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(147, 51, 234, 0.3);
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+label span {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-left: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+input {
+    background: var(--input-bg);
+    border: 1px solid var(--glass-border);
     border-radius: 12px;
+    height: 52px;
+    padding: 0 18px;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.2);
 }
 
 .label-check {
     flex-direction: row !important;
-    align-items: center !important;
-    cursor: pointer !important;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    margin: 5px 0;
 }
 
 .label-check input {
-    height: 20px !important;
-    width: 20px !important;
-    margin: 0 !important;
-    margin-left: 8px !important;
-    margin-top: 3px !important;
-    padding: 0 !important;
-}
-
-#seccion-registro-login button {
-    margin: auto;
+    width: 18px !important;
+    height: 18px !important;
     cursor: pointer;
-    height: 29px;
-    width: 250px;
-    border-radius: 4px;
-    border: 1px solid rgba(113, 113, 113, 0.721);
-    margin-top: 8px;
-    font-size: 14.5px;
-    transition: 0.08s;
+    accent-color: var(--primary);
 }
 
-#seccion-registro-login button:hover {
-    transition: 0.15s;
-    font-size: 15.7px;
-}
-
-#seccion-registro-login h2 {
-    width: 100%;
-    text-align: center;
-    padding: 0;
-    margin: 0;
+button {
     margin-top: 10px;
-    margin-bottom: 15px;
+    height: 52px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
-#seccion-registro-login form {
-    display: flex;
-    flex-direction: column;
+button:hover {
+    background: #7c3aed;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
 }
 
-#seccion-registro-login form input {
-    height: 24px;
-    padding: 1px;
-    margin-top: 2.5px;
-    padding-left: 8px;
-    font-size: 14.2px;
-    font-style: monospace;
+button:active {
+    transform: translateY(0);
 }
 
+.bt-cambio-login-registro {
+    text-align: center;
+    font-size: 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-top: 0px;
+    transition: color 0.2s;
+}
 
-#seccion-registro-login form label {
-    display: flex;
-    flex-direction: column;
+.bt-cambio-login-registro:hover {
+    color: var(--primary);
+}
+
+.estrada-menu-registro-login-incorrecto {
+    border-color: #ef4444 !important;
+    color: #ef4444 !important;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Errores */
+.text-error-form-causa {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    padding: 10px 15px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-top: 5px;
+    text-align: center;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Ajustes específicos */
+#seccion-registro {
+    max-width: 440px;
+}
+
+.menu-validacion-codigo {
+    max-width: 420px;
+}
+
+.ayuda-texto, .span-aviso {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
     margin-bottom: 8px;
+    display: block;
 }
 
-#seccion-registro-login form label span {
-    margin-left: 8px;
+.span-aviso {
+    font-size: 12px;
+    opacity: 0.8;
 }
 
+/* Barra de sincronización */
+.sync-mailbox-bar {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(139, 92, 246, 0.9);
+    backdrop-filter: blur(10px);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 100px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sync-mailbox-bar.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.sync-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Utilidades */
 .ocultar-display {
     display: none !important;
 }
 
 .flex-display {
     display: flex !important;
+    flex-direction: column !important;
 }
 
-.block-display {
-    display: block !important;
-}
-
-#seccion-registro-login .bt-cambio-login-registro {
-    margin-top: 5px;
-    margin-left: 8px;
-    color: blue;
-    cursor: pointer;
-}
-
-#seccion-registro-login .bt-cambio-login-registro:hover {
-    text-decoration: underline;
-}
-
-.estrada-menu-registro-login-incorrecto {
-    border-color: brown;
-    color: brown;
-}
-
-.estrada-menu-registro-login-incorrecto:focus {
-    border-color: brown;
-    color: black;
-}
-
-#seccion-registro {
-    height: 390px !important;
-}
-
-.span-aviso {
-    font-style: italic;
-    color: rgba(148, 148, 148, 0.897);
-    text-align: left;
-}
-
-/* Chrome, Edge, Safari */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.menu-validacion-codigo {
-    background-color: rgba(249, 249, 249, 0.642);
-    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
-    width: 325px;
-    height: 300px;
-    display: flex;
-    flex-direction: column;
-    padding: 18px;
-    padding-left: 30px;
-    padding-right: 30px;
-    border-radius: 12px;
-    z-index: 100 !important;
-}
-
-.menu-validacion-codigo input {
-    margin-top: 18px !important;
-    margin-bottom: 12px !important;
-}
-
-.menu-validacion-codigo .ayuda-texto {
-    margin-bottom: 12px;
-}
-
-.menu-confirmacion-cuenta-creada {
-    background-color: rgba(249, 249, 249, 0.642);
-    box-shadow: 0px 0px 3px rgba(212, 214, 215, 0.681);
-    width: 325px;
-    height: 150px;
-    display: flex;
-    flex-direction: column;
-    padding: 18px;
-    padding-left: 30px;
-    padding-right: 30px;
-    border-radius: 12px;
-    text-align: center;
-    justify-content: center !important;
-}
-
-.text-error-form-causa {
-    color: rgb(216, 14, 14);
-    font-style: italic;
-    text-align: left;
-    font-size: 14px;
-}
-
-/* Barra de sincronización */
-.sync-mailbox-bar {
-    position: fixed;
-    top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgb(100, 48, 160);
-    color: rgb(255, 230, 236);
-    padding: 8px 24px;
-    border-radius: 25px;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    opacity: 0;
-    pointer-events: none;
-    margin-top: -60px;
-}
-
-.sync-mailbox-bar.visible {
-    opacity: 1;
-    margin-top: 0;
-}
-
-.sync-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2.5px solid rgba(255, 255, 255, 0.3);
-    border-top: 2.5px solid white;
-    border-radius: 50%;
-    animation: spin-sync 0.8s linear infinite;
-}
-
-@keyframes spin-sync {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
+.column-display {
+    flex-direction: column !important;
 }

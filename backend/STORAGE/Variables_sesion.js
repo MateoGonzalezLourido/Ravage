@@ -23,7 +23,10 @@ export const getCorreoSesion = () => Correo_Usuario_sesion;
 export const setApodoSesion = (apodo) => Apodo_Usuario_sesion = apodo;
 export const getApodoSesion = () => Apodo_Usuario_sesion;
 export const setFechaCreacionCuenta = (fecha = null) => {
-    if (!fecha) FechaCreacionCuenta = "xx/xx/xx";
+    if (!fecha) {
+        FechaCreacionCuenta = "xx/xx/xx";
+        return;
+    }
 
     const d = new Date(fecha); // fecha = Date de Mongo
     const dia = String(d.getDate()).padStart(2, '0');
@@ -106,7 +109,7 @@ export const getUsuariosSilence = () => UsuariosSilenciados;
 
 export const setUsuariosBloqueados = (datos) => UsuariosBloqueados = datos;
 export const getUsuariosBloqueados = () => UsuariosBloqueados;
-export const setIdDispositivo = (id) => IdDispositivo = (id).toString();
+export const setIdDispositivo = (id) => IdDispositivo = id ? id.toString() : null;
 export const getIdDispositivo = () => IdDispositivo;
 export const setSecretKEY = (key) => secretKey = (key != "") ? key : null;
 export const getSecretKEY = () => secretKey;
@@ -135,7 +138,7 @@ export const setListaContactos = (lista) => {
 export const getListaContactos = () => ListaContactos;
 export const setVisibleUsuario = (bool) => VisibleUsuario = bool;
 export const getVisibleUsuario = () => VisibleUsuario;
-export const setIDMongodbUsuario = (id) => IdMongodbUsuario = (id).toString();
+export const setIDMongodbUsuario = (id) => IdMongodbUsuario = id ? id.toString() : null;
 export const getIDMongodbUsuario = () => IdMongodbUsuario;
 export const setIDAmigo = (id) => IDamigo = id;
 export const getIDAmigo = () => IDamigo;
