@@ -13,12 +13,12 @@ import { ChatsRavage } from '../models/Chat.js';
 export async function descifrarListaMensajes(mensajes, chat) {
     if (!mensajes || !chat || !chat.ratchet_keys) return mensajes;
 
-    const id_propio = getIDMongodbUsuario()?.toString();
+    const id_propio = getIDMongodbUsuario();
     const identity_data = await readFileSession('identity');
     if (!identity_data || !identity_data.privateKey || !id_propio) return mensajes;
 
     // Caché local de claves para este lote de mensajes
-    const cache_keys = {}; 
+    const cache_keys = {};
 
     for (let m of mensajes) {
         // Skip if already decrypted in a previous pass
@@ -30,15 +30,15 @@ export async function descifrarListaMensajes(mensajes, chat) {
                 if (!emisor_id) continue;
 
                 const cache_key = `${emisor_id}_${id_propio}`;
-                
+
                 let current_state = cache_keys[cache_key];
                 if (!current_state) {
-                    const entry = chat.ratchet_keys.find(k => 
-                        k.emisor_id.toString() === emisor_id && 
+                    const entry = chat.ratchet_keys.find(k =>
+                        k.emisor_id.toString() === emisor_id &&
                         k.receptor_id.toString() === id_propio
                     );
                     if (!entry) throw new Error("No hay llave de ratchet para este emisor");
-                    
+
                     let ck_hex;
                     try {
                         ck_hex = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
@@ -59,16 +59,16 @@ export async function descifrarListaMensajes(mensajes, chat) {
 
                 // Obtener la MK para este mensaje e iteración
                 const { messageKey, nextChainKey } = ratchetChainKey(current_state.ck);
-                
+
                 let decryptedPayload;
                 try {
                     decryptedPayload = descifrarContenido(m.encriptado, messageKey);
-                    
+
                     const data = JSON.parse(decryptedPayload);
 
                     if (data && !Array.isArray(data)) {
-                        m.contenido = [{ 
-                            asunto: data.asunto, 
+                        m.contenido = [{
+                            asunto: data.asunto,
                             archivos: (data.archivos || []).map(a => ({
                                 ...a,
                                 nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
@@ -76,7 +76,7 @@ export async function descifrarListaMensajes(mensajes, chat) {
                                 emisor_id: emisor_id
                             }))
                         }];
-                        m.emisor = data.emisor; 
+                        m.emisor = data.emisor;
                         m.data = data.data;
                     }
                 } catch (aesErr) {
@@ -94,7 +94,7 @@ export async function descifrarListaMensajes(mensajes, chat) {
                                 }));
                             }
                         } else {
-                             throw new Error(`Error AES-GCM: Tag mismatch. Clave incorrecta. ${aesErr.message}`);
+                            throw new Error(`Error AES-GCM: Tag mismatch. Clave incorrecta. ${aesErr.message}`);
                         }
                     } else {
                         throw new Error(`Error AES-GCM: Tag mismatch. Sin copia de respaldo. ${aesErr.message}`);
@@ -104,7 +104,7 @@ export async function descifrarListaMensajes(mensajes, chat) {
                 // Avanzar para el siguiente mensaje (siempre avanzamos para mantener sincronía)
                 current_state.ck = nextChainKey;
                 current_state.counter++;
-                
+
             } catch (err) {
                 log.error({ err, msgId: m._id || m.id }, "[E2EE] Fallo descifrando msg");
                 if (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string') {
@@ -119,10 +119,10 @@ export async function descifrarListaMensajes(mensajes, chat) {
         const [emisor_id, receptor_id] = key.split('_');
         await ChatsRavage.updateOne(
             { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": receptor_id },
-            { 
-                $set: { 
+            {
+                $set: {
                     "ratchet_keys.$.clave_envuelta": cifrarConPublica(state.ck, identity_data.publicKey),
-                    "ratchet_keys.$.counter": state.counter 
+                    "ratchet_keys.$.counter": state.counter
                 }
             }
         ).catch(e => log.error({ err: e }, "[E2EE] Fallo persistiendo ratchet state"));
@@ -141,8 +141,8 @@ export async function getMessageKey(chat, emisor_id, iteration) {
     const identity_data = await readFileSession('identity');
     if (!identity_data || !identity_data.privateKey) return null;
 
-    const entry = chat.ratchet_keys.find(k => 
-        k.emisor_id.toString() === emisor_id.toString() && 
+    const entry = chat.ratchet_keys.find(k =>
+        k.emisor_id.toString() === emisor_id.toString() &&
         k.receptor_id.toString() === id_propio.toString()
     );
     if (!entry) return null;
@@ -156,7 +156,7 @@ export async function getMessageKey(chat, emisor_id, iteration) {
         ck = nextChainKey;
         current_counter++;
     }
-    
+
     const { messageKey } = ratchetChainKey(ck);
     return messageKey;
 }

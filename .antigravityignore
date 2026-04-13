@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+.git/
+*.png
+*.jpg
+*.svg
+*.log
+package-lock.json
+yarn.lock

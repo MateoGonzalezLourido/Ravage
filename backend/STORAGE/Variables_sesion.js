@@ -106,18 +106,36 @@ export const getUsuariosSilence = () => UsuariosSilenciados;
 
 export const setUsuariosBloqueados = (datos) => UsuariosBloqueados = datos;
 export const getUsuariosBloqueados = () => UsuariosBloqueados;
-export const setIdDispositivo = (id) => IdDispositivo = id;
+export const setIdDispositivo = (id) => IdDispositivo = (id).toString();
 export const getIdDispositivo = () => IdDispositivo;
 export const setSecretKEY = (key) => secretKey = (key != "") ? key : null;
 export const getSecretKEY = () => secretKey;
 
-export const setListaChats = (lista) => ListaChats = lista;
+export const setListaChats = (lista) => {
+    if (!lista) { ListaChats = []; return; }
+    
+    const chats = lista.map(c => ({
+        id: c.id.toString(),
+        apodo: c.apodo || "",
+        grupo: !!c.grupo,
+        ultimoCambio: new Date(c.ultimoCambio).toLocaleString()
+    }))
+
+    ListaChats = chats;
+}
 export const getListaChats = () => ListaChats;
-export const setListaContactos = (lista) => ListaContactos = lista;
+export const setListaContactos = (lista) => {
+    if (!lista) { ListaContactos = []; return; }
+    const contactos = lista.map(c => ({
+        id: c.id.toString(),
+        apodo: c.apodo || "",
+    }))
+    ListaContactos = contactos;
+}
 export const getListaContactos = () => ListaContactos;
 export const setVisibleUsuario = (bool) => VisibleUsuario = bool;
 export const getVisibleUsuario = () => VisibleUsuario;
-export const setIDMongodbUsuario = (id) => IdMongodbUsuario = id;
+export const setIDMongodbUsuario = (id) => IdMongodbUsuario = (id).toString();
 export const getIDMongodbUsuario = () => IdMongodbUsuario;
 export const setIDAmigo = (id) => IDamigo = id;
 export const getIDAmigo = () => IDamigo;

@@ -37,39 +37,27 @@ import {
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 //vairables de usuario de sesion
 function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false, id_maquina = null }) {
-    storage.setIDMongodbUsuario(!limpiar ? String(data._id) : null);
-    storage.setApodoSesion(!limpiar ? data.apodo : null);
-    storage.setCorreoSesion(!limpiar ? data.correo : null);
-    storage.setFechaCreacionCuenta(!limpiar ? data.createdAt : null)
-    storage.setFechaBloqueoApodo(!limpiar ? data.exp_bloq_apodo : null)
-    storage.setFechaBloqueoCorreo(!limpiar ? data.exp_bloq_correo : null)
-    storage.setFechaBloqueoContraseña(!limpiar ? data.exp_bloq_contrasena : null)
-    storage.setUsuariosSilence(!limpiar ? data.users_silence : []);
-    storage.setUsuariosBloqueados(!limpiar ? data.users_bloq : []);
-    storage.setIdDispositivo(!limpiar ? id_maquina ? id_maquina : String(machineIdSync()) : null)
-    storage.setSecretKEY(!limpiar ? data.secretKey : null)
-    storage.setListaChats(
-        !limpiar
-            ? data.chats.map(c => ({
-                id: c.id.toString(),          // ObjectId -> string
-                apodo: c.apodo || "",         // evitar undefined
-                grupo: !!c.grupo,             // boolean
-                ultimoCambio: new Date(c.ultimoCambio).toISOString() // Date -> string ISO
-            }))
-            : []
-    );
-    storage.setListaContactos(
-        !limpiar
-            ? data.contactos.map(c => ({
-                id: c.id.toString(),          // ObjectId -> string
-                apodo: c.apodo || "",         // evitar undefined
-            }))
-            : []
-    );
-    storage.setIDAmigo(!limpiar ? data.idamigo : false)
-    storage.setVisibleUsuario(!limpiar ? data.visible : false)
-    storage.setInvisibleUsuario(!limpiar ? data.invisible : false)
-    storage.setMostrarCorreoUsuario(!limpiar ? data.mostrarCorreo : true)
+    //cambiar nombre variables muy repetidas
+    const lp = !limpiar
+    const dt = data
+    //actualizar variables de sesion
+    storage.setIDMongodbUsuario(lp ? dt._id : null);
+    storage.setApodoSesion(lp ? dt.apodo : null);
+    storage.setCorreoSesion(lp ? dt.correo : null);
+    storage.setFechaCreacionCuenta(lp ? dt.createdAt : null)
+    storage.setFechaBloqueoApodo(lp ? dt.exp_bloq_apodo : null)
+    storage.setFechaBloqueoCorreo(lp ? dt.exp_bloq_correo : null)
+    storage.setFechaBloqueoContraseña(lp ? dt.exp_bloq_contrasena : null)
+    storage.setUsuariosSilence(lp ? dt.users_silence : []);
+    storage.setUsuariosBloqueados(lp ? dt.users_bloq : []);
+    storage.setIdDispositivo(lp ? (id_maquina ? id_maquina : machineIdSync()) : null)
+    storage.setSecretKEY(lp ? dt.secretKey : null)
+    storage.setListaChats(lp ? dt.chats : []);
+    storage.setListaContactos(lp ? dt.contactos : []);
+    storage.setIDAmigo(lp ? dt.idamigo : false)
+    storage.setVisibleUsuario(lp ? dt.visible : false)
+    storage.setInvisibleUsuario(lp ? dt.invisible : false)
+    storage.setMostrarCorreoUsuario(lp ? dt.mostrarCorreo : true)
 }
 async function autoLoginUsuario() {
     // Leer fichero con datos de sesion anterior

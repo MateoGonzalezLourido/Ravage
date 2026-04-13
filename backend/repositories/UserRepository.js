@@ -7,11 +7,11 @@ import { validateToken } from '../services/CreadorTokens.js';
 import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } from '../services/cryptoService.js';
 import { getUsuarioDeCache, setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 
-import { 
-    getCorreoSesion, 
-    getUsuariosBloqueados, 
-    getUsuariosSilence, 
-    setUsuariosBloqueados, 
+import {
+    getCorreoSesion,
+    getUsuariosBloqueados,
+    getUsuariosSilence,
+    setUsuariosBloqueados,
     setUsuariosSilence,
     setFechaBloqueoContraseña,
     setFechaBloqueoCorreo,
@@ -26,13 +26,25 @@ import {
 } from '../STORAGE/Variables_sesion.js';
 import { convertirObjectId } from '../utils/conversores.js';
 
+// --- HELPERS INTERNOS ---
+const _getID = (id) => {
+    const res = convertirObjectId(id);
+    if (!res) return null;
+    return (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
+};
+
+const _syncCache = async (correoHash) => {
+    const user = await User.findOne({ correo_hash: correoHash }).lean();
+    if (user) await setUsuarioEnCache(procesarUsuario(user));
+};
+
 /**
  * Helper para desencriptar un objeto de usuario de la DB.
  */
 export function procesarUsuario(usuario) {
     if (!usuario) return null;
     const result = { ...usuario };
-    
+
     if (result.apodo && typeof result.apodo === 'object') {
         result.apodo = desencriptarDatosSistema(result.apodo);
     }
@@ -42,7 +54,7 @@ export function procesarUsuario(usuario) {
     if (result.idamigo && typeof result.idamigo === 'object') {
         result.idamigo = desencriptarDatosSistema(result.idamigo);
     }
-    
+
     if (result.chats && Array.isArray(result.chats)) {
         result.chats = result.chats.map(chat => ({
             ...chat,
@@ -60,19 +72,19 @@ export function procesarUsuario(usuario) {
     if (result._id) {
         result.id = result._id.toString();
     }
-    
+
     return result;
 }
 
-export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {    
+export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {
     // Campos mínimos necesarios para el login y la inicialización de la sesión según sesionUsuario.js
     const LOGIN_FIELDS = "_id apodo correo createdAt exp_bloq_apodo exp_bloq_correo exp_bloq_contrasena users_silence users_bloq secretKey chats.id chats.ultimoCambio contactos.id contactos.apodo idamigo visible invisible mostrarCorreo";
 
     try {
         if (token && correo && id_dp) {
-            const correoStr = String(correo);
-            const tokenStr = String(token);
-            const idDpStr = String(id_dp);
+            const correoStr = correo.toString();
+            const tokenStr = token.toString();
+            const idDpStr = id_dp.toString();
 
             let token_valido = validateToken(tokenStr);
             if (!token_valido) {
@@ -89,13 +101,13 @@ export async function LoginUsuarioDB({ correo = null, contrasena = null, token =
             const correoHash = hashDatosSistema(correoStr);
             const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).select(LOGIN_FIELDS).lean();
             if (!usuario_datos) return { success: false };
-            
+
             return { success: true, data: procesarUsuario(usuario_datos) };
         }
 
         if (!correo || !contrasena) return { success: false };
-        const correoStr = String(correo);
-        const contraseñaStr = String(contrasena);
+        const correoStr = correo.toString();
+        const contraseñaStr = contrasena.toString();
 
         const correoHash = hashDatosSistema(correoStr);
         // Al hacer login con contraseña, necesitamos el campo contrasena para comparar,
@@ -103,7 +115,7 @@ export async function LoginUsuarioDB({ correo = null, contrasena = null, token =
         const usuario_datos = await User.findOne({ correo_hash: correoHash, bloqueada }).lean()
             .select(`${LOGIN_FIELDS} contrasena`)
             .lean();
-            
+
         if (!usuario_datos) return { success: false };
 
         const ok = await compare(contraseñaStr, usuario_datos.contrasena);
@@ -120,7 +132,7 @@ export async function InsertarUsuario({ apodo = "Usuario", contrasena, correo, s
     try {
         const sKey = secretKey || randomBytes(32).toString("hex");
         const idAmigo = idamigo || randomBytes(5).toString("hex").toUpperCase();
-        
+
         const correoHash = hashDatosSistema(correo);
         const idamigoHash = hashDatosSistema(idAmigo);
 
@@ -140,35 +152,28 @@ export async function InsertarUsuario({ apodo = "Usuario", contrasena, correo, s
         return null;
     }
 }
-
-
-
 export async function añadirUsuariosBloqueados(id) {
-    const correo = getCorreoSesion();
+    const idStr = _getID(id);
+    if (!idStr) return null;
+
     let lista_bloqueados = getUsuariosBloqueados();
-    const res = convertirObjectId(id);
-    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
-    
     if (lista_bloqueados.some(bid => bid.toString() === idStr)) return false;
 
-    lista_bloqueados.push(new mongoose.Types.ObjectId(idStr));
+    lista_bloqueados.push(idStr);
 
     try {
-        const correoHash = hashDatosSistema(correo);
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne(
             { correo_hash: correoHash },
-            { 
+            {
                 $set: { users_bloq: lista_bloqueados },
                 $pull: { contactos: { id: idStr } }
             }
         );
         if (r.matchedCount === 0) return false;
+
         setUsuariosBloqueados(lista_bloqueados);
-
-        // Actualizar cache propia
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         return true;
     } catch (e) {
         log.error(e);
@@ -178,27 +183,24 @@ export async function añadirUsuariosBloqueados(id) {
 
 
 export async function eliminarUsuariosBloqueados(id) {
-    const correo = getCorreoSesion();
+    const idStr = _getID(id);
+    if (!idStr) return null;
+
     let lista_bloqueados = getUsuariosBloqueados();
-    const res = convertirObjectId(id);
-    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
     const index = lista_bloqueados.findIndex(bid => bid.toString() === idStr);
     if (index === -1) return false;
 
     lista_bloqueados.splice(index, 1);
     try {
-        const correoHash = hashDatosSistema(correo);
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne(
             { correo_hash: correoHash },
             { $set: { users_bloq: lista_bloqueados } }
         );
         if (r.matchedCount === 0) return false;
+
         setUsuariosBloqueados(lista_bloqueados);
-
-        // Actualizar cache propia
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         return true;
     } catch (e) {
         log.error(e);
@@ -207,21 +209,17 @@ export async function eliminarUsuariosBloqueados(id) {
 }
 
 export async function cambiarContraseñaUsuario(contraseña) {
-    const correo = getCorreoSesion();
     const fecha_bloqueo = new Date(Date.now() + (48 * 60 * 20 * 1000));
     try {
-        const correoHash = hashDatosSistema(correo);
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne(
             { correo_hash: correoHash },
             { $set: { contrasena: contraseña, exp_bloq_contrasena: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
+
         setFechaBloqueoContraseña(fecha_bloqueo);
-
-        // Actualizar cache
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         return true;
     } catch (e) {
         log.error(e);
@@ -242,10 +240,7 @@ export async function cambiarCorreoUsuario(correo) {
         );
         if (r.matchedCount === 0) return false;
 
-        // Actualizar cache
-        const updatedUser = await User.findOne({ correo_hash: correo_nuevo_hash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correo_nuevo_hash);
         setCorreoSesion(correo);
         setFechaBloqueoCorreo(fecha_bloqueo);
         return true;
@@ -257,21 +252,17 @@ export async function cambiarCorreoUsuario(correo) {
 
 
 export async function cambiarApodoUsuario(apodo) {
-    const correo = getCorreoSesion();
     const apodoStr = String(apodo);
     const fecha_bloqueo = new Date(Date.now() + (24 * 60 * 60 * 1000));
     try {
-        const correoHash = hashDatosSistema(correo);
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne(
             { correo_hash: correoHash },
             { $set: { apodo: encriptarDatosSistema(apodoStr), exp_bloq_apodo: fecha_bloqueo } }
         );
         if (r.matchedCount === 0) return false;
 
-        // Actualizar cache
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         setApodoSesion(apodoStr);
         setFechaBloqueoApodo(fecha_bloqueo);
         return true;
@@ -286,15 +277,11 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
     const key = randomBytes(32).toString("hex");
     if (!actualizar) return key;
     try {
-        const correo = getCorreoSesion();
-        const correoHash = hashDatosSistema(correo);
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne({ correo_hash: correoHash }, { $set: { secretKey: key } });
         if (r.matchedCount === 0) return false;
 
-        // Actualizar cache
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         return key;
     } catch (e) {
         log.error(e);
@@ -304,15 +291,15 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
 
 
 export async function obtener_datos_usuario(id, datos_usar = null) {
-    const res = convertirObjectId(id);
-    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
+    const idStr = _getID(id);
+    if (!idStr) return null;
+
     const id_propio = getIDMongodbUsuario();
     const esMiPropioUsuario = id_propio && idStr === id_propio.toString();
 
     if (!datos_usar && !esMiPropioUsuario) {
         const cached = await getUsuarioDeCache(idStr);
         if (cached) {
-            // Ocultar correo si el usuario tiene mostrarCorreo: false
             if (cached.mostrarCorreo === false) {
                 const sinCorreo = { ...cached };
                 delete sinCorreo.correo;
@@ -325,13 +312,10 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
     const datos_buscar = datos_usar || "correo apodo visible idamigo mostrarCorreo";
     const usuario = await User.findById(idStr, datos_buscar).lean();
     if (!usuario) return null;
-    
-    const procesado = procesarUsuario(usuario);
-    if (!datos_usar) {
-        await setUsuarioEnCache(procesado);
-    }
 
-    // Ocultar correo para otros usuarios si mostrarCorreo es false
+    const procesado = procesarUsuario(usuario);
+    if (!datos_usar) await setUsuarioEnCache(procesado);
+
     if (!esMiPropioUsuario && procesado.mostrarCorreo === false) {
         const sinCorreo = { ...procesado };
         delete sinCorreo.correo;
@@ -344,27 +328,17 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
 
 export async function obtener_varios_usuarios(ids, datos_usar = null) {
     if (!Array.isArray(ids) || ids.length === 0) return [];
-    
-    // Normalize IDs using the improved converter
-    const normalizedIds = ids.map(id => {
-        const res = convertirObjectId(id);
-        if (res && typeof res === 'object') {
-            return res.id || res._id || res.toString();
-        }
-        return res?.toString();
-    }).filter(id => id && id !== "[object Object]");
 
+    const normalizedIds = ids.map(_getID).filter(id => id && id !== "[object Object]");
     const id_propio = getIDMongodbUsuario();
     const query_datos = datos_usar || "correo apodo visible idamigo mostrarCorreo";
-    
-    // Buscar en DB todos los IDs
+
     const usuarios_db = await User.find({ _id: { $in: normalizedIds } }, query_datos).lean();
-    
-    const resultados = usuarios_db.map(u => {
+
+    return usuarios_db.map(u => {
         const procesado = procesarUsuario(u);
         const idStr = procesado.id || procesado._id?.toString();
-        
-        // Ocultar correo si no es el usuario propio y mostrarCorreo es false
+
         if (idStr !== id_propio?.toString() && procesado.mostrarCorreo === false) {
             const sinCorreo = { ...procesado };
             delete sinCorreo.correo;
@@ -372,8 +346,6 @@ export async function obtener_varios_usuarios(ids, datos_usar = null) {
         }
         return procesado;
     });
-
-    return resultados;
 }
 
 
@@ -397,7 +369,7 @@ export async function encontrar_usuario(texto, correo = false) {
             const mis_bloqueados_ids = mis_bloqueados
                 .filter(id => mongoose.Types.ObjectId.isValid(id))
                 .map(id => new mongoose.Types.ObjectId(id));
-                
+
             filtro._id = { $nin: mis_bloqueados_ids };
             filtro.users_bloq = { $ne: id_propio_obj };
         }
@@ -417,13 +389,12 @@ export async function encontrar_usuario(texto, correo = false) {
 
 export async function AÑADIR_CONTACTO(id, nombre) {
     try {
-        const id_propio = getIDMongodbUsuario();
-
-        // Comprobar bloqueo bidireccional
-        const mis_bloqueados = getUsuariosBloqueados() || [];
-        const res = convertirObjectId(id);
-        const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
+        const idStr = _getID(id);
+        if (!idStr) return false;
         
+        const id_propio = getIDMongodbUsuario();
+        const mis_bloqueados = getUsuariosBloqueados() || [];
+
         if (mis_bloqueados.some(b => b.toString() === idStr)) return false;
 
         const targetUser = await User.findById(idStr, "users_bloq").lean();
@@ -434,10 +405,7 @@ export async function AÑADIR_CONTACTO(id, nombre) {
             { $push: { contactos: { id: idStr, apodo: encriptarDatosSistema(nombre) } } }
         );
         if (r.modifiedCount > 0) {
-            // Actualizar cache propia por el cambio en contactos
-            const correoHash = hashDatosSistema(getCorreoSesion());
-            const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-            if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
+            await _syncCache(hashDatosSistema(getCorreoSesion()));
             return true;
         }
         return false;
@@ -449,24 +417,21 @@ export async function AÑADIR_CONTACTO(id, nombre) {
 
 
 export async function eliminarUsuariosSilenciados(id) {
-    const correo = getCorreoSesion();
-    const correoHash = hashDatosSistema(correo);
+    const idStr = _getID(id);
+    if (!idStr) return null;
+
     let lista_silenciados = getUsuariosSilence();
-    const res = convertirObjectId(id);
-    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
     const index = lista_silenciados.findIndex(sid => sid.toString() === idStr);
     if (index === -1) return false;
 
     lista_silenciados.splice(index, 1);
     try {
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne({ correo_hash: correoHash }, { $set: { users_silence: lista_silenciados } });
         if (r.matchedCount === 0) return false;
+
         setUsuariosSilence(lista_silenciados);
-
-        // Actualizar cache propia
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         return true;
     } catch (e) {
         log.error(e);
@@ -476,23 +441,20 @@ export async function eliminarUsuariosSilenciados(id) {
 
 
 export async function añadirUsuariosSilenciados(id) {
-    const correo = getCorreoSesion();
-    const correoHash = hashDatosSistema(correo);
+    const idStr = _getID(id);
+    if (!idStr) return null;
+
     let lista_silenciados = getUsuariosSilence();
-    const res = convertirObjectId(id);
-    const idStr = (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
     if (lista_silenciados.some(sid => sid.toString() === idStr)) return false;
 
-    lista_silenciados.push(new mongoose.Types.ObjectId(idStr));
+    lista_silenciados.push(idStr);
     try {
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne({ correo_hash: correoHash }, { $set: { users_silence: lista_silenciados } });
         if (r.matchedCount === 0) return false;
+
         setUsuariosSilence(lista_silenciados);
-
-        // Actualizar cache propia
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         return true;
     } catch (e) {
         log.error(e);
@@ -502,22 +464,17 @@ export async function añadirUsuariosSilenciados(id) {
 
 
 export async function toggleInvisibleUsuario() {
-    const correo = getCorreoSesion();
-    const correoHash = hashDatosSistema(correo);
-    const estadoActual = getInvisibleUsuario();
-    const nuevoEstado = !estadoActual;
+    const nuevoEstado = !getInvisibleUsuario();
     try {
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne(
             { correo_hash: correoHash },
             { $set: { invisible: nuevoEstado } }
         );
         if (r.matchedCount === 0) return { success: false };
+
         setInvisibleUsuario(nuevoEstado);
-
-        // Actualizar cache
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         return { success: true, invisible: nuevoEstado };
     } catch (e) {
         log.error(e);
@@ -527,22 +484,17 @@ export async function toggleInvisibleUsuario() {
 
 
 export async function toggleMostrarCorreoUsuario() {
-    const correo = getCorreoSesion();
-    const correoHash = hashDatosSistema(correo);
-    const estadoActual = getMostrarCorreoUsuario();
-    const nuevoEstado = !estadoActual;
+    const nuevoEstado = !getMostrarCorreoUsuario();
     try {
+        const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne(
             { correo_hash: correoHash },
             { $set: { mostrarCorreo: nuevoEstado } }
         );
         if (r.matchedCount === 0) return { success: false };
+
         setMostrarCorreoUsuario(nuevoEstado);
-
-        // Actualizar cache
-        const updatedUser = await User.findOne({ correo_hash: correoHash }).lean();
-        if (updatedUser) await setUsuarioEnCache(procesarUsuario(updatedUser));
-
+        await _syncCache(correoHash);
         return { success: true, mostrarCorreo: nuevoEstado };
     } catch (e) {
         log.error(e);
