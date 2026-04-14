@@ -128,6 +128,15 @@ async function preparar_interfaz_y_servicios() {
     window.avisos_ui.CERRANDO_SESION(manejar_ui_cierre_sesion)
 }
 
+// ==========================================
+// PREVENCIÓN GLOBAL DE ARRASTRE DE IMÁGENES
+// ==========================================
+document.addEventListener("dragstart", (e) => {
+    if (e.target.tagName === 'IMG') {
+        e.preventDefault();
+    }
+});
+
 document.addEventListener("DOMContentLoaded", async () => {
     // 1. Procesos de arranque
     mensaje_bienvenida_usuario().catch(e => console.error("Error bienvenida:", e))
@@ -138,4 +147,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 3. Sincronización del Buzón (Backend IPC)
     inicializar_buzon_notificaciones()
+
+    // 4. Asegurar que todas las imágenes existentes no sean arrastrables
+    document.querySelectorAll('img').forEach(img => img.draggable = false);
 })
+

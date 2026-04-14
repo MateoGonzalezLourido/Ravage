@@ -254,4 +254,16 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    // 4. Asegurar que todas las imágenes existentes no sean arrastrables
+    document.querySelectorAll('img').forEach(img => img.draggable = false);
 });
+
+// ==========================================
+// PREVENCIÓN GLOBAL DE ARRASTRE DE IMÁGENES
+// ==========================================
+document.addEventListener("dragstart", (e) => {
+    if (e.target.tagName === 'IMG') {
+        e.preventDefault();
+    }
+});
+

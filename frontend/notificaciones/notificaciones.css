@@ -1,6 +1,13 @@
 * {
     animation-play-state: var(--animate, running) !important;
+    user-select: none;
+    -webkit-user-drag: none;
 }
+
+input, textarea, [contenteditable="true"] {
+    user-select: text;
+}
+
 
 /* ===========================
    NOTIFICACIONES - Ravage

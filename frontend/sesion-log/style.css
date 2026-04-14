@@ -16,7 +16,14 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    -webkit-user-drag: none;
 }
+
+input, textarea, [contenteditable="true"] {
+    user-select: text;
+}
+
 
 body {
     background: #0a0a0c;
