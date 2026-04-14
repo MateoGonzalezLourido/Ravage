@@ -36,7 +36,7 @@ describe('CryptoService Unit Tests', () => {
             expect(decrypted).toEqual(secretObj);
         });
 
-        it('should return original object if tag is tampered', () => {
+        it('should return null if tag is tampered to prevent data leaks', () => {
             const secretData = "IntegrityCheck";
             const encrypted = encriptarDatosSistema(secretData);
             
@@ -44,7 +44,7 @@ describe('CryptoService Unit Tests', () => {
             encrypted.tag = '00'.repeat(16);
             
             const decrypted = desencriptarDatosSistema(encrypted);
-            expect(decrypted).toEqual(encrypted); // Returns original object on failure
+            expect(decrypted).toBeNull(); // Ahora retorna null para evitar crashes
         });
     });
 

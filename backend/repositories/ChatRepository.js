@@ -1,23 +1,22 @@
 import { createLogger } from '../utils/logger.js';
-const log = createLogger('chat-repo');
+import { mongoose, randomBytes } from '../utils/libs.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { User } from '../models/User.js';
 import { MessagesRavage } from '../models/Message.js';
-import { mongoose } from '../utils/libs.js';
 import { convertirObjectId } from '../utils/conversores.js';
 import { getIDMongodbUsuario, getInvisibleUsuario } from '../STORAGE/Variables_sesion.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
+import { descifrarListaMensajes } from '../services/messageCryptoService.js';
+import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
+import { getChatDeCache, setChatEnCache } from '../STORAGE/CACHE/_cache_chats.js';
+
+const log = createLogger('chat-repo');
 
 function normalizeId(id) {
     if (!id) return null;
     const res = convertirObjectId(id);
     return (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
 }
-
-import { randomBytes } from '../utils/libs.js';
-import { descifrarListaMensajes } from '../services/messageCryptoService.js';
-import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
-import { getChatDeCache as getChatDeCacheRaw, setChatEnCache } from '../STORAGE/CACHE/_cache_chats.js';
 
 /**
  * Helper para normalizar el chat antes de guardarlo en cache (sin contenido de mensajes).
@@ -33,19 +32,20 @@ export async function setChatEnCacheRaw(chat) {
     await setChatEnCache(chatCopia);
 }
 
-/**
- * Helper para obtener de cache.
- */
-async function getChatDeCache(id) {
-    return await getChatDeCacheRaw(id);
-}
-
 export async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
     try {
-        const chatIds = (data || [])
-            .filter(c => grupales === null || c.grupo === grupales)
-            .map(c => normalizeId(c.id || c._id))
-            .filter(id => id && id !== "null" && id !== "undefined" && mongoose.Types.ObjectId.isValid(id));
+        const chatIds = [...new Set(
+            (data || []).reduce((acc, c) => {
+                if (c && (grupales === null || c.grupo === grupales)) {
+                    const rawId = typeof c === 'object' ? (c.id || c._id) : c;
+                    const id = normalizeId(rawId);
+                    if (id && id !== "null" && id !== "undefined" && mongoose.Types.ObjectId.isValid(id)) {
+                        acc.push(id);
+                    }
+                }
+                return acc;
+            }, [])
+        )];
 
         if (chatIds.length === 0) return [];
 
@@ -186,11 +186,11 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     if (!ids || ids.length === 0) return false;
     const id_propio = getIDMongodbUsuario();
 
-    // Normalizar ID de chat si existe
-    const idRes = convertirObjectId(id_chat);
-    let chatIdLimpioCheck = (idRes && typeof idRes === 'object') ? (idRes.id || idRes._id || idRes.toString()) : idRes?.toString();
-    if (chatIdLimpioCheck === "null" || chatIdLimpioCheck === "undefined" || chatIdLimpioCheck === "") chatIdLimpioCheck = null;
-    const esChat_existente = chatIdLimpioCheck && mongoose.Types.ObjectId.isValid(chatIdLimpioCheck);
+    // Normalizar ID del chat
+    let chatIdLimpio = normalizeId(id_chat);
+    if (chatIdLimpio === "null" || chatIdLimpio === "undefined" || chatIdLimpio === "") chatIdLimpio = null;
+
+    const esChat_existente = chatIdLimpio && mongoose.Types.ObjectId.isValid(chatIdLimpio);
     if (getInvisibleUsuario() && !esChat_existente) return false;
 
     // Filtrar usuarios bloqueados bidireccionalmente
@@ -220,14 +220,8 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
     // Reemplazar ids por los filtrados
     ids = ids_filtrados;
 
-    // Limpiar id_chat por si viene "null" como string
-    let chatIdLimpio = id_chat;
-    if (chatIdLimpio === "null" || chatIdLimpio === "undefined" || chatIdLimpio === "") chatIdLimpio = null;
-
-    // Validar si es un ObjectId real
-    const esIdentificadorValido = chatIdLimpio && mongoose.Types.ObjectId.isValid(chatIdLimpio);
-
-    if (esIdentificadorValido) {
+    if (esChat_existente) {
+        const chat = await ChatsRavage.findById(chatIdLimpio).lean();
         if (!chat) return false;
 
         // Comprobar si el usuario tiene el chat bloqueado
@@ -720,10 +714,6 @@ export async function rotarClavesChat(id_chat, id_emisor) {
     try {
         const id_chat_str = normalizeId(id_chat);
         const id_emisor_str = normalizeId(id_emisor);
-        const { ChatsRavage } = await import('../models/Chat.js');
-        const { User } = await import('../models/User.js');
-        const { randomBytes } = await import('../utils/libs.js');
-        const { cifrarConPublica } = await import('../services/cryptoService.js');
 
         const chat = await ChatsRavage.findById(id_chat_str).lean();
         if (!chat) return false;
@@ -736,7 +726,7 @@ export async function rotarClavesChat(id_chat, id_emisor) {
             if (!receptor.publicKey) continue;
 
             updates.push({
-                emisor_id: id_emisor,
+                emisor_id: id_emisor_str,
                 receptor_id: receptor._id,
                 clave_envuelta: cifrarConPublica(newChainKey, receptor.publicKey),
                 counter: 0
@@ -745,21 +735,21 @@ export async function rotarClavesChat(id_chat, id_emisor) {
 
         // Reemplazar todas las entradas de este emisor en el array ratchet_keys
         await ChatsRavage.updateOne(
-            { _id: id_chat },
+            { _id: id_chat_str },
             {
-                $pull: { ratchet_keys: { emisor_id: id_emisor } }
+                $pull: { ratchet_keys: { emisor_id: id_emisor_str } }
             }
         );
 
         await ChatsRavage.updateOne(
-            { _id: id_chat },
+            { _id: id_chat_str },
             {
                 $push: { ratchet_keys: { $each: updates } }
             }
         );
 
         // Actualizar cache tras rotación de claves
-        const updatedChat = await ChatsRavage.findById(id_chat).lean();
+        const updatedChat = await ChatsRavage.findById(id_chat_str).lean();
         if (updatedChat) await setChatEnCacheRaw(updatedChat);
 
         return true;
@@ -787,12 +777,7 @@ export async function SILENCIAR_CHAT_USUARIO(id_chat) {
             { $set: { "chats.$.silenciado": newMuted } }
         );
 
-        const { setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
-        const updatedUser = await User.findById(id_propio).lean();
-        if (updatedUser) {
-            const { procesarUsuario } = await import('./UserRepository.js');
-            await setUsuarioEnCache(procesarUsuario(updatedUser));
-        }
+        await actualizarCacheUsuarioPropio();
 
         return { success: true, silenciado: newMuted };
     } catch (e) {
@@ -845,12 +830,7 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
             }
         );
 
-        const { setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
-        const updatedUser = await User.findById(id_propio).lean();
-        if (updatedUser) {
-            const { procesarUsuario } = await import('./UserRepository.js');
-            await setUsuarioEnCache(procesarUsuario(updatedUser));
-        }
+        await actualizarCacheUsuarioPropio();
 
         return { success: true, bloqueado: newBlocked };
     } catch (e) {
@@ -859,3 +839,16 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
     }
 }
 
+/**
+ * Helper para forzar la actualización de los datos propios en la caché.
+ */
+async function actualizarCacheUsuarioPropio() {
+    const id_propio = getIDMongodbUsuario();
+    if (!id_propio) return;
+    const { setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
+    const updatedUser = await User.findById(id_propio).lean();
+    if (updatedUser) {
+        const { procesarUsuario } = await import('./UserRepository.js');
+        await setUsuarioEnCache(procesarUsuario(updatedUser));
+    }
+}

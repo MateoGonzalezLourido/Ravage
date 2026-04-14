@@ -62,11 +62,13 @@ export function encriptarDatosSistema(datos) {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', getSystemKey(), iv);
     
-    let encrypted = cipher.update(typeof datos === 'string' ? datos : JSON.stringify(datos), 'utf8', 'hex');
-    encrypted += cipher.final('hex');
+    const encrypted = Buffer.concat([
+        cipher.update(typeof datos === 'string' ? datos : JSON.stringify(datos), 'utf8'),
+        cipher.final()
+    ]);
     
     return {
-        data: encrypted,
+        data: encrypted.toString('hex'),
         iv: iv.toString('hex'),
         tag: cipher.getAuthTag().toString('hex')
     };
@@ -81,22 +83,26 @@ export function desencriptarDatosSistema(encriptado) {
         const decipher = createDecipheriv('aes-256-gcm', getSystemKey(), Buffer.from(encriptado.iv, 'hex'));
         decipher.setAuthTag(Buffer.from(encriptado.tag, 'hex'));
         
-        let decrypted = decipher.update(encriptado.data, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
+        const decrypted = Buffer.concat([
+            decipher.update(Buffer.from(encriptado.data, 'hex')),
+            decipher.final()
+        ]);
+        
+        return decrypted.toString('utf8');
     } catch (e) {
         log.error({ err: e }, "Error al desencriptar datos del sistema");
-        return encriptado; // Devolver original en caso de fallo crítico de desencriptado (opcional, pero más estable para la UI)
+        return null; // <- Evita crasheos de UI al no retornar el objeto corrupto The payload was originally expected to be a string
     }
 }
 
 
 /**
- * Genera un hash SHA-256 para búsquedas deterministas.
+ * Genera un HMAC SHA-256 para búsquedas deterministas de forma segura frente a fuerza bruta.
  */
 export function hashDatosSistema(datos) {
     if (!datos) return null;
-    return createHash('sha256').update(String(datos)).digest('hex');
+    const secret = process.env.HMAC_SECRET || getSystemKey();
+    return createHmac("sha256", secret).update(String(datos)).digest("hex");
 }
 
 

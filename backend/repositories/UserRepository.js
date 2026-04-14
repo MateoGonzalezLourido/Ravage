@@ -1,30 +1,18 @@
+import { mongoose, createHash, randomBytes, compare } from '../utils/libs.js';
 import { createLogger } from '../utils/logger.js';
-const log = createLogger('user-repo');
 import { User } from '../models/User.js';
 import { TokenSession } from '../models/Security.js';
-import { compare, createHash, randomBytes, mongoose } from '../utils/libs.js';
 import { validateToken } from '../services/CreadorTokens.js';
 import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } from '../services/cryptoService.js';
 import { getUsuarioDeCache, setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
-
 import {
-    getCorreoSesion,
-    getUsuariosBloqueados,
-    getUsuariosSilence,
-    setUsuariosBloqueados,
-    setUsuariosSilence,
-    setFechaBloqueoContraseña,
-    setFechaBloqueoCorreo,
-    setFechaBloqueoApodo,
-    setApodoSesion,
-    setCorreoSesion,
-    getIDMongodbUsuario,
-    getInvisibleUsuario,
-    setInvisibleUsuario,
-    getMostrarCorreoUsuario,
-    setMostrarCorreoUsuario
+    getCorreoSesion, getUsuariosBloqueados, getUsuariosSilence, setUsuariosBloqueados, setUsuariosSilence,
+    setFechaBloqueoContraseña, setFechaBloqueoCorreo, setFechaBloqueoApodo, setApodoSesion, setCorreoSesion,
+    getIDMongodbUsuario, getInvisibleUsuario, setInvisibleUsuario, getMostrarCorreoUsuario, setMostrarCorreoUsuario
 } from '../STORAGE/Variables_sesion.js';
 import { convertirObjectId } from '../utils/conversores.js';
+
+const log = createLogger('user-repo');
 
 // --- HELPERS INTERNOS ---
 const _getID = (id) => {
@@ -152,27 +140,45 @@ export async function InsertarUsuario({ apodo = "Usuario", contrasena, correo, s
         return null;
     }
 }
-export async function añadirUsuariosBloqueados(id) {
+async function _toggleArrayUsuario(id, arrayType, isAdd) {
     const idStr = _getID(id);
     if (!idStr) return null;
 
-    let lista_bloqueados = getUsuariosBloqueados();
-    if (lista_bloqueados.some(bid => bid.toString() === idStr)) return false;
+    let getList, setList, field;
+    if (arrayType === 'bloq') {
+        getList = getUsuariosBloqueados;
+        setList = setUsuariosBloqueados;
+        field = 'users_bloq';
+    } else {
+        getList = getUsuariosSilence;
+        setList = setUsuariosSilence;
+        field = 'users_silence';
+    }
 
-    lista_bloqueados.push(idStr);
+    let list = getList();
+    const index = list.findIndex(x => x.toString() === idStr);
+    const exists = index !== -1;
+
+    if (isAdd && exists) return false;
+    if (!isAdd && !exists) return false;
 
     try {
         const correoHash = hashDatosSistema(getCorreoSesion());
-        const r = await User.updateOne(
-            { correo_hash: correoHash },
-            {
-                $set: { users_bloq: lista_bloqueados },
-                $pull: { contactos: { id: idStr } }
-            }
-        );
-        if (r.matchedCount === 0) return false;
+        const updateOp = isAdd 
+            ? { $addToSet: { [field]: idStr } } 
+            : { $pull: { [field]: idStr } };
 
-        setUsuariosBloqueados(lista_bloqueados);
+        if (isAdd && arrayType === 'bloq') {
+            updateOp.$pull = { contactos: { id: idStr } };
+        }
+
+        const r = await User.updateOne({ correo_hash: correoHash }, updateOp);
+        if (r.modifiedCount === 0 && r.matchedCount === 0) return false;
+
+        if (isAdd) list.push(idStr);
+        else list.splice(index, 1);
+        
+        setList(list);
         await _syncCache(correoHash);
         return true;
     } catch (e) {
@@ -181,32 +187,8 @@ export async function añadirUsuariosBloqueados(id) {
     }
 }
 
-
-export async function eliminarUsuariosBloqueados(id) {
-    const idStr = _getID(id);
-    if (!idStr) return null;
-
-    let lista_bloqueados = getUsuariosBloqueados();
-    const index = lista_bloqueados.findIndex(bid => bid.toString() === idStr);
-    if (index === -1) return false;
-
-    lista_bloqueados.splice(index, 1);
-    try {
-        const correoHash = hashDatosSistema(getCorreoSesion());
-        const r = await User.updateOne(
-            { correo_hash: correoHash },
-            { $set: { users_bloq: lista_bloqueados } }
-        );
-        if (r.matchedCount === 0) return false;
-
-        setUsuariosBloqueados(lista_bloqueados);
-        await _syncCache(correoHash);
-        return true;
-    } catch (e) {
-        log.error(e);
-        return null;
-    }
-}
+export const añadirUsuariosBloqueados = (id) => _toggleArrayUsuario(id, 'bloq', true);
+export const eliminarUsuariosBloqueados = (id) => _toggleArrayUsuario(id, 'bloq', false);
 
 export async function cambiarContraseñaUsuario(contraseña) {
     const fecha_bloqueo = new Date(Date.now() + (48 * 60 * 20 * 1000));
@@ -416,91 +398,31 @@ export async function AÑADIR_CONTACTO(id, nombre) {
 }
 
 
-export async function eliminarUsuariosSilenciados(id) {
-    const idStr = _getID(id);
-    if (!idStr) return null;
-
-    let lista_silenciados = getUsuariosSilence();
-    const index = lista_silenciados.findIndex(sid => sid.toString() === idStr);
-    if (index === -1) return false;
-
-    lista_silenciados.splice(index, 1);
-    try {
-        const correoHash = hashDatosSistema(getCorreoSesion());
-        const r = await User.updateOne({ correo_hash: correoHash }, { $set: { users_silence: lista_silenciados } });
-        if (r.matchedCount === 0) return false;
-
-        setUsuariosSilence(lista_silenciados);
-        await _syncCache(correoHash);
-        return true;
-    } catch (e) {
-        log.error(e);
-        return null;
-    }
-}
+export const añadirUsuariosSilenciados = (id) => _toggleArrayUsuario(id, 'silence', true);
+export const eliminarUsuariosSilenciados = (id) => _toggleArrayUsuario(id, 'silence', false);
 
 
-export async function añadirUsuariosSilenciados(id) {
-    const idStr = _getID(id);
-    if (!idStr) return null;
-
-    let lista_silenciados = getUsuariosSilence();
-    if (lista_silenciados.some(sid => sid.toString() === idStr)) return false;
-
-    lista_silenciados.push(idStr);
-    try {
-        const correoHash = hashDatosSistema(getCorreoSesion());
-        const r = await User.updateOne({ correo_hash: correoHash }, { $set: { users_silence: lista_silenciados } });
-        if (r.matchedCount === 0) return false;
-
-        setUsuariosSilence(lista_silenciados);
-        await _syncCache(correoHash);
-        return true;
-    } catch (e) {
-        log.error(e);
-        return null;
-    }
-}
-
-
-export async function toggleInvisibleUsuario() {
-    const nuevoEstado = !getInvisibleUsuario();
+async function _toggleBoolean(field, getter, setter) {
+    const nuevoEstado = !getter();
     try {
         const correoHash = hashDatosSistema(getCorreoSesion());
         const r = await User.updateOne(
             { correo_hash: correoHash },
-            { $set: { invisible: nuevoEstado } }
+            { $set: { [field]: nuevoEstado } }
         );
         if (r.matchedCount === 0) return { success: false };
 
-        setInvisibleUsuario(nuevoEstado);
+        setter(nuevoEstado);
         await _syncCache(correoHash);
-        return { success: true, invisible: nuevoEstado };
+        return { success: true, [field]: nuevoEstado };
     } catch (e) {
         log.error(e);
         return { success: false };
     }
 }
 
-
-export async function toggleMostrarCorreoUsuario() {
-    const nuevoEstado = !getMostrarCorreoUsuario();
-    try {
-        const correoHash = hashDatosSistema(getCorreoSesion());
-        const r = await User.updateOne(
-            { correo_hash: correoHash },
-            { $set: { mostrarCorreo: nuevoEstado } }
-        );
-        if (r.matchedCount === 0) return { success: false };
-
-        setMostrarCorreoUsuario(nuevoEstado);
-        await _syncCache(correoHash);
-        return { success: true, mostrarCorreo: nuevoEstado };
-    } catch (e) {
-        log.error(e);
-        return { success: false };
-    }
-}
+export const toggleInvisibleUsuario = () => _toggleBoolean('invisible', getInvisibleUsuario, setInvisibleUsuario);
+export const toggleMostrarCorreoUsuario = () => _toggleBoolean('mostrarCorreo', getMostrarCorreoUsuario, setMostrarCorreoUsuario);
 
 /**
  * Obtiene la lista resumida de chats del usuario directamente de la DB.
