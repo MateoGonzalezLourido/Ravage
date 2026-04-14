@@ -55,11 +55,27 @@ const electronLoader = () => {
     try {
         return require('electron');
     } catch {
+        // En entorno de Node puro (como tests de importación) devolver mocks básicos
+        const mockPath = (p) => `${process.cwd()}/${p || 'tmp'}`;
         return {
-            app: { getPath: () => '/tmp', on: () => { }, emit: () => { }, quit: () => { } },
-            BrowserWindow: class { },
-            ipcMain: { on: () => { }, handle: () => { } },
-            dialog: { showOpenDialog: () => { }, showSaveDialog: () => { } }
+            app: { 
+                getPath: mockPath, 
+                on: () => { }, 
+                emit: () => { }, 
+                quit: () => { },
+                isReady: () => false,
+                whenReady: () => Promise.resolve()
+            },
+            ipcMain: { on: () => { }, handle: () => { }, removeHandler: () => { } },
+            BrowserWindow: class { 
+                constructor() { this.webContents = { setFrameRate: () => { }, executeJavaScript: () => { } }; }
+                loadFile() { }
+                maximize() { }
+                show() { }
+                on() { }
+                once() { }
+            },
+            dialog: { showOpenDialog: () => Promise.resolve({ canceled: true }), showSaveDialog: () => Promise.resolve({ canceled: true }) }
         };
     }
 };
@@ -68,15 +84,27 @@ const electron = lazy(electronLoader);
 
 // Helper para crear un proxy que preserve el contexto 'this' de Electron
 function createElectronProxy(name) {
-    return new Proxy(function() {}, {
+    return new Proxy(function () { }, {
         get: (target, prop) => {
             const comp = electron[name];
-            const val = comp[prop];
-            return typeof val === 'function' ? val.bind(comp) : val;
+            const val = comp ? comp[prop] : undefined;
+            
+            if (typeof val === 'function') return val.bind(comp);
+            if (val !== undefined) return val;
+
+            // Fallback para métodos si comp no existe o no tiene la propiedad
+            if (prop === 'getPath') return (p) => `${process.cwd()}/${p || 'tmp'}`;
+            if (prop === 'whenReady') return () => Promise.resolve();
+            if (prop === 'isReady') return () => false;
+            
+            return () => { };
         },
         construct: (target, args) => {
             const Comp = electron[name];
-            return new Comp(...args);
+            if (typeof Comp === 'function') {
+                try { return new Comp(...args); } catch (e) { return {}; }
+            }
+            return {};
         }
     });
 }

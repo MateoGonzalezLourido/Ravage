@@ -160,11 +160,16 @@ if (!gotTheLock) {
 app.on('before-quit', async (event) => {
     event.preventDefault();
     try {
-        const [dbRes, buzonRes] = await Promise.allSettled([
+        const [dbRes, buzonRes, poolRes] = await Promise.allSettled([
             import("./backend/db/mongo.js"),
-            import('./backend/services/buzonAPI.js')
+            import('./backend/services/buzonAPI.js'),
+            import('./backend/utils/workerPool.js')
         ]);
 
+        // Terminar worker pool primero (operaciones en vuelo)
+        if (poolRes.status === 'fulfilled') {
+            await poolRes.value.terminarCryptoPool();
+        }
         if (buzonRes.status === 'fulfilled') {
             await buzonRes.value.detenerBuzon();
         }

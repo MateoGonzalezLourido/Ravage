@@ -183,15 +183,25 @@ async function resolverNombresYBloqueos(chat, id_chat) {
 }
 
 export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, solicitudAceptada = false) {
-    if (!ids || ids.length === 0) return false;
+    if (!ids || ids.length === 0) {
+        log.warn("[CREAR_CHAT_NUEVO] Fallo: No se proporcionaron IDs de destinatarios");
+        return false;
+    }
     const id_propio = getIDMongodbUsuario();
+    if (!id_propio) {
+        log.warn("[CREAR_CHAT_NUEVO] Fallo: No se encontró sesión del usuario (id_propio null)");
+        return false;
+    }
 
     // Normalizar ID del chat
     let chatIdLimpio = normalizeId(id_chat);
     if (chatIdLimpio === "null" || chatIdLimpio === "undefined" || chatIdLimpio === "") chatIdLimpio = null;
 
     const esChat_existente = chatIdLimpio && mongoose.Types.ObjectId.isValid(chatIdLimpio);
-    if (getInvisibleUsuario() && !esChat_existente) return false;
+    if (getInvisibleUsuario() && !esChat_existente) {
+        log.warn(`[CREAR_CHAT_NUEVO] Fallo: El usuario emisor ${id_propio} está en modo invisible`);
+        return false;
+    }
 
     // Filtrar usuarios bloqueados bidireccionalmente
     const miUsuario = await User.findById(id_propio, "users_bloq").lean();
@@ -215,14 +225,20 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         })
         .map(u => u._id.toString());
 
-    if (ids_filtrados.length === 0) return false;
+    if (ids_filtrados.length === 0) {
+        log.warn(`[CREAR_CHAT_NUEVO] Fallo: Todos los destinatarios fueron filtrados (bloqueos o invisibilidad). Originales: ${ids.length}, Candidatos: ${candidatos.length}`);
+        return false;
+    }
 
     // Reemplazar ids por los filtrados
     ids = ids_filtrados;
 
     if (esChat_existente) {
         const chat = await ChatsRavage.findById(chatIdLimpio).lean();
-        if (!chat) return false;
+        if (!chat) {
+            log.warn(`[CREAR_CHAT_NUEVO] Fallo: Chat existente ${chatIdLimpio} no encontrado en DB`);
+            return false;
+        }
 
         // Comprobar si el usuario tiene el chat bloqueado
         const miUsuarioConChats = await User.findById(id_propio, "chats").lean();
@@ -280,6 +296,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         // 3+ participantes o solicitud aceptada: añadir directamente
         // Verificar si es admin (solo los admins pueden añadir a grupos de >2 personas)
         if (chat.usuarios.length > 2 && !chat.admins.some(a => a.toString() === id_propio.toString())) {
+            log.warn(`[CREAR_CHAT_NUEVO] Fallo: El usuario ${id_propio} no es admin del chat grupal ${chatIdLimpio}`);
             return false;
         }
 
@@ -418,6 +435,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
 
         return convertirObjectId(datos_chat.toObject());
     } catch (e) {
+        log.error({ err: e, stack: e.stack }, `[CREAR_CHAT_NUEVO] Error crítico durante la creación/actualización`);
         if (datos_chat?._id) await ChatsRavage.deleteOne({ _id: datos_chat._id });
         throw e;
     }

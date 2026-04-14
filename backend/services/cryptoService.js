@@ -1,5 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('crypto');
+import { getCryptoPool } from '../utils/workerPool.js';
 import { 
     generateKeyPair,
     publicEncrypt, 
@@ -11,8 +12,8 @@ import {
     createHmac,
     constants
 } from '../utils/libs.js';
-import { promisify } from 'util'; // <-- Añadir esto
-const generateKeyPairAsync=promisify(generateKeyPair);
+import { promisify } from 'node:util';
+const generateKeyPairAsync = (typeof generateKeyPair === 'function') ? promisify(generateKeyPair) : null;
 let systemKey = null;
 let cachedIdentity = null;
 
@@ -111,13 +112,31 @@ export function hashDatosSistema(datos) {
  * Utiliza X25519 para intercambio de llaves y AES-256-GCM para contenido.
  */
 
-// Generar par de llaves de identidad (X25519)
-export async function generarLlavesIdentidad() {
-    const { publicKey, privateKey } = await generateKeyPairAsync('x25519', {
-        publicKeyEncoding: { type: 'spki', format: 'pem' },
-        privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
-    });
-    return { publicKey, privateKey };
+// Generar par de llaves de identidad (X25519) — delegado a worker thread
+export async function generarLlavesX25519() {
+    try {
+        return await getCryptoPool().ejecutar('GENERAR_LLAVES_IDENTIDAD');
+    } catch (err) {
+        log.warn({ err }, 'Worker pool falló para X25519, fallback a main thread...');
+        
+        if (generateKeyPairAsync) {
+            try {
+                return await generateKeyPairAsync('x25519', {
+                    publicKeyEncoding: { type: 'spki', format: 'pem' },
+                    privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+                });
+            } catch (e) {
+                log.error({ err: e }, "Falló fallback asíncrono X25519, usando síncrono");
+            }
+        }
+
+        // Último recurso: modo síncrono (bloqueante)
+        const { generateKeyPairSync } = await import('../utils/libs.js');
+        return generateKeyPairSync('x25519', {
+            publicKeyEncoding: { type: 'spki', format: 'pem' },
+            privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+        });
+    }
 }
 
 // Cifrar datos con una llave simétrica (AES-256-GCM)
@@ -157,12 +176,33 @@ export function descifrarContenido(cifrado, key) {
 // sobre la ChatKey inicial, o ECDH para derivarla.
 // Implementaremos RSA para la envoltura de la ChatKey por simplicidad en la lógica de distribución.
 
+// Generar par de llaves RSA-2048 — delegado a worker thread
 export async function generarLlavesRSA() {
-    return await generateKeyPairAsync('rsa', {
-        modulusLength: 2048,
-        publicKeyEncoding: { type: 'spki', format: 'pem' },
-        privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
-    });
+    try {
+        return await getCryptoPool().ejecutar('GENERAR_LLAVES_RSA');
+    } catch (err) {
+        log.warn({ err }, 'Worker pool falló para RSA, fallback a main thread...');
+        
+        if (generateKeyPairAsync) {
+            try {
+                return await generateKeyPairAsync('rsa', {
+                    modulusLength: 2048,
+                    publicKeyEncoding: { type: 'spki', format: 'pem' },
+                    privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+                });
+            } catch (e) {
+                log.error({ err: e }, "Falló fallback asíncrono RSA, usando síncrono");
+            }
+        }
+        
+        // Último recurso: modo síncrono (bloqueante)
+        const { generateKeyPairSync } = await import('../utils/libs.js');
+        return generateKeyPairSync('rsa', {
+            modulusLength: 2048,
+            publicKeyEncoding: { type: 'spki', format: 'pem' },
+            privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+        });
+    }
 }
 
 export function cifrarConPublica(datos, publicKey) {

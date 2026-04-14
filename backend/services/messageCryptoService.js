@@ -4,9 +4,14 @@ import { descifrarContenido, descifrarConPrivada, ratchetChainKey, cifrarConPubl
 import { readFileSession } from './controladorArchivos.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { ChatsRavage } from '../models/Chat.js';
+import { getCryptoPool } from '../utils/workerPool.js';
+
+/** Umbral mínimo de mensajes encriptados para activar batch paralelo */
+const UMBRAL_BATCH_PARALELO = 10;
 
 /**
  * Helper para descifrar un array de mensajes usando el sistema de Ratchet.
+ * Usa workers en paralelo cuando hay >UMBRAL mensajes encriptados.
  * @param {Array} mensajes - Array de mensajes de MongoDB (lean)
  * @param {Object} chat - El objeto chat completo de MongoDB (lean o hidratado)
  */
@@ -17,7 +22,30 @@ export async function descifrarListaMensajes(mensajes, chat) {
     const identity_data = await readFileSession('identity');
     if (!identity_data || !identity_data.privateKey || !id_propio) return mensajes;
 
-    // Caché local de claves para este lote de mensajes
+    // Contar mensajes que necesitan descifrado
+    const mensajesEncriptados = mensajes.filter(m =>
+        m.encriptado && m.encriptado.data && m.ratchet_info &&
+        !(m.contenido && m.contenido.length > 0 && typeof m.contenido[0].asunto === 'string')
+    );
+
+    // Si hay suficientes mensajes, usar batch paralelo con workers
+    if (mensajesEncriptados.length > UMBRAL_BATCH_PARALELO) {
+        try {
+            return await _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data);
+        } catch (err) {
+            log.warn({ err }, '[E2EE] Batch paralelo falló, cayendo a modo secuencial');
+            // Fallthrough al modo secuencial
+        }
+    }
+
+    // Modo secuencial (pocos mensajes o fallback)
+    return await _descifrarSecuencial(mensajes, chat, id_propio, identity_data);
+}
+
+/**
+ * Descifrado secuencial en main thread (modo original).
+ */
+async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
     const cache_keys = {};
 
     for (let m of mensajes) {
@@ -114,7 +142,73 @@ export async function descifrarListaMensajes(mensajes, chat) {
         }
     }
 
-    // Persistir avances en DB
+    await _persistirRatchetState(cache_keys, chat, identity_data);
+    return mensajes;
+}
+
+/**
+ * Descifrado paralelo con Worker Pool.
+ * Divide los mensajes entre N workers para descifrar simultáneamente.
+ */
+async function _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data) {
+    const pool = getCryptoPool();
+
+    // Serializar ratchet_keys para enviar al worker (sin métodos Mongoose)
+    const ratchet_keys = chat.ratchet_keys.map(k => ({
+        emisor_id: k.emisor_id.toString(),
+        receptor_id: k.receptor_id.toString(),
+        clave_envuelta: k.clave_envuelta,
+        counter: k.counter
+    }));
+
+    // Preparar mensajes serializados (sin métodos Mongoose) 
+    const mensajesSerializados = mensajes.map(m => ({
+        _id: m._id?.toString?.() || m._id,
+        emisor: m.emisor?.toString?.() || m.emisor,
+        contenido: m.contenido,
+        encriptado: m.encriptado,
+        ratchet_info: m.ratchet_info,
+        data: m.data
+    }));
+
+    // Obtener systemKey para fallback de descifrado de sistema en workers
+    const systemKey = process.env.INTERNAL_ENCRYPTION_KEY || null;
+
+    const resultados = await pool.ejecutarBatch(
+        'DESCIFRAR_BATCH_MENSAJES',
+        mensajesSerializados,
+        {
+            ratchet_keys,
+            id_propio: id_propio.toString(),
+            privateKey: identity_data.privateKey,
+            systemKey
+        }
+    );
+
+    // Recomponer mensajes originales con los descifrados
+    // Reunir cache_keys de todos los workers para persistir
+    const cache_keys_combinado = {};
+
+    for (let i = 0; i < resultados.length; i++) {
+        if (resultados[i]) {
+            // Copiar datos descifrados al mensaje original
+            mensajes[i].contenido = resultados[i].contenido;
+            if (resultados[i].emisor) mensajes[i].emisor = resultados[i].emisor;
+            if (resultados[i].data) mensajes[i].data = resultados[i].data;
+        }
+    }
+
+    // Persistir ratchet state — necesitamos recalcular desde main thread
+    // ya que los workers no pueden acceder a la DB
+    await _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, identity_data);
+
+    return mensajes;
+}
+
+/**
+ * Persiste los avances del ratchet en la DB (modo secuencial).
+ */
+async function _persistirRatchetState(cache_keys, chat, identity_data) {
     for (const [key, state] of Object.entries(cache_keys)) {
         const [emisor_id, receptor_id] = key.split('_');
         await ChatsRavage.updateOne(
@@ -127,8 +221,56 @@ export async function descifrarListaMensajes(mensajes, chat) {
             }
         ).catch(e => log.error({ err: e }, "[E2EE] Fallo persistiendo ratchet state"));
     }
+}
 
-    return mensajes;
+/**
+ * Persiste ratchet state después de batch paralelo.
+ * Recalcula el estado final basándose en el último mensaje procesado de cada emisor.
+ */
+async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, identity_data) {
+    // Encontrar el último mensaje de cada emisor para saber el counter final
+    const ultimosPorEmisor = {};
+    for (const m of mensajes) {
+        if (m.ratchet_info && m.emisor) {
+            const emisor_id = m.emisor.toString();
+            if (!ultimosPorEmisor[emisor_id] || m.ratchet_info.iteration > ultimosPorEmisor[emisor_id].iteration) {
+                ultimosPorEmisor[emisor_id] = m.ratchet_info;
+            }
+        }
+    }
+
+    // Para cada emisor, avanzar desde la clave base hasta el último counter + 1
+    for (const [emisor_id, ratchet_info] of Object.entries(ultimosPorEmisor)) {
+        const entry = chat.ratchet_keys.find(k =>
+            k.emisor_id.toString() === emisor_id &&
+            k.receptor_id.toString() === id_propio.toString()
+        );
+        if (!entry) continue;
+
+        try {
+            let ck = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
+            let counter = entry.counter;
+
+            // Avanzar hasta el último mensaje + 1
+            while (counter <= ratchet_info.iteration) {
+                const { nextChainKey } = ratchetChainKey(ck);
+                ck = nextChainKey;
+                counter++;
+            }
+
+            await ChatsRavage.updateOne(
+                { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": id_propio },
+                {
+                    $set: {
+                        "ratchet_keys.$.clave_envuelta": cifrarConPublica(ck, identity_data.publicKey),
+                        "ratchet_keys.$.counter": counter
+                    }
+                }
+            ).catch(e => log.error({ err: e }, "[E2EE] Fallo persistiendo ratchet state (batch)"));
+        } catch (err) {
+            log.error({ err, emisor_id }, "[E2EE] Fallo recalculando ratchet final para batch");
+        }
+    }
 }
 
 /**

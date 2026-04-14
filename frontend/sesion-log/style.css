@@ -208,6 +208,71 @@ button:active {
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.menu-confirmacion-cuenta-creada {
+    max-width: 440px;
+    align-items: center;
+    text-align: center;
+    padding: 60px 40px;
+}
+
+.menu-confirmacion-cuenta-creada h2 {
+    color: var(--primary);
+    font-size: 28px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 20px var(--primary-glow);
+}
+
+.menu-confirmacion-cuenta-creada p {
+    font-size: 18px;
+    color: white;
+    font-weight: 500;
+    margin-bottom: 20px;
+}
+
+.success-message-details {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 40px;
+    opacity: 0.8;
+}
+
+/* Success Checkmark Animation */
+.success-icon-container {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(168, 85, 247, 0.1);
+    border-radius: 50%;
+    position: relative;
+    border: 2px solid var(--primary);
+    box-shadow: 0 0 30px var(--primary-glow);
+}
+
+.checkmark {
+    width: 50px;
+    height: 25px;
+    border-left: 5px solid var(--primary);
+    border-bottom: 5px solid var(--primary);
+    transform: rotate(-45deg);
+    margin-bottom: 10px;
+    animation: checkmarkGrow 0.5s ease-out forwards;
+}
+
+@keyframes checkmarkGrow {
+    0% { transform: rotate(-45deg) scale(0); opacity: 0; }
+    70% { transform: rotate(-45deg) scale(1.2); opacity: 1; }
+    100% { transform: rotate(-45deg) scale(1); opacity: 1; }
+}
+
+#bt-volver-login-confirmacion-cuenta {
+    width: 100%;
+    margin-top: 0;
+}
+
 /* Ajustes específicos */
 #seccion-registro {
     max-width: 440px;
@@ -215,19 +280,76 @@ button:active {
 
 .menu-validacion-codigo {
     max-width: 420px;
+    align-items: center;
 }
 
-.ayuda-texto, .span-aviso {
+.menu-validacion-codigo h2 {
+    margin-bottom: 12px;
+}
+
+.ayuda-texto {
     color: var(--text-secondary);
-    font-size: 14px;
-    line-height: 1.5;
-    margin-bottom: 8px;
-    display: block;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    text-align: center;
+    opacity: 0.9;
 }
 
 .span-aviso {
-    font-size: 12px;
-    opacity: 0.8;
+    background: rgba(168, 85, 247, 0.1);
+    border-left: 3px solid var(--primary);
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.menu-validacion-codigo form {
+    width: 100%;
+    align-items: center;
+    gap: 25px;
+}
+
+/* Styled Code Input */
+#bt-code-introducir {
+    width: 100%;
+    letter-spacing: 0.5em; /* This is a simple way without changing HTML */
+    font-size: 32px;
+    text-align: center;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    height: 70px;
+    background: var(--input-bg);
+    border: 2px solid var(--glass-border);
+    border-radius: 16px;
+    color: var(--primary);
+    text-shadow: 0 0 15px var(--primary-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#bt-code-introducir:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary);
+    box-shadow: 0 0 25px var(--primary-glow);
+    transform: scale(1.02);
+}
+
+.bt-validar-code {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.bt-validar-code:hover {
+    box-shadow: 0 12px 25px rgba(139, 92, 246, 0.5);
+    transform: translateY(-3px) scale(1.01);
 }
 
 /* Barra de sincronización */

@@ -160,6 +160,103 @@
     top: 10px;
 }
 
+/* ─── Agrupación de mensajes (Hilos Estilo Árbol) ───────────────────── */
+
+/* Espaciado para el árbol */
+/* ─── Agrupación de mensajes (Hilos Estilo Árbol Gordo) ──────────────── */
+
+/* ─── Agrupación de mensajes (Hilos Estilo Árbol Gordo - Revertido) ──── */
+
+.mensaje-chat.agrupado-arriba, 
+.mensaje-chat.agrupado-abajo {
+    position: relative;
+    margin-top: 4px !important; 
+    margin-bottom: 4px !important;
+}
+
+/* El Tronco (Línea vertical gorda) */
+.mensaje-chat.agrupado-arriba::before,
+.mensaje-chat.agrupado-abajo::before {
+    content: "";
+    position: absolute;
+    width: 3px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Si tiene mensaje arriba, la línea sale desde arriba hasta la mitad */
+.mensaje-chat.agrupado-arriba::before {
+    top: -12px; 
+    height: calc(50% + 12px);
+}
+
+/* Si tiene mensaje abajo, la línea sale desde la mitad hasta el fondo */
+.mensaje-chat.agrupado-abajo::before {
+    top: 50%;
+    height: calc(50% + 12px);
+}
+
+/* Si tiene AMBOS, cubrimos todo el lateral */
+.mensaje-chat.agrupado-arriba.agrupado-abajo::before {
+    top: -12px;
+    height: calc(100% + 24px);
+}
+
+/* Las Ramas (Línea horizontal gorda) */
+.mensaje-chat.agrupado-arriba::after,
+.mensaje-chat.agrupado-abajo::after {
+    content: "";
+    position: absolute;
+    height: 3px;
+    width: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* Alineación RECEPTOR (Izquierda) */
+.soy-receptor.agrupado-arriba::before,
+.soy-receptor.agrupado-abajo::before {
+    left: -18px;
+    background: #2b708d; /* Color sólido basado en el anterior para evitar brillos excesivos */
+}
+
+.soy-receptor.agrupado-arriba::after,
+.soy-receptor.agrupado-abajo::after {
+    left: -18px;
+    background: #2b708d;
+    border-radius: 0 4px 4px 0;
+}
+
+/* Alineación EMISOR (Derecha) */
+.soy-emisor.agrupado-arriba::before,
+.soy-emisor.agrupado-abajo::before {
+    right: -18px;
+    background: #4a4a4a; /* Gris sólido para evitar el efecto de suma de transparencias */
+}
+
+.soy-emisor.agrupado-arriba::after,
+.soy-emisor.agrupado-abajo::after {
+    right: -18px;
+    background: #4a4a4a;
+    border-radius: 4px 0 0 4px;
+}
+
+/* Ocultar nombre en continuaciones */
+.agrupado-arriba .nombre-mensaje-chat-usuario {
+    display: none !important;
+}
+
+/* Ajustes de Border Radius finales */
+.mensaje-chat.soy-receptor.agrupado-abajo { border-bottom-left-radius: 4px; }
+.mensaje-chat.soy-receptor.agrupado-arriba { border-top-left-radius: 4px; }
+.mensaje-chat.soy-emisor.agrupado-abajo { border-bottom-right-radius: 4px; }
+.mensaje-chat.soy-emisor.agrupado-arriba { border-top-right-radius: 4px; }
+
+
+/* Files / Attachments styling inside messages */
+
 
 /* Files / Attachments styling inside messages */
 .file-mensaje-chat,

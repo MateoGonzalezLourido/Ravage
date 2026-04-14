@@ -87,7 +87,8 @@ export async function crear_chat_historial_archivos_descargados() {
                     <div class="archivo-historial-item" data-id-archivo="${archivo.id_archivo}" data-id-chat="${chat.id_chat}">
                         <div class="archivo-info-historial">
                             <div class="archivo-info-historial-avatar">
-                                <img src="${archivo.url_img}" alt="" class="img-historial-archivo" onerror="this.src='../recursos/extensionesArchivos/cualquiera.svg'">
+                                <img src="${archivo.url_img}" alt="" class="img-historial-archivo" data-fallback="../recursos/extensionesArchivos/cualquiera.svg">
+
                             </div>
                             <div class="archivo-info-historial-details">
                                 <span class="archivo-info-historial-name-text">${escapeHTML(archivo.nombre)}</span>
@@ -224,7 +225,16 @@ async function crear_eventos() {
             btn.style.opacity = "1";
         }
     })
+
+    // Listener global para errores de imagen (fallback) - Evita inline handlers (CSP)
+    document.querySelector("#historial-lista-contenido")?.addEventListener("error", (e) => {
+        if (e.target.classList.contains("img-historial-archivo") && e.target.dataset.fallback) {
+            e.target.src = e.target.dataset.fallback;
+            delete e.target.dataset.fallback; // Evitar loop infinito
+        }
+    }, true);
 }
+
 
 
 function hacer_scroll_a_archivo(id_archivo) {

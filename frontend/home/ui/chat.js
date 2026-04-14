@@ -260,7 +260,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     return html
 }
 
-export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = {} }) => {
+export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = {}, tieneArriba = false, tieneAbajo = false, id_emisor = "" }) => {
     const class_mensajes = ["soy-emisor", "soy-receptor"]
 
     //funciones de componentes
@@ -270,8 +270,8 @@ export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], pr
     const asunto_mensaje = (asunto) => {
         return asunto ? `<div class="asunto-mensaje-chat">${asunto}</div> ` : ``
     }
-    const nombre_emisor_mensaje = (nombre, propio, esAdmin) => {
-        if (propio) return ``
+    const nombre_emisor_mensaje = (nombre, propio, esAdmin, tieneArriba) => {
+        if (propio || tieneArriba) return ``
  
         return `<div class="nombre-mensaje-chat-usuario"><span>${escapeHTML(nombre)}${esAdmin ? " <span style='font-size: 0.9em; opacity: 0.7;'>·Admin</span>" : ""}</span></div>`
     }
@@ -285,6 +285,7 @@ export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], pr
         return `<div class="hora-mensaje-chat"><span>${hora}</span></div>`
     }
     const archivos_mensaje = async (archivos) => {
+// ... (omitted same as before for brevity in internal thought, but I'll write full content)
         if (archivos?.length > 0) {
             const html = [`<div class="mensaje-div-archivos">`]
             for (const archivo of archivos) {
@@ -310,8 +311,8 @@ export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], pr
 
 
     return (`
-    <div class="mensaje-chat ${emisor_mensaje(propio)}" data-scanner-tags="${tagsDetectados.join(",")}">
-        ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin)}
+    <div class="mensaje-chat ${emisor_mensaje(propio)} ${tieneArriba ? 'agrupado-arriba' : ''} ${tieneAbajo ? 'agrupado-abajo' : ''}" data-scanner-tags="${tagsDetectados.join(",")}" data-emisor-id="${id_emisor}">
+        ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin, tieneArriba)}
         ${asunto_mensaje(textoEscapado)}
         ${await archivos_mensaje(archivos)}
         ${hora_mandado(fecha)}
@@ -382,16 +383,43 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             if (controller.abort) return;
 
             // Renderizar mensajes del día en paralelo
-            const html_mensajes = await Promise.all(grupo.mensajes.map(async (m) => {
+            const mensajesConEstado = grupo.mensajes.map((m, index) => {
+                const id_emisor = (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString();
+                
+                // Buscar si tiene uno arriba del mismo emisor
+                const prevMsg = index > 0 ? grupo.mensajes[index - 1] : null;
+                const prevEmisor = prevMsg ? (Array.isArray(prevMsg.emisor) ? prevMsg.emisor[0] : prevMsg.emisor)?.toString() : null;
+                const tieneArriba = id_emisor === prevEmisor;
+
+                // Buscar si tiene uno abajo del mismo emisor
+                const nextMsg = index < grupo.mensajes.length - 1 ? grupo.mensajes[index + 1] : null;
+                const nextEmisor = nextMsg ? (Array.isArray(nextMsg.emisor) ? nextMsg.emisor[0] : nextMsg.emisor)?.toString() : null;
+                const tieneAbajo = id_emisor === nextEmisor;
+
+                return { ...m, id_emisor, tieneArriba, tieneAbajo };
+            });
+
+            const html_mensajes = await Promise.all(mensajesConEstado.map(async (m) => {
                 try {
-                    const id_emisor = (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString();
+                    const id_emisor = m.id_emisor;
                     if (!id_emisor) return "";
 
                     const propio = id_emisor === id_propio.toString();
                     const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor);
                     const nombre = map_nombres[id_emisor] || nombre_defecto;
 
-                    return await crear_mensaje_html({ fecha: m.data, asunto: m?.contenido[0]?.asunto || "", archivos: m?.contenido[0]?.archivos || [], propio, nombre, esAdmin, escaneres_seguridad });
+                    return await crear_mensaje_html({ 
+                        fecha: m.data, 
+                        asunto: m?.contenido[0]?.asunto || "", 
+                        archivos: m?.contenido[0]?.archivos || [], 
+                        propio, 
+                        nombre, 
+                        esAdmin, 
+                        escaneres_seguridad,
+                        tieneArriba: m.tieneArriba,
+                        tieneAbajo: m.tieneAbajo,
+                        id_emisor
+                    });
                 } catch (err) {
                     console.error("Error al renderizar un mensaje individual:", err, m);
                     return "";
@@ -589,15 +617,16 @@ export async function mostrar_datos_chat_usaurios(e) {
         <span>Información del chat</span>
         ${soyAdmin ? `
         <div id="bt-abrir-ajustes-chat">
-            <img src="../recursos/engranaje.png" alt="ajustes" title="Ajustes del chat" style="width: 18px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+            <img src="../recursos/engranaje.png" alt="ajustes" title="Ajustes del chat">
         </div>` : ''}
+
     </div>
 
     <div class="info-chat-cuerpo">
+        <div class="info-chat-perfil">
             <div class="info-chat-nombre">
                 <span>${escapeHTML(nombre_chat)}</span>
             </div>
-
             <div class="info-chat-subtitulo">
                 ${integrantes_chat()}
             </div>
@@ -644,6 +673,7 @@ export async function mostrar_datos_chat_usaurios(e) {
                         </div>
                     </div>
                 `
+                participantes_datos.forEach((p, index) => {
                     const originalId = participantes_ids[index];
                     const nombre = escapeHTML(p?.apodo || "Usuario Ravage");
                     const correo = escapeHTML(p?.correo || "");
@@ -674,6 +704,7 @@ export async function mostrar_datos_chat_usaurios(e) {
             }
         })()}
     </div>`
+
     infoSeccion.replaceChildren();
     infoSeccion.insertAdjacentHTML("beforeend", html);
 

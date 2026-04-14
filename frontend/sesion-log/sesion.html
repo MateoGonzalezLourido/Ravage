@@ -6,7 +6,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <!--seguridad-->
         <meta http-equiv="Content-Security-Policy"
-            content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://user-images.githubusercontent.com;">
+            content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://user-images.githubusercontent.com; connect-src 'self' ws://localhost:3000 http://localhost:3000;">
+
         <meta http-equiv="X-Content-Type-Options" content="nosniff">
         <!--<meta http-equiv="X-Frame-Options" content="DENY">-->
         <meta http-equiv="Referrer-Policy" content="no-referrer">
@@ -85,9 +86,15 @@
                 </form>
             </div>
             <div class="menu-confirmacion-cuenta-creada ocultar-display" id="seccion-confirmacion-cuenta-creada">
-                <h2>Cuenta creada correctamente</h2>
-                <span>Gracias por unirte a nosotros!!!</span>
-                <button id="bt-volver-login-confirmacion-cuenta"autofocus="on">Login</button>
+                <div class="success-icon-container">
+                    <div class="checkmark"></div>
+                </div>
+                <h2>¡Bienvenido a Ravage!</h2>
+                <p>Tu cuenta ha sido creada con éxito.</p>
+                <div class="success-message-details">
+                    Gracias por unirte a nuestra comunidad privada de mensajería segura.
+                </div>
+                <button id="bt-volver-login-confirmacion-cuenta" autofocus="on">Volver al Login</button>
             </div>
         </div>
         <!--SCRIPTS-->

@@ -1,5 +1,13 @@
 import { limpiar_archivos_mensaje } from './manejador_archivos.js'
 import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
+import { 
+    chat_componente_lista_estructura_html, 
+    Crear_chat_html, 
+    Encontrar_Nombre_Chat_Usuario, 
+    crear_mensaje_html, 
+    aplicar_escaneres_asincronos, 
+    texto_mostrar_fecha_mensajes_bloque 
+} from './chat.js';
 
 export function cerrar_paneles_al_abrir_chat() {
     const infoSeccion = document.querySelector("#info-chat-seccion")
@@ -266,8 +274,6 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
 
         const result_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(chat)
         const escaneres_seguridad = result_seguridad.escaneres_seguridad || result_seguridad;
-        const htmlPromise = crear_mensaje_html({ fecha, asunto: mensaje, archivos, propio, nombre_emisor, esAdmin, escaneres_seguridad })
-
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;
 
@@ -275,9 +281,32 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
         const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
         let lastBlockDateText = lastBlock ? lastBlock.querySelector(".fecha-bloque-mensajes span")?.innerHTML : null;
 
-        const html = await htmlPromise;
+        const esNuevoDia = !lastBlock || lastBlockDateText !== fechaActualText;
+        let tieneArriba = false;
 
-        if (!lastBlock || lastBlockDateText !== fechaActualText) {
+        if (!esNuevoDia) {
+            const lastMessage = chatContainer.querySelector(".mensaje-chat:last-child");
+            const ultimoEmisorId = lastMessage?.dataset.emisorId;
+            if (ultimoEmisorId === id_emisor) {
+                tieneArriba = true;
+                lastMessage.classList.add("agrupado-abajo");
+            }
+        }
+
+        const html = await crear_mensaje_html({ 
+            fecha, 
+            asunto: mensaje, 
+            archivos, 
+            propio, 
+            nombre_emisor, 
+            esAdmin, 
+            escaneres_seguridad, 
+            tieneArriba, 
+            tieneAbajo: false, 
+            id_emisor 
+        });
+
+        if (esNuevoDia) {
             const nuevoBloqueHTML = `
                 <div class="bloque-dia-chat">
                     <div class="fecha-bloque-mensajes"><span>${fechaActualText}</span></div>
