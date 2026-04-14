@@ -307,25 +307,33 @@
     </div>
     <div id="alineador-seccion-añadir-chat" class="ocultar-display">
         <div class="seccion-añadir-chat">
-            <div class="nav-principal-añadir-chat">
-                <div class="seccion-texto-buscar-chat-añadir">
-                    <img src="../recursos/lupa.png" alt="buscar" draggable="false">
-                    <input type="text" id="texto-buscar-chat-añadir" value="" placeholder="Buscar usuario..."
-                        maxlength="255">
-
-                </div>
+            <div class="modal-header">
+                <h2>Nueva Conversación</h2>
                 <div id="bt-cerrar-menu-añadir-chats">
-                    <img src="../recursos/cruz.png" alt="">
+                    <img src="../recursos/cruz.png" alt="cerrar">
                 </div>
             </div>
 
-            <div id="resultados-busqueda-usaurios"><span>*Sin resultados</span></div>
-            <div id="contactos-añadidos-grupo">*Agrega usuarios para el chat</div>
-            <div class="nombre-chat-crear">
-                <input id="nombre-chat-nuevo-crear" type="text" value="" placeholder="Nombre para el chat"
-                    maxlength="50">
-            </div>
-            <div class="div-bt-agregar-contacto-nuevo"> <button id="bt-agregar-contacto-nuevo">Agregar</button>
+            <div class="modal-body">
+                <span class="label-modal">Buscar Usuario</span>
+                <div class="input-wrapper">
+                    <img src="../recursos/lupa.png" class="input-icon" alt="buscar">
+                    <input type="text" id="texto-buscar-chat-añadir" placeholder="Nombre de usuario..." maxlength="255">
+                </div>
+
+                <div id="resultados-busqueda-usaurios" class="empty-state">
+                    <span>* Sin resultados</span>
+                </div>
+
+                <span class="label-modal">Contactos Seleccionados</span>
+                <div id="contactos-añadidos-grupo" class="empty-state">
+                    <span>* Selecciona usuarios para el chat</span>
+                </div>
+
+                <span class="label-modal">Nombre del Grupo (Opcional)</span>
+                <input id="nombre-chat-nuevo-crear" type="text" placeholder="Ej: Equipo de Proyecto" maxlength="50">
+
+                <button id="bt-agregar-contacto-nuevo">Crear Conversación</button>
             </div>
         </div>
     </div>

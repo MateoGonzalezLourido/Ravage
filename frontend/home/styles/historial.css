@@ -3,7 +3,7 @@
     justify-content: center;
     height: 100%;
     width: 100%;
-    background: #18252d;
+    background: transparent; /* Show global gradient */
     box-sizing: border-box;
     overflow-y: auto;
     user-select: none;
@@ -47,8 +47,8 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #333;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .historial-header h2 {
@@ -58,21 +58,23 @@
 }
 
 .bt-limpiar-historial {
-    background: #333;
-    border: none;
-    color: #ff5555;
-    padding: 8px 15px;
-    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #ff6b6b;
+    padding: 10px 20px;
+    border-radius: 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     margin-left: 15px;
-    transition: background 0.2s, transform 0.1s;
+    font-weight: 600;
+    transition: all 0.2s;
 }
 
 .bt-limpiar-historial:hover {
-    background: #444;
+    background: rgba(239, 68, 68, 0.2);
+    transform: translateY(-1px);
 }
 
 .bt-limpiar-historial:active {
@@ -85,17 +87,21 @@
 }
 
 .chat-historial-bloque {
-    background: #252525;
-    border-radius: 10px;
-    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    margin-bottom: 24px;
     overflow: hidden;
-    box-shadow: 0 3px 5px rgb(0 0 0 / 25%);
+    box-shadow: var(--glass-shadow);
 }
 
 .chat-historial-header {
-    background: #3a3a3a;
-    padding: 6px 15px;
-    font-weight: 600;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px 20px;
+    font-weight: 700;
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .chat-historial-name {
@@ -146,7 +152,7 @@
 }
 
 .bt-descargar-directo-historial:hover {
-    background: #444;
+    background: rgba(168, 85, 247, 0.2);
 }
 
 .bt-descargar-directo-historial img {

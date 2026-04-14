@@ -8,8 +8,10 @@
 .ventana-archivos-mensaje {
     width: 0;
     height: 100%;
-    background-color: var(--wa-panel-header-bg);
-    border-left: 1px solid var(--wa-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border-left: 1px solid var(--glass-border);
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
     display: flex;
@@ -46,24 +48,25 @@
 
 .bt-accion-archivos {
     width: 100%;
-    height: 40px;
-    background-color: var(--wa-panel-header-bg);
-    color: var(--wa-text-primary);
-    border: 1px solid var(--wa-border);
-    border-radius: 8px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
     cursor: pointer;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 
 .bt-accion-archivos:hover {
-    background-color: var(--wa-list-item-hover);
-    border-color: var(--wa-primary);
+    background: var(--primary);
+    box-shadow: 0 4px 15px var(--primary-glow);
+    transform: translateY(-1px);
 }
 
 .bt-accion-archivos-peligro:hover {
@@ -82,14 +85,16 @@
    ========================================= */
 .context-menu {
     position: fixed;
-    background-color: rgb(8, 8, 8);
-    border: 1px solid var(--wa-border);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    padding: 6px 0;
-    min-width: 120px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    box-shadow: var(--glass-shadow);
+    padding: 8px;
+    min-width: 160px;
     z-index: 1000;
-    animation: fadeInContextMenu 0.15s ease-out;
+    animation: fadeInContextMenu 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes fadeInContextMenu {
@@ -105,16 +110,20 @@
 }
 
 .context-menu-item {
-    padding: 8px 16px;
+    padding: 10px 16px;
     cursor: pointer;
+    border-radius: 8px;
     font-size: 14px;
-    color: var(--wa-text-primary);
-    transition: background-color 0.1s;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: all 0.15s;
     user-select: none;
+    margin-bottom: 2px;
 }
 
 .context-menu-item:hover {
-    background-color: var(--wa-list-item-hover);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(2px);
 }
 
 .context-menu-item[data-action="borrar"]:hover {

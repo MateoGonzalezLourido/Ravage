@@ -10,6 +10,9 @@ const formatoScroollAnimacion = {
 /**
  * Initializes all event listeners and state for the settings page.
  */
+// Flag to prevent multiple event attachments
+let ajustesEventosInicializados = false;
+
 export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     if (e) e.preventDefault();
     
@@ -17,7 +20,12 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     cerrar_cuerpos_ajustes("cuenta");
     const menuAjustes = document.querySelector("#seccion-menu-cuenta-ajustes");
     menuAjustes.classList.remove("ocultar-display");
-    menuAjustes.classList.add("block-display");
+    menuAjustes.classList.add("flex-display");
+
+    if (ajustesEventosInicializados) {
+        await cargar_ajustes_cache();
+        return;
+    }
 
     // Event Delegation or centralized binding
     const bindings = [
@@ -29,12 +37,22 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     ];
 
     bindings.forEach(binding => {
-        document.querySelector(binding.id).addEventListener("click", (e) => {
+        const btn = document.querySelector(binding.id);
+        if (!btn) return;
+        
+        btn.addEventListener("click", (e) => {
             e.preventDefault();
+            
+            // UI feedback for active tab
+            document.querySelectorAll("#seccion-menu-cuenta-ajustes .menu-navegacion-ajustes div").forEach(d => d.classList.remove("active"));
+            btn.classList.add("active");
+
             cerrar_cuerpos_ajustes(binding.section);
-            document.querySelector(binding.scroll).scrollIntoView(formatoScroollAnimacion);
+            document.querySelector(binding.scroll).scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     });
+
+    ajustesEventosInicializados = true;
 
     document.querySelector("#bt-cerrar-menu-ajustes").addEventListener("click", cerrar_ajustes_pagina);
     document.querySelector("#bt-cerrar-sesion").addEventListener("click", cerrar_sesion_bt);
@@ -106,9 +124,9 @@ async function actualizar_datos_cuenta() {
 }
 
 function cerrar_ajustes_pagina(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const menuAjustes = document.querySelector("#seccion-menu-cuenta-ajustes");
-    menuAjustes.classList.remove("block-display");
+    menuAjustes.classList.remove("flex-display");
     menuAjustes.classList.add("ocultar-display");
     
     // Reset state if necessary
