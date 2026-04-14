@@ -113,7 +113,7 @@ export function mostrar_menu_contextual_archivo(e, clkNode) {
             <div class="context-menu-item" data-action="borrar">Borrar</div>
             <div class="context-menu-item" data-action="editar">Editar Nombre</div>
         </div>`
-    document.querySelector(".ventana-archivos-mensaje").insertAdjacentHTML("beforeend", mx)
+    document.body.insertAdjacentHTML("beforeend", mx)
 
     const menu = document.querySelector(".context-menu")
     menu.style.left = e.clientX + "px"; menu.style.top = e.clientY + "px";

@@ -15,7 +15,9 @@ import {
     abrir_ventana_archivos,
     cerrar_ventana_archivos,
     añadir_archivos_dialogo,
-    mostrar_menu_contextual_archivo
+    mostrar_menu_contextual_archivo,
+    limpiar_archivos_mensaje,
+    actualizar_html_lista_archivos
 } from './ui/manejador_archivos.js'
 
 import {
@@ -78,17 +80,26 @@ function inicializar_eventos_globales() {
         })
     }
 
-    // 3. EVENTOS MENÚ DE ARCHIVOS ADJUNTOS
-    document.querySelector(".seccion-cuerpo-chat")?.addEventListener("click", (e) => {
+    // 3. EVENTOS MENÚ DE ARCHIVOS ADJUNTOS (Delegación Global)
+    document.addEventListener("click", (e) => {
+        // Cierre y acciones de la ventana de archivos
         if (e.target.closest("#bt-cerrar-archivos-mensaje")) { cerrar_ventana_archivos(); return }
         if (e.target.closest("#bt-añadir-archivos-mensaje-escritura")) { añadir_archivos_dialogo(); return }
         if (e.target.closest("#bt-limpiar-archivos-mensaje-escritura")) {
-            import('./ui/manejador_archivos.js').then(m => { m.limpiar_archivos_mensaje(); m.actualizar_html_lista_archivos() })
+            limpiar_archivos_mensaje();
+            actualizar_html_lista_archivos();
+            cerrar_ventana_archivos();
             return
         }
 
+        // Click en un item de la lista de archivos
         const itemAdjunto = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente-item")
-        if (itemAdjunto) { e.preventDefault(); mostrar_menu_contextual_archivo(e, itemAdjunto); return }
+        if (itemAdjunto) { 
+            e.preventDefault();
+            e.stopPropagation();
+            mostrar_menu_contextual_archivo(e, itemAdjunto);
+            return 
+        }
     })
 }
 

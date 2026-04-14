@@ -29,6 +29,9 @@ export function cerrar_paneles_al_abrir_chat() {
 
 
 
+// Variable global en el módulo para gestionar el bloqueo de carga de chats
+let id_chat_cargando = null;
+
 export async function Get_datos_chat_abrir(id_chat) {
     const resultados = await Promise.allSettled([
         window.chats.OBTENER_MODELO_DATOS_NECESARIOS_CHAT(),
@@ -137,19 +140,38 @@ export async function abrir_chat_item(id_chat, force = false) {
         return;
     }
 
-
-    const [datos_chat, id_usuario] = await Promise.all([
-        Get_datos_chat_abrir(id_chat),
-        window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
-    ])
-    if (!datos_chat) {
-        window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos", tipo: "error" })
+    // Bloqueo para evitar cargar el mismo chat varias veces antes de que se abra
+    if (!force && id_chat_cargando === id_chat) {
         return;
     }
-    
-    limpiar_archivos_mensaje()
-    document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
-    cerrar_paneles_al_abrir_chat()
+
+    id_chat_cargando = id_chat;
+
+    try {
+        const [datos_chat, id_usuario] = await Promise.all([
+            Get_datos_chat_abrir(id_chat),
+            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+        ])
+
+        // Si mientras cargábamos se pulsó OTRO chat diferente, abortamos este renderizado
+        if (id_chat_cargando !== id_chat) {
+            return;
+        }
+
+        if (!datos_chat) {
+            window.pushNotificacion({ prioridad: 0, texto: "No se pudieron cargar los datos", tipo: "error" })
+            return;
+        }
+
+        limpiar_archivos_mensaje()
+        document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+        cerrar_paneles_al_abrir_chat()
+    } finally {
+        // Liberar el bloqueo si el chat que terminó es el que estábamos cargando
+        if (id_chat_cargando === id_chat) {
+            id_chat_cargando = null;
+        }
+    }
 }
 
 export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
