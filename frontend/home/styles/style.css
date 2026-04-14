@@ -656,11 +656,20 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .nombre-chat-lista-componente {
-    font-size: 17px;
-    font-weight: 400;
-    color: var(--wa-text-primary);
-    font-family: system-ui, -apple-system, inherit;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    width: 70%;
+}
+
+.nombre-texto {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
 }
 
 .fecha-chat-lista {
@@ -674,15 +683,54 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .ultimo-mensaje-chat-lista {
-    font-size: 14px;
+    font-size: 13.5px;
     margin-top: 2px;
-    width: 85%;
+    width: 75%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--wa-text-secondary);
+    color: var(--text-muted);
     font-weight: 400;
-    font-family: system-ui, -apple-system, inherit;
+}
+
+/* Iconos de estado (silenciado, bloqueado) */
+.iconos-estado-chat {
+    position: absolute;
+    bottom: 12px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+    z-index: 5;
+    animation: fadeIn 0.3s ease;
+}
+
+.icono-estado-lista {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    opacity: 0.45;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.icono-bloqueado {
+    /* Toque rojizo sutil para lo bloqueado */
+    filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.2));
+}
+
+.icono-silenciado {
+    opacity: 0.35;
+}
+
+.chat-componente-lista-chats:hover .icono-estado-lista {
+    opacity: 0.85;
+    transform: scale(1.15) rotate(5deg);
+}
+
+.chat-componente-lista-chats:hover .icono-bloqueado {
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4));
 }
 
 .division-2 {

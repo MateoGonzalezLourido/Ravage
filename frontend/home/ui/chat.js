@@ -249,12 +249,15 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
 
     let html = `
     <div data-id="${datos_usar.id}" class="chat-componente-lista-chats">
-        <div class="nombre-chat-lista-componente" style="display: flex; align-items: center; justify-content: space-between;">
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${nombre(datos_usar)}</span>
-            ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" style="width: 16px;z-index:2 !important; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat bloqueado">' : (datos_usar.silenciado ? '<img src="../recursos/silenciar.png" style="width: 16px;z-index:2 !important; height: 16px; opacity: 0.6; margin-left: 8px; flex-shrink: 0;" title="Chat silenciado">' : '')}
+        <div class="nombre-chat-lista-componente">
+            <span class="nombre-texto">${nombre(datos_usar)}</span>
         </div>
         ${ultimo_mensaje(datos_usar)}
         ${ultima_vez(datos_usar)}
+        <div class="iconos-estado-chat">
+            ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" class="icono-estado-lista icono-bloqueado" title="Chat bloqueado">' : ''}
+            ${datos_usar.silenciado ? '<img src="../recursos/silenciar.png" class="icono-estado-lista icono-silenciado" title="Chat silenciado">' : ''}
+        </div>
     </div>`
 
     return html
