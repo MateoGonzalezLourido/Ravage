@@ -260,7 +260,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     return html
 }
 
-export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = {}, tieneArriba = false, tieneAbajo = false, id_emisor = "" }) => {
+export const crear_mensaje_html = async ({ id_mensaje = null, fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = {}, tieneArriba = false, tieneAbajo = false, id_emisor = "" }) => {
     const class_mensajes = ["soy-emisor", "soy-receptor"]
 
     //funciones de componentes
@@ -296,7 +296,7 @@ export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], pr
                 const emisor_id = archivo.emisor_id || '';
                 const ratchet_json = archivo.ratchet_info ? encodeURIComponent(JSON.stringify(archivo.ratchet_info)) : '';
 
-                html.push(`<div class="archivo-mensaje-div-archivos" data-id="${archivo.id}" data-nombre="${archivo.nombre}" data-iv="${archivo.iv || ''}" data-tag="${archivo.tag || ''}" data-emisor="${emisor_id}" data-ratchet="${ratchet_json}">
+                html.push(`<div class="archivo-mensaje-div-archivos" data-id="${archivo.id || archivo._id || ''}" data-nombre="${archivo.nombre}" data-iv="${archivo.iv || ''}" data-tag="${archivo.tag || ''}" data-emisor="${emisor_id}" data-ratchet="${ratchet_json}">
                 <div><img src="${url}"><span>${nombre_mostrar}</span></div>
                 </div> `)
             }
@@ -311,7 +311,7 @@ export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], pr
 
 
     return (`
-    <div class="mensaje-chat ${emisor_mensaje(propio)} ${tieneArriba ? 'agrupado-arriba' : ''} ${tieneAbajo ? 'agrupado-abajo' : ''}" data-scanner-tags="${tagsDetectados.join(",")}" data-emisor-id="${id_emisor}">
+    <div class="mensaje-chat ${emisor_mensaje(propio)} ${tieneArriba ? 'agrupado-arriba' : ''} ${tieneAbajo ? 'agrupado-abajo' : ''}" data-id="${id_mensaje || ''}" data-scanner-tags="${tagsDetectados.join(",")}" data-emisor-id="${id_emisor}">
         ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin, tieneArriba)}
         ${asunto_mensaje(textoEscapado)}
         ${await archivos_mensaje(archivos)}
@@ -427,8 +427,10 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             }));
 
             const html_dia = `
-                <div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(new Date(grupo.fecha))}</span></div>
-                ${html_mensajes.join('')}
+                <div class="bloque-dia-chat">
+                    <div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(new Date(grupo.fecha))}</span></div>
+                    ${html_mensajes.join('')}
+                </div>
             `;
 
             if (es_primer_dia) {

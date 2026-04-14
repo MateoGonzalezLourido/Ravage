@@ -242,11 +242,25 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 
 
         Añadir_Entrada_Buzon_Usuario({ 
-            ids: chat.usuarios?.filter(id => id.toString() !== id_emisor.toString()), 
+            ids: chat.usuarios, 
             tipo: 0, 
             data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() } 
         }).catch(e => log.error(e));
-        return true;
+        // Preparar respuesta para el emisor con datos completos (incluyendo extensiones)
+        const mensaje_enviar = {
+            ...nuevoMensaje.toObject ? nuevoMensaje.toObject() : nuevoMensaje,
+            contenido: [{
+                asunto: asunto,
+                archivos: (contenido_archivos || []).map((ca, idx) => ({
+                    ...ca,
+                    nombre: archivos[idx]?.nombre || ca.nombre,
+                    extension: archivos[idx]?.extension || ca.extension || (archivos[idx]?.nombre?.includes(".") ? archivos[idx].nombre.split(".").pop() : null),
+                    emisor_id: id_emisor
+                }))
+            }]
+        };
+
+        return { success: true, id_mensaje: nuevoMensaje._id?.toHexString(), mensaje: convertirObjectId(mensaje_enviar) };
     } catch (e) {
         log.error(e);
         return false;
@@ -255,8 +269,11 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 
 export async function obtener_datos_mensaje(id_chat, id_mensaje) {
     try {
-        const chat = await ChatsRavage.findById(id_chat).lean();
-        const mensaje = await MessagesRavage.findOne({ id_chat, _id: id_mensaje }).lean();
+        const chat = await ChatsRavage.findById(new mongoose.Types.ObjectId(id_chat)).lean();
+        const mensaje = await MessagesRavage.findOne({ 
+            id_chat: new mongoose.Types.ObjectId(id_chat), 
+            _id: new mongoose.Types.ObjectId(id_mensaje) 
+        }).lean();
         if (!mensaje) return null;
 
         if (mensaje.encriptado && mensaje.encriptado.data) {

@@ -79,7 +79,8 @@ async function Cambio_buzonApi_mensaje(entrada) {
             chat: id_chat,
             mensaje: respuesta.contenido?.[0]?.asunto || "",
             archivos: respuesta.contenido?.[0]?.archivos || [],
-            fecha: respuesta.data
+            fecha: respuesta.data,
+            id_mensaje: id_mensaje
         })
     }
     //notificacion

@@ -1,5 +1,6 @@
 import { BuzonUsuarios } from '../models/Buzon.js';
 import { getIDMongodbUsuario, getListaChats, getUsuariosSilence, getUsuariosBloqueados } from '../STORAGE/Variables_sesion.js';
+import { desencriptarDatosSistema } from '../services/cryptoService.js';
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('buzon');
 
@@ -21,6 +22,25 @@ export async function iniciarBuzon(io, mainWindow) {
         if (!myUserId || userId.toString() !== myUserId.toString()) return;
 
         const doc = change.fullDocument;
+        if (doc && doc.entrada) {
+            doc.entrada = doc.entrada.map(ent => {
+                let decryptedData = ent.data;
+                // Si es un objeto encriptado (tiene data, iv, tag), lo desencriptamos
+                if (ent.data && typeof ent.data === 'object' && ent.data.data && ent.data.iv && ent.data.tag) {
+                    const decrypted = desencriptarDatosSistema(ent.data);
+                    // Si el resultado es un string (lo usual), intentamos parsearlo por si es un objeto JSON
+                    try {
+                        decryptedData = (typeof decrypted === 'string') ? JSON.parse(decrypted) : decrypted;
+                    } catch (e) {
+                        decryptedData = decrypted;
+                    }
+                } else if (ent.data && typeof ent.data === 'string') {
+                    // Fallback para versiones/tipos que guarden el string directamente (aunque no es lo normal)
+                    decryptedData = desencriptarDatosSistema(ent.data);
+                }
+                return { ...ent, data: decryptedData };
+            });
+        }
 
         // Filtrar+optimizar datos antes de enviar al frontend (Mejora IPC/BFF)
         const docOptimizado = primer_contacto ? optimizar_cola_entradas_buzon(doc) : null;

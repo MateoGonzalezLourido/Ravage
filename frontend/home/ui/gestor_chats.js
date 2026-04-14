@@ -262,15 +262,15 @@ export async function refrescar_componente_lista_chats(id_chat, componente, noti
     }
 }
 
-export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {} }) {
- 
-    if (document.querySelector("#chat-usuario") && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(chat)}`)) {
+export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {}, id_mensaje = null }) {
+    const id_chat_str = chat?.toString() || chat;
+    if (document.querySelector("#chat-usuario") && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat_str)}`)) {
         const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
 
         const [nombres_contactos, id_propio, info_chat_cache] = await Promise.all([
             window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
             window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
-            window.cache_persistente.getChatCache(chat)
+            window.cache_persistente.getChatCache(id_chat_str)
         ]).catch(() => [[], null, null])
 
         let info_chat = await window.chats.OBTENER_CACHE_CHAT_ACTIVO()
@@ -283,7 +283,7 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
         }
 
         if (!info_chat) {
-            info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(chat).catch((e) => {
+            info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_str).catch((e) => {
                 console.error("Error al obtener datos para renderizar mensaje:", e);
                 return null;
             })
@@ -298,6 +298,9 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
         const escaneres_seguridad = result_seguridad.escaneres_seguridad || result_seguridad;
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;
+
+        // Evitar duplicados si ya existe el mensaje por ID (aunque sea poco probable tras mis cambios)
+        if (id_mensaje && chatContainer.querySelector(`.mensaje-chat[data-id="${id_mensaje}"]`)) return;
 
         const lastBlock = chatContainer.querySelector(".bloque-dia-chat:last-child");
         const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
@@ -325,7 +328,8 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
             escaneres_seguridad, 
             tieneArriba, 
             tieneAbajo: false, 
-            id_emisor 
+            id_emisor,
+            id_mensaje
         });
 
         if (esNuevoDia) {

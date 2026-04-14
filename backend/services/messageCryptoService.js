@@ -78,22 +78,44 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                     cache_keys[cache_key] = current_state;
                 }
 
-                // Ratchett forward si el mensaje es más reciente
-                while (current_state.counter < m.ratchet_info.iteration) {
-                    const { nextChainKey } = ratchetChainKey(current_state.ck);
-                    current_state.ck = nextChainKey;
-                    current_state.counter++;
+                const emisor_id_str = m.emisor ? m.emisor.toString() : null;
+                const es_propio = emisor_id_str === id_usuario_actual;
+
+                // OPTIMIZACIÓN: Si el mensaje es PROPIO, usamos la copia de sistema (evita problemas de ratchet al recargar)
+                if (es_propio && m.contenido && m.contenido.length > 0 && m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object') {
+                    try {
+                        m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+                        if (m.contenido[0].archivos) {
+                            m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                                ...a,
+                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
+                                ratchet_info: m.ratchet_info,
+                                emisor_id: emisor_id_str
+                            }));
+                        }
+                        continue; // Siguiente mensaje, saltamos ratchet para este
+                    } catch (fErr) {
+                        log.warn({ msgId: m._id || m.id }, "Fallo fallback propio, intentando ratchet...");
+                    }
                 }
 
-                // Obtener la MK para este mensaje e iteración
-                const { messageKey, nextChainKey } = ratchetChainKey(current_state.ck);
+                // Ratchet forward si el mensaje es más reciente que nuestro contador
+                let local_ck = current_state.ck;
+                let local_counter = current_state.counter;
 
-                let decryptedPayload;
+                while (local_counter < m.ratchet_info.iteration) {
+                    const { nextChainKey } = ratchetChainKey(local_ck);
+                    local_ck = nextChainKey;
+                    local_counter++;
+                }
+
+                // Obtener MK y siguiente CK para esta iteración
+                const { messageKey, nextChainKey } = ratchetChainKey(local_ck);
+
                 try {
                     decryptedPayload = descifrarContenido(m.encriptado, messageKey);
-
+                    
                     const data = JSON.parse(decryptedPayload);
-
                     if (data && !Array.isArray(data)) {
                         m.contenido = [{
                             asunto: data.asunto,
@@ -107,6 +129,10 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                         m.emisor = data.emisor;
                         m.data = data.data;
                     }
+
+                    // Si desciframos con éxito, avanzamos el estado global para el siguiente mensaje
+                    current_state.ck = nextChainKey;
+                    current_state.counter = local_counter + 1;
                 } catch (aesErr) {
                     // FALLBACK: Si falla E2EE, intentar descifrar la copia del sistema si existe (ej: copia legible del emisor)
                     if (m.contenido && m.contenido.length > 0 && m.contenido[0].asunto) {
@@ -121,21 +147,31 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                                     emisor_id: emisor_id
                                 }));
                             }
-                        } else {
-                            throw new Error(`Error AES-GCM: Tag mismatch. Clave incorrecta. ${aesErr.message}`);
                         }
-                    } else {
-                        throw new Error(`Error AES-GCM: Tag mismatch. Sin copia de respaldo. ${aesErr.message}`);
                     }
                 }
 
-                // Avanzar para el siguiente mensaje (siempre avanzamos para mantener sincronía)
-                current_state.ck = nextChainKey;
-                current_state.counter++;
-
             } catch (err) {
-                log.error({ err, msgId: m._id || m.id }, "[E2EE] Fallo descifrando msg");
+                // FALLBACK AGRESIVO: Si el ratchet falla, intentar usar la copia de sistema
+                try {
+                    if (m.contenido && m.contenido.length > 0 && m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object') {
+                        const emisor_id = m.emisor ? m.emisor.toString() : null;
+                        m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+                        if (m.contenido[0].archivos) {
+                            m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                                ...a,
+                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
+                                ratchet_info: m.ratchet_info,
+                                emisor_id: emisor_id
+                            }));
+                        }
+                    }
+                } catch (fallbackErr) {
+                    log.error({ err: fallbackErr, msgId: m._id || m.id }, "[E2EE] Fallo total incluyendo fallback");
+                }
+
                 if (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string') {
+                    log.error({ err, msgId: m._id || m.id }, "[E2EE] Fallo descifrando msg");
                     m.contenido = [{ asunto: "[Error al descifrar: posible clave de dispositivo obsoleta]", archivos: [] }];
                 }
             }

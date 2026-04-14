@@ -46,8 +46,16 @@ export async function enviar_mensaje_chat(textarea) {
     cerrar_ventana_archivos()
 
     const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: copia_archivos, id_chat: id_chat, id_emisor: id_usuario })
-    if (result) {
-        await Actualizar_render_chat({ emisor: id_usuario.toString(), chat: id_chat, mensaje: mensaje, archivos: copia_archivos, fecha: new Date().toISOString() })
+    if (result && result.success && result.mensaje) {
+        const respuesta = result.mensaje;
+        await Actualizar_render_chat({
+            emisor: respuesta.emisor,
+            chat: id_chat,
+            mensaje: respuesta.contenido?.[0]?.asunto || "",
+            archivos: respuesta.contenido?.[0]?.archivos || [],
+            fecha: respuesta.data,
+            id_mensaje: result.id_mensaje
+        })
         await cambiar_datos_componente_lista_chats({ id_chat, data: {asunto:mensaje,data:new Date().toISOString(),emisor:id_usuario} })
     }
 }
