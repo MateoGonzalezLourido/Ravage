@@ -1,116 +1,290 @@
+// /home/Paraguayo33/Documentos/!PROGRAMACION/!P_PROPIOS/Ravage/backend/services/MENSAJERIA/Estructuras_correos.js
+
+/**
+ * Generates a full-viewport responsive wrapper for email compatibility.
+ * Uses table layout for reliable rendering in all mail clients (Gmail, Outlook, Apple Mail).
+ */
+const BaseEmailWrapper = (content) => `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        table { border-collapse: collapse !important; }
+        body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #020617; }
+        a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
+        
+        /* Dark mode overrides (for clients that support it, but default is already dark) */
+        :root {
+            color-scheme: dark;
+            supported-color-schemes: dark;
+        }
+    </style>
+</head>
+<body style="background-color: #020617; margin: 0 !important; padding: 0 !important; -webkit-font-smoothing: antialiased;">
+
+<!-- Background Table -->
+<table border="0" cellpadding="0" cellspacing="0" width="100%" height="100%" style="background-color: #020617;">
+    <tr>
+        <td align="center" valign="top" style="padding: 20px 15px;">
+            
+            <!-- Main Content Container -->
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                
+                <!-- Header -->
+                <tr>
+                    <td align="center" style="padding: 25px 0 20px 0; border-bottom: 1px solid #1e293b; background-color: #0f172a;">
+                        <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 800; letter-spacing: 3px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">RAVAGE</h1>
+                        <div style="height: 4px; width: 40px; background-color: #06b6d4; margin-top: 10px; border-radius: 2px; font-size: 1px; line-height: 1px;">&nbsp;</div>
+                    </td>
+                </tr>
+
+                <!-- Content Body -->
+                <tr>
+                    <td align="left" style="padding: 30px; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; background-color: #0f172a;">
+                        ${content}
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="padding: 20px 30px; background-color: #0b1120; border-top: 1px solid #1e293b;">
+                        <span style="color: #64748b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.5; font-weight: 500; letter-spacing: 1px; display: block;">
+                            MATEO'S STAGE &bull; RAVAGE TEAM &bull; ${new Date().getFullYear()}
+                        </span>
+                        <span style="color: #475569; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; margin-top: 6px; display: block;">
+                            Este es un correo autom&aacute;tico, por favor no respondas.
+                        </span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Bottom spacing -->
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr><td height="20" style="font-size: 1px; line-height: 1px;">&nbsp;</td></tr>
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
+`;
+
 const ValidarCorreoEstructura = ({ apodo = "Usuario", code }) => {
     const asunto = "Verificación de correo"
-    const htmlContenido = `<!DOCTYPE html>
-    <html>
-    <style>
-    .flowbox {
-        border-radius: 1.5rem 3.0rem; 
-        padding: 1rem;
-        display: block;
-    }
-    </style>
-    <body>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <div class="flowbox" style="background-color: #cffff3; padding: 1rem; display: block; min-height: fit-content;">
-        <p>
-            <span style="font-size: 1.3rem; font-family: Arial; padding: 0.8rem;"> Hola, ${apodo}. (●'◡'●)</span>
+    const htmlContenido = BaseEmailWrapper(`
+        <p style="margin: 0 0 15px 0; color: #f8fafc; font-size: 18px;">Hola, <strong style="color: #06b6d4;">${apodo}</strong>.</p>
+        <p style="margin: 0 0 25px 0;">Copia y pega este c&oacute;digo en la aplicaci&oacute;n para verificar tu cuenta:</p>
+        
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 25px;">
+            <tr>
+                <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 300px; background-color: #020617; border: 1px solid #334155; border-radius: 12px;">
+                        <tr>
+                            <td align="center" style="padding: 20px;">
+                                <!-- Fallback font families in case ui-monospace is not available -->
+                                <span style="color: #06b6d4; font-size: 38px; font-weight: 800; letter-spacing: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace; display: block; user-select: all; -webkit-user-select: all; cursor: copy;" title="Haz clic para seleccionar todo y cópialo">${code}</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        
+        <p style="font-size: 14px; color: #64748b; margin: 0; text-align: center;">
+            Este c&oacute;digo es v&aacute;lido durante <strong>10 minutos</strong>. Si no has sido t&uacute;, ignora este mensaje.
         </p>
-        <div class="flowbox" style="font-size: 1.45em; background-color: #e8e8e8; padding: 0.8em 0.4em; box-sizing: border-box; display: block; width: 100%; text-align: center; font-family: Arial; height: fit-content">Tu código de para iniciar sesión es: 
-            <br /><div style="display:flex; width:100%; justify-content:center;">
-            <span id="otp_code" class="flowbox" style="color: black; background-color: #c890ed; padding: 0.6em; box-sizing: border-box; display: block; width: 100%; text-align: center; margin: 0.55em 0px 0em 0px; font-size: 2.5rem; width:80%; min-width: fit-content;user-select: all;">${code}</span>
-        </div></div>
-        <div class="flowbox" style="background-color: lightblue; margin: 1em 0px 1em 0em; padding: 0.5em; border-radius: 1.5rem 3rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
-            <p style="text-align: center;">Debes usar este código para poder iniciar sesión.</p>
-            <p style="text-align: center;">
-                <em>- Este código caducará en 10 minutos -</em>
-            </p>
-            <span class="flowbox" style="text-align: center; display: flex; justify-content: center;">
-                <span id="warning_respond" class="flowbox" style="background-color: pink; margin: 0.rem 0rem 0.3rem 0rem; padding: 0.8rem; width: 82%; box-sizing: border-box; text-align: center; display: block;"> Si no has sido tú puedes decírnoslo respondiendo a este correo. </span>
-            </span>
-        </div>
-        <div class="flowbox" style="background-color: lightblue; margin: 1em 0px; padding: 0.5rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
-            <span style="text-align: center;"> Mateo's Stage</span>
-            
-        </div>
-        <div id="copyright" style="width:100%; justify-content:right; display:flex; ">
-        <span style="text-align: right; margin: 0.2rem 1.7rem 0rem 0px; font-size: 0.7rem; color: gray;">Diseño por Alberto</span>
-        </div>
-    </div>
-    </body>
-    </html>
-    `
-
-    return { asunto: asunto, htmlContenido: htmlContenido }
+    `);
+    return { asunto, htmlContenido };
 }
-const ConfirmacionCuentaCreadaEstructura = ({ apodo }) => {
-    const asunto = "Confirmación de cuenta"
-    const htmlContenido = `<span>¡Bienvenido a RAVAGE, ${apodo}!</span>
-    <span style="text-decoration:underline">Se ha creado correctamente su cuenta</span>
-    <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
 
-    return { asunto: asunto, htmlContenido: htmlContenido }
+const ConfirmacionCuentaCreadaEstructura = ({ apodo }) => {
+    const asunto = "¡Bienvenido a RAVAGE!"
+    const htmlContenido = BaseEmailWrapper(`
+        <h2 style="color: #ffffff; font-size: 22px; margin: 0 0 15px 0; text-align: center;">¡Registro Completado!</h2>
+        <p style="margin: 0 0 25px 0; text-align: center; font-size: 16px;">Tu cuenta como <strong style="color: #06b6d4;">${apodo}</strong> ha sido verificada y activada correctamente.</p>
+        
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+                <td align="center">
+                    <!-- Button simulation with solid background and border radius -->
+                    <table border="0" cellpadding="0" cellspacing="0" style="background-color: #06b6d4; border-radius: 8px;">
+                        <tr>
+                            <td align="center" style="padding: 14px 28px; background: linear-gradient(90deg, #06b6d4 0%, #3b82f6 100%); border-radius: 8px;">
+                                <span style="color: #ffffff; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Ya puedes acceder</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    `);
+    return { asunto, htmlContenido };
 }
 
 const ValidarCuentaUsuario = ({ apodo, code }) => {
-    const asunto = "Verificación de cuenta" // TODO: Mover esto a un archivo ey?
-    const htmlContenido = `<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<div class="flowbox" style="border-radius: 1.5rem 3.0rem; background-color: #cffff3; padding: 1rem; display: block; min-height: fit-content + 5;">
-    <p>
-        <span style="font-size: 1.3rem; font-family: Arial; padding: 0.8rem;"> Hola, ${apodo}. (●'◡'●)</span>
-    </p>
-    <div class="flowbox" style="font-size: 1.45em; border-radius: 1.5rem 3.0rem; background-color: #e8e8e8; padding: 0.8em 0.4em; box-sizing: border-box; display: block; width: 100%; text-align: center; font-family: Arial; height: fit-content">Tu código de verificación de cuenta es: 
-        <br /><div style="display:flex; width:100%; justify-content:center;">
-        <span id="otp_code" style="color: darkblue; border-radius: 1.5rem 3rem; background-color: lightgreen; padding: 0.6em; box-sizing: border-box; display: block; width: 100%; text-align: center; margin: 0.55em 0px 0em 0px; font-size: 2.5rem; width:80%; min-width: fit-content;user-select: all;">${code}</span>
-    </div></div>
-    <div class="flowbox" style="background-color: lightblue; margin: 1em 0px 1em 0em; padding: 0.5em; border-radius: 1.5rem 3rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
-        <p style="text-align: center;">Debes usar este código para poder iniciar sesión.</p>
-        <p style="text-align: center;">
-            <em>- Este código caducará en 10 minutos -</em>
-        </p>
-        <span class="flowbox" style="text-align: center; display: flex; justify-content: center;">
-            <span id="warning_respond" class="flowbox" style="background-color: pink; margin: 0.rem 0rem 0.3rem 0rem; padding: 0.8rem; border-radius: 1.5rem 3rem; width: 82%; box-sizing: border-box; text-align: center; display: block;"> Si no has sido tú puedes decírnoslo respondiendo a este correo. </span>
-        </span>
-    </div>
-    <div class="flowbox" style="background-color: lightblue; margin: 1em 0px; padding: 0.5rem; border-radius: 1.5rem 3rem; width: 100%; box-sizing: border-box; justify-content: center; text-align: center;">
-        <span style="text-align: center;"> Mateo's Stage</span>
+    const asunto = "Verificación de seguridad"
+    const htmlContenido = BaseEmailWrapper(`
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+            <tr>
+                <td align="center">
+                    <span style="display: inline-block; padding: 6px 12px; background-color: #064e3b; border: 1px solid #10b981; border-radius: 100px; color: #34d399; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">
+                        Autenticación de dispositivo
+                    </span>
+                </td>
+            </tr>
+        </table>
+
+        <p style="margin: 0 0 25px 0; text-align: center; font-size: 16px;">Hola <strong style="color: #f8fafc;">${apodo}</strong>, usa este c&oacute;digo para autorizar el acceso:</p>
         
-    </div>
-    <div id="copyright" style="width:100%; justify-content:right; display:flex; ">
-    <span style="text-align: right; margin: 0.2rem 1.7rem 0rem 0px; font-size: 0.7rem; color: gray;">Diseño por Alberto</span>
-    </div>
-</div>`
-    return { asunto: asunto, htmlContenido: htmlContenido }
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 25px;">
+            <tr>
+                <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0" style="background-color: #020617; border: 2px solid #22c55e; border-radius: 12px;">
+                        <tr>
+                            <td align="center" style="padding: 20px 35px;">
+                                <span style="color: #22c55e; font-size: 38px; font-weight: 800; letter-spacing: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace; display: block; user-select: all; -webkit-user-select: all; cursor: copy;" title="Haz clic para seleccionar todo y cópialo">${code}</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        
+        <p style="font-size: 14px; color: #64748b; margin: 0; text-align: center;">
+            No compartas este c&oacute;digo con nadie.
+        </p>
+    `);
+    return { asunto, htmlContenido };
 }
+
 const ConfirmacionInicioSesion = () => {
-    const asunto = "Alerta de sesión"
-    const htmlContenido = `<span>Se ha iniciado sesión con tu cuenta</span>
-        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
-    return { asunto: asunto, htmlContenido: htmlContenido }
+    const asunto = "Alerta de Inicio de Sesión"
+    const htmlContenido = BaseEmailWrapper(`
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px; background-color: #1e1b14; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">
+            <tr>
+                <td style="padding: 15px 20px;">
+                    <h2 style="color: #f59e0b; font-size: 18px; margin: 0 0 8px 0; font-weight: 700;">Nuevo acceso detectado</h2>
+                    <p style="margin: 0; color: #e2e8f0; font-size: 15px;">Se ha detectado un inicio de sesi&oacute;n reciente en tu cuenta de Ravage.</p>
+                </td>
+            </tr>
+        </table>
+        
+        <p style="font-size: 15px; color: #94a3b8; line-height: 1.5; margin: 0;">
+            Si has sido t&uacute;, puedes ignorar este mensaje tranquilamente.<br><br>
+            <strong style="color: #ef4444;">Si no reconoces esta actividad</strong>, te recomendamos cambiar tu contrase&ntilde;a desde la aplicaci&oacute;n inmediatamente.
+        </p>
+    `);
+    return { asunto, htmlContenido };
 }
+
 const CodigoCambiarDatosCuenta = ({ apodo, codigo, tipo }) => {
-    const asunto = "Cambio de Datos"
-    const htmlContenido = `<span>Hola, ${apodo}.</span><span>El codigo para cambiar de ${tipo} es ${codigo}</span>
-        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
-    return { asunto: asunto, htmlContenido: htmlContenido }
+    const asunto = "Confirmación de Cambios"
+    const htmlContenido = BaseEmailWrapper(`
+        <p style="margin: 0 0 20px 0; text-align: center; font-size: 16px;">Hola <strong style="color: #ffffff;">${apodo}</strong>, solicitaste cambiar tu <strong style="color: #06b6d4;">${tipo}</strong>.</p>
+        
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 25px;">
+            <tr>
+                <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0" style="background-color: #020617; border: 2px dashed #475569; border-radius: 12px; width: 250px;">
+                        <tr>
+                            <td align="center" style="padding: 15px;">
+                                <span style="color: #ffffff; font-size: 32px; font-weight: 800; letter-spacing: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace; display: block; user-select: all; -webkit-user-select: all; cursor: copy;" title="Haz clic para seleccionar todo y cópialo">${codigo}</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        
+        <p style="font-size: 14px; color: #64748b; margin: 0; text-align: center;">
+            Usa este c&oacute;digo para autorizar la actualización.
+        </p>
+    `);
+    return { asunto, htmlContenido };
 }
+
 const ConfirmacionCambioContraseña = ({ apodo }) => {
-    const asunto = "Cambio de contraseña"
-    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado la contraseña</span>
-        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
-    return { asunto: asunto, htmlContenido: htmlContenido }
+    const asunto = "Contraseña Actualizada"
+    const htmlContenido = BaseEmailWrapper(`
+        <div style="text-align: center; margin-bottom: 15px;">
+            <table border="0" cellpadding="0" cellspacing="0" align="center">
+                <tr>
+                    <td align="center" valign="middle" style="width: 56px; height: 56px; background-color: #064e3b; border-radius: 50%; border: 2px solid #10b981;">
+                        <span style="font-size: 24px; line-height: 24px;">🛡️</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <h2 style="color: #ffffff; font-size: 20px; margin: 0 0 15px 0; text-align: center;">Seguridad Actualizada</h2>
+        <p style="text-align: center; margin: 0 0 25px 0; font-size: 16px;">Hola <strong style="color: #06b6d4;">${apodo}</strong>, tu contrase&ntilde;a ha sido modificada con &eacute;xito.</p>
+        
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+                <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0" style="background-color: #064e3b; border-radius: 6px; border: 1px solid #10b981;">
+                        <tr>
+                            <td align="center" style="padding: 8px 16px;">
+                                <span style="color: #34d399; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Estado: Transacción Segura</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    `);
+    return { asunto, htmlContenido };
 }
+
 const ConfirmacionCambioCorreo = ({ apodo }) => {
-    const asunto = "Cambio de Correo"
-    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado el correo.A partir de ahora recibiras todo en el nuevo correo.</span>
-        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
-    return { asunto: asunto, htmlContenido: htmlContenido }
+    const asunto = "Cambio de Email"
+    const htmlContenido = BaseEmailWrapper(`
+        <div style="text-align: center; margin-bottom: 15px;">
+            <span style="font-size: 36px; display: block;">✉️</span>
+        </div>
+        <h2 style="color: #ffffff; font-size: 20px; margin: 0 0 15px 0; text-align: center;">Email Registrado</h2>
+        <p style="text-align: center; margin: 0; font-size: 15px; line-height: 1.5;">
+            Hola <strong style="color: #06b6d4;">${apodo}</strong>,<br>
+            Tu direcci&oacute;n de correo electr&oacute;nico ha sido actualizada correctamente en nuestros sistemas de seguridad.
+        </p>
+    `);
+    return { asunto, htmlContenido };
 }
+
 const ConfirmacionCambioApodo = ({ apodo }) => {
-    const asunto = "Cambio de Apodo"
-    const htmlContenido = `<span>Hola, ${apodo}.</span><span>Se ha cambiado el apodo</span>
-        <span>Si no has sido tú puedes decírnoslo por este correo.</span>`
-    return { asunto: asunto, htmlContenido: htmlContenido }
+    const asunto = "Apodo Actualizado"
+    const htmlContenido = BaseEmailWrapper(`
+        <div style="text-align: center; margin-bottom: 15px;">
+            <span style="font-size: 36px; display: block;">👤</span>
+        </div>
+        <h2 style="color: #ffffff; font-size: 20px; margin: 0 0 15px 0; text-align: center;">Perfil Actualizado</h2>
+        <p style="text-align: center; margin: 0; font-size: 15px;">
+            Tu identidad en la plataforma ha sido renovada.<br><br>
+            Tu nuevo apodo registrado es:<br>
+            <strong style="color: #06b6d4; font-size: 22px; display: inline-block; margin-top: 10px;">${apodo}</strong>
+        </p>
+    `);
+    return { asunto, htmlContenido };
 }
+
 export {
     ValidarCorreoEstructura,
     ConfirmacionCuentaCreadaEstructura,
