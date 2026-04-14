@@ -1,5 +1,7 @@
 import { Encontrar_Nombre_Chat_Usuario, Crear_chat_html } from './chat.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
+import { escapeHTML } from './seguridad_ui.js';
+
 
 let cache_grupos_historial = null
 
@@ -74,8 +76,9 @@ export async function crear_chat_historial_archivos_descargados() {
             html.push(`
             <div class="chat-historial-bloque" data-id="${chat.id_chat}">
                 <div class="chat-historial-header">
-                    <span class="chat-historial-name">${chat.nombre_chat}</span>
+                    <span class="chat-historial-name">${escapeHTML(chat.nombre_chat)}</span>
                 </div>
+
                 <div class="chat-historial-archivos">
             `)
             for (const archivo of chat.archivos) {
@@ -87,7 +90,7 @@ export async function crear_chat_historial_archivos_descargados() {
                                 <img src="${archivo.url_img}" alt="" class="img-historial-archivo" onerror="this.src='../recursos/extensionesArchivos/cualquiera.svg'">
                             </div>
                             <div class="archivo-info-historial-details">
-                                <span class="archivo-info-historial-name-text">${archivo.nombre}</span>
+                                <span class="archivo-info-historial-name-text">${escapeHTML(archivo.nombre)}</span>
                                 <span class="archivo-info-historial-descargas">${archivo.descargas > 1 ? `Descargado ${archivo.descargas} veces` : 'Descargado una vez'}</span>
                             </div>
                         </div>
@@ -95,11 +98,12 @@ export async function crear_chat_historial_archivos_descargados() {
                     <div class="archivo-acciones-historial">
                         <button class="bt-descargar-directo-historial" 
                                 data-id="${archivo.id_archivo}" 
-                                data-nombre="${archivo.nombre}" 
+                                data-nombre="${escapeHTML(archivo.nombre)}" 
                                 data-iv="${archivo.iv || ''}" 
                                 data-tag="${archivo.tag || ''}" 
                                 data-emisor="${archivo.emisor_id || ''}"
                                 data-ratchet="${archivo.ratchet_info ? encodeURIComponent(JSON.stringify(archivo.ratchet_info)) : ''}"
+
                                 data-id-chat="${chat.id_chat}" 
                                 title="Volver a descargar">
                             <img src="../recursos/descargar.png" alt="Descargar">

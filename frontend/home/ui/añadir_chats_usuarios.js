@@ -1,4 +1,6 @@
 const $btnAgregar = document.querySelector("#bt-agregar-contacto-nuevo");
+import { escapeHTML } from './seguridad_ui.js';
+
 const clase_cp_lista_contactos_añadidos = "componente-lista-contactos-añadidos-chat-crear"
 const $nombreChatNuevo = document.querySelector("#nombre-chat-nuevo-crear");
 
@@ -89,13 +91,13 @@ function actualizar_lista_usuarios_añadir({ conjunto = null, remove = false, cl
         $lista_contactos_añadir.replaceChildren()
         //añadir contacto a la lista
         conjunto.forEach(c => {
-            $lista_contactos_añadir.innerHTML += `<div class="${clase_cp_lista_contactos_añadidos}" data-id="${c.id}">${c.nombre}</div>`
+            $lista_contactos_añadir.innerHTML += `<div class="${clase_cp_lista_contactos_añadidos}" data-id="${c.id}">${escapeHTML(c.nombre)}</div>`
         })
     }
     else {
 
         //añadir contacto a la lista
-        $lista_contactos_añadir.innerHTML = `<div class="${clase_cp_lista_contactos_añadidos}" data-id="${conjunto.id}">${conjunto.nombre}</div>`
+        $lista_contactos_añadir.innerHTML = `<div class="${clase_cp_lista_contactos_añadidos}" data-id="${conjunto.id}">${escapeHTML(conjunto.nombre)}</div>`
     }
 
 
@@ -140,9 +142,10 @@ function mirar_usuarios_añadir_lista() {
 
     //buscar en el html los usuarios añadir
     const lista_contactos_añadir = []
-    document.querySelectorAll(clase_cp_lista_contactos_añadidos)?.forEach(c => {
-        lista_contactos_añadir.push({ id: c.dataset.id, nombre: c.innerHTML })
+    document.querySelectorAll(`.${clase_cp_lista_contactos_añadidos}`)?.forEach(c => {
+        lista_contactos_añadir.push({ id: c.dataset.id, nombre: c.textContent })
     })
+
 
     //no se guarda la cache aqui, se guarda al añadir y quitar contactos, para no actualizarla 2veces sin necesidad
     return lista_contactos_añadir
@@ -225,7 +228,7 @@ async function buscar_usuario_añadir_chat(e) {
 
     const $resultados_busqueda_usaurios = document.querySelector("#resultados-busqueda-usaurios")
     if (resultado) {
-        $resultados_busqueda_usaurios.innerHTML = `<div class="${clase_cp_posible_usuario_añadir}" data-id="${resultado.id}" data-nombre="${resultado.nombre}">${resultado.nombre}</div>`
+        $resultados_busqueda_usaurios.innerHTML = `<div class="${clase_cp_posible_usuario_añadir}" data-id="${resultado.id}" data-nombre="${escapeHTML(resultado.nombre)}">${escapeHTML(resultado.nombre)}</div>`
         crear_eventos()
     }
     else {

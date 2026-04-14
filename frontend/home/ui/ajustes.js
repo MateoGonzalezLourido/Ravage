@@ -1,6 +1,8 @@
 export let bloquear_span_cambio_contraseña = false;
 export let bloquear_span_cambio_apodo = false;
 export let bloquear_span_cambio_correo = false;
+import { escapeHTML } from './seguridad_ui.js';
+
 
 const formatoScroollAnimacion = {
     behavior: "smooth",
@@ -109,9 +111,9 @@ async function actualizar_datos_cuenta() {
         window.cuenta_usuario.OBTENER_CORREO_USUARIO()
     ]);
 
-    document.querySelector("#text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${apodo}</font>`;
-    document.querySelector("#text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${correo}</font>`;
-    document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${fecha_creacion}`;
+    document.querySelector("#text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${escapeHTML(apodo)}</font>`;
+    document.querySelector("#text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${escapeHTML(correo)}</font>`;
+    document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${escapeHTML(fecha_creacion)}`;
     
     const setLockText = (id, date) => {
         const el = document.querySelector(id);
@@ -348,7 +350,7 @@ export async function ver_chats_silenciados(e) {
     } else {
         container.innerHTML = users.map(u => `
             <div class="lista-item-ajustes">
-                <span>${u.apodo}</span>
+                <span>${escapeHTML(u.apodo)}</span>
                 <button class="bt-desilenciar" data-id="${u.id}">Desilenciar</button>
             </div>
         `).join("");
@@ -379,7 +381,7 @@ export async function ver_chats_bloqueados(e) {
     } else {
         container.innerHTML = users.map(u => `
             <div class="lista-item-ajustes">
-                <span>${u.apodo}</span>
+                <span>${escapeHTML(u.apodo)}</span>
                 <button class="bt-desbloquear" data-id="${u.id||u._id}">Desbloquear</button>
             </div>
         `).join("");

@@ -1,5 +1,5 @@
-import { chat_componente_lista_estructura_html, Crear_chat_html, Encontrar_Nombre_Chat_Usuario, texto_mostrar_fecha_mensajes_bloque, aplicar_escaneres_asincronos, crear_mensaje_html } from './chat.js'
 import { limpiar_archivos_mensaje } from './manejador_archivos.js'
+import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
 
 export function cerrar_paneles_al_abrir_chat() {
     const infoSeccion = document.querySelector("#info-chat-seccion")
@@ -111,7 +111,9 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 const chatEx = map_grupales[c.id] || {}
                 const nombre = chatEx.nombre || "Chat sin nombre"
                 const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre: nombre, ultimomensaje: c.ultimomensaje, silenciado: c.silenciado || false, bloqueado: c.bloqueado || false }
+                // El componente chat_componente_lista_estructura_html ya debería escapar el contenido
                 return chat_componente_lista_estructura_html(datos_usar)
+
             })
             .join("")
 
@@ -123,9 +125,10 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
 }
 
 export async function abrir_chat_item(id_chat, force = false) {
-    if (!force && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
+    if (!force && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) {
         return;
     }
+
 
     const [datos_chat, id_usuario] = await Promise.all([
         Get_datos_chat_abrir(id_chat),
@@ -175,8 +178,9 @@ export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
                 const res = await window.chats.BLOQUEAR_CHAT(id_chat)
                 if (res?.success) {
                     window.pushNotificacion({ prioridad: 1, texto: "Bloqueo alterado", tipo: "success" })
-                    if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) await abrir_chat_item(id_chat, true)
+                    if (document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) await abrir_chat_item(id_chat, true)
                 }
+
             }
             await ACTUALIZAR_LISTAS_CHAT()
             menu.remove()
@@ -229,8 +233,8 @@ export async function refrescar_componente_lista_chats(id_chat, componente, noti
 }
 
 export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {} }) {
-
-    if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == chat) {
+ 
+    if (document.querySelector("#chat-usuario") && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(chat)}`)) {
         const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
 
         const [nombres_contactos, id_propio, info_chat_cache] = await Promise.all([
@@ -312,9 +316,11 @@ export async function INICIO_CHAT_MENU_PRINCIPAL() {
 }
 
 export async function cambiar_datos_componente_lista_chats({ id_chat, data,notificacion=false }) {
-    const componente_lista = document.querySelector(`#lista-chats-componentes [data-id="${id_chat}"]`)
-    componente_lista.querySelector(".ultimo-mensaje-chat-lista span").innerHTML = data?.asunto || "";
-    componente_lista.querySelector(".fecha-chat-lista span").innerHTML = texto_mostrar_fecha_mensajes_bloque(data?.data);
+    const componente_lista = document.querySelector(`#lista-chats-componentes ${safeIdSelector(id_chat)}`)
+    if (componente_lista) {
+        componente_lista.querySelector(".ultimo-mensaje-chat-lista span").innerHTML = escapeHTML(data?.asunto || "");
+        componente_lista.querySelector(".fecha-chat-lista span").innerHTML = escapeHTML(texto_mostrar_fecha_mensajes_bloque(data?.data));
+    }
     if (notificacion) {
         componente_lista.classList.add("nuevo-mensaje-notificacion")
     }

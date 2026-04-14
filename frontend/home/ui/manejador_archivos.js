@@ -1,4 +1,6 @@
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
+import { escapeHTML } from './seguridad_ui.js';
+
 
 export let archivos_mensaje = []
 
@@ -33,8 +35,9 @@ export async function render_html_lista_archivos() {
             <div class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
                 <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
                     <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
-                    <span class="info-chat-participante-nombre">${idn ? activo.nombre : activo.nombre + "." + activo.extension}</span>
+                    <span class="info-chat-participante-nombre">${idn ? escapeHTML(activo.nombre) : escapeHTML(activo.nombre) + "." + escapeHTML(activo.extension)}</span>
                 </div>
+
             </div>
         </div>`)
     }

@@ -1,6 +1,8 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
+import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
+
 const nombre_defecto = "~no encontrado~"
 
 // ─── DEFINICIÓN DE ESCÁNERES DE SEGURIDAD ──────────────────────────────────
@@ -195,7 +197,8 @@ export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
 
 export const chat_componente_lista_estructura_html = (datos_usar) => {
     //recuperar nombre del chat
-    const nombre = (datos_usar) => { return datos_usar?.nombre || `<<no encontrado>>` }
+    const nombre = (datos_usar) => { return escapeHTML(datos_usar?.nombre) || `&lt;&lt;no encontrado&gt;&gt;` }
+
     //recuperar ultima vez
     const ultima_vez = (datos_usar) => {
         if (datos_usar.usuarios.length <= 2 && datos_usar.ultimoCambio) {
@@ -240,9 +243,10 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     }
     //recuperar ultimo mensaje
     const ultimo_mensaje = (datos_usar) => {
-        if (datos_usar.usuarios.length == 2 && datos_usar.ultimomensaje) return (`<div class="ultimo-mensaje-chat-lista"><span>${datos_usar.ultimomensaje}</span></div>`)
+        if (datos_usar.usuarios.length == 2 && datos_usar.ultimomensaje) return (`<div class="ultimo-mensaje-chat-lista"><span>${escapeHTML(datos_usar.ultimomensaje)}</span></div>`)
         else return ``
     }
+
     let html = `
     <div data-id="${datos_usar.id}" class="chat-componente-lista-chats">
         <div class="nombre-chat-lista-componente" style="display: flex; align-items: center; justify-content: space-between;">
@@ -268,8 +272,8 @@ export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], pr
     }
     const nombre_emisor_mensaje = (nombre, propio, esAdmin) => {
         if (propio) return ``
-
-        return `<div class="nombre-mensaje-chat-usuario"><span>${nombre}${esAdmin ? " <span style='font-size: 0.9em; opacity: 0.7;'>·Admin</span>" : ""}</span></div>`
+ 
+        return `<div class="nombre-mensaje-chat-usuario"><span>${escapeHTML(nombre)}${esAdmin ? " <span style='font-size: 0.9em; opacity: 0.7;'>·Admin</span>" : ""}</span></div>`
     }
     const hora_mandado = (fecha) => {
         const fechaTraducida = new Date(fecha);
@@ -302,13 +306,16 @@ export const crear_mensaje_html = async ({ fecha, asunto = "", archivos = [], pr
     }
 
     const { textoFinal, tagsDetectados } = await aplicar_escaneres_sincronos(asunto, escaneres_seguridad);
+    const textoEscapado = escapeHTML(textoFinal);
+
 
     return (`
     <div class="mensaje-chat ${emisor_mensaje(propio)}" data-scanner-tags="${tagsDetectados.join(",")}">
         ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin)}
-        ${asunto_mensaje(textoFinal)}
+        ${asunto_mensaje(textoEscapado)}
         ${await archivos_mensaje(archivos)}
         ${hora_mandado(fecha)}
+
     </div> `)
 
 }
@@ -587,10 +594,10 @@ export async function mostrar_datos_chat_usaurios(e) {
     </div>
 
     <div class="info-chat-cuerpo">
-        <div class="info-chat-perfil">
             <div class="info-chat-nombre">
-                <span>${nombre_chat}</span>
+                <span>${escapeHTML(nombre_chat)}</span>
             </div>
+
             <div class="info-chat-subtitulo">
                 ${integrantes_chat()}
             </div>
@@ -637,10 +644,10 @@ export async function mostrar_datos_chat_usaurios(e) {
                         </div>
                     </div>
                 `
-                participantes_datos.forEach((p, index) => {
                     const originalId = participantes_ids[index];
-                    const nombre = p?.apodo || "Usuario Ravage";
-                    const correo = p?.correo || "";
+                    const nombre = escapeHTML(p?.apodo || "Usuario Ravage");
+                    const correo = escapeHTML(p?.correo || "");
+
                     const idStr = normalizeIdHelper(originalId);
                     const esAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === idStr);
                     const estaBloqueado = ids_bloqueados.includes(idStr);

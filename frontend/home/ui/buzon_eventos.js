@@ -1,5 +1,7 @@
 import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, refrescar_componente_lista_chats, cambiar_datos_componente_lista_chats } from './gestor_chats.js'
 import { Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion } from './chat.js'
+import { safeIdSelector } from './seguridad_ui.js';
+
 
 export async function procesar_entradas_buzon(entradas) {
     if (!entradas || entradas.length === 0) return;
@@ -69,7 +71,8 @@ async function Cambio_buzonApi_mensaje(entrada) {
 
     const chatC = Array.from(document.querySelectorAll(".chat-componente-lista-chats")).find(el => el.dataset.id == id_chat);
     //actualizar chat render si esta activo
-    if (document.querySelector("#chat-usuario") && document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat) {
+    if (document.querySelector("#chat-usuario") && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) {
+
         const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(id_chat, id_mensaje)
         await Actualizar_render_chat({
             emisor: respuesta.emisor,
@@ -81,8 +84,9 @@ async function Cambio_buzonApi_mensaje(entrada) {
     }
     //notificacion
     if (chatC) {
-        const chatAbierto = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == id_chat;
+        const chatAbierto = !!document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`);
         await refrescar_componente_lista_chats(id_chat, chatC, !esta_silenciado && !chatAbierto)
+
 
         if (!esta_silenciado && !chatAbierto) {
             const nombre = chatC.querySelector(".nombre-chat-lista-componente span")?.textContent || "nuevo mensaje";
@@ -131,9 +135,10 @@ async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
 
     if (isMe) {
         await ACTUALIZAR_LISTAS_CHAT();
-        if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
+        if (document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(entrada.data.chat)}`)) {
             document.querySelector("#chat-usuario").replaceChildren();
         }
+
         if (!esta_silenciado) {
             window.pushNotificacion({ prioridad: 0, texto: `Has sido expulsado del chat ${chatNombre || ""}`, tipo: "error" });
         }
@@ -152,9 +157,10 @@ async function Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado) {
 
     if (isMe) {
         await ACTUALIZAR_LISTAS_CHAT();
-        if (document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id == entrada.data.chat) {
+        if (document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(entrada.data.chat)}`)) {
             document.querySelector("#chat-usuario").replaceChildren();
         }
+
         if (!esta_silenciado) {
             window.pushNotificacion({ prioridad: 0, texto: `Has sido añadido al chat ${chatNombre || ""}`, tipo: "error" });
         }

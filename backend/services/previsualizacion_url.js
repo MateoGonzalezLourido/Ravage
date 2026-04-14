@@ -60,15 +60,18 @@ export async function obtenerPrevisualizacionUrl(targetUrl) {
         if (!title && !image) return null;
 
         // Limpieza básica de HTML entities (ej. &quot; => ")
+        // IMPORTANTE: No unescapeamos &lt; y &gt; para evitar inyecciones XSS si el frontend
+        // renderiza este contenido usando innerHTML.
         const cleanEntity = (str) => {
+            if (!str) return '';
             return str
-                .replace(/&amp;/g, "&")
                 .replace(/&lt;/g, "<")
                 .replace(/&gt;/g, ">")
                 .replace(/&quot;/g, '"')
-                .replace(/&#039;/g, "'");
+                .replace(/&#039;/g, "'")
+                .replace(/&amp;/g, "&")
+                .replace(/&nbsp;/g, " ");
         };
-
         return {
             titulo: cleanEntity(title.trim()),
             descripcion: cleanEntity(description.trim()),
