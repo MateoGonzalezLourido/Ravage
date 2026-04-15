@@ -4,7 +4,7 @@ import { ChatsRavage } from '../models/Chat.js';
 import { User } from '../models/User.js';
 import { MessagesRavage } from '../models/Message.js';
 import { convertirObjectId } from '../utils/conversores.js';
-import { getIDMongodbUsuario, getInvisibleUsuario } from '../STORAGE/Variables_sesion.js';
+import { getIDMongodbUsuario, getInvisibleUsuario, setUsuariosSilence, setUsuariosBloqueados, getUsuariosSilence, getUsuariosBloqueados } from '../STORAGE/Variables_sesion.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
 import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
@@ -120,7 +120,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
                 // Caso: Pedir chat completo
                 let chat_a_devolver = { ...cached, mensajes: [...(cached.mensajes || [])] };
                 const tieneMensajesFull = chat_a_devolver.mensajes.length > 0 && typeof chat_a_devolver.mensajes[0] === 'object';
-                
+
                 if (!tieneMensajesFull) {
                     chat_a_devolver.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: 1 }).lean();
                     await descifrarListaMensajes(chat_a_devolver.mensajes, chat_a_devolver);
@@ -754,16 +754,7 @@ export async function rotarClavesChat(id_chat, id_emisor) {
         // Reemplazar todas las entradas de este emisor en el array ratchet_keys
         await ChatsRavage.updateOne(
             { _id: id_chat_str },
-            {
-                $pull: { ratchet_keys: { emisor_id: id_emisor_str } }
-            }
-        );
-
-        await ChatsRavage.updateOne(
-            { _id: id_chat_str },
-            {
-                $push: { ratchet_keys: { $each: updates } }
-            }
+            { $set: { ratchet_keys: updates } }
         );
 
         // Actualizar cache tras rotación de claves
@@ -790,13 +781,29 @@ export async function SILENCIAR_CHAT_USUARIO(id_chat) {
         const currentMuted = usr.chats[index].silenciado || false;
         const newMuted = !currentMuted;
 
-        await User.updateOne(
-            { _id: id_propio, "chats.id": new mongoose.Types.ObjectId(id_chat_str) },
-            { $set: { "chats.$.silenciado": newMuted } }
+        let resultado_silencio = [];
+        if (newMuted) {
+            const muteados = getUsuariosSilence();
+            resultado_silencio = [...muteados, id_chat_str];
+            setUsuariosSilence(resultado_silencio);
+        } else {
+            resultado_silencio = getUsuariosSilence().filter(c => c !== id_chat_str);
+            setUsuariosSilence(resultado_silencio);
+        }
+
+        const r = await User.updateOne(
+            { _id: id_propio },
+            {
+                $set: {
+                    "chats.$[chat].silenciado": newMuted,
+                    users_silence: resultado_silencio
+                }
+            },
+            { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat_str) }] }
         );
 
         await actualizarCacheUsuarioPropio();
-
+        log.info({ nuevo_estado: newMuted ? "silenciado" : "no silenciado", id_chat: id_chat_str }, "Silenciado");
         return { success: true, silenciado: newMuted };
     } catch (e) {
         log.error(e);
@@ -835,20 +842,31 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
                 participantes_bloqueo = chatActual.usuarios || null;
             }
         }
-
+        let resultado_bloque = [];
+        if (newBlocked) {
+            const bloqueados = getUsuariosBloqueados();
+            resultado_bloque = [...bloqueados, id_chat_str];
+            setUsuariosBloqueados(resultado_bloque);
+        } else {
+            resultado_bloque = getUsuariosBloqueados().filter(c => c !== id_chat_str);
+            setUsuariosBloqueados(resultado_bloque);
+        }
         await User.updateOne(
-            { _id: id_propio, "chats.id": new mongoose.Types.ObjectId(id_chat_str) },
+            { _id: id_propio },
             {
                 $set: {
-                    "chats.$.bloqueado": newBlocked,
-                    "chats.$.mensaje_bloqueo_id": mensaje_bloqueo_id,
-                    "chats.$.nombre_bloqueo": nombre_bloqueo,
-                    "chats.$.participantes_bloqueo": participantes_bloqueo
+                    "chats.$[chat].bloqueado": newBlocked,
+                    "chats.$[chat].mensaje_bloqueo_id": mensaje_bloqueo_id,
+                    "chats.$[chat].nombre_bloqueo": nombre_bloqueo,
+                    "chats.$[chat].participantes_bloqueo": participantes_bloqueo,
+                    users_bloqueo: resultado_bloque
                 }
-            }
+            },
+            { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat_str) }] }
         );
 
         await actualizarCacheUsuarioPropio();
+        log.info({ nuevo_estado: newBlocked ? "bloqueado" : "desbloqueado", id_chat: id_chat_str }, "Bloqueo");
 
         return { success: true, bloqueado: newBlocked };
     } catch (e) {

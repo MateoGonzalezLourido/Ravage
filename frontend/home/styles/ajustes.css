@@ -1,0 +1,34 @@
+#cuerpo-ajustes-cuenta .label span font {
+    font-weight: 700;
+    overflow-x: auto;
+}
+
+#principal-lista-usuarios-bloqueados,
+#principal-lista-usuarios-silenciados {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: left;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+#principal-lista-usuarios-bloqueados .usuario-bloqueado,
+#principal-lista-usuarios-silenciados .usuario-silenciado {
+    width: 95%;
+    height: 50px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin: 5px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    z-index: 100;
+}

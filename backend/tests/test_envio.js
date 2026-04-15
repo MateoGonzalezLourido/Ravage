@@ -1,7 +1,7 @@
 
 import 'dotenv/config';
-import { enviarEmail } from './services/MENSAJERIA/Servicio_mensajeria_correo.js';
-import * as estructuras from './services/MENSAJERIA/Estructuras_correos.js';
+import { enviarEmail } from '../services/MENSAJERIA/Servicio_mensajeria_correo.js';
+import * as estructuras from '../services/MENSAJERIA/Estructuras_correos.js';
 
 const DESTINO = [EMAIL_ADDRESS]
 const CODIGO = '123456';

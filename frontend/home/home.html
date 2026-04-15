@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="../notificaciones/notificaciones.css">
     <link rel="stylesheet" href="./styles/css_archivos.css">
     <link rel="stylesheet" href="./styles/historial.css">
-
+    <link rel="stylesheet" href="./styles/ajustes.css">
 
 </head>
 
@@ -34,7 +34,7 @@
             <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
         </div>
         <div class="menu-navegacion-ajustes">
-            <div id="bt-menu-navegacion-ajustes-cuenta">Cuenta</div>
+            <div id="bt-menu-navegacion-ajustes-cuenta" class="active">Cuenta</div>
             <div id="bt-menu-navegacion-ajustes-general">General</div>
             <div id="bt-menu-navegacion-ajustes-noti">Notificaciones</div>
             <div id="bt-menu-navegacion-ajustes-soporte">Soporte</div>
@@ -43,29 +43,32 @@
         <div class="cuerpo-menu-ajustes">
             <div class="menu-ajustes-sub flex-display" id="cuerpo-ajustes-cuenta">
                 <div class="label">
-                    <span id="text-cuenta-apodo">Apodo: Usuario</span>
+                    <span id="text-cuenta-apodo">Apodo: <font>Usuario</font></span>
                     <button id="bt-cambiar-apodo">Cambiar Apodo</button>
                     <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-apodo"></span>
                 </div>
                 <div class="label">
-                    <span id="text-cuenta-correo">Correo electrónico: usuario@gmail.com</span>
+                    <span id="text-cuenta-correo">Correo electrónico: <font>usuario@gmail.com</font></span>
                     <button id="bt-cambiar-correo">Cambiar Correo</button>
                     <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-correo"></span>
                 </div>
                 <div class="label">
-                    <span>Contraseña:</span>
+                    <span>Contraseña: <font>🤷‍♀️</font></span>
                     <button id="bt-cambiar-contraseña">Cambiar Contraseña</button>
                     <span class="text-avisar-espera-bloqueo" id="bt-fecha-bloqueo-contraseña"></span>
                 </div>
                 <div class="label">
+                    <span>Sesión: </span>
                     <button id="bt-cerrar-sesion">Cerrar Sesión</button>
                 </div>
                 <span id="text-cuenta-creada-fecha">*Cuenta creada el xx/xx/xx</span>
                 <div class="label">
-                    <button id="bt-ver-chats-silenciados">Ver chats silenciados</button>
+                    <span>Chats silenciados: </span>
+                    <button id="bt-ver-chats-silenciados">Ver</button>
                 </div>
                 <div class="label">
-                    <button id="bt-ver-chats-bloqueados">Ver chats bloqueados</button>
+                    <span>Chats bloqueados: </span>
+                    <button id="bt-ver-chats-bloqueados">Ver</button>
                 </div>
             </div>
             <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-general">
@@ -234,18 +237,14 @@
                 <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
             </div>
             <h2>LISTA USUARIOS BLOQUEADOS</h2>
-            <div id="principal-lista-usuarios-bloqueados">
-
-            </div>
+            <div id="principal-lista-usuarios-bloqueados" class="display-none"></div>
         </div>
         <div class="lista-bloqueados ocultar-display" id="lista-usuarios-silenciados">
             <div id="bt-cerrar-menu-lista-silenciados">
                 <img src="../recursos/cruz.png" alt="cerrar" draggable="false">
             </div>
             <h2>LISTA USUARIOS SILENCIADOS</h2>
-            <div id="principal-lista-usuarios-silenciados">
-
-            </div>
+            <div id="principal-lista-usuarios-silenciados" class="display-none"></div>
         </div>
     </div>
     <!--CHATS-->

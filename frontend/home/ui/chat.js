@@ -1,7 +1,7 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
-import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
+import { safeIdSelector } from './seguridad_ui.js';
 
 const nombre_defecto = "~no encontrado~"
 
@@ -170,7 +170,7 @@ export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
     else {
         try {
             fecha_param_usar = new Date(fecha_param)
-            fecha_param_usar_string=fecha_param_usar.toDateString()
+            fecha_param_usar_string = fecha_param_usar.toDateString()
         } catch (e) {
             return ""
         }
@@ -263,66 +263,106 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     return html
 }
 
-export const crear_mensaje_html = async ({ id_mensaje = null, fecha, asunto = "", archivos = [], propio = false, nombre_emisor, esAdmin = false, escaneres_seguridad = {}, tieneArriba = false, tieneAbajo = false, id_emisor = "" }) => {
-    const class_mensajes = ["soy-emisor", "soy-receptor"]
+const escapeHTML = (str) => str.replace(/[&<>"'`]/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;',
+    '"': '&quot;', "'": '&#39;', '`': '&#96;'
+})[c]);
 
-    //funciones de componentes
-    const emisor_mensaje = (propio) => {
-        return propio ? class_mensajes[0] : class_mensajes[1]
-    }
+const sanitizarSVG = (svg) =>
+    DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true } });
+
+const sanitizarTexto = (texto) =>
+    DOMPurify.sanitize(texto);
+
+export const crear_mensaje_html = async ({
+    id_mensaje = null, fecha, asunto = "", archivos = [],
+    propio = false, nombre_emisor, esAdmin = false,
+    escaneres_seguridad = {}, tieneArriba = false,
+    tieneAbajo = false, id_emisor = ""
+}) => {
+
+    const emisor_mensaje = (propio) =>
+        propio ? "soy-emisor" : "soy-receptor";
+
     const asunto_mensaje = (asunto) => {
-        return asunto ? `<div class="asunto-mensaje-chat">${asunto}</div> ` : ``
-    }
+        const partes = asunto.split(/(<(?:\w+:)?svg[\s\S]*?<\/(?:\w+:)?svg>)/gi);
+        const asuntoFormateado = partes.map(parte =>
+            /^<(?:\w+:)?svg/i.test(parte)
+                ? `<div class="asunto-svg">${sanitizarSVG(parte)}</div>`
+                : escapeHTML(parte)
+        ).join('');
+        return asuntoFormateado
+            ? `<div class="asunto-mensaje-chat">${asuntoFormateado}</div>`
+            : '';
+    };
+
     const nombre_emisor_mensaje = (nombre, propio, esAdmin, tieneArriba) => {
-        if (propio || tieneArriba) return ``
- 
-        return `<div class="nombre-mensaje-chat-usuario"><span>${escapeHTML(nombre)}${esAdmin ? " <span style='font-size: 0.9em; opacity: 0.7;'>·Admin</span>" : ""}</span></div>`
-    }
+        if (propio || tieneArriba) return '';
+        return `<div class="nombre-mensaje-chat-usuario">
+      <span>${escapeHTML(nombre)}${esAdmin
+                ? " <span style='font-size:0.9em;opacity:0.7'>·Admin</span>"
+                : ""
+            }</span>
+    </div>`;
+    };
+
     const hora_mandado = (fecha) => {
-        const fechaTraducida = new Date(fecha);
-        const hora = fechaTraducida.toLocaleTimeString("es-ES", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false
+        const hora = new Date(fecha).toLocaleTimeString("es-ES", {
+            hour: "2-digit", minute: "2-digit", hour12: false
         });
-        return `<div class="hora-mensaje-chat"><span>${hora}</span></div>`
-    }
+        return `<div class="hora-mensaje-chat"><span>${hora}</span></div>`;
+    };
+
     const archivos_mensaje = async (archivos) => {
-// ... (omitted same as before for brevity in internal thought, but I'll write full content)
-        if (archivos?.length > 0) {
-            const html = [`<div class="mensaje-div-archivos">`]
-            for (const archivo of archivos) {
-                const extension = archivo?.extension || (archivo.nombre?.includes(".") ? archivo.nombre.split(".").pop() : null)
-                const [url, identificado] = await url_icono_extension_img(extension)
-                const nombre_mostrar = identificado ? (archivo.nombre?.includes(".") ? archivo.nombre.substring(0, archivo.nombre.lastIndexOf(".")) : archivo.nombre) : (archivo.nombre?.includes(".") ? archivo.nombre : (archivo.extension ? archivo.nombre + "." + archivo.extension : archivo.nombre))
-
-                const emisor_id = archivo.emisor_id || '';
-                const ratchet_json = archivo.ratchet_info ? encodeURIComponent(JSON.stringify(archivo.ratchet_info)) : '';
-
-                html.push(`<div class="archivo-mensaje-div-archivos" data-id="${archivo.id || archivo._id || ''}" data-nombre="${archivo.nombre}" data-iv="${archivo.iv || ''}" data-tag="${archivo.tag || ''}" data-emisor="${emisor_id}" data-ratchet="${ratchet_json}">
-                <div><img src="${url}"><span>${nombre_mostrar}</span></div>
-                </div> `)
-            }
-            html.push("</div>")
-            return html.join("")
+        if (!archivos?.length) return '';
+        const html = ['<div class="mensaje-div-archivos">'];
+        for (const archivo of archivos) {
+            const extension = archivo?.extension
+                ?? archivo.nombre?.split('.').pop()
+                ?? null;
+            const [url, identificado] = await url_icono_extension_img(extension);
+            const nombre_mostrar = identificado
+                ? (archivo.nombre?.includes('.')
+                    ? archivo.nombre.substring(0, archivo.nombre.lastIndexOf('.'))
+                    : archivo.nombre)
+                : (archivo.extension && !archivo.nombre?.includes('.')
+                    ? `${archivo.nombre}.${archivo.extension}`
+                    : archivo.nombre);
+            const emisor_id = escapeHTML(archivo.emisor_id || '');        // ⚠ faltaba escape
+            const ratchet_json = archivo.ratchet_info
+                ? encodeURIComponent(JSON.stringify(archivo.ratchet_info))
+                : '';
+            html.push(`
+        <div class="archivo-mensaje-div-archivos"
+          data-id="${escapeHTML(String(archivo.id || archivo._id || ''))}"
+          data-nombre="${escapeHTML(archivo.nombre)}"
+          data-iv="${escapeHTML(archivo.iv || '')}"
+          data-tag="${escapeHTML(archivo.tag || '')}"
+          data-emisor="${emisor_id}"
+          data-ratchet="${ratchet_json}">
+          <div><img src="${url}"><span>${escapeHTML(nombre_mostrar)}</span></div>
+        </div>`);
         }
-        else return ``
-    }
+        html.push('</div>');
+        return html.join('');
+    };
 
-    const { textoFinal, tagsDetectados } = await aplicar_escaneres_sincronos(asunto, escaneres_seguridad);
-    const textoEscapado = escapeHTML(textoFinal);
+    const { textoFinal, tagsDetectados } =
+        await aplicar_escaneres_sincronos(asunto, escaneres_seguridad);
 
-
-    return (`
-    <div class="mensaje-chat ${emisor_mensaje(propio)} ${tieneArriba ? 'agrupado-arriba' : ''} ${tieneAbajo ? 'agrupado-abajo' : ''}" data-id="${id_mensaje || ''}" data-scanner-tags="${tagsDetectados.join(",")}" data-emisor-id="${id_emisor}">
-        ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin, tieneArriba)}
-        ${asunto_mensaje(textoEscapado)}
-        ${await archivos_mensaje(archivos)}
-        ${hora_mandado(fecha)}
-
-    </div> `)
-
-}
+    return `
+    <div class="mensaje-chat ${emisor_mensaje(propio)}
+      ${tieneArriba ? 'agrupado-arriba' : ''}
+      ${tieneAbajo ? 'agrupado-abajo' : ''}"
+      data-id="${escapeHTML(String(id_mensaje || ''))}"
+      data-scanner-tags="${escapeHTML(tagsDetectados.join(','))}"
+      data-emisor-id="${escapeHTML(String(id_emisor))}">
+      ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin, tieneArriba)}
+      ${asunto_mensaje(textoFinal)}
+      ${await archivos_mensaje(archivos)}
+      ${hora_mandado(fecha)}
+    </div>`;
+};
 
 let controller_renderizado_activo = null;
 
@@ -388,7 +428,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             // Renderizar mensajes del día en paralelo
             const mensajesConEstado = grupo.mensajes.map((m, index) => {
                 const id_emisor = (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString();
-                
+
                 // Buscar si tiene uno arriba del mismo emisor
                 const prevMsg = index > 0 ? grupo.mensajes[index - 1] : null;
                 const prevEmisor = prevMsg ? (Array.isArray(prevMsg.emisor) ? prevMsg.emisor[0] : prevMsg.emisor)?.toString() : null;
@@ -411,13 +451,13 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
                     const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor);
                     const nombre = map_nombres[id_emisor] || nombre_defecto;
 
-                    return await crear_mensaje_html({ 
-                        fecha: m.data, 
-                        asunto: m?.contenido[0]?.asunto || "", 
-                        archivos: m?.contenido[0]?.archivos || [], 
-                        propio, 
-                        nombre, 
-                        esAdmin, 
+                    return await crear_mensaje_html({
+                        fecha: m.data,
+                        asunto: m?.contenido[0]?.asunto || "",
+                        archivos: m?.contenido[0]?.archivos || [],
+                        propio,
+                        nombre,
+                        esAdmin,
                         escaneres_seguridad,
                         tieneArriba: m.tieneArriba,
                         tieneAbajo: m.tieneAbajo,

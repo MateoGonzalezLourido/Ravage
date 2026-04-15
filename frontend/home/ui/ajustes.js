@@ -17,7 +17,7 @@ let ajustesEventosInicializados = false;
 
 export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     if (e) e.preventDefault();
-    
+
     // Initial UI state
     cerrar_cuerpos_ajustes("cuenta");
     const menuAjustes = document.querySelector("#seccion-menu-cuenta-ajustes");
@@ -41,10 +41,10 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     bindings.forEach(binding => {
         const btn = document.querySelector(binding.id);
         if (!btn) return;
-        
+
         btn.addEventListener("click", (e) => {
             e.preventDefault();
-            
+
             // UI feedback for active tab
             document.querySelectorAll("#seccion-menu-cuenta-ajustes .menu-navegacion-ajustes div").forEach(d => d.classList.remove("active"));
             btn.classList.add("active");
@@ -61,7 +61,7 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.querySelector("#bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña);
     document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo);
     document.querySelector("#bt-cambiar-correo").addEventListener("click", funcion_cambiar_correo);
-    document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados); 
+    document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados);
     document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados);
 
     // INICIAR CACHE SETTINGS
@@ -114,7 +114,7 @@ async function actualizar_datos_cuenta() {
     document.querySelector("#text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${escapeHTML(apodo)}</font>`;
     document.querySelector("#text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${escapeHTML(correo)}</font>`;
     document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${escapeHTML(fecha_creacion)}`;
-    
+
     const setLockText = (id, date) => {
         const el = document.querySelector(id);
         el.innerHTML = date ? `*Bloqueado: ${date}` : "";
@@ -130,7 +130,7 @@ function cerrar_ajustes_pagina(e) {
     const menuAjustes = document.querySelector("#seccion-menu-cuenta-ajustes");
     menuAjustes.classList.remove("flex-display");
     menuAjustes.classList.add("ocultar-display");
-    
+
     // Reset state if necessary
     bloquear_span_cambio_contraseña = true; // Match renderer.js behavior
 }
@@ -221,7 +221,7 @@ async function funcion_cambiar_contraseña(e) {
                         evVerify.preventDefault();
                         const code = document.querySelector("#bt-code-introducir-datos-cuenta").value;
                         const finalResult = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(pass, code, "contraseña");
-                        
+
                         if (finalResult) {
                             window.pushNotificacion({ prioridad: 0, texto: "Contraseña cambiada", tipo: "success" });
                             bloquear_span_cambio_contraseña = true;
@@ -248,7 +248,7 @@ async function funcion_cambiar_contraseña(e) {
 async function funcion_cambiar_apodo(e) {
     e.preventDefault();
     if (bloquear_span_cambio_apodo) {
-        window.pushNotificacion({ prioridad: 1, texto: "Cambiaste de apodo hace poco. Esperar 1h.", tipo: "error" });
+        window.pushNotificacion({ prioridad: 1, texto: "Cambiaste de apodo hace poco. Debes esperar 24h desde la última vez.", tipo: "error" });
         return;
     }
 
@@ -282,7 +282,7 @@ async function funcion_cambiar_apodo(e) {
         }, { once: true });
     } else {
         bloquear_span_cambio_apodo = true;
-        window.pushNotificacion({ prioridad: 0, texto: "Cambiaste de apodo hace poco. Esperar 1h.", tipo: "error" });
+        window.pushNotificacion({ prioridad: 0, texto: "Cambiaste de apodo hace poco. Debes esperar 24h desde la última vez.", tipo: "error" });
     }
 }
 
@@ -342,13 +342,39 @@ async function funcion_cambiar_correo(e) {
 export async function ver_chats_silenciados(e) {
     if (e) e.stopPropagation();
     const container = document.querySelector("#principal-lista-usuarios-silenciados");
-    container.innerHTML = "*CARGANDO...*";
-    
-    const users = await window.social_usuario.OBTENER_USUARIOS_SILENCIADOS();
-    if (!users || users.length === 0) {
-        container.innerHTML = "*SIN USUARIOS*";
+    const [contactos, silenciados] = await Promise.all([
+        window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
+        window.social_usuario.OBTENER_USUARIOS_SILENCIADOS()
+    ]);
+    console.log(contactos,silenciados)
+    //dividir cuales estan en contactos y cuales no
+    const contactos_silenciados = contactos.filter(c => silenciados.includes(c.id));
+    const no_contactos_silenciados = silenciados.filter(c => {
+        const contacto = contactos.find(d => d.id === c);
+        return !contacto || contacto.apodo === "";
+    });
+    console.log(no_contactos_silenciados)
+    //buscar en db apodo de los que no estan en contactos
+    let no_contactos_silenciados_apodos = [];
+    let no_contactos_silenciados_con_apodo = [];
+    if (no_contactos_silenciados.length > 0) {
+        no_contactos_silenciados_apodos = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(no_contactos_silenciados, "apodo");
+        //todo: esto no devuelve bien el apodo o nombre de chat
+        no_contactos_silenciados_con_apodo = no_contactos_silenciados.map(id => {
+            const data = no_contactos_silenciados_apodos.find(a => a._id=== id);
+            return {
+                id,
+                apodo: data?.apodo || data?.nombre || "Usuario desconocido"
+            }
+        });
+    }
+
+    const silenciados_final = [...contactos_silenciados, ...no_contactos_silenciados_con_apodo];
+    console.log(silenciados_final)
+    if (!silenciados_final || silenciados_final.length === 0) {
+        container.innerHTML = "<span class='text-info-no-chats'>*SIN USUARIOS*</span>";
     } else {
-        container.innerHTML = users.map(u => `
+        container.innerHTML = silenciados_final.map(u => `
             <div class="lista-item-ajustes">
                 <span>${escapeHTML(u.apodo)}</span>
                 <button class="bt-desilenciar" data-id="${u.id}">Desilenciar</button>
@@ -382,7 +408,7 @@ export async function ver_chats_bloqueados(e) {
         container.innerHTML = users.map(u => `
             <div class="lista-item-ajustes">
                 <span>${escapeHTML(u.apodo)}</span>
-                <button class="bt-desbloquear" data-id="${u.id||u._id}">Desbloquear</button>
+                <button class="bt-desbloquear" data-id="${u.id || u._id}">Desbloquear</button>
             </div>
         `).join("");
 
@@ -403,7 +429,7 @@ export async function ver_chats_bloqueados(e) {
 
 async function cargar_ajustes_cache() {
     const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
-    
+
     document.querySelector("#input-cache-chats-ram").value = ajustes.LIMITE_CHAT_CACHE_RAM || 1024
     document.querySelector("#input-cache-chats-disk").value = ajustes.LIMITE_CHAT_CACHE_DISK || 2048
     document.querySelector("#input-cache-usuarios-ram").value = ajustes.LIMITE_USER_CACHE_RAM || 512
@@ -423,11 +449,11 @@ function setup_cache_listeners() {
         document.querySelector(item.id).addEventListener("change", async (e) => {
             const val = parseInt(e.target.value)
             if (isNaN(val) || val < 64) return
-            
+
             const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
             ajustes[item.key] = val
             await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes)
-            
+
             // Notificar al backend para actualizar config instantáneamente
             if (item.key.includes("CHAT")) {
                 await window.cache_persistente.setConfigCacheChats({ [item.key]: val })
@@ -442,7 +468,7 @@ function setup_cache_listeners() {
         const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
         ajustes.FORCE_DISK_CACHE = val
         await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes)
-        
+
         await window.cache_persistente.setConfigCacheChats({ FORCE_DISK_CACHE: val })
         await window.cache_persistente.setConfigCacheUsuarios({ FORCE_DISK_CACHE: val })
     })

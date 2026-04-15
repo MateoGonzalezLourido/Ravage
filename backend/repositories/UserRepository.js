@@ -1,6 +1,7 @@
 import { mongoose, createHash, randomBytes, compare } from '../utils/libs.js';
 import { createLogger } from '../utils/logger.js';
 import { User } from '../models/User.js';
+import { ChatsRavage } from '../models/Chat.js';
 import { TokenSession } from '../models/Security.js';
 import { validateToken } from '../services/CreadorTokens.js';
 import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } from '../services/cryptoService.js';
@@ -164,8 +165,8 @@ async function _toggleArrayUsuario(id, arrayType, isAdd) {
 
     try {
         const correoHash = hashDatosSistema(getCorreoSesion());
-        const updateOp = isAdd 
-            ? { $addToSet: { [field]: idStr } } 
+        const updateOp = isAdd
+            ? { $addToSet: { [field]: idStr } }
             : { $pull: { [field]: idStr } };
 
         if (isAdd && arrayType === 'bloq') {
@@ -177,7 +178,7 @@ async function _toggleArrayUsuario(id, arrayType, isAdd) {
 
         if (isAdd) list.push(idStr);
         else list.splice(index, 1);
-        
+
         setList(list);
         await _syncCache(correoHash);
         return true;
@@ -309,13 +310,23 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
 
 
 export async function obtener_varios_usuarios(ids, datos_usar = null) {
+    log.info({ "ids": ids, "datos_usar": datos_usar }, "buscar datos usuarios")
     if (!Array.isArray(ids) || ids.length === 0) return [];
 
-    const normalizedIds = ids.map(_getID).filter(id => id && id !== "[object Object]");
-    const id_propio = getIDMongodbUsuario();
-    const query_datos = datos_usar || "correo apodo visible idamigo mostrarCorreo";
+    const normalizedIds = ids.map(x => {
+        if (x?.buffer) return new mongoose.Types.ObjectId(Buffer.from(Object.values(x.buffer)));
+        return new mongoose.Types.ObjectId(x);
+    }).filter(Boolean);
 
-    const usuarios_db = await User.find({ _id: { $in: normalizedIds } }, query_datos).lean();
+    const id_propio = getIDMongodbUsuario();
+    let query_datos = datos_usar || "correo apodo visible idamigo mostrarCorreo";
+
+    let usuarios_db = await User.find({ _id: { $in: normalizedIds } }, query_datos).lean();
+    if (usuarios_db.length === 0) {
+        query_datos="nombre";
+        usuarios_db = await ChatsRavage.find({ _id: { $in: normalizedIds } }, query_datos).lean();
+    }
+    if (usuarios_db.length === 0) return [];
 
     return usuarios_db.map(u => {
         const procesado = procesarUsuario(u);
@@ -373,7 +384,7 @@ export async function AÑADIR_CONTACTO(id, nombre) {
     try {
         const idStr = _getID(id);
         if (!idStr) return false;
-        
+
         const id_propio = getIDMongodbUsuario();
         const mis_bloqueados = getUsuariosBloqueados() || [];
 
