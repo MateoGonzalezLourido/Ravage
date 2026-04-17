@@ -262,7 +262,9 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
 
     return html
 }
-
+/*
+* @function: crear el html de un mensaje, las partes estan fuera y dentro de la funcion principal
+ */
 const escapeHTML = (str) => str.replace(/[&<>"'`]/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;',
     '"': '&quot;', "'": '&#39;', '`': '&#96;'
@@ -274,6 +276,9 @@ const sanitizarSVG = (svg) =>
 const sanitizarTexto = (texto) =>
     DOMPurify.sanitize(texto);
 
+const emisor_mensaje = (propio) =>
+    propio ? "soy-emisor" : "soy-receptor";
+
 export const crear_mensaje_html = async ({
     id_mensaje = null, fecha, asunto = "", archivos = [],
     propio = false, nombre_emisor, esAdmin = false,
@@ -281,9 +286,7 @@ export const crear_mensaje_html = async ({
     tieneAbajo = false, id_emisor = ""
 }) => {
 
-    const emisor_mensaje = (propio) =>
-        propio ? "soy-emisor" : "soy-receptor";
-
+    //todo: añadir parse para urls (<span class="url">url</span>) y añadirle un evento con el previsualizador de urls
     const asunto_mensaje = (asunto) => {
         const partes = asunto.split(/(<(?:\w+:)?svg[\s\S]*?<\/(?:\w+:)?svg>)/gi);
         const asuntoFormateado = partes.map(parte =>
@@ -367,6 +370,7 @@ export const crear_mensaje_html = async ({
 let controller_renderizado_activo = null;
 
 async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
+    if (!datos) return;
     try {
         if (controller_renderizado_activo) {
             controller_renderizado_activo.abort = true;
@@ -392,23 +396,16 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
         }).filter(id => id))];
 
         const data_usuarios = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(uniqueEmitterIds);
-        const map_nombres = {};
-        const map_contactos = {};
 
         // Mapear contactos para búsqueda rápida
-        contactos.forEach(c => map_contactos[c.id] = c.apodo);
-
-        data_usuarios.forEach(u => {
-            const id = u.id || u._id?.toString();
-            map_nombres[id] = map_contactos[id] || u.apodo || nombre_defecto;
-        });
+        const map_contactos = Object.fromEntries(contactos.map(c => [c.id, c.apodo]));
+        const map_nombres = Object.fromEntries(data_usuarios.map(u => [u.id || u._id?.toString(), map_contactos[u.id] || u.apodo || nombre_defecto]));
 
         // 2. Agrupar mensajes por día
-        const mensajes_ordenados = [...mensajes].sort((a, b) => new Date(a.data) - new Date(b.data));
         const grupos_por_dia = [];
         let current_dia = null;
 
-        mensajes_ordenados.forEach(m => {
+        mensajes.forEach(m => {
             const dateStr = new Date(m.data).toDateString();
             if (dateStr !== current_dia) {
                 grupos_por_dia.push({ fecha: m.data, mensajes: [] });
@@ -418,55 +415,51 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
         });
 
         // 3. Renderizar día a día (de más nuevo a más viejo)
-        const dias_reversos = [...grupos_por_dia].reverse();
-        let es_primer_dia = true;
 
         const escaneres_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(datos._id)
-        for (const grupo of dias_reversos) {
+        const grupos_ordenados = [...grupos_por_dia].reverse();
+        for (const grupo of grupos_ordenados) {
             if (controller.abort) return;
 
             // Renderizar mensajes del día en paralelo
             const mensajesConEstado = grupo.mensajes.map((m, index) => {
-                const id_emisor = (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString();
-
+                const id_emisor = m.emisor;
                 // Buscar si tiene uno arriba del mismo emisor
                 const prevMsg = index > 0 ? grupo.mensajes[index - 1] : null;
-                const prevEmisor = prevMsg ? (Array.isArray(prevMsg.emisor) ? prevMsg.emisor[0] : prevMsg.emisor)?.toString() : null;
+                const prevEmisor = prevMsg ? (prevMsg.emisor) : null;
                 const tieneArriba = id_emisor === prevEmisor;
 
                 // Buscar si tiene uno abajo del mismo emisor
                 const nextMsg = index < grupo.mensajes.length - 1 ? grupo.mensajes[index + 1] : null;
-                const nextEmisor = nextMsg ? (Array.isArray(nextMsg.emisor) ? nextMsg.emisor[0] : nextMsg.emisor)?.toString() : null;
+                const nextEmisor = nextMsg ? (nextMsg.emisor) : null;
                 const tieneAbajo = id_emisor === nextEmisor;
 
                 return { ...m, id_emisor, tieneArriba, tieneAbajo };
             });
 
+            const SuperaMin = datos.usuarios?.length > 2
+            if (!datos.admins) datos.admins = []
             const html_mensajes = await Promise.all(mensajesConEstado.map(async (m) => {
-                try {
-                    const id_emisor = m.id_emisor;
-                    if (!id_emisor) return "";
+                if (!m) return "";
+                const id_emisor = m.id_emisor || undefined;
+                if (!id_emisor) return "";
 
-                    const propio = id_emisor === id_propio.toString();
-                    const esAdmin = datos.usuarios?.length > 2 && datos.admins?.includes(id_emisor);
-                    const nombre = map_nombres[id_emisor] || nombre_defecto;
+                const propio = id_emisor === id_propio;
+                const esAdmin = SuperaMin && datos.admins.includes(id_emisor);
+                const nombre = map_nombres[id_emisor] || nombre_defecto;
 
-                    return await crear_mensaje_html({
-                        fecha: m.data,
-                        asunto: m?.contenido[0]?.asunto || "",
-                        archivos: m?.contenido[0]?.archivos || [],
-                        propio,
-                        nombre,
-                        esAdmin,
-                        escaneres_seguridad,
-                        tieneArriba: m.tieneArriba,
-                        tieneAbajo: m.tieneAbajo,
-                        id_emisor
-                    });
-                } catch (err) {
-                    console.error("Error al renderizar un mensaje individual:", err, m);
-                    return "";
-                }
+                return crear_mensaje_html({
+                    fecha: m.data,
+                    asunto: m.contenido[0]?.asunto || "",
+                    archivos: m.contenido[0]?.archivos || [],
+                    propio,
+                    nombre,
+                    esAdmin,
+                    escaneres_seguridad,
+                    tieneArriba: m.tieneArriba,
+                    tieneAbajo: m.tieneAbajo,
+                    id_emisor
+                });
             }));
 
             const html_dia = `
@@ -476,27 +469,18 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
                 </div>
             `;
 
-            if (es_primer_dia) {
-                chatContainer.innerHTML = html_dia;
-                // Scroll al final al cargar el día más reciente
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                es_primer_dia = false;
-            } else {
-                // Prepend manteniendo el scroll
-                const scroll_previo = chatContainer.scrollHeight;
-                const top_previo = chatContainer.scrollTop;
 
-                chatContainer.insertAdjacentHTML("afterbegin", html_dia);
+            chatContainer.insertAdjacentHTML("afterbegin", html_dia);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                const nuevo_scroll = chatContainer.scrollHeight;
-                chatContainer.scrollTop = top_previo + (nuevo_scroll - scroll_previo);
-            }
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html_dia;
+            const bloqueDia = tempDiv.firstElementChild;
+            chatContainer.insertAdjacentElement("afterbegin", bloqueDia);
 
-            // Dejar respirar al UI entre días
             await new Promise(resolve => setTimeout(resolve, 0));
 
-            // Aplicar escáneres asíncronos a los mensajes recién insertados
-            const nuevosMensajes = chatContainer.querySelectorAll(".mensaje-chat:not(.scanned)");
+            const nuevosMensajes = bloqueDia.querySelectorAll(".mensaje-chat:not(.scanned)");
             for (const msgEl of nuevosMensajes) {
                 msgEl.classList.add("scanned");
                 const textoOriginal = msgEl.querySelector(".asunto-mensaje-chat")?.textContent || "";

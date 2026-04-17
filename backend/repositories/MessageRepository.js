@@ -12,12 +12,12 @@ import { procesarUsuario } from './UserRepository.js';
 import { setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 
 import { descifrarListaMensajes, getMessageKey } from '../services/messageCryptoService.js';
-import { 
-    cifrarContenido, 
-    descifrarConPrivada, 
-    cifrarConPublica, 
-    crearCipherStream, 
-    crearDecipherStream, 
+import {
+    cifrarContenido,
+    descifrarConPrivada,
+    cifrarConPublica,
+    crearCipherStream,
+    crearDecipherStream,
     encriptarDatosSistema,
     getIdentity,
     ratchetChainKey
@@ -51,8 +51,8 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         }
 
         // Buscar la entrada del emisor para sí mismo (donde guarda su cadena de envío)
-        const ratchet_entry = chat.ratchet_keys.find(k => 
-            k.emisor_id.toString() === id_emisor.toString() && 
+        const ratchet_entry = chat.ratchet_keys.find(k =>
+            k.emisor_id.toString() === id_emisor.toString() &&
             k.receptor_id.toString() === id_emisor.toString()
         );
 
@@ -74,39 +74,39 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             current_ck_hex = await intentarDescifrado(active_entry);
         } catch (err) {
             log.warn(`[E2EE] Fallo al descifrar propia llave de cadena en chat ${id_chat}. Intentando recuperación por rotación...`, err.message);
-            
+
             try {
                 const { rotarClavesChat } = await import('./ChatRepository.js');
                 await rotarClavesChat(id_chat, id_emisor);
-                
+
                 let chatAct = await ChatsRavage.findById(id_chat).lean();
-                active_entry = chatAct.ratchet_keys.find(k => 
-                    k.emisor_id.toString() === id_emisor.toString() && 
+                active_entry = chatAct.ratchet_keys.find(k =>
+                    k.emisor_id.toString() === id_emisor.toString() &&
                     k.receptor_id.toString() === id_emisor.toString()
                 );
-                
+
                 if (!active_entry) throw new Error("Ratchet entry not found after rotation.");
                 current_ck_hex = await intentarDescifrado(active_entry);
                 log.info("[E2EE] Recuperación por rotación exitosa.");
             } catch (err2) {
                 log.error("[E2EE] Rotación de chat insuficiente. Fallo crítico de identidad detectado.", err2.message);
-                
+
                 // OPCIÓN NUCLEAR: Solo si la llave privada local ya no sirve para NADA.
                 // Esto romperá la retrocompatibilidad con TODOS los chats existentes.
                 try {
                     const { REGENERAR_IDENTIDAD_USUARIO } = await import('../services/sesionUsuario.js');
                     const regenOk = await REGENERAR_IDENTIDAD_USUARIO();
                     if (!regenOk) throw new Error("Failed to regenerate identity.");
-                    
+
                     const { rotarClavesChat } = await import('./ChatRepository.js');
                     await rotarClavesChat(id_chat, id_emisor);
-                    
+
                     let chatAct = await ChatsRavage.findById(id_chat).lean();
-                    active_entry = chatAct.ratchet_keys.find(k => 
-                        k.emisor_id.toString() === id_emisor.toString() && 
+                    active_entry = chatAct.ratchet_keys.find(k =>
+                        k.emisor_id.toString() === id_emisor.toString() &&
                         k.receptor_id.toString() === id_emisor.toString()
                     );
-                    
+
                     current_ck_hex = await intentarDescifrado(active_entry);
                     log.warn("[E2EE] Recuperación nuclear completada. Los mensajes antiguos podrían no ser legibles.");
                 } catch (err3) {
@@ -117,10 +117,10 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         }
 
         const iteration = active_entry.counter;
-        
+
         // Ratchet: Derivar MessageKey y el siguiente ChainKey
         const { messageKey, nextChainKey } = ratchetChainKey(current_ck_hex);
-        const chatKey = messageKey; 
+        const chatKey = messageKey;
 
 
         const contenido_archivos = [];
@@ -136,10 +136,10 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 const idArchivo = new ObjectId();
                 const iv = randomBytes(12);
                 const cipherStream = crearCipherStream(chatKey, iv);
-                
+
                 // Usamos el ID como nombre en GridFS para ocultar el nombre real
                 const uploadStream = bucket.openUploadStreamWithId(idArchivo, idArchivo.toHexString());
-                
+
                 await new Promise((resolve, reject) => {
                     const readStream = fs.createReadStream(archivo.ruta);
                     readStream
@@ -160,8 +160,8 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 
         // Cifrar contenido completo (incluyendo emisor y fecha)
         const data_mensaje = new Date();
-        const payload = JSON.stringify({ 
-            asunto, 
+        const payload = JSON.stringify({
+            asunto,
             archivos: contenido_archivos,
             emisor: id_emisor,
             data: data_mensaje
@@ -190,15 +190,15 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         // Los receptores ratchetearán hacia adelante desde la clave que tengan.
         await ChatsRavage.updateOne(
             { _id: id_chat, "ratchet_keys.emisor_id": id_emisor, "ratchet_keys.receptor_id": id_emisor },
-            { 
+            {
                 $set: { "ratchet_keys.$.clave_envuelta": cifrarConPublica(nextChainKey, usuario.publicKey) },
                 $inc: { "ratchet_keys.$.counter": 1 }
             }
         );
 
         // Actualizar el objeto local para evitar un segundo findById
-        const target_entry = chat.ratchet_keys.find(k => 
-            k.emisor_id.toString() === id_emisor.toString() && 
+        const target_entry = chat.ratchet_keys.find(k =>
+            k.emisor_id.toString() === id_emisor.toString() &&
             k.receptor_id.toString() === id_emisor.toString()
         );
         if (target_entry) {
@@ -236,15 +236,15 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             // Forzar actualización en caché de los usuarios involucrados tras la modificación
             const usuarios_afectados_db = await User.find({ _id: { $in: ids_afectados } }).lean();
             for (const u of usuarios_afectados_db) {
-                await setUsuarioEnCache(procesarUsuario(u)); 
+                await setUsuarioEnCache(procesarUsuario(u));
             }
         })();
 
 
-        Añadir_Entrada_Buzon_Usuario({ 
-            ids: chat.usuarios, 
-            tipo: 0, 
-            data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() } 
+        Añadir_Entrada_Buzon_Usuario({
+            ids: chat.usuarios,
+            tipo: 0,
+            data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() }
         }).catch(e => log.error(e));
         // Preparar respuesta para el emisor con datos completos (incluyendo extensiones)
         const mensaje_enviar = {
@@ -270,9 +270,9 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 export async function obtener_datos_mensaje(id_chat, id_mensaje) {
     try {
         const chat = await ChatsRavage.findById(new mongoose.Types.ObjectId(id_chat)).lean();
-        const mensaje = await MessagesRavage.findOne({ 
-            id_chat: new mongoose.Types.ObjectId(id_chat), 
-            _id: new mongoose.Types.ObjectId(id_mensaje) 
+        const mensaje = await MessagesRavage.findOne({
+            id_chat: new mongoose.Types.ObjectId(id_chat),
+            _id: new mongoose.Types.ObjectId(id_mensaje)
         }).lean();
         if (!mensaje) return null;
 
@@ -318,7 +318,7 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
     const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(id));
     const { getAjustesAppFile } = await import('../services/controladorArchivos.js');
     const { join, dirname, basename, extname } = await import('path');
-    
+
     const ruta_principal = await getAjustesAppFile("URL_DESCARGA");
     const safeName = basename(nombre);
     const rutaCompleta = join(ruta_principal, safeName);
@@ -345,7 +345,7 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
         if (ivHex && tagHex && id_chat && ratchet_info && emisor_id) {
             const chat = await ChatsRavage.findById(id_chat).lean();
             const messageKey = await getMessageKey(chat, emisor_id, ratchet_info.iteration);
-            
+
             if (messageKey) {
                 const decipherStream = crearDecipherStream(messageKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex'));
                 stream_final = downloadStream.pipe(decipherStream);

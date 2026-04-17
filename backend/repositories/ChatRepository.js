@@ -68,7 +68,7 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
 
             for (let chat of data_obtenida) {
                 if (mensajes) {
-                    chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: 1 }).lean();
+                    chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).lean();
                     await descifrarListaMensajes(chat.mensajes, chat);
                 }
                 await setChatEnCacheRaw(chat);

@@ -14,7 +14,7 @@ const ArchivoSchema = new mongoose.Schema({
 }, { _id: false });
 
 const MessageSchema = new mongoose.Schema({
-    id_chat: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    id_chat: { type: mongoose.Schema.Types.ObjectId, required: true },
     emisor: { type: mongoose.Schema.Types.ObjectId, required: true },
     contenido: {
         type: [{
@@ -51,6 +51,7 @@ const ArchivoSchemaGridfs = new mongoose.Schema({
         default: Date.now
     }
 });
-
+MessageSchema.index({ id_chat: 1, data: -1 });
+ArchivoSchemaGridfs.index({ filename: 1 });
 export const MessagesRavage = mongoose.model("MessagesRavage", MessageSchema, "messages");
 export const ArchivosRavage = mongoose.model("ArchivosRavage", ArchivoSchemaGridfs, "archivos");
