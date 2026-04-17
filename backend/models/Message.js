@@ -53,5 +53,6 @@ const ArchivoSchemaGridfs = new mongoose.Schema({
 });
 MessageSchema.index({ id_chat: 1, data: -1 });
 ArchivoSchemaGridfs.index({ filename: 1 });
+MessageSchema.index({ data: 1 }, { expireAfterSeconds: 365 * 24 * 60 * 60 });
 export const MessagesRavage = mongoose.model("MessagesRavage", MessageSchema, "messages");
 export const ArchivosRavage = mongoose.model("ArchivosRavage", ArchivoSchemaGridfs, "archivos");

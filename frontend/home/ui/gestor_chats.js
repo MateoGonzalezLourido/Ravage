@@ -94,7 +94,6 @@ export async function Get_datos_chat_abrir(id_chat) {
 export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     try {
         const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
-        window.chats.LIMPIAR_MENSAJES_CHATS_ANTIGUOS(lista_chats)
 
         const datos_chats_grupales = await window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
 

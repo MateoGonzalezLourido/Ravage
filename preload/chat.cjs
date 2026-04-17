@@ -10,9 +10,6 @@ module.exports = {
     OBTENER_DATOS_CHAT_UNICO: (id, datos_buscar = null) => {
         return ipcRenderer.invoke("obtener-datos-chat-unico-usuario", id, datos_buscar)
     },
-    LIMPIAR_MENSAJES_CHATS_ANTIGUOS: (chatIds) => {
-        ipcRenderer.send("limpiar-chats-antiguos-mensajes", chatIds)
-    },
     CREAR_CHAT_NUEVO: (ids, nombre, id_chat = null) => {
         return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre, id_chat)
     },

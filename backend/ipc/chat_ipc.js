@@ -47,10 +47,6 @@ export function registerChatHandlers(mainWindow, socket) {
         return await obtener_datos_chat_unico(id, datos_buscar)
     })
 
-    ipcMain.on("limpiar-chats-antiguos-mensajes", async (_, chatIds) => {
-        await limpiar_mensajes_chats_antiguos(chatIds)
-    })
-
     ipcMain.handle("crear-chat-nuevo", async (_, ids, nombre, id_chat, solicitudAceptada) => {
         if (nombre && !comprobar_nombre_archivo(nombre).success) {
             throw new Error("Nombre de chat no válido");

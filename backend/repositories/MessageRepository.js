@@ -289,20 +289,6 @@ export async function obtener_datos_mensaje(id_chat, id_mensaje) {
 }
 
 
-export async function limpiar_mensajes_chats_antiguos(chatIdsRaw) {
-    const chatIds = chatIdsRaw.map(c => c.id);
-    if (chatIds.length === 0) return null;
-    const haceUnAno = new Date();
-    haceUnAno.setFullYear(haceUnAno.getFullYear() - 1);
-    try {
-        await MessagesRavage.deleteMany({ id_chat: { $in: chatIds }, data: { $lt: haceUnAno } });
-        return true;
-    } catch (e) {
-        log.error(e);
-        return null;
-    }
-}
-
 /**
  * Descarga y descifra un archivo.
  * Ahora requiere ratchet_info y emisor_id para derivar la clave correcta.
