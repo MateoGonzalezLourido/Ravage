@@ -175,6 +175,8 @@ export async function abrir_chat_item(id_chat, force = false) {
         limpiar_archivos_mensaje()
         document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
         cerrar_paneles_al_abrir_chat()
+        // Registrar listener de scroll manual ANTES de que arranque el renderizado progresivo
+        registrar_scroll_usuario()
         //eventos de mensajes
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         chatContainer.addEventListener("click", (pulsado) => {
@@ -371,7 +373,33 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
         scroll_fin_chat()
     }
 }
-export function scroll_fin_chat() {
+// Flag: el usuario ha interactuado con el scroll recientemente
+let _usuario_scrolleando = false;
+let _timer_scroll_usuario = null;
+
+/**
+ * Registra un listener en el contenedor de mensajes para detectar
+ * scroll manual del usuario. Se llama al abrir un chat.
+ */
+export function registrar_scroll_usuario() {
+    const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
+    if (!chatCuerpo) return;
+
+    const marcar = () => {
+        _usuario_scrolleando = true;
+        clearTimeout(_timer_scroll_usuario);
+        // Después de 1.5 s sin tocar el scroll, se desactiva el bloqueo
+        _timer_scroll_usuario = setTimeout(() => {
+            _usuario_scrolleando = false;
+        }, 1500);
+    };
+
+    chatCuerpo.addEventListener("wheel", marcar, { passive: true });
+    chatCuerpo.addEventListener("touchmove", marcar, { passive: true });
+}
+
+export function scroll_fin_chat(forzar = false) {
+    if (!forzar && _usuario_scrolleando) return;
     const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
     if (chatCuerpo) {
         chatCuerpo.scrollTo({

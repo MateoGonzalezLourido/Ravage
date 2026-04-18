@@ -415,9 +415,9 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
         });
 
         // 3. Renderizar día a día (de más nuevo a más viejo)
-
         const escaneres_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(datos._id)
         const grupos_ordenados = [...grupos_por_dia].reverse();
+
         for (const grupo of grupos_ordenados) {
             if (controller.abort) return;
 
@@ -471,12 +471,11 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 
 
             chatContainer.insertAdjacentHTML("afterbegin", html_dia);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            scroll_fin_chat();
 
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = html_dia;
             const bloqueDia = tempDiv.firstElementChild;
-            chatContainer.insertAdjacentElement("afterbegin", bloqueDia);
 
             await new Promise(resolve => setTimeout(resolve, 0));
 
