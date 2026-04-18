@@ -317,30 +317,30 @@ export const crear_mensaje_html = async ({
     };
 
     const archivos_mensaje = async (archivos) => {
-        if (!archivos?.length) return '';
+        if (!archivos || archivos?.length === 0) return '';
         const html = ['<div class="mensaje-div-archivos">'];
         for (const archivo of archivos) {
             const extension = archivo?.extension
-                ?? archivo.nombre?.split('.').pop()
+                ?? archivo?.nombre?.split('.')?.pop()
                 ?? null;
             const [url, identificado] = await url_icono_extension_img(extension);
             const nombre_mostrar = identificado
-                ? (archivo.nombre?.includes('.')
-                    ? archivo.nombre.substring(0, archivo.nombre.lastIndexOf('.'))
-                    : archivo.nombre)
-                : (archivo.extension && !archivo.nombre?.includes('.')
-                    ? `${archivo.nombre}.${archivo.extension}`
-                    : archivo.nombre);
-            const emisor_id = escapeHTML(archivo.emisor_id || '');        // ⚠ faltaba escape
-            const ratchet_json = archivo.ratchet_info
-                ? encodeURIComponent(JSON.stringify(archivo.ratchet_info))
+                ? (archivo?.nombre?.includes('.')
+                    ? archivo?.nombre?.substring(0, archivo?.nombre.lastIndexOf('.'))
+                    : archivo?.nombre)
+                : (archivo?.extension && !archivo?.nombre?.includes('.')
+                    ? `${archivo?.nombre}.${archivo?.extension}`
+                    : archivo?.nombre);
+            const emisor_id = escapeHTML(archivo?.emisor_id || '');        // ⚠ faltaba escape
+            const ratchet_json = archivo?.ratchet_info
+                ? encodeURIComponent(JSON.stringify(archivo?.ratchet_info))
                 : '';
             html.push(`
         <div class="archivo-mensaje-div-archivos"
-          data-id="${escapeHTML(String(archivo.id || archivo._id || ''))}"
-          data-nombre="${escapeHTML(archivo.nombre)}"
-          data-iv="${escapeHTML(archivo.iv || '')}"
-          data-tag="${escapeHTML(archivo.tag || '')}"
+          data-id="${escapeHTML(String(archivo?.id || archivo?._id || ''))}"
+          data-nombre="${escapeHTML(archivo?.nombre || '')}"
+          data-iv="${escapeHTML(archivo?.iv || '')}"
+          data-tag="${escapeHTML(archivo?.tag || '')}"
           data-emisor="${emisor_id}"
           data-ratchet="${ratchet_json}">
           <div><img src="${url}"><span>${escapeHTML(nombre_mostrar)}</span></div>

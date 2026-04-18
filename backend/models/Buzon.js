@@ -26,4 +26,6 @@ BuzonSchema.pre('save', function (next) {
     next();
 });
 
+BuzonSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
+
 export const BuzonUsuarios = mongoose.model("BuzonUsuarios", BuzonSchema, "buzon");

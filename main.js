@@ -1,4 +1,3 @@
-
 // Activa la caché de compilación de V8 para que Electron no tenga que
 // recompilar el JS cada vez que arrancas (hace que el 2do arranque sea más rápido)
 app.commandLine.appendSwitch('v8-cache-options', 'code');

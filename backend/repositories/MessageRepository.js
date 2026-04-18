@@ -335,6 +335,14 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
             if (messageKey) {
                 const decipherStream = crearDecipherStream(messageKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex'));
                 stream_final = downloadStream.pipe(decipherStream);
+            } else {
+                // No se pudo derivar la clave — el ratchet state fue corrupto.
+                // Rechazar en lugar de escribir un archivo cifrado ilegible.
+                log.error({ id, id_chat, iteration: ratchet_info?.iteration },
+                    '[E2EE] No se pudo derivar la clave de descifrado del archivo');
+                writeStream.destroy();
+                reject(new Error('No se pudo descifrar el archivo: clave de cifrado irrecuperable'));
+                return;
             }
         }
 

@@ -79,24 +79,49 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                 }
 
                 const emisor_id_str = m.emisor ? m.emisor.toString() : null;
-                const es_propio = emisor_id_str === id_usuario_actual;
+                const es_propio = emisor_id_str === id_propio;
 
-                // OPTIMIZACIÓN: Si el mensaje es PROPIO, usamos la copia de sistema (evita problemas de ratchet al recargar)
-                if (es_propio && m.contenido && m.contenido.length > 0 && m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object') {
-                    try {
-                        m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+                if (es_propio && m.contenido && m.contenido.length > 0) {
+                    const tieneAsuntoObjeto = m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object';
+                    const tieneArchivos = m.contenido[0].archivos && m.contenido[0].archivos.length > 0;
+                    if (tieneAsuntoObjeto || tieneArchivos) {
+                        try {
+                            if (tieneAsuntoObjeto) {
+                                m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+                            }
+                            if (tieneArchivos) {
+                                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                                    ...a,
+                                    nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
+                                    ratchet_info: m.ratchet_info,
+                                    emisor_id: emisor_id_str
+                                }));
+                            }
+                            continue;
+                        } catch (fErr) {
+                            log.warn({ msgId: m._id || m.id }, "Fallo fallback propio, intentando ratchet...");
+                        }
+                    }
+                }
+
+                // Si el counter de la DB ya está por delante de este mensaje,
+                // la clave base fue sobreescrita por una persistencia anterior.
+                // No podemos derivar la clave correcta → ir directo a fallback de sistema.
+                if (current_state.counter > m.ratchet_info.iteration) {
+                    if (m.contenido && m.contenido.length > 0) {
+                        if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object') {
+                            m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+                        }
                         if (m.contenido[0].archivos) {
                             m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
                                 ...a,
                                 nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
                                 ratchet_info: m.ratchet_info,
-                                emisor_id: emisor_id_str
+                                emisor_id: emisor_id
                             }));
                         }
-                        continue; // Siguiente mensaje, saltamos ratchet para este
-                    } catch (fErr) {
-                        log.warn({ msgId: m._id || m.id }, "Fallo fallback propio, intentando ratchet...");
                     }
+                    continue;
                 }
 
                 // Ratchet forward si el mensaje es más reciente que nuestro contador
@@ -113,7 +138,7 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                 const { messageKey, nextChainKey } = ratchetChainKey(local_ck);
 
                 try {
-                    decryptedPayload = descifrarContenido(m.encriptado, messageKey);
+                    const decryptedPayload = descifrarContenido(m.encriptado, messageKey);
                     
                     const data = JSON.parse(decryptedPayload);
                     if (data && !Array.isArray(data)) {
@@ -134,19 +159,18 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                     current_state.ck = nextChainKey;
                     current_state.counter = local_counter + 1;
                 } catch (aesErr) {
-                    // FALLBACK: Si falla E2EE, intentar descifrar la copia del sistema si existe (ej: copia legible del emisor)
-                    if (m.contenido && m.contenido.length > 0 && m.contenido[0].asunto) {
-                        const asuntoRaw = m.contenido[0].asunto;
-                        if (typeof asuntoRaw === 'object' && asuntoRaw.data) {
-                            m.contenido[0].asunto = desencriptarDatosSistema(asuntoRaw);
-                            if (m.contenido[0].archivos) {
-                                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                    ...a,
-                                    nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
-                                    ratchet_info: m.ratchet_info,
-                                    emisor_id: emisor_id
-                                }));
-                            }
+                    // FALLBACK: Si falla E2EE, intentar descifrar la copia del sistema si existe
+                    if (m.contenido && m.contenido.length > 0) {
+                        if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
+                            m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+                        }
+                        if (m.contenido[0].archivos) {
+                            m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                                ...a,
+                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
+                                ratchet_info: m.ratchet_info,
+                                emisor_id: emisor_id
+                            }));
                         }
                     }
                 }
@@ -154,9 +178,11 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
             } catch (err) {
                 // FALLBACK AGRESIVO: Si el ratchet falla, intentar usar la copia de sistema
                 try {
-                    if (m.contenido && m.contenido.length > 0 && m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object') {
+                    if (m.contenido && m.contenido.length > 0) {
                         const emisor_id = m.emisor ? m.emisor.toString() : null;
-                        m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+                        if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object') {
+                            m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+                        }
                         if (m.contenido[0].archivos) {
                             m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
                                 ...a,
@@ -178,7 +204,9 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
         }
     }
 
-    await _persistirRatchetState(cache_keys, chat, identity_data);
+    // NO persistir el ratchet state del receptor: rompe la derivación de claves
+    // para descargas de archivos de mensajes anteriores (getMessageKey).
+    // El coste de re-derivar desde la base es despreciable (HMAC-SHA256 por iteración).
     return mensajes;
 }
 
@@ -222,9 +250,6 @@ async function _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data)
     );
 
     // Recomponer mensajes originales con los descifrados
-    // Reunir cache_keys de todos los workers para persistir
-    const cache_keys_combinado = {};
-
     for (let i = 0; i < resultados.length; i++) {
         if (resultados[i]) {
             // Copiar datos descifrados al mensaje original
@@ -234,10 +259,8 @@ async function _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data)
         }
     }
 
-    // Persistir ratchet state — necesitamos recalcular desde main thread
-    // ya que los workers no pueden acceder a la DB
-    await _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, identity_data);
-
+    // NO persistir ratchet state: rompe getMessageKey para archivos antiguos.
+    // El receptor siempre re-deriva desde la clave base (coste despreciable).
     return mensajes;
 }
 
@@ -328,6 +351,14 @@ export async function getMessageKey(chat, emisor_id, iteration) {
     const { descifrarConPrivada, ratchetChainKey } = await import('./cryptoService.js');
     let ck = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
     let current_counter = entry.counter;
+
+    // Si el counter de la DB ya fue avanzado más allá de la iteración solicitada,
+    // la clave base fue sobreescrita y no podemos derivar la clave correcta.
+    if (current_counter > iteration) {
+        log.warn({ current_counter, iteration, emisor_id: emisor_id.toString() },
+            '[E2EE] getMessageKey: counter > iteration, clave irrecuperable (ratchet state corrupto)');
+        return null;
+    }
 
     while (current_counter < iteration) {
         const { nextChainKey } = ratchetChainKey(ck);

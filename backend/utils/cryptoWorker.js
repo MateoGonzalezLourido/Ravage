@@ -119,6 +119,28 @@ const OPERACIONES = {
                         cache_keys[cache_key] = current_state;
                     }
 
+                    // Si el counter de la DB ya está por delante de este mensaje,
+                    // la clave base fue sobreescrita y no se puede derivar la correcta.
+                    // Usar fallback de sistema directamente.
+                    if (current_state.counter > m.ratchet_info.iteration) {
+                        if (m.contenido && m.contenido.length > 0 && systemKey) {
+                            if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
+                                m.contenido[0].asunto = _desencriptarDatosSistema(m.contenido[0].asunto, systemKey);
+                            }
+                            if (m.contenido[0].archivos) {
+                                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                                    ...a,
+                                    nombre: (a.nombre && typeof a.nombre === 'object')
+                                        ? _desencriptarDatosSistema(a.nombre, systemKey)
+                                        : a.nombre,
+                                    ratchet_info: m.ratchet_info,
+                                    emisor_id: emisor_id
+                                }));
+                            }
+                        }
+                        continue;
+                    }
+
                     // Ratchet forward
                     while (current_state.counter < m.ratchet_info.iteration) {
                         const { nextChainKey } = _ratchetChainKey(current_state.ck);
@@ -149,25 +171,22 @@ const OPERACIONES = {
                         }
                     } catch (aesErr) {
                         // Fallback: Copias de sistema
-                        if (m.contenido && m.contenido.length > 0 && m.contenido[0].asunto) {
-                            const asuntoRaw = m.contenido[0].asunto;
-                            if (typeof asuntoRaw === 'object' && asuntoRaw.data && systemKey) {
-                                m.contenido[0].asunto = _desencriptarDatosSistema(asuntoRaw, systemKey);
-                                if (m.contenido[0].archivos) {
-                                    m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                        ...a,
-                                        nombre: (a.nombre && typeof a.nombre === 'object') 
-                                            ? _desencriptarDatosSistema(a.nombre, systemKey) 
-                                            : a.nombre,
-                                        ratchet_info: m.ratchet_info,
-                                        emisor_id: emisor_id
-                                    }));
-                                }
-                            } else {
-                                throw new Error(`AES-GCM: Tag mismatch. ${aesErr.message}`);
+                        if (m.contenido && m.contenido.length > 0 && systemKey) {
+                            if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
+                                m.contenido[0].asunto = _desencriptarDatosSistema(m.contenido[0].asunto, systemKey);
+                            }
+                            if (m.contenido[0].archivos) {
+                                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                                    ...a,
+                                    nombre: (a.nombre && typeof a.nombre === 'object')
+                                        ? _desencriptarDatosSistema(a.nombre, systemKey)
+                                        : a.nombre,
+                                    ratchet_info: m.ratchet_info,
+                                    emisor_id: emisor_id
+                                }));
                             }
                         } else {
-                            throw new Error(`AES-GCM: Sin copia. ${aesErr.message}`);
+                            throw new Error(`AES-GCM: Sin systemKey o copia. ${aesErr.message}`);
                         }
                     }
 
