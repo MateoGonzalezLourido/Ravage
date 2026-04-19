@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
@@ -265,6 +267,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
 /*
 * @function: crear el html de un mensaje, las partes estan fuera y dentro de la funcion principal
  */
+
 const escapeHTML = (str) => str.replace(/[&<>"'`]/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;',
     '"': '&quot;', "'": '&#39;', '`': '&#96;'
@@ -274,8 +277,27 @@ const sanitizarSVG = (svg) =>
     DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true } });
 
 const sanitizarTexto = (texto) =>
-    DOMPurify.sanitize(texto);
-
+    DOMPurify.sanitize(texto, {
+        ALLOWED_TAGS: ['b', 'i', 'u', 's', 'em', 'strong', 'br', 'span'],
+        ALLOWED_ATTR: ['class', 'data-url'],
+        FORCE_BODY: true,
+        RETURN_DOM_FRAGMENT: false,
+        FORBID_ATTR: ['style', 'onerror', 'onload'],
+    });
+    
+const parsearURLs = (texto) => {
+    const urlRegex = /https?:\/\/[^\s<>"']+/g;
+    return texto.replace(urlRegex, (url) =>
+        `<span class="url-mensaje" data-url="${escapeHTML(url)}">${escapeHTML(url)}</span>`
+    );
+};
+// Post-proceso para forzar seguridad en links
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A') {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener noreferrer');
+    }
+});
 const emisor_mensaje = (propio) =>
     propio ? "soy-emisor" : "soy-receptor";
 
@@ -292,7 +314,7 @@ export const crear_mensaje_html = async ({
         const asuntoFormateado = partes.map(parte =>
             /^<(?:\w+:)?svg/i.test(parte)
                 ? `<div class="asunto-svg">${sanitizarSVG(parte)}</div>`
-                : escapeHTML(parte)
+            : `<span>${sanitizarTexto(parsearURLs(parte))}</span>`
         ).join('');
         return asuntoFormateado
             ? `<div class="asunto-mensaje-chat">${asuntoFormateado}</div>`
@@ -331,7 +353,7 @@ export const crear_mensaje_html = async ({
                 : (archivo?.extension && !archivo?.nombre?.includes('.')
                     ? `${archivo?.nombre}.${archivo?.extension}`
                     : archivo?.nombre);
-            const emisor_id = escapeHTML(archivo?.emisor_id || '');        // ⚠ faltaba escape
+            const emisor_id = escapeHTML(archivo?.emisor_id || '');
             const ratchet_json = archivo?.ratchet_info
                 ? encodeURIComponent(JSON.stringify(archivo?.ratchet_info))
                 : '';
