@@ -24,7 +24,7 @@ Está pensada para un uso concreto: **grupos pequeños o medianos que quieren co
 
 Lo que implica este enfoque en la práctica:
 
-- **Infraestructura propia** — necesitas desplegar tu propio servidor y base de datos. Tú controlas todo, pero también eres responsable de mantenerlo.
+- **Infraestructura propia** — necesitas desplegar tu propio servidor (local con express o uno propio) y base de datos. Tú controlas todo, pero también eres responsable de mantenerlo.
 - **No apta para gran escala** — funciona bien para equipos pequeños; no está diseñada para miles de usuarios concurrentes.
 - **Sin llamadas** — solo mensajes de texto y transferencia de archivos cifrada.
 - **Caché configurable** — el sistema multinivel se ajusta automáticamente a los recursos disponibles, y puedes limitar manualmente el uso de RAM y disco.
