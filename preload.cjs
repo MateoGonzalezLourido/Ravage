@@ -19,7 +19,8 @@ const validators = require('./preload/validators.cjs');
 const mailbox = require('./preload/mailbox.cjs');
 const security = require('./preload/security.cjs');
 const utils = require('./preload/utils.cjs');
-const avisosUI=require('./preload/avisos.cjs');
+const avisosUI = require('./preload/avisos.cjs');
+const dev = require('./preload/opciones_dev.cjs');
 
 // ─── EXPOSICIÓN DE APIS AL MAIN WORLD ─────────────────────────────────────────
 
@@ -60,3 +61,6 @@ contextBridge.exposeInMainWorld('utilidades_app', utils);
 
 //avisos en UI
 contextBridge.exposeInMainWorld('avisos_ui', avisosUI);
+
+// opciones del desarrollador
+contextBridge.exposeInMainWorld('opciones_dev', dev);

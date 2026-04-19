@@ -140,18 +140,47 @@ document.addEventListener("dragstart", (e) => {
     }
 });
 
+// Monitor de memoria en el Renderer (Debug)
+if (window.opciones_dev?.isDev) {
+    setInterval(() => {
+        if (typeof performance !== 'undefined' && performance.memory) {
+            const used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+            const limit = Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024);
+            console.log(`[Renderer Memory] Used: ${used}MB / Limit: ${limit}MB`);
+            if (used > limit * 0.8) {
+                console.warn("ALERTA: Memoria del Renderer cerca del límite!");
+            }
+        }
+    }, 5000);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+    console.log("[Renderer] DOMContentLoaded - Iniciando arranque...");
+
+    try {
     // 1. Procesos de arranque
+        console.log("[Renderer] Lanzando mensaje de bienvenida...");
     mensaje_bienvenida_usuario().catch(e => console.error("Error bienvenida:", e))
-    INICIO_CHAT_MENU_PRINCIPAL()
+
+        console.log("[Renderer] Cargando lista de chats inicial...");
+        await INICIO_CHAT_MENU_PRINCIPAL()
+        console.log("[Renderer] Lista de chats inicial cargada.");
 
     // 2. Preparar el entorno
+        console.log("[Renderer] Configurando eventos globales...");
     preparar_interfaz_y_servicios()
 
     // 3. Sincronización del Buzón (Backend IPC)
+        console.log("[Renderer] Conectando buzón de notificaciones...");
     inicializar_buzon_notificaciones()
+        console.log("[Renderer] Buzón conectado.");
 
     // 4. Asegurar que todas las imágenes existentes no sean arrastrables
     document.querySelectorAll('img').forEach(img => img.draggable = false);
+
+        console.log("[Renderer] Arranque completado con éxito.");
+    } catch (err) {
+        console.error("[Renderer] Error CRÍTICO durante el arranque:", err);
+    }
 })
 
