@@ -32,6 +32,23 @@ export function cerrar_paneles_al_abrir_chat() {
 // Variable global en el módulo para gestionar el bloqueo de carga de chats
 let id_chat_cargando = null;
 
+// Caché de corta duración para peticiones repetitivas durante procesamiento por lotes
+const batchRequestCache = {
+    data: new Map(),
+    expiry: 0,
+    async get(key, fetcher) {
+        const now = Date.now();
+        if (this.expiry < now) {
+            this.data.clear();
+            this.expiry = now + 500; // 500ms de vida para el lote
+        }
+        if (!this.data.has(key)) {
+            this.data.set(key, await fetcher());
+        }
+        return this.data.get(key);
+    }
+};
+
 export async function Get_datos_chat_abrir(id_chat) {
     const resultados = await Promise.allSettled([
         window.chats.OBTENER_MODELO_DATOS_NECESARIOS_CHAT(),
@@ -93,9 +110,13 @@ export async function Get_datos_chat_abrir(id_chat) {
 
 export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     try {
+        console.log("[Renderer] ACTUALIZAR_LISTAS_CHAT: Solicitando lista de chats...");
         const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
+        console.log(`[Renderer] Recibidos ${lista_chats.length} chats básicos.`);
 
+        console.log("[Renderer] ACTUALIZAR_LISTAS_CHAT: Solicitando metadatos de grupos...");
         const datos_chats_grupales = await window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
+        console.log(`[Renderer] Recibidos metadatos para ${datos_chats_grupales?.length || 0} chats.`);
 
         const map_grupales = {}
         if (Array.isArray(datos_chats_grupales)) {
@@ -288,26 +309,24 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
     if (document.querySelector("#chat-usuario") && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat_str)}`)) {
         const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
 
-        const [nombres_contactos, id_propio, info_chat_cache] = await Promise.all([
-            window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
-            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
-            window.cache_persistente.getChatCache(id_chat_str)
-        ]).catch(() => [[], null, null])
+        // Usar caché para datos que no cambian durante un lote de procesamiento (reducción drástica de IPC)
+        const [nombres_contactos, id_propio] = await Promise.all([
+            batchRequestCache.get('contactos', () => window.social_usuario.OBTENER_CONTACTOS_USUARIO()),
+            batchRequestCache.get('id_propio', () => window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO())
+        ]).catch(() => [[], null]);
+
+        const info_chat_cache = await window.cache_persistente.getChatCache(id_chat_str).catch(() => null);
 
         let info_chat = await window.chats.OBTENER_CACHE_CHAT_ACTIVO()
-        if (info_chat && info_chat._id !== chat && info_chat.id !== chat) {
+        if (info_chat && info_chat._id !== id_chat_str && info_chat.id !== id_chat_str) {
             info_chat = null;
         }
 
         if (!info_chat) {
-            info_chat = info_chat_cache
-        }
-
-        if (!info_chat) {
-            info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_str).catch((e) => {
+            info_chat = info_chat_cache || await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_str).catch((e) => {
                 console.error("Error al obtener datos para renderizar mensaje:", e);
                 return null;
-            })
+            });
         }
 
         const propio = id_propio && id_emisor == id_propio.toString()
@@ -315,12 +334,13 @@ export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archi
 
         const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos });
 
-        const result_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(chat)
+        const result_seguridad = await batchRequestCache.get(`config_seguridad_${id_chat_str}`, () => window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(info_chat));
         const escaneres_seguridad = result_seguridad.escaneres_seguridad || result_seguridad;
+
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;
 
-        // Evitar duplicados si ya existe el mensaje por ID (aunque sea poco probable tras mis cambios)
+        // Evitar duplicados si ya existe el mensaje por ID
         if (id_mensaje && chatContainer.querySelector(`.mensaje-chat[data-id="${id_mensaje}"]`)) return;
 
         const lastBlock = chatContainer.querySelector(".bloque-dia-chat:last-child");
@@ -398,14 +418,20 @@ export function registrar_scroll_usuario() {
     chatCuerpo.addEventListener("touchmove", marcar, { passive: true });
 }
 
+let scrollTimeout = null;
 export function scroll_fin_chat(forzar = false) {
     if (!forzar && _usuario_scrolleando) return;
     const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
     if (chatCuerpo) {
-        chatCuerpo.scrollTo({
-            top: chatCuerpo.scrollHeight,
-            behavior: "smooth"
-        })
+        if (scrollTimeout) return; // Ya hay un scroll programado
+        
+        scrollTimeout = setTimeout(() => {
+            chatCuerpo.scrollTo({
+                top: chatCuerpo.scrollHeight,
+                behavior: "smooth"
+            });
+            scrollTimeout = null;
+        }, 150); // Agrupar cada 150ms
     }
 }
 export async function INICIO_CHAT_MENU_PRINCIPAL() {

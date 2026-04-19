@@ -1,7 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('msg-crypto');
-import { descifrarContenido, descifrarConPrivada, ratchetChainKey, cifrarConPublica, desencriptarDatosSistema } from './cryptoService.js';
-import { readFileSession } from './controladorArchivos.js';
+import { descifrarContenido, descifrarConPrivada, ratchetChainKey, cifrarConPublica, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { getCryptoPool } from '../utils/workerPool.js';
@@ -19,7 +18,7 @@ export async function descifrarListaMensajes(mensajes, chat) {
     if (!mensajes || !chat || !chat.ratchet_keys) return mensajes;
 
     const id_propio = getIDMongodbUsuario();
-    const identity_data = await readFileSession('identity');
+    const identity_data = await getIdentity();
     if (!identity_data || !identity_data.privateKey || !id_propio) return mensajes;
 
     // Contar mensajes que necesitan descifrado
@@ -128,10 +127,17 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                 let local_ck = current_state.ck;
                 let local_counter = current_state.counter;
 
-                while (local_counter < m.ratchet_info.iteration) {
+                let iterations_safety = 0;
+                while (local_counter < m.ratchet_info.iteration && iterations_safety < 10000) {
                     const { nextChainKey } = ratchetChainKey(local_ck);
                     local_ck = nextChainKey;
                     local_counter++;
+                    iterations_safety++;
+                }
+
+                if (iterations_safety >= 10000) {
+                    log.error({ msgId: m._id || m.id, iteration: m.ratchet_info.iteration }, "[E2EE] Safety limit reached in ratchet loop. Corrupted iteration value?");
+                    throw new Error("Ratchet safety limit exceeded");
                 }
 
                 // Obtener MK y siguiente CK para esta iteración
@@ -310,12 +316,16 @@ async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, ident
             let ck = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
             let counter = entry.counter;
 
+            let iterations_safety = 0;
             // Avanzar hasta el último mensaje + 1
-            while (counter <= ratchet_info.iteration) {
+            while (counter <= ratchet_info.iteration && iterations_safety < 10000) {
                 const { nextChainKey } = ratchetChainKey(ck);
                 ck = nextChainKey;
                 counter++;
+                iterations_safety++;
             }
+
+            if (iterations_safety >= 10000) throw new Error("Ratchet safety limit exceeded in batch persistence");
 
             await ChatsRavage.updateOne(
                 { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": id_propio },
@@ -360,10 +370,17 @@ export async function getMessageKey(chat, emisor_id, iteration) {
         return null;
     }
 
-    while (current_counter < iteration) {
+    let iterations_safety = 0;
+    while (current_counter < iteration && iterations_safety < 10000) {
         const { nextChainKey } = ratchetChainKey(ck);
         ck = nextChainKey;
         current_counter++;
+        iterations_safety++;
+    }
+
+    if (iterations_safety >= 10000) {
+        log.error({ emisor_id, iteration }, "[E2EE] Safety limit reached in getMessageKey");
+        return null;
     }
 
     const { messageKey } = ratchetChainKey(ck);

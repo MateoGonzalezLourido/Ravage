@@ -1,5 +1,3 @@
-import DOMPurify from 'dompurify';
-
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
@@ -96,8 +94,7 @@ const SCANNER_DEFINITIONS = {
 async function aplicar_escaneres_sincronos(texto, escaneres_habilitados = {}) {
     let textoFinal = texto;
     const tagsDetectados = [];
-
-    const habilitados = escaneres_habilitados.escaneres_seguridad || escaneres_habilitados;
+    const habilitados = normalizar_escaneres(escaneres_habilitados);
 
     for (const [id, scanner] of Object.entries(SCANNER_DEFINITIONS)) {
         if (habilitados[id] && scanner.type === "sync") {
@@ -106,16 +103,24 @@ async function aplicar_escaneres_sincronos(texto, escaneres_habilitados = {}) {
             if (detected) tagsDetectados.push(id);
         }
     }
+
     return { textoFinal, tagsDetectados };
 }
 
+let cola_escaneres_async = [];
+let timer_escaneres_async = null;
+let procesando = false;
+
+const normalizar_escaneres = (escaneres) =>
+    escaneres?.escaneres_seguridad || escaneres || {};
+
 /**
  * Aplica escáneres post-renderizado para añadir iconos sin re-escanear si ya se detectó en sync.
+ * Usa un sistema de cola para enviar en lotes al backend y reducir sobrecarga IPC.
  */
 export async function aplicar_escaneres_asincronos(mensajeElement, texto, escaneres_habilitados = {}) {
     if (!mensajeElement) return;
 
-    // Obtener lo que ya se detectó en la fase síncrona (optimización)
     const tagsStr = mensajeElement.dataset.scannerTags || "";
     const tagsYaDetectados = tagsStr ? tagsStr.split(",").filter(t => t) : [];
     const contenedorIconos = document.createElement("div");
@@ -123,38 +128,9 @@ export async function aplicar_escaneres_asincronos(mensajeElement, texto, escane
 
     let huboDeteccion = tagsYaDetectados.length > 0;
 
-    // 1. Mostrar iconos de lo ya detectado
     for (const id of tagsYaDetectados) {
         if (SCANNER_DEFINITIONS[id]?.render) {
             contenedorIconos.insertAdjacentHTML("beforeend", SCANNER_DEFINITIONS[id].render());
-        }
-    }
-
-    const habilitados = escaneres_habilitados.escaneres_seguridad || escaneres_habilitados;
-
-    // 2. Correr escáneres puramente asíncronos
-    for (const [id, scanner] of Object.entries(SCANNER_DEFINITIONS)) {
-        if (habilitados[id] && scanner.type === "async" && !tagsYaDetectados.includes(id)) {
-            const result = await scanner.async_detect(texto);
-
-            // Evaluar si es una detección real (manejando objetos y booleanos)
-            let detectado = false;
-
-            if (result && typeof result === "object") {
-                // Si el objeto tiene propiedades específicas de detección, las usamos
-                // (Priorizamos la propiedad más común para cada tipo de escáner)
-                detectado = !!(result.esMaliciosa || result.suspicious || result.detected);
-            } else {
-                // Si es un valor simple (booleano), lo convertimos a booleano real
-                detectado = !!result;
-            }
-
-            if (detectado) {
-                huboDeteccion = true;
-                if (scanner.render) {
-                    contenedorIconos.insertAdjacentHTML("beforeend", scanner.render());
-                }
-            }
         }
     }
 
@@ -162,8 +138,98 @@ export async function aplicar_escaneres_asincronos(mensajeElement, texto, escane
         mensajeElement.classList.add("amenaza-detectada");
         mensajeElement.appendChild(contenedorIconos);
     }
+
+    const id_mensaje = mensajeElement.dataset.id || Math.random().toString(36).substr(2, 9);
+
+    cola_escaneres_async.push({
+        id_mensaje,
+        mensajeElement,
+        texto,
+        escaneres_habilitados: normalizar_escaneres(escaneres_habilitados),
+        tagsYaDetectados,
+        contenedorIconos,
+        huboDeteccion
+    });
+
+    if (cola_escaneres_async.length >= 10) {
+        procesar_cola_escaneres_async();
+    } else if (!timer_escaneres_async) {
+        timer_escaneres_async = setTimeout(procesar_cola_escaneres_async, 50);
+    }
 }
 
+async function procesar_cola_escaneres_async() {
+    if (procesando) return;
+    procesando = true;
+
+    clearTimeout(timer_escaneres_async);
+    timer_escaneres_async = null;
+
+    if (cola_escaneres_async.length === 0) {
+        procesando = false;
+        return;
+    }
+
+    const lote = [...cola_escaneres_async];
+    cola_escaneres_async = [];
+
+    const itemsParaLote = lote.map(item => ({
+        id_mensaje: item.id_mensaje,
+        texto: item.texto,
+        escaneres_habilitados: item.escaneres_habilitados
+    }));
+
+    try {
+        const resultadosLote = await window.escaneres_seguridad_app.detectar_lote(itemsParaLote);
+        if (!resultadosLote) return;
+
+        const mapaResultados = {};
+        for (const res of resultadosLote) {
+            if (res) mapaResultados[res.id_mensaje] = res.detecciones;
+        }
+
+        for (const item of lote) {
+            const detecciones = mapaResultados[item.id_mensaje];
+            if (!detecciones) continue;
+
+            let detectadoNuevo = false;
+
+            for (const [id, result] of Object.entries(detecciones)) {
+                if (item.tagsYaDetectados.includes(id)) continue;
+
+                const scanner = SCANNER_DEFINITIONS[id];
+                if (!scanner || scanner.type !== "async") continue;
+
+                const detectado = result && typeof result === "object"
+                    ? !!(result.esMaliciosa || result.suspicious || result.detected)
+                    : !!result;
+
+                if (detectado) {
+                    detectadoNuevo = true;
+                    item.huboDeteccion = true;
+                    if (scanner.render) {
+                        item.contenedorIconos.insertAdjacentHTML("beforeend", scanner.render());
+                    }
+                }
+            }
+
+            if (detectadoNuevo && !item.mensajeElement.classList.contains("amenaza-detectada")) {
+                item.mensajeElement.classList.add("amenaza-detectada");
+                item.mensajeElement.appendChild(item.contenedorIconos);
+            }
+        }
+
+    } catch (e) {
+        console.error("Error procesando lote de escáneres:", e);
+    } finally {
+        procesando = false;
+
+        // Si llegaron más items mientras procesábamos, lanzar otro ciclo
+        if (cola_escaneres_async.length > 0) {
+            procesar_cola_escaneres_async();
+        }
+    }
+}
 export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
     //evitar errores
     let fecha_param_usar;
@@ -284,7 +350,7 @@ const sanitizarTexto = (texto) =>
         RETURN_DOM_FRAGMENT: false,
         FORBID_ATTR: ['style', 'onerror', 'onload'],
     });
-    
+
 const parsearURLs = (texto) => {
     const urlRegex = /https?:\/\/[^\s<>"']+/g;
     return texto.replace(urlRegex, (url) =>
@@ -314,7 +380,7 @@ export const crear_mensaje_html = async ({
         const asuntoFormateado = partes.map(parte =>
             /^<(?:\w+:)?svg/i.test(parte)
                 ? `<div class="asunto-svg">${sanitizarSVG(parte)}</div>`
-            : `<span>${sanitizarTexto(parsearURLs(parte))}</span>`
+                : `<span>${sanitizarTexto(parsearURLs(parte))}</span>`
         ).join('');
         return asuntoFormateado
             ? `<div class="asunto-mensaje-chat">${asuntoFormateado}</div>`

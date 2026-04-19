@@ -27,12 +27,17 @@ const _syncCache = async (correoHash) => {
     if (user) await setUsuarioEnCache(procesarUsuario(user));
 };
 
-/**
- * Helper para desencriptar un objeto de usuario de la DB.
- */
 export function procesarUsuario(usuario) {
     if (!usuario) return null;
-    const result = { ...usuario };
+    
+    // Asegurar que trabajamos con un objeto plano
+    let result;
+    if (typeof usuario.toObject === 'function') {
+        result = usuario.toObject();
+    } else {
+        // Clonar para no mutar el original
+        result = Array.isArray(usuario) ? [...usuario] : { ...usuario };
+    }
 
     if (result.apodo && typeof result.apodo === 'object') {
         result.apodo = desencriptarDatosSistema(result.apodo);
@@ -47,6 +52,7 @@ export function procesarUsuario(usuario) {
     if (result.chats && Array.isArray(result.chats)) {
         result.chats = result.chats.map(chat => ({
             ...chat,
+            id: chat.id ? chat.id.toString() : (chat._id ? chat._id.toString() : null),
             ultimomensaje: chat.ultimomensaje ? desencriptarDatosSistema(chat.ultimomensaje) : ""
         }));
     }
@@ -54,6 +60,7 @@ export function procesarUsuario(usuario) {
     if (result.contactos && Array.isArray(result.contactos)) {
         result.contactos = result.contactos.map(c => ({
             ...c,
+            id: c.id ? c.id.toString() : (c._id ? c._id.toString() : null),
             apodo: (c.apodo && typeof c.apodo === 'object') ? desencriptarDatosSistema(c.apodo) : (c.apodo || "")
         }));
     }

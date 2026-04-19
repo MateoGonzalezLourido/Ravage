@@ -42,5 +42,8 @@ module.exports = {
     },
     detectar_homoglifos: (text) => {
         return ipcRenderer.invoke("escaneres-seguridad-app-detectar-homoglifos", text)
+    },
+    detectar_lote: (items) => {
+        return ipcRenderer.invoke("escaneres-seguridad-app-detectar-lote", items)
     }
 };

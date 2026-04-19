@@ -62,13 +62,15 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
         }
 
         if (missingIds.length > 0) {
+            log.info({ missing: missingIds.length }, "Cargando chats faltantes desde MongoDB");
             const data_obtenida = await ChatsRavage.find(
                 { _id: { $in: missingIds } }
             ).lean();
+            log.info({ loaded: data_obtenida.length }, "Chats obtenidos desde MongoDB");
 
             for (let chat of data_obtenida) {
                 if (mensajes) {
-                    chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).lean();
+                    chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).limit(50).lean();
                     await descifrarListaMensajes(chat.mensajes, chat);
                 }
                 await setChatEnCacheRaw(chat);
@@ -83,7 +85,7 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
 
             if (mensajes && !tieneMensajesFull) {
                 // El cache solo tiene IDs o nada. Cargar de DB.
-                chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: 1 }).lean();
+                chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).limit(50).lean();
                 await descifrarListaMensajes(chat.mensajes, chat);
                 // No actualizamos cache aquí porque ya tenemos la meta-info y no queremos guardar contenido
             } else if (!mensajes && tieneMensajesFull) {
@@ -122,7 +124,8 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
                 const tieneMensajesFull = chat_a_devolver.mensajes.length > 0 && typeof chat_a_devolver.mensajes[0] === 'object';
 
                 if (!tieneMensajesFull) {
-                    chat_a_devolver.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: 1 }).lean();
+                    chat_a_devolver.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: -1 }).limit(50).lean();
+                    chat_a_devolver.mensajes.reverse();
                     await descifrarListaMensajes(chat_a_devolver.mensajes, chat_a_devolver);
                 }
                 return await resolverNombresYBloqueos(chat_a_devolver, id_chat_str);
@@ -146,15 +149,20 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
         }
 
         // 2. Ir a DB
-        const data_obtenida = await ChatsRavage.findById(id_chat_str, projection).lean();
+        let data_obtenida = await ChatsRavage.findById(id_chat_str, projection).lean();
         if (!data_obtenida) return null;
 
         if (!datos_buscar || (Array.isArray(fields) && fields.includes("mensajes"))) {
-            data_obtenida.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: 1 }).lean();
+            data_obtenida.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: -1 }).limit(50).lean();
+            data_obtenida.mensajes.reverse();
             await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
         }
 
-        const [final] = await resolverNombresChats([data_obtenida]);
+        const final = await resolverNombresYBloqueos(data_obtenida, id_chat_str);
+        
+        // Prune sensitive data for Renderer
+        if (final && final.ratchet_keys) delete final.ratchet_keys;
+        
         return convertirObjectId(final);
     } catch (e) {
         log.error({ err: e }, "Error en obtener_datos_chat_unico");

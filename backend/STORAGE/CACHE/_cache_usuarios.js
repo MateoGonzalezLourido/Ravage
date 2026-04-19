@@ -11,16 +11,34 @@ const PERIODO_PROTECCION_MS = 5 * 60 * 1000;
 let _cache_frecuentes_cargada = false;
 
 /**
- * Estima el tamaño en MB de un objeto.
+ * Estima el tamaño en bytes de un objeto de forma rápida (sin stringify).
  */
+function _estimar_bytes_rapido(obj) {
+    if (obj === null || obj === undefined) return 0;
+    const type = typeof obj;
+    if (type === 'string') return obj.length * 2;
+    if (type === 'number') return 8;
+    if (type === 'boolean') return 4;
+    if (type === 'object') {
+        let size = 0;
+        if (Array.isArray(obj)) {
+            for (let i = 0; i < obj.length; i++) size += _estimar_bytes_rapido(obj[i]);
+        } else {
+            for (const key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    size += key.length * 2 + _estimar_bytes_rapido(obj[key]);
+                }
+            }
+        }
+        return size;
+    }
+    return 0;
+}
+
 function _estimar_tamano_mb(data) {
     if (!data) return 0;
-    try {
-        const bytes = Buffer.byteLength(JSON.stringify(data));
-        return bytes / (1024 * 1024);
-    } catch (e) {
-        return 0;
-    }
+    const bytes = _estimar_bytes_rapido(data);
+    return bytes / (1024 * 1024);
 }
 
 function _minificar_usuario(u) {
@@ -146,11 +164,12 @@ async function _aplicar_limites_cache() {
     
     const maxRAM_MB = forceDisk ? 256 : (isRAMOk ? limitRAM : 128);
     
-    let currentMB = _estimar_tamano_mb(Array.from(_cache_usuarios.values()));
+    const allValues = Array.from(_cache_usuarios.values());
+    let currentMB = _estimar_tamano_mb(allValues);
     
     if (currentMB > maxRAM_MB) {
         const now = Date.now();
-        const sorted = Array.from(_cache_usuarios.keys()).sort((a, b) => {
+        const keys = Array.from(_cache_usuarios.keys()).sort((a, b) => {
             const freqA = _frecuencia_usuarios.get(a) || 0;
             const freqB = _frecuencia_usuarios.get(b) || 0;
             if (freqA !== freqB) return freqA - freqB;
@@ -159,15 +178,20 @@ async function _aplicar_limites_cache() {
             return timeA - timeB;
         });
         
-        while (currentMB > maxRAM_MB && sorted.length > 0) {
-            const id = sorted.shift();
+        for (const id of keys) {
+            if (currentMB <= maxRAM_MB) break;
+
+            const user = _cache_usuarios.get(id);
+            if (!user) continue;
+
             const lastUsed = _last_used_usuarios.get(id) || 0;
-            if (now - lastUsed < PERIODO_PROTECCION_MS && sorted.length > 0) {
-                sorted.push(id);
+            if (now - lastUsed < PERIODO_PROTECCION_MS && keys.length > 1) {
                 continue;
             }
+
+            const itemSize = _estimar_tamano_mb(user);
             _cache_usuarios.delete(id);
-            currentMB = _estimar_tamano_mb(Array.from(_cache_usuarios.values()));
+            currentMB -= itemSize;
         }
     }
 }

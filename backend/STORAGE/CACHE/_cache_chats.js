@@ -18,16 +18,36 @@ const ESQUEMA_CACHE_CHAT = {
     fecha_creacion:     null        // Date
 };
 /**
- * Estima el tamaño en MB de un objeto.
+ * Estima el tamaño en bytes de un objeto de forma rápida (sin stringify).
+ * @param {any} obj 
+ * @returns {number} bytes
  */
+function _estimar_bytes_rapido(obj) {
+    if (obj === null || obj === undefined) return 0;
+    const type = typeof obj;
+    if (type === 'string') return obj.length * 2;
+    if (type === 'number') return 8;
+    if (type === 'boolean') return 4;
+    if (type === 'object') {
+        let size = 0;
+        if (Array.isArray(obj)) {
+            for (let i = 0; i < obj.length; i++) size += _estimar_bytes_rapido(obj[i]);
+        } else {
+            for (const key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    size += key.length * 2 + _estimar_bytes_rapido(obj[key]);
+                }
+            }
+        }
+        return size;
+    }
+    return 0;
+}
+
 function _estimar_tamano_mb(data) {
     if (!data) return 0;
-    try {
-        const bytes = Buffer.byteLength(JSON.stringify(data));
-        return bytes / (1024 * 1024);
-    } catch (e) {
-        return 0;
-    }
+    const bytes = _estimar_bytes_rapido(data);
+    return bytes / (1024 * 1024);
 }
 
 function _minificar_chat(chat) {
@@ -168,35 +188,37 @@ async function _aplicar_limites_cache() {
         ? (isDiskOk ? 256 : 128)
         : (isRAMOk ? limitRAM : 128);
 
-    let currentMB = _estimar_tamano_mb(Array.from(_cache_chats.values()));
+    const allValues = Array.from(_cache_chats.values());
+    let currentMB = _estimar_tamano_mb(allValues);
 
     if (currentMB > maxRAM_MB) {
         const now = Date.now();
-        const sorted = Array.from(_cache_chats.keys()).sort((a, b) => {
+        const keys = Array.from(_cache_chats.keys()).sort((a, b) => {
             const freqA = _frecuencia_chats.get(a) || 0;
             const freqB = _frecuencia_chats.get(b) || 0;
 
             if (freqA !== freqB) return freqA - freqB;
 
-            // Tie-break: el más viejo primero
             const timeA = _last_used_chats.get(a) || 0;
             const timeB = _last_used_chats.get(b) || 0;
             return timeA - timeB;
         });
 
-        while (currentMB > maxRAM_MB && sorted.length > 0) {
-            const id = sorted.shift();
+        for (const id of keys) {
+            if (currentMB <= maxRAM_MB) break;
 
-            // Protección: si es muy reciente, intentamos no borrarlo a menos que no haya otra opción
+            const chat = _cache_chats.get(id);
+            if (!chat) continue;
+
+            // Protección: si es muy reciente, intentamos no borrarlo
             const lastUsed = _last_used_chats.get(id) || 0;
-            if (now - lastUsed < PERIODO_PROTECCION_MS && sorted.length > 0) {
-                // Si aún tenemos más candidatos en la lista sorted, movemos este al final y probamos con el siguiente
-                sorted.push(id);
+            if (now - lastUsed < PERIODO_PROTECCION_MS && keys.length > 1) {
                 continue;
             }
 
+            const itemSize = _estimar_tamano_mb(chat);
             _cache_chats.delete(id);
-            currentMB = _estimar_tamano_mb(Array.from(_cache_chats.values()));
+            currentMB -= itemSize;
         }
     }
 }

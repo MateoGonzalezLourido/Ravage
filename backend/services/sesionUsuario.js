@@ -26,7 +26,6 @@ import { generarLlavesRSA, hashDatosSistema } from './cryptoService.js';
 import { clearCacheChats } from '../STORAGE/CACHE/_cache_chats.js';
 import { clearCacheUsuarios, setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
 import { clearCacheArchivosDescargados } from '../STORAGE/CACHE/_cache_archivos_descargados.js';
-import { clearCacheUrlImgExtensiones } from '../STORAGE/CACHE/_cache_img_extensiones.js';
 
 import {
     comprobarContrasenaValidaciones,
@@ -219,11 +218,8 @@ async function ValidarCodeRegistroUsuario({ correo, code = "" }) {
         }
 
         parsedData.intentos = intentos;
-        if (typeof code_db.data === 'string') {
-            await ValidationCode.updateOne({ _id: code_db._id }, { $set: { data: parsedData } });
-        } else {
-            await ValidationCode.updateOne({ _id: code_db._id }, { $set: { "data.intentos": intentos } });
-        }
+        const encryptedData = encriptarDatosSistema(parsedData);
+        await ValidationCode.updateOne({ _id: code_db._id }, { $set: { data: encryptedData } });
         return { success: false, message: "Fallo al crear el usuario" }
     }
 
@@ -431,8 +427,7 @@ async function cerrarSesionUsuario(correo) {
             clearFileSession('sessionFile'),
             clearCacheChats(),
             clearCacheUsuarios(),
-            clearCacheArchivosDescargados(),
-            clearCacheUrlImgExtensiones()
+            clearCacheArchivosDescargados()
         ];
 
         if (data && data.token) {

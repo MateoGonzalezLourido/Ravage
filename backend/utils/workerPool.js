@@ -183,7 +183,7 @@ class WorkerPool {
     }
 
     /**
-     * Envía una tarea a un worker específico, asegurando que los datos sean serializables.
+     * Envía una tarea a un worker específico.
      */
     _enviarAlWorker(indice, tarea, resolve, reject) {
         const id = ++this._idCounter;
@@ -199,41 +199,18 @@ class WorkerPool {
         this.pendientes.set(id, { resolve, reject, timer, workerIndex: indice });
 
         try {
-            // Clonación profunda segura (elimina tipos de Mongoose/Clases que dan problemas en Workers)
-            const datosLimpios = this._clonarSeguro(tarea.datos);
-            this.workers[indice].postMessage({ id, tipo: tarea.tipo, datos: datosLimpios });
+            // Nota: Confiamos en el "Structured Clone Algorithm" nativo de postMessage.
+            // Es mucho más rápido y maneja circularidades (en Node 18+) mejor que una función recursiva.
+            // Solo debemos asegurar que tarea.datos no contenga funciones ni proxies complejos.
+            this.workers[indice].postMessage({ id, tipo: tarea.tipo, datos: tarea.datos });
         } catch (err) {
             clearTimeout(timer);
             this.pendientes.delete(id);
             this.disponibles[indice] = true;
+            log.error({ err, tipo: tarea.tipo }, "Error de serialización IPC");
             reject(new Error(`Error al serializar datos para el worker: ${err.message}`));
             this._procesarCola();
         }
-    }
-
-    /**
-     * Limpia objetos complejos (como ObjectIds de Mongoose) para que sean seguros para workers.
-     */
-    _clonarSeguro(obj) {
-        if (obj === null || typeof obj !== 'object') return obj;
-        if (obj instanceof Date) return obj; // Structured clone soporta Date
-        
-        // Si es un ObjectId de Mongoose o similar
-        if (obj._bsontype === 'ObjectId' || (obj.constructor && obj.constructor.name === 'ObjectId')) {
-            return obj.toString();
-        }
-
-        if (Array.isArray(obj)) {
-            return obj.map(item => this._clonarSeguro(item));
-        }
-
-        const cleanObj = {};
-        for (const key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                cleanObj[key] = this._clonarSeguro(obj[key]);
-            }
-        }
-        return cleanObj;
     }
 
     /**
@@ -377,5 +354,32 @@ export async function terminarCryptoPool() {
     if (instanciaPool) {
         await instanciaPool.terminar();
         instanciaPool = null;
+    }
+}
+
+// ==========================================
+// SINGLETON - Pool de Escaner Workers
+// ==========================================
+
+let escanerInstanciaPool = null;
+
+export function getEscanerPool() {
+    if (!escanerInstanciaPool) {
+        // Reducimos un poco la cantidad para no saturar todo el CPU solo con escáneres,
+        // aunque workerPool calcula en base a CPUs disponibles
+        const numWorkers = Math.max(1, calcularNumeroWorkers() - 1);
+        const workerPath = path.join(__dirname, 'escanerWorker.js');
+        escanerInstanciaPool = new WorkerPool(workerPath, numWorkers, {
+            timeoutMs: 30000,
+            maxCola: 500
+        });
+    }
+    return escanerInstanciaPool;
+}
+
+export async function terminarEscanerPool() {
+    if (escanerInstanciaPool) {
+        await escanerInstanciaPool.terminar();
+        escanerInstanciaPool = null;
     }
 }

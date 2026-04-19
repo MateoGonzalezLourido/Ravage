@@ -142,10 +142,16 @@ const OPERACIONES = {
                     }
 
                     // Ratchet forward
-                    while (current_state.counter < m.ratchet_info.iteration) {
+                    let iterations_safety = 0;
+                    while (current_state.counter < m.ratchet_info.iteration && iterations_safety < 10000) {
                         const { nextChainKey } = _ratchetChainKey(current_state.ck);
                         current_state.ck = nextChainKey;
                         current_state.counter++;
+                        iterations_safety++;
+                    }
+
+                    if (iterations_safety >= 10000) {
+                        throw new Error("Ratchet safety limit exceeded");
                     }
 
                     const { messageKey, nextChainKey } = _ratchetChainKey(current_state.ck);
