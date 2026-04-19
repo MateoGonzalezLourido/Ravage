@@ -48,7 +48,50 @@ const __dirname = path.dirname(__filename);
 
 let socket;
 let mainWindow;
+let ipcHandlersRegistered = false;
 
+async function registerAllHandlers(window, sock) {
+    if (ipcHandlersRegistered) return;
+    ipcHandlersRegistered = true;
+
+    const [
+        { registerSessionHandlers },
+        { registerValidadoresHandlers },
+        { registerChatHandlers },
+        { registerSocialHandlers },
+        { registerCacheImgExtensionesHandlers },
+        { registerCacheArchivosDescargadosHandlers },
+        { registerCachePersistentHandlers },
+        { registerEscaneresAppHandlers },
+        { getAjustesAppFile, saveAjustesAppFile }
+    ] = await Promise.all([
+        import('./backend/ipc/session_ipc.js'),
+        import('./backend/ipc/validadores_ipc.js'),
+        import('./backend/ipc/chat_ipc.js'),
+        import('./backend/ipc/social_ipc.js'),
+        import('./backend/ipc/cache_img_extension_ipc.js'),
+        import('./backend/ipc/cache_archivos_descargados_ipc.js'),
+        import('./backend/ipc/cache_persistent_ipc.js'),
+        import('./backend/ipc/escaneres_app_ipc.js'),
+        import('./backend/services/controladorArchivos.js')
+    ]);
+
+    registerSessionHandlers(window);
+    registerValidadoresHandlers();
+    registerChatHandlers(window, sock);
+    registerSocialHandlers();
+    registerCacheImgExtensionesHandlers();
+    registerCacheArchivosDescargadosHandlers();
+    registerCachePersistentHandlers();
+    registerEscaneresAppHandlers();
+
+    ipcMain.handle("obtener-ajustes-app", async (_, nombre) => {
+        return await getAjustesAppFile(nombre);
+    });
+    ipcMain.handle("guardar-ajustes-app", async (_, data) => {
+        return await saveAjustesAppFile({ data, create: false });
+    });
+}
 
 async function createMainWindowHome(AutoLogin = false) {
     const { BrowserWindow } = await import('./backend/utils/libs.js');
@@ -92,54 +135,8 @@ async function createMainWindowHome(AutoLogin = false) {
         );
     });
 
-    const [
-        { registerSessionHandlers },
-        { registerValidadoresHandlers },
-        { getAjustesAppFile, saveAjustesAppFile }
-    ] = await Promise.all([
-        import('./backend/ipc/session_ipc.js'),
-        import('./backend/ipc/validadores_ipc.js'),
-        import('./backend/services/controladorArchivos.js')
-    ]);
-
-    registerSessionHandlers(mainWindow);
-    registerValidadoresHandlers();
-
-    // Registrar ajustes ANTES de que cargue la página para evitar race condition con el renderer
-    ipcMain.handle("obtener-ajustes-app", async (_, nombre) => {
-        return await getAjustesAppFile(nombre)
-    })
-    ipcMain.handle("guardar-ajustes-app", async (_, data) => {
-        return await saveAjustesAppFile({ data, create: false })
-    })
-
-
-    mainWindow.once('ready-to-show', async () => {
-
-
-        const [
-            { registerChatHandlers },
-            { registerSocialHandlers },
-            { registerCacheImgExtensionesHandlers },
-            { registerCacheArchivosDescargadosHandlers },
-            { registerCachePersistentHandlers },
-            { registerEscaneresAppHandlers }
-        ] = await Promise.all([
-            import('./backend/ipc/chat_ipc.js'),
-            import('./backend/ipc/social_ipc.js'),
-            import('./backend/ipc/cache_img_extension_ipc.js'),
-            import('./backend/ipc/cache_archivos_descargados_ipc.js'),
-            import('./backend/ipc/cache_persistent_ipc.js'),
-            import('./backend/ipc/escaneres_app_ipc.js')
-        ]);
-
-        registerChatHandlers(mainWindow, socket);
-        registerSocialHandlers();
-        registerCacheImgExtensionesHandlers();
-        registerCacheArchivosDescargadosHandlers();
-        registerCachePersistentHandlers();
-        registerEscaneresAppHandlers();
-    });
+    // Registrar handlers una sola vez
+    await registerAllHandlers(mainWindow, socket);
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
