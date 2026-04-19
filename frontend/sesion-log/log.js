@@ -1,3 +1,5 @@
+import { optimizar_ventana } from '../global/optimizar_ventana.js';
+optimizar_ventana()
 // --- Cache DOM Elements ---
 let elements;
 

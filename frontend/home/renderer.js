@@ -1,3 +1,6 @@
+/* optimizacion ventana */
+import { optimizar_ventana } from '../global/optimizar_ventana.js';
+optimizar_ventana()
 // ─── IMPORTS DE COMPONENTES Y UTILIDADES ──────────────────────────────────
 import { desplegar_menu_añadir_chat, set_callback_actualizar_listas } from './ui/añadir_chats_usuarios.js'
 import { mostrar_datos_chat_usaurios } from './ui/chat.js'

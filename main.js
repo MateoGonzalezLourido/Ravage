@@ -130,18 +130,6 @@ async function createMainWindowHome(AutoLogin = false) {
     mainWindow.maximize();
     mainWindow.show();
 
-    // Pausar animaciones CSS cuando está minimizado
-    mainWindow.on('minimize', () => {
-        mainWindow.webContents.executeJavaScript(
-            `document.body.style.setProperty('--animate', 'paused')`
-        );
-    });
-    mainWindow.on('restore', () => {
-        mainWindow.webContents.executeJavaScript(
-            `document.body.style.setProperty('--animate', 'running')`
-        );
-    });
-
     // Registrar handlers una sola vez
     await registerAllHandlers(mainWindow, socket);
 }
