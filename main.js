@@ -213,7 +213,7 @@ app.on('browser-window-focus', () => {
         mainWindow.webContents.setFrameRate(60);
     }
 });
-
+//detectores para crash
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     if (mainWindow) {

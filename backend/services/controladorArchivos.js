@@ -25,7 +25,7 @@ const RTDF = {
     cacheHistorialBusquedasAñadir: path.join(ruta_app_data, name_carpeta, 'cache_hist_buscar_add.json')
 };
 
-import {AJUSTES_APP_DEFAULT} from '../STORAGE/ajustes_defecto.js'
+import { AJUSTES_APP_DEFAULT } from '../STORAGE/ajustes_defecto.js'
 
 // --- UTILIDADES INTERNAS REUTILIZABLES ---
 
@@ -102,19 +102,19 @@ async function saveCacheHistorialBusquedasAñadirFile(data) {
 
 async function saveAjustesAppFile({ data = {}, create = false }) {
     await asegurarCarpeta();
-    
+
     // Si create es true, empezamos de cero con los valores por defecto.
     // Si create es false (por defecto ahora), leemos lo que ya hay.
     let data_usar = create ? { ...AJUSTES_APP_DEFAULT } : await getAjustesAppFile();
-    
+
     // Combinar con los nuevos datos recibidos
     data_usar = { ...data_usar, ...data };
 
     try {
         const encrypted = await CifrarDatosArchivos(data_usar, 'global');
         await fs.promises.writeFile(
-            RTDF.ajustesAPP, 
-            JSON.stringify(encrypted, null, 2), 
+            RTDF.ajustesAPP,
+            JSON.stringify(encrypted, null, 2),
             { encoding: "utf8" }
         );
         return true;
@@ -131,14 +131,14 @@ async function readFileSession(rutaKey, cifrado = true) {
     try {
         const rawstr = await fs.promises.readFile(filePath, { encoding: "utf8" });
         if (!rawstr) return null;
-        
+
         const raw = JSON.parse(rawstr);
         if (!cifrado) return raw;
 
         // Determinar la clave secreta a usar
         let secretKey;
         const useGlobalKey = ['sessionFile', 'identity', 'cacheChatsFrecuentes', 'cacheUsuariosFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile', 'cacheHistorialBusquedasAñadir'].includes(rutaKey);
-        
+
         if (useGlobalKey) {
             secretKey = SECRET_KEY_COKKIE;
         } else {
@@ -151,7 +151,7 @@ async function readFileSession(rutaKey, cifrado = true) {
         }
 
         const finalKey = Buffer.isBuffer(secretKey) ? secretKey : Buffer.from(secretKey, "hex");
-        
+
         const decipher = createDecipheriv(algorithm, finalKey, Buffer.from(raw.iv, "hex"));
         decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
 
@@ -170,9 +170,9 @@ async function readFileSession(rutaKey, cifrado = true) {
 }
 //@param nombre: string | array | null
 async function getAjustesAppFile(nombre = null) {
-    
+
     if (!fs.existsSync(RTDF.ajustesAPP)) {
-        await saveAjustesAppFile({ data: AJUSTES_APP_DEFAULT });
+        await saveAjustesAppFile({ create: true });
         return nombre ? AJUSTES_APP_DEFAULT[nombre] : { ...AJUSTES_APP_DEFAULT };
     }
 
@@ -199,9 +199,9 @@ async function getAjustesAppFile(nombre = null) {
         }
 
         const merged = { ...AJUSTES_APP_DEFAULT, ...obj };
-        
+
         if (!nombre) return merged;
-        
+
         if (Array.isArray(nombre)) {
             return nombre.reduce((acc, key) => {
                 acc[key] = merged[key];
@@ -249,12 +249,12 @@ async function CifrarDatosArchivos(data, especial) {
     const finalKey = Buffer.isBuffer(secretKey) ? secretKey : Buffer.from(secretKey, "hex");
     const iv = randomBytes(12);
     const cipher = createCipheriv(algorithm, finalKey, iv);
-    
+
     const encrypted = Buffer.concat([
         cipher.update(JSON.stringify(data)),
         cipher.final()
     ]);
-    
+
     return {
         iv: iv.toString("hex"),
         tag: cipher.getAuthTag().toString("hex"),
