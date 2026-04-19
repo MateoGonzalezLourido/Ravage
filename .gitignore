@@ -12,5 +12,9 @@ pino-*.log
 # package-lock.json NO debe ignorarse para consistencia de versiones en equipo
 
 cosasHacer/
-.vscode/
 preload.bundle.cjs
+
+#configuracion de vscode/proyecto
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json

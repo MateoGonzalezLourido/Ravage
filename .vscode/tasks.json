@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-preload",
+      "type": "shell",
+      "command": "npm run build-preload"
+    }
+  ]
+}

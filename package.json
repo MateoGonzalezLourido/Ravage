@@ -17,6 +17,7 @@
   "scripts": {
     "start": "npm run build-preload && electron .",
     "build-preload": "esbuild preload.cjs --bundle --platform=node --external:electron --outfile=preload.bundle.cjs",
+    "debug": "electron --trace-warnings --trace-deprecation --inspect=5858 .",
     "start-railway": "node backend/servidores/serverRailway.js",
     "test": "vitest run"
   },
