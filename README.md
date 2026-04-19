@@ -20,11 +20,11 @@
 
 Ravage no está diseñada para competir con WhatsApp, Telegram o Signal. No tiene servidores globales, no escala para millones de usuarios y no incluye videollamadas ni llamadas de voz.
 
-Está pensada para un uso concreto: **grupos pequeños o medianos que quieren comunicarse de forma privada sin depender de ninguna empresa**. Si puedes levantar un servidor propio (o usar localhost para una red local), tienes una app de mensajería funcional con E2EE real bajo tu control total.
+Está pensada para un uso concreto: **grupos pequeños o medianos que quieren comunicarse de forma privada sin depender de ninguna empresa**. Si puedes levantar un servidor propio, tienes una app de mensajería funcional con E2EE real bajo tu control total.
 
 Lo que implica este enfoque en la práctica:
 
-- **Sin servidor global** — necesitas tu propia instancia. Esto da control total, pero significa que tú (o alguien del grupo) os encargáis de la infraestructura.
+- **Sin servidor global** — necesitas tu propia instancia con acceso a MongoDB. Esto da control total, pero significa que tú (o alguien del grupo) os encargáis de la infraestructura.
 - **Escalabilidad limitada** — funciona bien para equipos pequeños; no está optimizada para miles de usuarios concurrentes.
 - **Sin llamadas** — solo mensajes de texto y transferencia de archivos cifrada.
 - **Caché configurable** — el sistema multinivel se ajusta automáticamente a los recursos disponibles, y puedes configurar manualmente los límites de RAM y disco si quieres un footprint mínimo.
