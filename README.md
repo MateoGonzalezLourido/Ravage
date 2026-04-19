@@ -16,19 +16,20 @@
 
 **Ravage**Ravage es una aplicación de mensajería desktop diseñada como alternativa privada a las apps comerciales. En lugar de depender de servidores de terceros, cada instancia corre en tu propia infraestructura — basta con configurar un .env. Técnicamente, implementa cifrado extremo a extremo con un protocolo Sender Key Ratchet, transferencia de archivos cifrada en streaming con AES-256-GCM, autenticación multifactor con verificación por email, y un sistema de caché adaptativo que ajusta su estrategia según los recursos del sistema.
 
-**⚠️ Limitaciones y alcance**
+## ⚠️ Limitaciones y alcance
+
 Ravage no está diseñada para competir con WhatsApp, Telegram o Signal. No tiene servidores globales, no escala para millones de usuarios y no incluye videollamadas ni llamadas de voz.
-Está pensada para un uso concreto: grupos pequeños o medianos que quieren comunicarse de forma privada sin depender de ninguna empresa. Si puedes levantar un servidor propio (o usar localhost para una red local), tienes una app de mensajería funcional con E2EE real bajo tu control total.
+
+Está pensada para un uso concreto: **grupos pequeños o medianos que quieren comunicarse de forma privada sin depender de ninguna empresa**. Si puedes levantar un servidor propio (o usar localhost para una red local), tienes una app de mensajería funcional con E2EE real bajo tu control total.
+
 Lo que implica este enfoque en la práctica:
 
-Sin servidor global — necesitas tu propia instancia. Esto da control total, pero significa que tú (o alguien del grupo) os encargáis de la infraestructura.
-Escalabilidad limitada — funciona bien para equipos pequeños; no está optimizada para miles de usuarios concurrentes.
-Sin llamadas — solo mensajes de texto y transferencia de archivos cifrada.
-Caché configurable — el sistema multinivel se ajusta automáticamente a los recursos disponibles, y puedes configurar manualmente los límites de RAM y disco si quieres un footprint mínimo.
-
+- **Sin servidor global** — necesitas tu propia instancia. Esto da control total, pero significa que tú (o alguien del grupo) os encargáis de la infraestructura.
+- **Escalabilidad limitada** — funciona bien para equipos pequeños; no está optimizada para miles de usuarios concurrentes.
+- **Sin llamadas** — solo mensajes de texto y transferencia de archivos cifrada.
+- **Caché configurable** — el sistema multinivel se ajusta automáticamente a los recursos disponibles, y puedes configurar manualmente los límites de RAM y disco si quieres un footprint mínimo.
 
 Si buscas algo listo para producción a gran escala, Ravage no es la herramienta. Si buscas privacidad real sin intermediarios y controlas la infraestructura, sí lo es.
-
 [Instalación](#-instalación) · [Arquitectura](#-arquitectura) · [Cifrado](#-sistema-de-cifrado-en-profundidad) · [Servidor](#-modos-de-servidor) · [Caché](#-sistema-de-caché-multinivel)
 
 </div>
