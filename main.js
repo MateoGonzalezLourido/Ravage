@@ -60,7 +60,6 @@ async function registerAllHandlers(window, sock) {
         { registerValidadoresHandlers },
         { registerChatHandlers },
         { registerSocialHandlers },
-        { registerCacheImgExtensionesHandlers },
         { registerCacheArchivosDescargadosHandlers },
         { registerCachePersistentHandlers },
         { registerEscaneresAppHandlers },
@@ -70,7 +69,6 @@ async function registerAllHandlers(window, sock) {
         import('./backend/ipc/validadores_ipc.js'),
         import('./backend/ipc/chat_ipc.js'),
         import('./backend/ipc/social_ipc.js'),
-        import('./backend/ipc/cache_img_extension_ipc.js'),
         import('./backend/ipc/cache_archivos_descargados_ipc.js'),
         import('./backend/ipc/cache_persistent_ipc.js'),
         import('./backend/ipc/escaneres_app_ipc.js'),
@@ -81,7 +79,6 @@ async function registerAllHandlers(window, sock) {
     registerValidadoresHandlers();
     registerChatHandlers(window, sock);
     registerSocialHandlers();
-    registerCacheImgExtensionesHandlers();
     registerCacheArchivosDescargadosHandlers();
     registerCachePersistentHandlers();
     registerEscaneresAppHandlers();

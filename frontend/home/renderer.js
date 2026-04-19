@@ -97,11 +97,11 @@ function inicializar_eventos_globales() {
 
         // Click en un item de la lista de archivos
         const itemAdjunto = e.target.closest(".ventana-archivos-mensaje-cuerpo-componente-item")
-        if (itemAdjunto) { 
+        if (itemAdjunto) {
             e.preventDefault();
             e.stopPropagation();
             mostrar_menu_contextual_archivo(e, itemAdjunto);
-            return 
+            return
         }
     })
 }
@@ -158,25 +158,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("[Renderer] DOMContentLoaded - Iniciando arranque...");
 
     try {
-    // 1. Procesos de arranque
+        // 1. Procesos de arranque
         console.log("[Renderer] Lanzando mensaje de bienvenida...");
-    mensaje_bienvenida_usuario().catch(e => console.error("Error bienvenida:", e))
+        mensaje_bienvenida_usuario().catch(e => console.error("Error bienvenida:", e))
 
         console.log("[Renderer] Cargando lista de chats inicial...");
         await INICIO_CHAT_MENU_PRINCIPAL()
         console.log("[Renderer] Lista de chats inicial cargada.");
 
-    // 2. Preparar el entorno
+        // 2. Preparar el entorno
         console.log("[Renderer] Configurando eventos globales...");
-    preparar_interfaz_y_servicios()
+        preparar_interfaz_y_servicios()
 
-    // 3. Sincronización del Buzón (Backend IPC)
+        // 3. Sincronización del Buzón (Backend IPC)
         console.log("[Renderer] Conectando buzón de notificaciones...");
-    inicializar_buzon_notificaciones()
+        inicializar_buzon_notificaciones()
         console.log("[Renderer] Buzón conectado.");
 
-    // 4. Asegurar que todas las imágenes existentes no sean arrastrables
-    document.querySelectorAll('img').forEach(img => img.draggable = false);
+        // 4. Asegurar que todas las imágenes existentes no sean arrastrables
+        document.querySelectorAll('img').forEach(img => img.draggable = false);
 
         console.log("[Renderer] Arranque completado con éxito.");
     } catch (err) {

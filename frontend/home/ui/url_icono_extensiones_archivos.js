@@ -11,57 +11,148 @@ Si no existe icono para esa extension la url sera la de "cualquiera.svg"(icono p
 Esta cache esta optimizada para remplazar las ultimas entradas, es decir, las extensiones mas usadas deberan ir en el .json al principio, lo que aumenta la probabilidad de que no se remplacen.
 */
 
-//variables principales compartidas
+// Variables principales compartidas
 const carpetaPrincipal = '../recursos/extensionesArchivos';
 const archivoJSON = 'img_extensiones.json';
 const img_defecto = "cualquiera.svg"
 
+//ajustes cache
+const LIMITE_RAM_MB = 256//TODO: obtenerlo de ajustes usuario backend
+const TIEMPO_EXPIRACION = 10 * 60 * 1000 // 10 minutos //TODO: obtenerlo de ajustes usuario backend
+// Cache local al módulo para evitar IPC/Fetch innecesarios
+let _cache_local_iconos = null;
+let timer_limpieza = null
+
+/**
+ *@description Obtener la url del icono de una extension de archivo
+ *@param {string} extension - Extension del archivo
+ *@returns {Array<string, boolean>}
+ */
 export async function url_icono_extension_img(extension) {
-    //ocasiones que daria problemas o siempre devolveria el icono por defecto
-    if (!extension || extension === "" || typeof extension !== "string") return [`${carpetaPrincipal}/${img_defecto}`, false]
+    if (!extension || extension === "" || typeof extension !== "string") {
+        return [`${carpetaPrincipal}/${img_defecto}`, false];
+    }
+    const extension_usar = (extension[0] === '.' ? extension.slice(1) : extension).toLowerCase();
 
-    //eliminar . inicial si existe (MOVÉNDOLO AL PRINCIPIO PARA EVITAR BUGS)
-    const extension_usar = (extension[0] === '.' ? extension.replace(".", "") : extension).toLowerCase()
-
-    let _cache_img_extensiones = null;
-    if (typeof window.cache_url_img_extensiones.getCacheUrlImgExtensiones === 'function') {
-        _cache_img_extensiones = await window.cache_url_img_extensiones.getCacheUrlImgExtensiones();
+    // 1. Intentar usar cache local del módulo (el más rápido)
+    if (_cache_local_iconos && _cache_local_iconos[extension_usar]) {
+        return [`${carpetaPrincipal}/${_cache_local_iconos[extension_usar]}`, true];
     }
 
-    let img_usar;
-    if (!_cache_img_extensiones) {
-        _cache_img_extensiones = await getDataImgExtensiones()
-        img_usar = _cache_img_extensiones[extension_usar] || img_defecto
-    }
-    else {
-        img_usar = _cache_img_extensiones[extension_usar] || img_defecto
-        if (img_usar === img_defecto) {
-            _cache_img_extensiones = await getDataImgExtensiones()
-            img_usar = _cache_img_extensiones[extension_usar] || img_defecto
-        }
 
-        if (img_usar !== img_defecto) {
-            window.cache_url_img_extensiones.setCacheUrlImgExtensiones({ [extension_usar]: img_usar })
-        }
+    if (_cache_local_iconos && _cache_local_iconos[extension_usar]) {
+        return [`${carpetaPrincipal}/${_cache_local_iconos[extension_usar]}`, true];
     }
 
-    //conseguir icono
-    const url_img = `${carpetaPrincipal}/${img_usar}`
-    const identificado = img_usar !== img_defecto
+    // 3. Si no está en cache, cargar el JSON (vía Fetch)
+    const data = await getDataImgExtensiones();
 
-    return [url_img, identificado]
+    const img_usar = data[extension_usar] || img_defecto;
+    const identificado = img_usar !== img_defecto;
+
+    // Guardar en cache persistente si se encontró algo nuevo
+    setCacheUrlImgExtensiones({ [extension_usar]: img_usar });
+
+    return [`${carpetaPrincipal}/${img_usar}`, identificado];
 }
 
+/*
+*@description Obtener datos del archivo de imagenes mediante fetch y crear cache (solo se ejecuta si no existe cache)
+*@returns {Object}
+*/
 async function getDataImgExtensiones() {
-    let data;
     try {
-        const res = await fetch(`${carpetaPrincipal}/${archivoJSON}`)
-        data = await res.json()
+        const res = await fetch(`${carpetaPrincipal}/${archivoJSON}`);
+        if (!res.ok) throw new Error("Status " + res.status);
+        const data = await res.json();
+
+        setCacheUrlImgExtensiones(data);
+        return data;
     } catch (err) {
-        console.error("Error al cargar img_extensiones.json:", err)
-        data = {}
+        console.error("Error al cargar img_extensiones.json:", err);
+        return {};
+    }
+}
+
+/*
+*@description Guardar datos en cache inteligentemente
+*@param {Object} cache - Datos a guardar en cache
+*@returns {Promise<boolean>}
+*/
+async function setCacheUrlImgExtensiones(cache = "c") {
+    // reseteat cache
+    if (cache === "c" || cache == {}) {
+        _cache_local_iconos = null;
+        return true;
     }
 
-    window.cache_url_img_extensiones.setCacheUrlImgExtensiones(data)
-    return data
+    // validación
+    if (!cache || typeof cache !== "object" || Object.keys(cache).length === 0) {
+        return false;
+    }
+
+    const limite = LIMITE_RAM_MB;
+
+    if (!_cache_local_iconos) _cache_local_iconos = {};
+
+    const actuales = Object.entries(_cache_local_iconos);
+    const nuevas = Object.entries(cache);
+
+    const espacioDisponible = limite - actuales.length;
+
+    if (nuevas.length >= limite) {
+        _cache_local_iconos = Object.fromEntries(nuevas.slice(-limite));
+    } else if (espacioDisponible < nuevas.length) {
+        const mantener = actuales.slice(nuevas.length - espacioDisponible);
+        _cache_local_iconos = Object.fromEntries([
+            ...mantener,
+            ...nuevas
+        ]);
+    } else {
+        // si hay espacio → añadir directamente
+        Object.assign(_cache_local_iconos, cache);
+    }
+
+    // Aplicar límite de RAM de 256MB (igual que historial de archivos descargados)
+    while (_estimar_tamano_cache_mb(_cache_local_iconos) > LIMITE_RAM_MB && Object.keys(_cache_local_iconos).length > 0) {
+        const keys = Object.keys(_cache_local_iconos)
+        delete _cache_local_iconos[keys[0]]
+    }
+
+    resetearTimerLimpieza()
+    return true
+}
+/*
+*@description Estimar tamaño de cache en mb
+*@param {Object} data - Datos a estimar tamaño
+*@returns {number}
+*/
+function _estimar_tamano_cache_mb(data) {
+    if (!data) return 0
+    try {
+        // En Node.js (backend), Buffer.byteLength es más eficiente que TextEncoder
+        const bytes = Buffer.byteLength(JSON.stringify(data))
+        return bytes / (1024 * 1024)
+    } catch (e) {
+        return 0
+    }
+}
+/*
+*@description Obtener cache de url de imagenes de extensiones
+*@returns {Object}
+*/
+async function getCacheUrlImgExtensiones() {
+    resetearTimerLimpieza()
+    /*si esta vacio devolver siempre null */
+    return _cache_img_extensiones
+}
+/*
+*@description Resetear timer de limpieza
+*/
+function resetearTimerLimpieza() {
+    if (timer_limpieza) clearTimeout(timer_limpieza)
+    timer_limpieza = setTimeout(() => {
+        _cache_img_extensiones = null
+        timer_limpieza = null
+    }, TIEMPO_EXPIRACION)
 }

@@ -1,20 +1,6 @@
 const { ipcRenderer } = require('electron');
 
 module.exports = {
-    cache_url_img_extensiones: {
-        getCacheUrlImgExtensiones: () => {
-            return ipcRenderer.invoke("get-cache-url-img-extensiones")
-        },
-        setCacheUrlImgExtensiones: (cache) => {
-            return ipcRenderer.invoke("set-cache-url-img-extensiones", cache)
-        },
-        setLimiteCacheUrlImgExtensiones: (limite) => {
-            return ipcRenderer.invoke("set-limite-cache-url-img-extensiones", limite)
-        },
-        clearCacheUrlImgExtensiones: () => {
-            return ipcRenderer.invoke("clear-cache-url-img-extensiones")
-        }
-    },
     cache_persistente: {
         getChatCache: (id) => ipcRenderer.invoke("get-chat-cache", id),
         setChatCache: (chat) => ipcRenderer.invoke("set-chat-cache", chat),
