@@ -1,6 +1,8 @@
 // === Arranque ===
 // Cachea bytecode V8 para arranques posteriores más rápidos
 app.commandLine.appendSwitch('v8-cache-options', 'code');
+//limite de mb cache del motor v8
+const HEAP_LIMIT_MB = 512;
 
 // === GPU / Renderizado ===
 // Rasterización por GPU para scroll y animaciones más fluidos
@@ -10,7 +12,7 @@ app.commandLine.appendSwitch('enable-zero-copy');
 
 // === Memoria ===
 // Limita el heap V8 a 512MB (por defecto puede crecer sin límite)
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
+app.commandLine.appendSwitch('js-flags', `--max-old-space-size=${HEAP_LIMIT_MB} --expose-gc`);
 // === Batería / Background ===
 // Reduce prioridad del renderer cuando la ventana está en segundo plano
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
@@ -112,7 +114,10 @@ async function createMainWindowHome(AutoLogin = false) {
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
-            additionalArguments: [`--start=${AutoLogin}`],
+            additionalArguments: [
+                `--start=${AutoLogin}`,
+                `--js-flags=--max-old-space-size=${HEAP_LIMIT_MB}` // Aplicar también al renderizador el limite de memoria
+            ],
             spellcheck: false,
             v8CacheOptions: 'bypassHeatCheck',
             backgroundThrottling: true
