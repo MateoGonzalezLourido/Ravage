@@ -20,16 +20,8 @@ const mailbox = require('./preload/mailbox.cjs');
 const security = require('./preload/security.cjs');
 const utils = require('./preload/utils.cjs');
 const avisosUI=require('./preload/avisos.cjs');
-// Argumentos de inicio para determinar el estado inicial en el bloque boot
-const startArg = process.argv.find(a => a.startsWith('--start='));
-const startPage = startArg?.split('=')[1] ?? 'true';
 
 // ─── EXPOSICIÓN DE APIS AL MAIN WORLD ─────────────────────────────────────────
-
-// Estado inicial de la app
-contextBridge.exposeInMainWorld('boot', {
-    isLogged: startPage === 'true'
-});
 
 // Sesión y autenticación
 contextBridge.exposeInMainWorld('sesion_usuario', auth);

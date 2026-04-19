@@ -24,7 +24,6 @@ app.commandLine.appendSwitch('enable-features', 'IntensiveWakeUpThrottling');
 app.commandLine.appendSwitch('enable-async-dns');
 
 if (process.env.MODO_DEBUG === "true") {
-    const HEAP_LIMIT_MB = 512;
     const HEAP_WARN_THRESHOLD = HEAP_LIMIT_MB * 0.8; // alerta al 80%
 
     setInterval(() => {
@@ -115,7 +114,6 @@ async function createMainWindowHome(AutoLogin = false) {
             contextIsolation: true,
             sandbox: true,
             additionalArguments: [
-                `--start=${AutoLogin}`,
                 `--js-flags=--max-old-space-size=${HEAP_LIMIT_MB}` // Aplicar también al renderizador el limite de memoria
             ],
             spellcheck: false,
@@ -123,7 +121,11 @@ async function createMainWindowHome(AutoLogin = false) {
             backgroundThrottling: true
         }
     });
-    mainWindow.loadFile(path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html'));
+    const pageToLoad = AutoLogin
+        ? path.join(__dirname, 'frontend', 'home', 'home.html')
+        : path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html');
+
+    mainWindow.loadFile(pageToLoad);
 
     mainWindow.maximize();
     mainWindow.show();
@@ -170,7 +172,7 @@ if (!gotTheLock) {
         const [{ autoLoginUsuario }, { setMainWindow }] = await Promise.all([pSesion, pStorage]);
 
         const AutoLogin = await autoLoginUsuario();
-        createMainWindowHome(AutoLogin?.success || false);
+        await createMainWindowHome(AutoLogin?.success || false);
         setMainWindow(mainWindow);
     });
 }

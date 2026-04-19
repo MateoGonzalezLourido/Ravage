@@ -7,10 +7,7 @@ let username_g;
 
 // --- Initialization ---
 async function preload_pag() {
-    if (window.boot?.isLogged) {
-        await window.paginas_app.CAMBIAR_PAGINA_HOME(); // mandar al home
-    } else {
-        elements = {
+    elements = {
             seccionRoot: document.getElementById('seccion-registro-login'),
             seccionLogin: document.getElementById('seccion-login'),
             seccionRegistro: document.getElementById('seccion-registro'),
@@ -47,7 +44,6 @@ async function preload_pag() {
         };
         mostrarSeccion(elements.seccionLogin);
         elements.inputLoginUser.focus();
-    }
 }
 
 // --- Menu Controls ---
