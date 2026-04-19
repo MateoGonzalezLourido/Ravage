@@ -213,3 +213,18 @@ app.on('browser-window-focus', () => {
         mainWindow.webContents.setFrameRate(60);
     }
 });
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    if (mainWindow) {
+        mainWindow.webContents.openDevTools(); // mostrar DevTools
+        console.error('HTML del error:', mainWindow.webContents.getHTML());
+    }
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection:', reason);
+    if (mainWindow) {
+        mainWindow.webContents.openDevTools();
+    }
+});
