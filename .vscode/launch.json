@@ -6,7 +6,13 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
-      "args": ["--trace-warnings", "--trace-deprecation", "--inspect=5858", "."],
+      "args": [
+        "--trace-warnings",
+        "--trace-deprecation",
+        "--inspect=5858",
+        "--auto-open-devtools-for-tabs",
+        "."
+      ],
       "preLaunchTask": "build-preload",
       "outputCapture": "std",
       "console": "integratedTerminal"

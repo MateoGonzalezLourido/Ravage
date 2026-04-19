@@ -11,49 +11,64 @@ export async function iniciarBuzon(io, mainWindow) {
         await detenerBuzon();
     }
 
+    const myUserId = getIDMongodbUsuario();
     log.info("Buzón iniciado")
-    changeStream = BuzonUsuarios.watch([], { fullDocument: "updateLookup" });
+    changeStream = BuzonUsuarios.watch([
+        { $match: { 'documentKey._id': myUserId } }
+    ], { fullDocument: "updateLookup" });
+
+    const sentIds = new Set();
 
     changeStream.on("change", (change) => {
-        const userId = change.documentKey._id;
-        const myUserId = getIDMongodbUsuario();
-
-        // Evitar enviar entradas del buzón de otros usuarios 
-        if (!myUserId || userId.toString() !== myUserId.toString()) return;
-
         const doc = change.fullDocument;
-        if (doc && doc.entrada) {
-            doc.entrada = doc.entrada.map(ent => {
-                let decryptedData = ent.data;
-                // Si es un objeto encriptado (tiene data, iv, tag), lo desencriptamos
-                if (ent.data && typeof ent.data === 'object' && ent.data.data && ent.data.iv && ent.data.tag) {
-                    const decrypted = desencriptarDatosSistema(ent.data);
-                    // Si el resultado es un string (lo usual), intentamos parsearlo por si es un objeto JSON
-                    try {
-                        decryptedData = (typeof decrypted === 'string') ? JSON.parse(decrypted) : decrypted;
-                    } catch (e) {
-                        decryptedData = decrypted;
-                    }
-                } else if (ent.data && typeof ent.data === 'string') {
-                    // Fallback para versiones/tipos que guarden el string directamente (aunque no es lo normal)
-                    decryptedData = desencriptarDatosSistema(ent.data);
-                }
-                return { ...ent, data: decryptedData };
-            });
+        if (!doc || !doc.entrada) return;
+
+        // Filtrar solo entradas nuevas que no hayamos procesado en esta sesión del stream
+        const nuevasEntradas = doc.entrada.filter(ent => {
+            if (!ent._id) return true; // Si no tiene ID (raro), la dejamos pasar
+            const idStr = ent._id.toString();
+            if (sentIds.has(idStr)) return false;
+            sentIds.add(idStr);
+            return true;
+        });
+
+        if (nuevasEntradas.length === 0) return;
+
+        // Limpiar Set periódicamente para evitar crecimiento infinito (aunque el buzón es pequeño)
+        if (sentIds.size > 500) {
+            const currentIds = new Set(doc.entrada.map(e => e._id?.toString()).filter(Boolean));
+            for (const id of sentIds) {
+                if (!currentIds.has(id)) sentIds.delete(id);
+            }
         }
 
-        // Filtrar+optimizar datos antes de enviar al frontend (Mejora IPC/BFF)
-        const docOptimizado = primer_contacto ? optimizar_cola_entradas_buzon(doc) : null;
-        const docFiltrado = filtrar_entradas_ipc(docOptimizado || doc, primer_contacto);
+        const entradasProcesadas = nuevasEntradas.map(ent => {
+            let decryptedData = ent.data;
+            if (ent.data && typeof ent.data === 'object' && ent.data.data && ent.data.iv && ent.data.tag) {
+                const decrypted = desencriptarDatosSistema(ent.data);
+                try {
+                    decryptedData = (typeof decrypted === 'string') ? JSON.parse(decrypted) : decrypted;
+                } catch (e) {
+                    decryptedData = decrypted;
+                }
+            } else if (ent.data && typeof ent.data === 'string') {
+                decryptedData = desencriptarDatosSistema(ent.data);
+            }
+            return { ...ent, data: decryptedData };
+        });
+
+        const docProcesado = { ...doc, entrada: entradasProcesadas };
+        
+        // El primer contacto puede requerir optimización (ej. agrupar notificaciones antiguas)
+        const docFinal = primer_contacto ? optimizar_cola_entradas_buzon(docProcesado) : docProcesado;
+        const docFiltrado = filtrar_entradas_ipc(docFinal, primer_contacto);
+        
         if (primer_contacto) primer_contacto = false;
 
         if (docFiltrado && docFiltrado.entrada && docFiltrado.entrada.length > 0) {
-            // Enviar al socket (otros clientes si los hubiera), pero en este caso solo tiene un id
-            io.to(userId.toString()).emit("nueva-notificacion", docFiltrado);
-            // Enviar al renderer
+            io.to(myUserId.toString()).emit("nueva-notificacion", docFiltrado);
             mainWindow.webContents.send("nueva-notificacion", docFiltrado);
         }
-
     });
     changeStream.on("error", (err) => {
         // Ignorar el error si el stream se está cerrando deliberadamente
@@ -152,6 +167,6 @@ function optimizar_cola_entradas_buzon(doc) {
     }
 
     //mandar entradas optimizadas
-    entradas_optimizadas.push(...Object.values(entradas_usar_sin_optimizar));
+    entradas_optimizadas.push(...Object.values(entradas_usar_sin_optimizar).map(v => v.entrada));
     return { ...doc, entrada: entradas_optimizadas };
 }

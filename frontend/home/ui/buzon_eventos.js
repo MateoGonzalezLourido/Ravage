@@ -5,9 +5,39 @@ import { safeIdSelector } from './seguridad_ui.js';
 
 export async function procesar_entradas_buzon(entradas) {
     if (!entradas || entradas.length === 0) return;
+    
     try {
+        let necesitaRefrescarListaCompleta = false;
+        const mensajesPorChat = {}; // { id_chat: [entradas_tipo_0] }
+
+        // 1. Clasificar entradas para evitar redundancia
         for (const entrada of entradas) {
-            await hacer_cambios_buzon(entrada);
+            const tp = Number(entrada.tipo);
+            const id_chat = entrada.data?.chat || entrada.chat;
+
+            if (tp === 0) { // Mensaje de chat
+                if (id_chat) {
+                    if (!mensajesPorChat[id_chat]) mensajesPorChat[id_chat] = [];
+                    mensajesPorChat[id_chat].push(entrada);
+                }
+            } else {
+                // Otros tipos suelen requerir refrescar la lista completa (unirse/crear/expulsar)
+                const resultado = await hacer_cambios_buzon(entrada);
+                if (resultado === "REFRESCAR_LISTA") necesitaRefrescarListaCompleta = true;
+            }
+        }
+
+        // 2. Procesar mensajes agrupados por chat
+        for (const [id_chat, lote_mensajes] of Object.entries(mensajesPorChat)) {
+            // Solo procesamos el ÚLTIMO mensaje del lote para actualizar el item de la lista
+            // (los anteriores son irrelevantes para el "último mensaje" de la previsualización)
+            const ultimo_mensaje = lote_mensajes[lote_mensajes.length - 1];
+            await Cambio_buzonApi_mensaje(ultimo_mensaje, lote_mensajes.length > 1 ? lote_mensajes : null);
+        }
+
+        // 3. Refrescar lista completa si es necesario
+        if (necesitaRefrescarListaCompleta) {
+            await ACTUALIZAR_LISTAS_CHAT();
         }
     } catch (e) {
         console.error("Error al procesar lote de buzón", e);
@@ -19,20 +49,21 @@ export async function hacer_cambios_buzon(entrada) {
     const esta_silenciado = entrada.silenciado || false;
 
     if (tp === 0) { //mensaje chat
-        await Cambio_buzonApi_mensaje(entrada)
+        return await Cambio_buzonApi_mensaje(entrada)
     }
     else if (tp === 1) {//unirse grupo
-        await Cambio_buzonApi_unirse_grupo(entrada, esta_silenciado)
+        return await Cambio_buzonApi_unirse_grupo(entrada, esta_silenciado)
     }
     else if (tp === 2) {//crear grupo
-        await Cambio_buzonApi_crear_grupo(entrada, esta_silenciado)
+        return await Cambio_buzonApi_crear_grupo(entrada, esta_silenciado)
     }
     else if (tp === 3) {//usuario añadido
-        await Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado)
+        return await Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado)
     }
     else if (tp === 4) {//expulsar usuario
-        await Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado)
+        return await Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado)
     }
+    return null;
 }
 
 export async function iniciar_buzonAPI() {
@@ -46,7 +77,7 @@ export async function iniciar_buzonAPI() {
     }, 1000)
 
     const cambios = await window.buzonAPI.REVISAR_BUZON()
-    await procesar_entradas_buzon(cambios?.entrada || [])
+    await procesar_entradas_buzon(cambios || [])
 
     await window.buzonAPI.INICIAR_BUZON()
 
@@ -64,46 +95,67 @@ export async function inicializar_buzon_notificaciones() {
 }
 
 /*funciones de cambios del buzon*/
-async function Cambio_buzonApi_mensaje(entrada) {
+async function Cambio_buzonApi_mensaje(entrada, lote = null) {
     const id_chat = entrada.data?.chat || entrada.chat;
-    const id_mensaje = entrada.data?.id_mensaje;
-    if(!id_chat || !id_mensaje) return;
+    const esta_silenciado = entrada.silenciado || false;
+    
+    // Si no hay lote, creamos uno con la entrada única para unificar lógica
+    const mensajes_a_procesar = lote || [entrada];
+    const ultima_entrada = mensajes_a_procesar[mensajes_a_procesar.length - 1];
 
-    const chatC = Array.from(document.querySelectorAll(".chat-componente-lista-chats")).find(el => el.dataset.id == id_chat);
-    //actualizar chat render si esta activo
-    if (document.querySelector("#chat-usuario") && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) {
+    // 1. Actualizar el render del chat si está activo (abierto en pantalla)
+    const chatAbierto = !!document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`);
+    
+    if (chatAbierto && document.querySelector("#chat-usuario")) {
+        // Si hay muchos mensajes, podríamos querer optimizar esto más, 
+        // pero por ahora los procesamos todos para que aparezcan en el chat.
+        for (const msg_ent of mensajes_a_procesar) {
+            const id_msg = msg_ent.data?.id_mensaje;
+            if (!id_msg) continue;
 
-        const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(id_chat, id_mensaje)
-        await Actualizar_render_chat({
-            emisor: respuesta.emisor,
-            chat: id_chat,
-            mensaje: respuesta.contenido?.[0]?.asunto || "",
-            archivos: respuesta.contenido?.[0]?.archivos || [],
-            fecha: respuesta.data,
-            id_mensaje: id_mensaje
-        })
+            try {
+                const respuesta = await window.chats.OBTENER_DATOS_MENSAJE(id_chat, id_msg);
+                if (respuesta) {
+                    await Actualizar_render_chat({
+                        emisor: respuesta.emisor,
+                        chat: id_chat,
+                        mensaje: respuesta.contenido?.[0]?.asunto || "",
+                        archivos: respuesta.contenido?.[0]?.archivos || [],
+                        fecha: respuesta.data,
+                        id_mensaje: id_msg
+                    });
+                }
+            } catch (err) {
+                console.error("Error al recuperar datos de mensaje para render:", err);
+            }
+        }
     }
-    //notificacion
+
+    // 2. Actualizar el componente de la lista lateral (Sidebar)
+    const chatC = Array.from(document.querySelectorAll(".chat-componente-lista-chats")).find(el => el.dataset.id == id_chat);
+    
     if (chatC) {
-        const chatAbierto = !!document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`);
-        await refrescar_componente_lista_chats(id_chat, chatC, !esta_silenciado && !chatAbierto)
-
-
+        // Solo refrescamos visualmente el item una vez, con la info del último mensaje
+        await refrescar_componente_lista_chats(id_chat, chatC, !esta_silenciado && !chatAbierto);
+        
+        // Notificación sonora/visual (solo si no está silenciado y el chat no está abierto)
         if (!esta_silenciado && !chatAbierto) {
             const nombre = chatC.querySelector(".nombre-chat-lista-componente span")?.textContent || "nuevo mensaje";
             window.pushNotificacion({
                 prioridad: 0,
                 texto: `Nuevo mensaje de ${nombre}`,
                 tipo: "info"
-            })
+            });
         }
     }
-    //actualizar ultimo mensaje
-    cambiar_datos_componente_lista_chats({ id_chat, data: entrada,notificacion:true })
+
+    // 3. Actualizar datos internos del componente (último mensaje, fecha, etc.)
+    cambiar_datos_componente_lista_chats({ id_chat, data: ultima_entrada, notificacion: true });
+    
+    return null; 
 }
 
 async function Cambio_buzonApi_unirse_grupo(entrada, esta_silenciado) {
-    await ACTUALIZAR_LISTAS_CHAT()
     const nombreChat = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat })
     if (!esta_silenciado) {
         const mi_id = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO();
@@ -117,15 +169,16 @@ async function Cambio_buzonApi_unirse_grupo(entrada, esta_silenciado) {
         }
     }
     await Actualizar_render_chat({ emisor: entrada.data.emisor, chat: entrada.data.chat, fecha: entrada.data.data, especial: 1, data: entrada.data })
+    return "REFRESCAR_LISTA";
 }
 
 async function Cambio_buzonApi_crear_grupo(entrada, esta_silenciado) {
-    await ACTUALIZAR_LISTAS_CHAT()
     const nombreChat = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat })
     const nombreCreador = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.creador })
     if (!esta_silenciado) {
         window.pushNotificacion({ prioridad: 0, texto: `${nombreCreador} ha creado un nuevo chat${nombreChat ? `\n${nombreChat}` : ``}`, tipo: "info" })
     }
+    return "REFRESCAR_LISTA";
 }
 
 async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
@@ -135,7 +188,6 @@ async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
     const chatNombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat });
 
     if (isMe) {
-        await ACTUALIZAR_LISTAS_CHAT();
         if (document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(entrada.data.chat)}`)) {
             document.querySelector("#chat-usuario").replaceChildren();
         }
@@ -149,6 +201,7 @@ async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
         }
     }
     await Actualizar_render_chat({ emisor: entrada.data.emisor, chat: entrada.data.chat, fecha: entrada.data.data, especial: 1, data: entrada.data })
+    return "REFRESCAR_LISTA";
 }
 async function Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado) {
     const añadidoId = entrada.data.añadido;
@@ -157,7 +210,6 @@ async function Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado) {
     const chatNombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat });
 
     if (isMe) {
-        await ACTUALIZAR_LISTAS_CHAT();
         if (document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(entrada.data.chat)}`)) {
             document.querySelector("#chat-usuario").replaceChildren();
         }
@@ -171,4 +223,5 @@ async function Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado) {
         }
     }
     await Actualizar_render_chat({ emisor: entrada.data.emisor, chat: entrada.data.chat, fecha: entrada.data.data, especial: 1, data: entrada.data })
+    return "REFRESCAR_LISTA";
 }

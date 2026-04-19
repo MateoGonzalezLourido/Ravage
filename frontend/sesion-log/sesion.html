@@ -1,109 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!--seguridad-->
-        <meta http-equiv="Content-Security-Policy"
-            content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://user-images.githubusercontent.com; connect-src 'self' ws://localhost:3000 http://localhost:3000;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--seguridad-->
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://user-images.githubusercontent.com; connect-src 'self' ws://localhost:3000 http://localhost:3000;">
 
-        <meta http-equiv="X-Content-Type-Options" content="nosniff">
-        <!--<meta http-equiv="X-Frame-Options" content="DENY">-->
-        <meta http-equiv="Referrer-Policy" content="no-referrer">
-        <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <!--<meta http-equiv="X-Frame-Options" content="DENY">-->
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()">
 
-        <title>RAVAGE-Sesion</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="./style.css">
-        <link rel="stylesheet" href="../notificaciones/notificaciones.css">
+    <title>RAVAGE-Sesion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="../notificaciones/notificaciones.css">
 
-    </head>
+</head>
 
-    <body>
-        <!--LOGIN/REGISTRO...-->
-        <div id="seccion-registro-login" class="ocultar-display">
-            <div class="menu-registro-login flex-display" id="seccion-login">
-                <h2>Iniciar sesión</h2>
-                <form id="form-login">
-                    <label for="login-user">
-                        <span>Correo electrónico</span>
-                        <input id="login-user" placeholder="Usuario" required autofocus="on" maxlength="255">
-                    </label>
-                    <label for="login-pass">
-                        <span>Contraseña</span>
-                        <input id="login-pass" type="password" placeholder="Contraseña" required minlength="8" maxlength="128">
-                    </label>
-                    <label class="label-check" for="login-guardar">
-                        <span>Mantener sesión iniciada</span>
-                        <input id="login-guardar" type="checkbox" checked>
-                    </label>
-                    <span class="text-error-form-causa ocultar-display" id="text-error-form-causa-login"></span>
-                    <button type="submit">Entrar</button>
-                    <span class="bt-cambio-login-registro" id="bt-cambiar-registro">¿Crear cuenta?</span>
-                    <span class="bt-cambio-login-registro" id="bt-cambiar-contraseña-login">¿Problemas con tu
-                        cuenta?</span>
-                </form>
-            </div>
-            <div class="menu-registro-login menu-registro-login ocultar-display" id="seccion-registro">
-                <h2>Crear cuenta</h2>
-                <form id="form-registro">
-                    <label for="registro-apodo">
-                        <span>Apodo (opcional)</span>
-                        <input id="registro-apodo" placeholder="Apodo" autofocus="on" minlength="3" maxlength="20">
-                    </label>
-                    <label for="registro-user">
-                        <span>Correo electrónico</span>
-                        <input id="registro-user" placeholder="Usuario" required maxlength="255">
-                    </label>
-                    <label for="registro-pass">
-                        <span>Contraseña</span>
-                        <input id="registro-pass" type="password" placeholder="Contraseña" required minlength="8" maxlength="128">
-                    </label>
-                    <label for="registro-pass-confirm">
-                        <span id="span-repetir-contraseña">Repita la Contraseña</span>
-                        <input id="registro-pass-confirm" type="password" placeholder="Contraseña" required
-                            minlength="8" maxlength="128">
-                    </label>
-                    <span class="text-error-form-causa ocultar-display" id="text-error-form-causa-registro"></span>
-                    <button type="submit">Registrar</button>
-                    <span class="bt-cambio-login-registro" id="bt-cambiar-login">¿Tienes cuenta?</span>
-                </form>
-            </div>
-            <div class="menu-validacion-codigo ocultar-display" id="seccion-validacion-codigo-correo">
-                <h2>Validar correo</h2>
-                <span class="ayuda-texto">Introduzca el codigo que se ha enviado a su correo.</span>
-                <span class="span-aviso">Aviso: puede que se haya enviado a spam</span>
-                <span class="span-aviso">Aviso: debes poner el último código generado</span>
-                <form id="form-validation-correo">
-                    <input id="bt-code-introducir" type="number" value="" placeholder="123456" required minlength="6" maxlength="6" autofocus="on">
-                    <span class="text-error-form-causa ocultar-display"
-                        id="text-error-form-causa-codigo-validar"></span>
-                    <button type="submit" class="bt-validar-code">Validar</button>
-                    <span class="bt-cambio-login-registro" id="bt-cambiar-login-validation-code">¿Quieres volver?</span>
-                </form>
-            </div>
-            <div class="menu-confirmacion-cuenta-creada ocultar-display" id="seccion-confirmacion-cuenta-creada">
-                <div class="success-icon-container">
-                    <div class="checkmark"></div>
-                </div>
-                <h2>¡Bienvenido a Ravage!</h2>
-                <p>Tu cuenta ha sido creada con éxito.</p>
-                <div class="success-message-details">
-                    Gracias por unirte a nuestra comunidad privada de mensajería segura.
-                </div>
-                <button id="bt-volver-login-confirmacion-cuenta" autofocus="on">Volver al Login</button>
-            </div>
+<body>
+    <!--LOGIN/REGISTRO...-->
+    <div id="seccion-registro-login" class="ocultar-display">
+        <div class="menu-registro-login flex-display" id="seccion-login">
+            <h2>Iniciar sesión</h2>
+            <form id="form-login">
+                <label for="login-user">
+                    <span>Correo electrónico</span>
+                    <input id="login-user" placeholder="Usuario" required autofocus="on" maxlength="255">
+                </label>
+                <label for="login-pass">
+                    <span>Contraseña</span>
+                    <input id="login-pass" type="password" placeholder="Contraseña" required minlength="8"
+                        maxlength="128">
+                </label>
+                <label class="label-check" for="login-guardar">
+                    <span>Mantener sesión iniciada</span>
+                    <input id="login-guardar" type="checkbox" checked>
+                </label>
+                <span class="text-error-form-causa ocultar-display" id="text-error-form-causa-login"></span>
+                <button type="submit">Entrar</button>
+                <span class="bt-cambio-login-registro" id="bt-cambiar-registro">¿Crear cuenta?</span>
+                <span class="bt-cambio-login-registro" id="bt-cambiar-contraseña-login">¿Problemas con tu
+                    cuenta?</span>
+            </form>
         </div>
-        <!--SCRIPTS-->
-        <div id="sync-mailbox-bar" class="sync-mailbox-bar">
-            <div class="sync-spinner"></div>
-            <span>Procesando...</span>
+        <div class="menu-registro-login menu-registro-login ocultar-display" id="seccion-registro">
+            <h2>Crear cuenta</h2>
+            <form id="form-registro">
+                <label for="registro-apodo">
+                    <span>Apodo (opcional)</span>
+                    <input id="registro-apodo" placeholder="Apodo" autofocus="on" minlength="3" maxlength="20">
+                </label>
+                <label for="registro-user">
+                    <span>Correo electrónico</span>
+                    <input id="registro-user" placeholder="Usuario" required maxlength="255">
+                </label>
+                <label for="registro-pass">
+                    <span>Contraseña</span>
+                    <input id="registro-pass" type="password" placeholder="Contraseña" required minlength="8"
+                        maxlength="128">
+                </label>
+                <label for="registro-pass-confirm">
+                    <span id="span-repetir-contraseña">Repita la Contraseña</span>
+                    <input id="registro-pass-confirm" type="password" placeholder="Contraseña" required minlength="8"
+                        maxlength="128">
+                </label>
+                <span class="text-error-form-causa ocultar-display" id="text-error-form-causa-registro"></span>
+                <button type="submit">Registrar</button>
+                <span class="bt-cambio-login-registro" id="bt-cambiar-login">¿Tienes cuenta?</span>
+            </form>
         </div>
-        <script defer src="./log.js"></script>
-        <script defer src="../notificaciones/notificaciones.js"></script>
-    </body>
+        <div class="menu-validacion-codigo ocultar-display" id="seccion-validacion-codigo-correo">
+            <h2>Validar correo</h2>
+            <span class="ayuda-texto">Introduzca el codigo que se ha enviado a su correo.</span>
+            <span class="span-aviso">Aviso: puede que se haya enviado a spam</span>
+            <span class="span-aviso">Aviso: debes poner el último código generado</span>
+            <form id="form-validation-correo">
+                <input id="bt-code-introducir" type="number" value="" placeholder="123456" required minlength="6"
+                    maxlength="6" autofocus="on">
+                <span class="text-error-form-causa ocultar-display" id="text-error-form-causa-codigo-validar"></span>
+                <button type="submit" class="bt-validar-code">Validar</button>
+                <span class="bt-cambio-login-registro" id="bt-cambiar-login-validation-code">¿Quieres volver?</span>
+            </form>
+        </div>
+        <div class="menu-confirmacion-cuenta-creada ocultar-display" id="seccion-confirmacion-cuenta-creada">
+            <div class="success-icon-container">
+                <div class="checkmark"></div>
+            </div>
+            <h2>¡Bienvenido a Ravage!</h2>
+            <p>Tu cuenta ha sido creada con éxito.</p>
+            <div class="success-message-details">
+                Gracias por unirte a nuestra comunidad privada de mensajería segura.
+            </div>
+            <button id="bt-volver-login-confirmacion-cuenta" autofocus="on">Volver al Login</button>
+        </div>
+    </div>
+    <!--SCRIPTS-->
+    <div id="sync-mailbox-bar" class="sync-mailbox-bar">
+        <div class="sync-spinner"></div>
+        <span>Procesando...</span>
+    </div>
+    <script src="../notificaciones/notificaciones.js"></script>
+    <script type="module" src="./log.js"></script>
+</body>
 
 </html>
