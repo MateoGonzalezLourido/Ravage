@@ -1,27 +1,44 @@
-// Activa la caché de compilación de V8 para que Electron no tenga que
-// recompilar el JS cada vez que arrancas (hace que el 2do arranque sea más rápido)
+// === Arranque ===
+// Cachea bytecode V8 para arranques posteriores más rápidos
 app.commandLine.appendSwitch('v8-cache-options', 'code');
 
-// Mejorar el rendimiento de animaciones y scroll
+// === GPU / Renderizado ===
+// Rasterización por GPU para scroll y animaciones más fluidos
 app.commandLine.appendSwitch('enable-gpu-rasterization');
+// Evita copias de memoria extra al subir texturas a la GPU
 app.commandLine.appendSwitch('enable-zero-copy');
 
-// Reducir la memoria (Memory footprint)
-// Desactiva el aislamiento estricto de sitios para reducir la cantidad de procesos de Chromium
-// (Solo usar esto si NO cargas sitios web externos inseguros
-app.commandLine.appendSwitch('disable-site-isolation-trials');
+// === Memoria ===
+// Limita el heap V8 a 512MB (por defecto puede crecer sin límite)
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512 --expose-gc');
+// === Batería / Background ===
+// Reduce prioridad del renderer cuando la ventana está en segundo plano
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+// Throttlea timers y tareas cuando la app está en background
+app.commandLine.appendSwitch('enable-features', 'IntensiveWakeUpThrottling');
 
-// Optimiza el uso de memoria de Chromium siendo más agresivo con la recolección
-app.commandLine.appendSwitch('memory-pressure-off');
+// === Red ===
+// Precarga DNS para previsualizaciones de URL más rápidas
+app.commandLine.appendSwitch('enable-async-dns');
 
-// Flags para ahorro de batería y throttling en el renderizador
-app.commandLine.appendSwitch('disable-renderer-backgrounding', 'false');
-app.commandLine.appendSwitch('enable-features', 'ThrottleDisplayNoneAndVisibilityHiddenCrossOriginIframes');
+if (process.env.MODO_DEBUG === "true") {
+    const HEAP_LIMIT_MB = 512;
+    const HEAP_WARN_THRESHOLD = HEAP_LIMIT_MB * 0.8; // alerta al 80%
 
-//Limitar y optimizar la memoria de V8 (Node.js)
-// max-old-space-size: Limita la RAM máxima que puede usar Node.js (ej. 512MB). Evita que Chromium/Node traguen RAM infinita.
-// expose-gc: Permite llamar a `global.gc()` manualmente en tu código si necesitas liberar memoria en momentos clave.
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=2048 --expose-gc');
+    setInterval(() => {
+        const usage = process.memoryUsage();
+        const rss = Math.round(usage.rss / 1024 / 1024);
+        const heapUsed = Math.round(usage.heapUsed / 1024 / 1024);
+        const heapTotal = Math.round(usage.heapTotal / 1024 / 1024);
+
+        console.log(`[Memory Monitor] RSS: ${rss}MB | Heap: ${heapUsed}/${heapTotal}MB`);
+
+        if (heapUsed > HEAP_WARN_THRESHOLD) {
+            console.warn(`[Memory Monitor] ALERTA: Heap al ${Math.round(heapUsed / HEAP_LIMIT_MB * 100)}% (${heapUsed}MB/${HEAP_LIMIT_MB}MB)`);
+            if (global.gc) global.gc();
+        }
+    }, 5000);
+}
 
 import { app, ipcMain, path } from './backend/utils/libs.js';
 import { fileURLToPath } from 'url';
