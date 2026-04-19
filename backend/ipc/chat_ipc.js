@@ -33,13 +33,27 @@ const authorizedPaths = new Set();
 
 export function registerChatHandlers(mainWindow, socket) {
     ipcMain.handle("obtener-chats-usuario", async () => {
+        log.debug("IPC: obtener-chats-usuario solicitado");
         const chats = await obtenerChatsUsuarioDB();
-        setListaChats(chats); // Sincronizar con la sesión en memoria por si se usa en otros sitios
+        setListaChats(chats);
+        log.debug({ count: chats.length }, "IPC: obtener-chats-usuario completado");
         return chats;
     })
 
     ipcMain.handle("obtener-datos-chats-grupales-usuario", async (_, { data, grupales, mensajes }) => {
-        return await obtener_datos_chats({ data, grupales, mensajes })
+        log.debug({ 
+            chatCount: data?.length, 
+            grupales, 
+            mensajes 
+        }, "IPC: obtener-datos-chats-grupales-usuario solicitado");
+        
+        const result = await obtener_datos_chats({ data, grupales, mensajes });
+        
+        log.debug({ 
+            count: result.length
+        }, "IPC: obtener-datos-chats-grupales-usuario completado");
+        
+        return result;
     })
 
     ipcMain.handle("obtener-datos-chat-unico-usuario", async (_, id, datos_buscar) => {
@@ -92,8 +106,10 @@ export function registerChatHandlers(mainWindow, socket) {
     })
 
     ipcMain.on("iniciar-buzon", async () => {
+        log.info("IPC: iniciar-buzon solicitado - Iniciando sincronización");
         const userId = getIDMongodbUsuario()
-        await Revisar_Buzon_Usuario()
+        const entradas = await Revisar_Buzon_Usuario()
+        log.info({ count: entradas?.length }, "IPC: Sincronización de buzón inicial completada");
         socket.emit("identificar", userId);
         await iniciarBuzon(socket, mainWindow);
     })
