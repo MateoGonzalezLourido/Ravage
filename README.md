@@ -26,6 +26,7 @@ Escalabilidad limitada — funciona bien para equipos pequeños; no está optimi
 Sin llamadas — solo mensajes de texto y transferencia de archivos cifrada.
 Caché configurable — el sistema multinivel se ajusta automáticamente a los recursos disponibles, y puedes configurar manualmente los límites de RAM y disco si quieres un footprint mínimo.
 
+
 Si buscas algo listo para producción a gran escala, Ravage no es la herramienta. Si buscas privacidad real sin intermediarios y controlas la infraestructura, sí lo es.
 
 [Instalación](#-instalación) · [Arquitectura](#-arquitectura) · [Cifrado](#-sistema-de-cifrado-en-profundidad) · [Servidor](#-modos-de-servidor) · [Caché](#-sistema-de-caché-multinivel)
