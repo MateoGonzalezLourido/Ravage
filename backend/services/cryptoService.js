@@ -10,12 +10,18 @@ import {
     randomBytes, 
     createHash, 
     createHmac,
+    createPublicKey,
+    createPrivateKey,
     constants
 } from '../utils/libs.js';
 import { promisify } from 'node:util';
 const generateKeyPairAsync = (typeof generateKeyPair === 'function') ? promisify(generateKeyPair) : null;
 let systemKey = null;
 let cachedIdentity = null;
+
+// Cache de KeyObjects parseados para evitar parsear PEM en cada operación RSA
+const _publicKeyCache = new Map();
+const _privateKeyCache = new Map();
 
 function getSystemKey() {
     if (!systemKey) {
@@ -52,6 +58,8 @@ export function setCachedIdentity(data) {
  */
 export function clearCachedIdentity() {
     cachedIdentity = null;
+    _publicKeyCache.clear();
+    _privateKeyCache.clear();
 }
 
 
@@ -92,7 +100,7 @@ export function desencriptarDatosSistema(encriptado) {
         return decrypted.toString('utf8');
     } catch (e) {
         log.error({ err: e }, "Error al desencriptar datos del sistema");
-        return null; // <- Evita crasheos de UI al no retornar el objeto corrupto The payload was originally expected to be a string
+        return null;
     }
 }
 
@@ -130,7 +138,6 @@ export async function generarLlavesX25519() {
             }
         }
 
-        // Último recurso: modo síncrono (bloqueante)
         const { generateKeyPairSync } = await import('../utils/libs.js');
         return generateKeyPairSync('x25519', {
             publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -171,11 +178,6 @@ export function descifrarContenido(cifrado, key) {
     return decrypted.toString('utf8');
 }
 
-// Derivar un secreto compartido entre una llave privada propia y una pública ajena (ECDH)
-// Nota: Para simplificar la distribución de la ChatKey, usaremos cifrado asimétrico directo 
-// sobre la ChatKey inicial, o ECDH para derivarla.
-// Implementaremos RSA para la envoltura de la ChatKey por simplicidad en la lógica de distribución.
-
 // Generar par de llaves RSA-2048 — delegado a worker thread
 export async function generarLlavesRSA() {
     try {
@@ -195,7 +197,6 @@ export async function generarLlavesRSA() {
             }
         }
         
-        // Último recurso: modo síncrono (bloqueante)
         const { generateKeyPairSync } = await import('../utils/libs.js');
         return generateKeyPairSync('rsa', {
             modulusLength: 2048,
@@ -205,21 +206,39 @@ export async function generarLlavesRSA() {
     }
 }
 
+/**
+ * Cifra datos con una llave pública RSA-OAEP.
+ * Cachea el KeyObject parseado para evitar parsear el PEM en cada llamada.
+ */
 export function cifrarConPublica(datos, publicKey) {
+    let keyObj = _publicKeyCache.get(publicKey);
+    if (!keyObj) {
+        keyObj = createPublicKey(publicKey);
+        _publicKeyCache.set(publicKey, keyObj);
+    }
     return publicEncrypt({
-        key: publicKey,
+        key: keyObj,
         padding: constants.RSA_PKCS1_OAEP_PADDING,
         oaepHash: 'sha256'
     }, Buffer.from(datos)).toString('hex');
 }
 
+/**
+ * Descifra datos con una llave privada RSA-OAEP.
+ * Cachea el KeyObject parseado para evitar parsear el PEM en cada llamada.
+ */
 export function descifrarConPrivada(datosHex, privateKey) {
     if (!datosHex || typeof datosHex !== 'string') {
         throw new Error("RSA: Ciphertext must be a hex string.");
     }
+    let keyObj = _privateKeyCache.get(privateKey);
+    if (!keyObj) {
+        keyObj = createPrivateKey(privateKey);
+        _privateKeyCache.set(privateKey, keyObj);
+    }
     const buffer = Buffer.from(datosHex, 'hex');
     return privateDecrypt({
-        key: privateKey,
+        key: keyObj,
         padding: constants.RSA_PKCS1_OAEP_PADDING,
         oaepHash: 'sha256'
     }, buffer).toString('utf8');
@@ -227,7 +246,6 @@ export function descifrarConPrivada(datosHex, privateKey) {
 
 /**
  * Crea un flujo de cifrado (AES-256-GCM).
- * El tag se debe obtener con cipher.getAuthTag() después de que el flujo termine.
  */
 export function crearCipherStream(key, iv) {
     return createCipheriv('aes-256-gcm', key, iv);
@@ -260,4 +278,3 @@ export function ratchetChainKey(chainKeyHex) {
         nextChainKey: nextChainKey.toString('hex')
     };
 }
-

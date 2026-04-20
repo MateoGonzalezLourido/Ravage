@@ -24,8 +24,6 @@ import {
 } from '../services/cryptoService.js';
 
 
-
-
 export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }) {
     try {
         // Ejecución en paralelo de la búsqueda de chat y usuario
@@ -43,7 +41,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             return false;
         }
 
-        // E2EE: Obtener identidad de la caché en memoria (mucho más rápido que disco)
+        // E2EE: Obtener identidad una sola vez y reutilizarla en todo el flujo
         const identity_data = await getIdentity();
         if (!identity_data || !identity_data.privateKey) {
             log.error("No se encontró la llave privada local para E2EE");
@@ -64,14 +62,14 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         let current_ck_hex;
         let active_entry = ratchet_entry;
 
-        async function intentarDescifrado(ent) {
-            const id_data = await getIdentity();
+        // Recibe identity_data como parámetro para no volver a pedirla
+        async function intentarDescifrado(ent, id_data) {
             if (!id_data || !id_data.privateKey) throw new Error("No Identity keys found locally.");
             return descifrarConPrivada(ent.clave_envuelta, id_data.privateKey);
         }
 
         try {
-            current_ck_hex = await intentarDescifrado(active_entry);
+            current_ck_hex = await intentarDescifrado(active_entry, identity_data);
         } catch (err) {
             log.warn(`[E2EE] Fallo al descifrar propia llave de cadena en chat ${id_chat}. Intentando recuperación por rotación...`, err.message);
 
@@ -86,17 +84,18 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 );
 
                 if (!active_entry) throw new Error("Ratchet entry not found after rotation.");
-                current_ck_hex = await intentarDescifrado(active_entry);
+                current_ck_hex = await intentarDescifrado(active_entry, identity_data);
                 log.info("[E2EE] Recuperación por rotación exitosa.");
             } catch (err2) {
                 log.error("[E2EE] Rotación de chat insuficiente. Fallo crítico de identidad detectado.", err2.message);
 
-                // OPCIÓN NUCLEAR: Solo si la llave privada local ya no sirve para NADA.
-                // Esto romperá la retrocompatibilidad con TODOS los chats existentes.
                 try {
                     const { REGENERAR_IDENTIDAD_USUARIO } = await import('../services/sesionUsuario.js');
                     const regenOk = await REGENERAR_IDENTIDAD_USUARIO();
                     if (!regenOk) throw new Error("Failed to regenerate identity.");
+
+                    // Tras regenerar identidad, obtener las nuevas llaves
+                    const new_identity = await getIdentity();
 
                     const { rotarClavesChat } = await import('./ChatRepository.js');
                     await rotarClavesChat(id_chat, id_emisor);
@@ -107,7 +106,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                         k.receptor_id.toString() === id_emisor.toString()
                     );
 
-                    current_ck_hex = await intentarDescifrado(active_entry);
+                    current_ck_hex = await intentarDescifrado(active_entry, new_identity);
                     log.warn("[E2EE] Recuperación nuclear completada. Los mensajes antiguos podrían no ser legibles.");
                 } catch (err3) {
                     log.error("[E2EE] Fallo absoluto en el sistema criptográfico:", err3.message);
@@ -122,9 +121,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         const { messageKey, nextChainKey } = ratchetChainKey(current_ck_hex);
         const chatKey = messageKey;
 
-
         const contenido_archivos = [];
-        // ... (resto del proceso de archivos igual)
         if (archivos.length > 0) {
             const bucket = new GridFSBucket(mongoose.connection.db, {
                 bucketName: "ArchivosChats"
@@ -137,7 +134,6 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 const iv = randomBytes(12);
                 const cipherStream = crearCipherStream(chatKey, iv);
 
-                // Usamos el ID como nombre en GridFS para ocultar el nombre real
                 const uploadStream = bucket.openUploadStreamWithId(idArchivo, idArchivo.toHexString());
 
                 await new Promise((resolve, reject) => {
@@ -179,37 +175,35 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             data: data_mensaje,
             ratchet_info: {
                 iteration: iteration,
-                chain_id: "default" // Se puede mejorar para rotación completa
+                chain_id: "default"
             }
         };
 
-        const nuevoMensaje = await MessagesRavage.create(mensaje);
+        // Crear mensaje y actualizar ratchet en paralelo
+        const nuevaClave = cifrarConPublica(nextChainKey, usuario.publicKey);
+        const [nuevoMensaje] = await Promise.all([
+            MessagesRavage.create(mensaje),
+            ChatsRavage.updateOne(
+                { _id: id_chat, "ratchet_keys.emisor_id": id_emisor, "ratchet_keys.receptor_id": id_emisor },
+                {
+                    $set: { "ratchet_keys.$.clave_envuelta": nuevaClave },
+                    $inc: { "ratchet_keys.$.counter": 1 }
+                }
+            )
+        ]);
 
-        // Actualizar el estado del ratchet en el Chat para el emisor
-        // Nota: para simplificar, el emisor solo actualiza su propia copia. 
-        // Los receptores ratchetearán hacia adelante desde la clave que tengan.
-        await ChatsRavage.updateOne(
-            { _id: id_chat, "ratchet_keys.emisor_id": id_emisor, "ratchet_keys.receptor_id": id_emisor },
-            {
-                $set: { "ratchet_keys.$.clave_envuelta": cifrarConPublica(nextChainKey, usuario.publicKey) },
-                $inc: { "ratchet_keys.$.counter": 1 }
-            }
-        );
-
-        // Actualizar el objeto local para evitar un segundo findById
+        // Actualizar objeto local y caché del chat sin esperar a MongoDB
         const target_entry = chat.ratchet_keys.find(k =>
             k.emisor_id.toString() === id_emisor.toString() &&
             k.receptor_id.toString() === id_emisor.toString()
         );
         if (target_entry) {
-            target_entry.clave_envuelta = cifrarConPublica(nextChainKey, usuario.publicKey);
+            target_entry.clave_envuelta = nuevaClave;
             target_entry.counter += 1;
         }
+        setChatEnCacheRaw(chat.toObject ? chat.toObject() : chat).catch(e => log.error(e));
 
-        // Actualizar cache del chat (importante por los ratchet_keys) con el objeto local ya actualizado
-        await setChatEnCacheRaw(chat.toObject ? chat.toObject() : chat);
-
-        // Rotación automática si el contador es muy alto
+        // Rotación automática si el contador es muy alto (fire and forget)
         const ROTATION_THRESHOLD = 100;
         if (iteration >= ROTATION_THRESHOLD) {
             (async () => {
@@ -218,6 +212,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             })();
         }
 
+        // Actualizar ultimoCambio y ultimomensaje de todos los usuarios del chat (fire and forget)
         (async () => {
             const ids_afectados = chat.usuarios || [];
             await User.updateMany(
@@ -233,20 +228,23 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                 }
             );
 
-            // Forzar actualización en caché de los usuarios involucrados tras la modificación
-            const usuarios_afectados_db = await User.find({ _id: { $in: ids_afectados } }).lean();
+            // Refrescar caché con proyección mínima
+            const usuarios_afectados_db = await User.find(
+                { _id: { $in: ids_afectados } },
+                { chats: 1, _id: 1 }
+            ).lean();
             for (const u of usuarios_afectados_db) {
                 await setUsuarioEnCache(procesarUsuario(u));
             }
         })();
-
 
         Añadir_Entrada_Buzon_Usuario({
             ids: chat.usuarios,
             tipo: 0,
             data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() }
         }).catch(e => log.error(e));
-        // Preparar respuesta para el emisor con datos completos (incluyendo extensiones)
+
+        // Preparar respuesta para el emisor con datos completos
         const mensaje_enviar = {
             ...nuevoMensaje.toObject ? nuevoMensaje.toObject() : nuevoMensaje,
             contenido: [{
@@ -288,11 +286,6 @@ export async function obtener_datos_mensaje(id_chat, id_mensaje) {
     }
 }
 
-
-/**
- * Descarga y descifra un archivo.
- * Ahora requiere ratchet_info y emisor_id para derivar la clave correcta.
- */
 export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         log.error("ID de archivo no válido:", id);
@@ -336,8 +329,6 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
                 const decipherStream = crearDecipherStream(messageKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex'));
                 stream_final = downloadStream.pipe(decipherStream);
             } else {
-                // No se pudo derivar la clave — el ratchet state fue corrupto.
-                // Rechazar en lugar de escribir un archivo cifrado ilegible.
                 log.error({ id, id_chat, iteration: ratchet_info?.iteration },
                     '[E2EE] No se pudo derivar la clave de descifrado del archivo');
                 writeStream.destroy();
@@ -345,8 +336,6 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
                 return;
             }
         }
-
-
 
         stream_final
             .pipe(writeStream)

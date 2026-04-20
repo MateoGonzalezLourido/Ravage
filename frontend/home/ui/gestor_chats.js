@@ -27,25 +27,21 @@ export function cerrar_paneles_al_abrir_chat() {
     }
 }
 
-
-
 // Variable global en el módulo para gestionar el bloqueo de carga de chats
 let id_chat_cargando = null;
 
 // Caché de corta duración para peticiones repetitivas durante procesamiento por lotes
 const batchRequestCache = {
     data: new Map(),
-    expiry: 0,
-    async get(key, fetcher) {
+
+    async get(key, fetcher, ttl = 500) {
         const now = Date.now();
-        if (this.expiry < now) {
-            this.data.clear();
-            this.expiry = now + 500; // 500ms de vida para el lote
+        const entry = this.data.get(key);
+
+        if (!entry || entry.expiry < now) {
+            this.data.set(key, { value: await fetcher(), expiry: now + ttl });
         }
-        if (!this.data.has(key)) {
-            this.data.set(key, await fetcher());
-        }
-        return this.data.get(key);
+        return this.data.get(key).value;
     }
 };
 
@@ -142,9 +138,7 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
                 const chatEx = map_grupales[c.id] || {}
                 const nombre = chatEx.nombre || "Chat sin nombre"
                 const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre: nombre, ultimomensaje: c.ultimomensaje, silenciado: c.silenciado || false, bloqueado: c.bloqueado || false }
-                // El componente chat_componente_lista_estructura_html ya debería escapar el contenido
                 return chat_componente_lista_estructura_html(datos_usar)
-
             })
             .join("")
 
@@ -154,6 +148,7 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
         throw e
     }
 }
+
 let timer_spin;
 export async function abrir_chat_item(id_chat, force = false) {
     if (!force && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) {
@@ -168,22 +163,21 @@ export async function abrir_chat_item(id_chat, force = false) {
     id_chat_cargando = id_chat;
 
     try {
-        //borrar spins de carga
         clearTimeout(timer_spin)
         document.querySelectorAll(".sync-spinner").forEach(el => el.remove())
 
-        //sipn cargando
         timer_spin = setTimeout(() => {
             document.querySelector("#chat-usuario").insertAdjacentHTML("afterbegin", "<div class='sync-spinner chat-spinner'></div>")
         }, 3000)
+
         const [datos_chat, id_usuario] = await Promise.all([
             Get_datos_chat_abrir(id_chat),
             window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
         ])
-        //borrar spins de carga
+
         clearTimeout(timer_spin)
         document.querySelectorAll(".chat-spinner").forEach(el => el.remove())
-        // Si mientras cargábamos se pulsó OTRO chat diferente, abortamos este renderizado
+
         if (id_chat_cargando !== id_chat) {
             return;
         }
@@ -196,20 +190,17 @@ export async function abrir_chat_item(id_chat, force = false) {
         limpiar_archivos_mensaje()
         document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
         cerrar_paneles_al_abrir_chat()
-        // Registrar listener de scroll manual ANTES de que arranque el renderizado progresivo
         registrar_scroll_usuario()
-        //eventos de mensajes
+
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         chatContainer.addEventListener("click", (pulsado) => {
             pulsado.currentTarget.querySelector(".asunto-svg")?.addEventListener("click", (el) => {
                 el.stopPropagation()
-                //todo:menu contexto con la opcion de copiar el svg
                 navigator.clipboard.writeText(el.currentTarget.querySelector('svg').outerHTML);
             })
         })
 
     } finally {
-        // Liberar el bloqueo si el chat que terminó es el que estábamos cargando
         if (id_chat_cargando === id_chat) {
             id_chat_cargando = null;
         }
@@ -252,7 +243,6 @@ export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
                     window.pushNotificacion({ prioridad: 1, texto: "Bloqueo alterado", tipo: "success" })
                     if (document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) await abrir_chat_item(id_chat, true)
                 }
-
             }
             await ACTUALIZAR_LISTAS_CHAT()
             menu.remove()
@@ -304,103 +294,117 @@ export async function refrescar_componente_lista_chats(id_chat, componente, noti
     }
 }
 
-export async function Actualizar_render_chat({ emisor, chat, mensaje = "", archivos = [], fecha, especial = null, data = {}, id_mensaje = null }) {
-    const id_chat_str = chat?.toString() || chat;
-    if (document.querySelector("#chat-usuario") && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat_str)}`)) {
-        const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString()
+// ─── RENDER DE MENSAJES EN TIEMPO REAL ────────────────────────────────────────
 
-        // Usar caché para datos que no cambian durante un lote de procesamiento (reducción drástica de IPC)
-        const [nombres_contactos, id_propio] = await Promise.all([
-            batchRequestCache.get('contactos', () => window.social_usuario.OBTENER_CONTACTOS_USUARIO()),
-            batchRequestCache.get('id_propio', () => window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO())
-        ]).catch(() => [[], null]);
+let cola_render = Promise.resolve();
 
-        const info_chat_cache = await window.cache_persistente.getChatCache(id_chat_str).catch(() => null);
-
-        let info_chat = await window.chats.OBTENER_CACHE_CHAT_ACTIVO()
-        if (info_chat && info_chat._id !== id_chat_str && info_chat.id !== id_chat_str) {
-            info_chat = null;
-        }
-
-        if (!info_chat) {
-            info_chat = info_chat_cache || await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_str).catch((e) => {
-                console.error("Error al obtener datos para renderizar mensaje:", e);
-                return null;
-            });
-        }
-
-        const propio = id_propio && id_emisor == id_propio.toString()
-        const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(admin_id => admin_id.toString() === id_emisor.toString());
-
-        const nombre_emisor = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos });
-
-        const result_seguridad = await batchRequestCache.get(`config_seguridad_${id_chat_str}`, () => window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(info_chat));
-        const escaneres_seguridad = result_seguridad.escaneres_seguridad || result_seguridad;
-
-        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
-        if (!chatContainer) return;
-
-        // Evitar duplicados si ya existe el mensaje por ID
-        if (id_mensaje && chatContainer.querySelector(`.mensaje-chat[data-id="${id_mensaje}"]`)) return;
-
-        const lastBlock = chatContainer.querySelector(".bloque-dia-chat:last-child");
-        const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
-        let lastBlockDateText = lastBlock ? lastBlock.querySelector(".fecha-bloque-mensajes span")?.innerHTML : null;
-
-        const esNuevoDia = !lastBlock || lastBlockDateText !== fechaActualText;
-        let tieneArriba = false;
-
-        if (!esNuevoDia) {
-            const lastMessage = chatContainer.querySelector(".mensaje-chat:last-child");
-            const ultimoEmisorId = lastMessage?.dataset.emisorId;
-            if (ultimoEmisorId === id_emisor) {
-                tieneArriba = true;
-                lastMessage.classList.add("agrupado-abajo");
-            }
-        }
-
-        const html = await crear_mensaje_html({
-            fecha,
-            asunto: mensaje,
-            archivos,
-            propio,
-            nombre_emisor,
-            esAdmin,
-            escaneres_seguridad,
-            tieneArriba,
-            tieneAbajo: false,
-            id_emisor,
-            id_mensaje
-        });
-
-        if (esNuevoDia) {
-            const nuevoBloqueHTML = `
-                <div class="bloque-dia-chat">
-                    <div class="fecha-bloque-mensajes"><span>${fechaActualText}</span></div>
-                    ${html}
-                </div>
-            `;
-            chatContainer.insertAdjacentHTML("beforeend", nuevoBloqueHTML);
-        } else {
-            lastBlock.insertAdjacentHTML("beforeend", html);
-        }
-
-        const nuevoMensaje = chatContainer.querySelector(".mensaje-chat:last-child");
-        if (nuevoMensaje) {
-            aplicar_escaneres_asincronos(nuevoMensaje, mensaje, escaneres_seguridad);
-        }
-
-        scroll_fin_chat()
-    }
+export function Actualizar_render_chat(params) {
+    // Precalcular datos ANTES de entrar en la cola (en paralelo con otros mensajes)
+    const datos_promise = _preparar_datos_mensaje(params);
+    cola_render = cola_render.then(async () => {
+        const datos = await datos_promise;
+        return _insertar_mensaje_dom(datos);
+    });
+    return cola_render;
 }
-// Flag: el usuario ha interactuado con el scroll recientemente
+
+async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = [], fecha, id_mensaje = null }) {
+    const id_chat_str = chat?.toString();
+    const id_emisor = Array.isArray(emisor) ? emisor[0]?.toString() : emisor?.toString();
+
+    const [nombres_contactos, id_propio] = await Promise.all([
+        batchRequestCache.get('contactos', () => window.social_usuario.OBTENER_CONTACTOS_USUARIO(), 30000),
+        batchRequestCache.get('id_propio', () => window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(), Infinity)
+    ]);
+
+    const propio = id_propio && id_emisor == id_propio.toString();
+
+    const [info_chat, result_seguridad, nombre_emisor] = await Promise.all([
+        batchRequestCache.get(`info_chat_${id_chat_str}`, async () => {
+            const cache = await window.cache_persistente.getChatCache(id_chat_str).catch(() => null);
+            if (cache) return cache;
+            const activo = await window.chats.OBTENER_CACHE_CHAT_ACTIVO().catch(() => null);
+            if (activo && (activo._id === id_chat_str || activo.id === id_chat_str)) return activo;
+            return await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_str).catch(() => null);
+        }, 10000),
+        batchRequestCache.get(`config_seguridad_${id_chat_str}`,
+            () => window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat_str),
+            60000
+        ),
+        propio
+            ? Promise.resolve("")
+            : batchRequestCache.get(`nombre_${id_emisor}`,
+                () => Encontrar_Nombre_Chat_Usuario({ id_buscar: id_emisor, grupal: false, contactos: nombres_contactos }),
+                30000
+            )
+    ]);
+
+    const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(a => a.toString() === id_emisor);
+    const escaneres_seguridad = result_seguridad?.escaneres_seguridad || result_seguridad;
+
+    const html = await crear_mensaje_html({
+        fecha,
+        asunto: mensaje,
+        archivos,
+        propio,
+        nombre_emisor,
+        esAdmin,
+        escaneres_seguridad,
+        tieneArriba: false, // se recalcula en _insertar_mensaje_dom
+        tieneAbajo: false,
+        id_emisor,
+        id_mensaje
+    });
+
+    return { html, fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad };
+}
+
+async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad }) {
+    if (!document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat_str)}`)) return;
+
+    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    if (!chatContainer) return;
+
+    // Evitar duplicados
+    if (id_mensaje && chatContainer.querySelector(`.mensaje-chat[data-id="${id_mensaje}"]`)) return;
+
+    const lastBlock = chatContainer.querySelector(".bloque-dia-chat:last-child");
+    const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
+    const esNuevoDia = !lastBlock || lastBlock.querySelector(".fecha-bloque-mensajes span")?.innerHTML !== fechaActualText;
+
+    // Parsear html a elemento real para manipular clases antes de insertar
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+    const nuevoMensajeEl = tempDiv.firstElementChild;
+
+    // Agrupación
+    if (!esNuevoDia) {
+        const lastMessage = lastBlock.querySelector(".mensaje-chat:last-child");
+        if (lastMessage?.dataset.emisorId === id_emisor) {
+            lastMessage.classList.add("agrupado-abajo");
+            nuevoMensajeEl.classList.add("agrupado-arriba");
+        }
+    }
+
+    if (esNuevoDia) {
+        const nuevoBloque = document.createElement("div");
+        nuevoBloque.className = "bloque-dia-chat";
+        nuevoBloque.innerHTML = `<div class="fecha-bloque-mensajes"><span>${fechaActualText}</span></div>`;
+        nuevoBloque.appendChild(nuevoMensajeEl);
+        chatContainer.appendChild(nuevoBloque);
+    } else {
+        lastBlock.appendChild(nuevoMensajeEl);
+    }
+
+    aplicar_escaneres_asincronos(nuevoMensajeEl, mensaje, escaneres_seguridad);
+    scroll_fin_chat();
+}
+
+// ─── SCROLL ───────────────────────────────────────────────────────────────────
+
 let _usuario_scrolleando = false;
 let _timer_scroll_usuario = null;
 
-/**
- * Registra un listener en el contenedor de mensajes para detectar
- * scroll manual del usuario. Se llama al abrir un chat.
- */
 export function registrar_scroll_usuario() {
     const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
     if (!chatCuerpo) return;
@@ -408,7 +412,6 @@ export function registrar_scroll_usuario() {
     const marcar = () => {
         _usuario_scrolleando = true;
         clearTimeout(_timer_scroll_usuario);
-        // Después de 1.5 s sin tocar el scroll, se desactiva el bloqueo
         _timer_scroll_usuario = setTimeout(() => {
             _usuario_scrolleando = false;
         }, 1500);
@@ -423,17 +426,20 @@ export function scroll_fin_chat(forzar = false) {
     if (!forzar && _usuario_scrolleando) return;
     const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
     if (chatCuerpo) {
-        if (scrollTimeout) return; // Ya hay un scroll programado
-        
+        if (scrollTimeout) return;
+
         scrollTimeout = setTimeout(() => {
             chatCuerpo.scrollTo({
                 top: chatCuerpo.scrollHeight,
                 behavior: "smooth"
             });
             scrollTimeout = null;
-        }, 150); // Agrupar cada 150ms
+        }, 150);
     }
 }
+
+// ─── INICIO Y UTILIDADES ──────────────────────────────────────────────────────
+
 export async function INICIO_CHAT_MENU_PRINCIPAL() {
     try {
         await ACTUALIZAR_LISTAS_CHAT()

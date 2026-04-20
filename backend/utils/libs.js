@@ -40,7 +40,7 @@ import { fileURLToPath } from 'node:url';
 import {
     createHash, randomBytes, createCipheriv, createDecipheriv,
     generateKeyPairSync, generateKeyPair, publicEncrypt,
-    privateDecrypt, createHmac, constants, randomInt
+    privateDecrypt, createHmac, constants, randomInt,createPublicKey,createPrivateKey
 } from "node:crypto";
 
 import 'dotenv/config';
@@ -155,5 +155,5 @@ export {
     fs, path, os, http, https, Transform, __dirname, __filename,
     createHash, randomBytes, createCipheriv, createDecipheriv,
     generateKeyPairSync, generateKeyPair, publicEncrypt,
-    privateDecrypt, createHmac, constants, randomInt
+    privateDecrypt, createHmac, constants, randomInt,createPublicKey,createPrivateKey
 };
