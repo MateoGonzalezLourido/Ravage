@@ -52,6 +52,9 @@ body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
+
 }
 
 body::before {
@@ -66,6 +69,8 @@ body::before {
         radial-gradient(circle at 90% 90%, rgba(14, 165, 233, 0.12) 0%, transparent 40%),
         radial-gradient(circle at 50% 50%, rgba(15, 15, 20, 1) 0%, #0a0a0c 100%);
     z-index: -1;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .ocultar-display {
@@ -129,6 +134,8 @@ input[type="number"]::-webkit-outer-spin-button {
     align-items: center;
     z-index: 100 !important;
     animation: fadeIn 0.4s ease-out;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .menu-validacion-codigo h2 {
@@ -209,6 +216,8 @@ input[type="number"]::-webkit-outer-spin-button {
     -webkit-backdrop-filter: blur(20px);
     display: flex;
     z-index: 1000 !important;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 #bt-cerrar-menu-ajustes {
@@ -225,6 +234,7 @@ input[type="number"]::-webkit-outer-spin-button {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 50%;
     transition: all 0.2s;
+    will-change: transform;
 }
 
 #bt-cerrar-menu-ajustes:hover {
@@ -282,7 +292,6 @@ input[type="number"]::-webkit-outer-spin-button {
     overflow-y: auto;
     padding: 60px 9%;
     display: flex !important;
-    /* Ensure it's flex regardless of parent display type */
     flex-direction: column;
     align-items: flex-start;
 }
@@ -291,7 +300,6 @@ input[type="number"]::-webkit-outer-spin-button {
     width: 100%;
     max-width: 100%;
     display: none;
-    /* Let the utility classes (flex-display) control this */
     flex-direction: column;
     gap: 32px;
 }
@@ -330,6 +338,7 @@ input[type="number"]::-webkit-outer-spin-button {
     transition: all 0.2s ease;
     margin-left: auto;
     margin-right: 8px;
+    will-change: transform;
 }
 
 .menu-ajustes-sub .label button:hover {
@@ -372,6 +381,7 @@ input[type="number"]::-webkit-outer-spin-button {
     top: 3px;
     left: 3px;
     transition: transform 0.3s;
+    will-change: transform;
 }
 
 .menu-ajustes-sub input[type="checkbox"]:checked::before {
@@ -395,6 +405,8 @@ input[type="number"]::-webkit-outer-spin-button {
     justify-content: center;
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(10px);
+    will-change: transform;
+    transform: translateZ(0);
     z-index: 101 !important;
 }
 
@@ -437,6 +449,8 @@ input[type="number"]::-webkit-outer-spin-button {
     position: relative;
     padding: 30px;
     border-radius: 24px;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 
@@ -530,7 +544,10 @@ input[type="number"]::-webkit-outer-spin-button {
     justify-content: center;
     background-color: rgba(11, 20, 26, 0.6);
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 102 !important;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 #alineador-menu-cambiar-data-cuenta-validar-code h2 {
@@ -566,6 +583,7 @@ input[type="number"]::-webkit-outer-spin-button {
     outline: none;
     transition: all 0.3s ease;
     text-shadow: 0 0 10px var(--primary-glow);
+    will-change: transform;
 }
 
 #bt-code-introducir-datos-cuenta:focus,
@@ -590,6 +608,7 @@ input[type="number"]::-webkit-outer-spin-button {
     cursor: pointer;
     transition: all 0.3s;
     box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    will-change: transform;
 }
 
 .bt-validar-code:hover {
@@ -622,9 +641,12 @@ input[type="number"]::-webkit-outer-spin-button {
     align-items: center;
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--glass-border);
     justify-content: flex-end;
     z-index: 10 !important;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 #menu-chats-inicio {
@@ -644,11 +666,14 @@ input[type="number"]::-webkit-outer-spin-button {
     max-width: 400px;
     background: rgba(10, 10, 15, 0.4);
     backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
     border-right: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 #lista-chats::-webkit-scrollbar {
@@ -680,7 +705,7 @@ input[type="number"]::-webkit-outer-spin-button {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
     box-sizing: border-box;
-    /* Ensure padding doesn't cause overflow */
+    will-change: transform;
 }
 
 .chat-componente-lista-chats:hover {
@@ -752,10 +777,10 @@ input[type="number"]::-webkit-outer-spin-button {
     opacity: 0.45;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    will-change: transform, opacity;
 }
 
 .icono-bloqueado {
-    /* Toque rojizo sutil para lo bloqueado */
     filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.2));
 }
 
@@ -795,6 +820,7 @@ input[type="number"]::-webkit-outer-spin-button {
     opacity: 0.08;
     z-index: -1;
     pointer-events: none;
+    transform: translateZ(0);
 }
 
 .titulo-lista-chats-principal {
@@ -912,6 +938,8 @@ input[type="number"]::-webkit-outer-spin-button {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     z-index: 101 !important;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .seccion-añadir-chat {
@@ -919,7 +947,6 @@ input[type="number"]::-webkit-outer-spin-button {
     border: 1px solid rgba(255, 255, 255, 0.1);
     width: 440px;
     max-height: 90vh;
-    /* Reverted to max-height to avoid pushing elements out */
     min-height: 500px;
     display: flex;
     flex-direction: column;
@@ -928,6 +955,8 @@ input[type="number"]::-webkit-outer-spin-button {
     position: relative;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     overflow: hidden;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .modal-header {
@@ -950,7 +979,6 @@ input[type="number"]::-webkit-outer-spin-button {
     padding: 24px;
     flex: 1;
     overflow-y: auto;
-    /* Changed back to auto so bottom elements can be reached */
     display: flex;
     flex-direction: column;
 }
@@ -1056,12 +1084,10 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .nombre-chat-crear {
     display: none;
-    /* Removed legacy ornamentation */
 }
 
 #resultados-busqueda-usaurios {
     height: 42px;
-    /* Synchronized height */
     background: rgba(0, 0, 0, 0.2);
     border-radius: 12px;
     margin-bottom: 24px;
@@ -1105,7 +1131,6 @@ input[type="number"]::-webkit-outer-spin-button {
 
 #contactos-añadidos-grupo {
     height: 150px;
-    /* Synchronized height */
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -1122,14 +1147,12 @@ input[type="number"]::-webkit-outer-spin-button {
 
 #bt-agregar-contacto-nuevo {
     flex-shrink: 0;
-    /* Never hide the button */
     margin-top: 10px;
 }
 
 .componente-lista-contactos-añadidos-chat-crear {
     padding: 8px 14px;
     background: #4f46e5;
-    /* Deeper Indigo */
     color: #ffffff;
     border-radius: 6px;
     font-size: 13px;
@@ -1187,6 +1210,8 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 20px;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 #nav-prinicpal-chat-usaurio:hover {
@@ -1251,6 +1276,8 @@ input[type="number"]::-webkit-outer-spin-button {
     z-index: 10;
     border-radius: 24px;
     border: 1px solid var(--glass-border);
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 #bt-añadir-archivo-mensaje-escritura {
@@ -1283,7 +1310,6 @@ input[type="number"]::-webkit-outer-spin-button {
     max-height: 120px;
     margin: 0;
     background: transparent;
-    /* Seamless integration */
     color: var(--text-primary);
     border: none;
     border-radius: 16px;
@@ -1301,7 +1327,6 @@ input[type="number"]::-webkit-outer-spin-button {
     white-space: pre-wrap;
 }
 
-/* Styled scrollbar for textarea */
 .seccion-escritura-mensaje-chat textarea::-webkit-scrollbar {
     width: 4px;
 }
@@ -1349,10 +1374,14 @@ input[type="number"]::-webkit-outer-spin-button {
 .contenedor-principal::before {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: radial-gradient(circle at top right, rgba(124, 58, 237, 0.03), transparent 40%),
-                radial-gradient(circle at bottom left, rgba(0, 168, 132, 0.03), transparent 40%);
+        radial-gradient(circle at bottom left, rgba(0, 168, 132, 0.03), transparent 40%);
     pointer-events: none;
+    transform: translateZ(0);
 }
 
 #info-chat-seccion {
@@ -1368,6 +1397,8 @@ input[type="number"]::-webkit-outer-spin-button {
     flex-direction: column;
     flex-shrink: 0;
     z-index: 10;
+    will-change: width;
+    transform: translateZ(0);
 }
 
 #info-chat-seccion.abierto {
@@ -1415,13 +1446,13 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 50%;
     margin-right: 16px;
     transition: background-color 0.2s, transform 0.1s;
+    will-change: transform;
 }
 
 #bt-cerrar-info-chat:hover,
 .bt-cerrar-archivos-header:hover {
     background-color: var(--wa-list-item-hover);
     transform: scale(1.05);
-    /* Slight pop effect */
 }
 
 #bt-cerrar-info-chat img,
@@ -1430,7 +1461,6 @@ input[type="number"]::-webkit-outer-spin-button {
     height: 20px;
     filter: invert(0.9);
     opacity: 0.85;
-    /* Soften the icon slightly */
 }
 
 .info-chat-header span {
@@ -1519,6 +1549,7 @@ input[type="number"]::-webkit-outer-spin-button {
     align-items: center;
     justify-content: center;
     user-select: none;
+    will-change: transform;
 }
 
 #bt-ver-archivos-chat:hover,
@@ -1554,7 +1585,6 @@ input[type="number"]::-webkit-outer-spin-button {
     display: flex;
     flex-direction: column;
     gap: 12px;
-
 }
 
 .info-chat-lista-titulo {
@@ -1582,6 +1612,7 @@ input[type="number"]::-webkit-outer-spin-button {
     font-weight: 400;
     transition: all 0.2s ease;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    will-change: transform;
 }
 
 .info-chat-lista-titulo div:hover {
@@ -1589,8 +1620,6 @@ input[type="number"]::-webkit-outer-spin-button {
     border-color: var(--primary);
     transform: scale(1.1);
 }
-
-
 
 .info-chat-lista-items {
     display: flex;
@@ -1645,22 +1674,20 @@ input[type="number"]::-webkit-outer-spin-button {
     flex-direction: column;
     flex-shrink: 0;
     z-index: 10;
+    will-change: width;
+    transform: translateZ(0);
 }
 
 .ventana-archivos-mensaje.abierto {
     width: 350px;
-    /* Wider than info panel (350px) */
 }
 
-/* Override the generic info-chat-header inside archivos to be more compact */
 .ventana-archivos-mensaje .info-chat-header {
     height: 54px;
     padding: 0 12px;
     gap: 4px;
-    /* Spacing between the icon buttons */
 }
 
-/* Wrapper del título - ocupa el espacio central y empuja los botones a la derecha */
 .ventana-archivos-mensaje .info-chat-header>div:has(span) {
     flex-grow: 1;
     display: flex;
@@ -1674,12 +1701,10 @@ input[type="number"]::-webkit-outer-spin-button {
     opacity: 0.9;
 }
 
-/* Icon-buttons inside the header (add and clear) */
 .ventana-archivos-mensaje .bt-accion-archivos {
     width: 34px;
     height: 34px;
     min-width: 34px;
-    /* Prevent flex-squeeze */
     padding: 0;
     border-radius: 50%;
     background-color: transparent;
@@ -1690,6 +1715,7 @@ input[type="number"]::-webkit-outer-spin-button {
     justify-content: center;
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
+    will-change: transform;
 }
 
 .ventana-archivos-mensaje .bt-accion-archivos:hover {
@@ -1707,7 +1733,6 @@ input[type="number"]::-webkit-outer-spin-button {
     pointer-events: none;
 }
 
-/* Red tint for the clear/danger button */
 .ventana-archivos-mensaje .bt-accion-archivos-peligro img {
     filter: invert(0.4) sepia(1) saturate(5) hue-rotate(310deg);
     opacity: 0.8;
@@ -1717,14 +1742,12 @@ input[type="number"]::-webkit-outer-spin-button {
     background-color: rgba(255, 107, 107, 0.15);
 }
 
-/* File list compact */
 .ventana-archivos-mensaje .info-chat-lista-participantes {
     margin-top: 0;
     padding: 0 12px;
     gap: 4px;
 }
 
-/* File items compact */
 .ventana-archivos-mensaje .info-chat-participante-item {
     padding: 7px 10px;
     border-radius: 6px;
@@ -1735,7 +1758,6 @@ input[type="number"]::-webkit-outer-spin-button {
     user-select: none;
 }
 
-/* File name compact */
 .ventana-archivos-mensaje .info-chat-participante-nombre {
     font-size: 13px;
     font-weight: 500;
@@ -1746,7 +1768,6 @@ input[type="number"]::-webkit-outer-spin-button {
     position: fixed;
     top: 15px;
     left: 50%;
-    transform: translateX(-50%);
     background-color: var(--wa-primary);
     color: white;
     padding: 8px 24px;
@@ -1758,15 +1779,16 @@ input[type="number"]::-webkit-outer-spin-button {
     display: flex;
     align-items: center;
     gap: 12px;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: opacity 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     opacity: 0;
     pointer-events: none;
-    margin-top: -60px;
+    transform: translateX(-50%) translateY(-60px) translateZ(0);
+    will-change: opacity, transform;
 }
 
 .sync-mailbox-bar.visible {
     opacity: 1;
-    margin-top: 0;
+    transform: translateX(-50%) translateY(0) translateZ(0);
 }
 
 .sync-spinner {
@@ -1776,6 +1798,7 @@ input[type="number"]::-webkit-outer-spin-button {
     border-top: 2.5px solid white;
     border-radius: 50%;
     animation: spin-sync 0.8s linear infinite;
+    will-change: transform;
 }
 
 @keyframes spin-sync {
@@ -1792,7 +1815,7 @@ input[type="number"]::-webkit-outer-spin-button {
     position: absolute;
     left: 50%;
     top: 1%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) translateZ(0);
     z-index: 10000;
     filter: blur(5px);
 }

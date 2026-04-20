@@ -15,14 +15,11 @@
 #cuerpo-mensajes-chat {
     flex-grow: 1;
     overflow-y: auto;
-    /* Solo los mensajes hacen scroll */
     padding: 10px 6%;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    /* Default gap between messages */
     scroll-behavior: smooth;
-    /* Custom scrollbar for message body */
 }
 
 #cuerpo-mensajes-chat::-webkit-scrollbar {
@@ -55,9 +52,10 @@
     display: flex;
     flex-direction: column;
     word-wrap: break-word;
-    border: 1px solid rgba(255, 255, 255, 0.08); /* Minimalist border instead of shadow */
+    border: 1px solid rgba(255, 255, 255, 0.08);
     transition: all 0.2s;
     animation: fadeIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    will-change: transform, opacity;
 }
 
 .mensaje-chat:hover {
@@ -68,18 +66,15 @@
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px) scale(0.98);
+        transform: translateY(10px) scale(0.98) translateZ(0);
     }
-
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0) scale(1) translateZ(0);
     }
 }
 
-
-/* CURRENT ACTIVE THEME: WA GREEN */
-/* Emisor (Sent messages -> Right side) */
+/* Emisor */
 .mensaje-chat.soy-emisor {
     background: linear-gradient(135deg, var(--primary) 20%, #7c3aed 100%);
     align-self: flex-end;
@@ -93,7 +88,7 @@
     background: rgba(255, 255, 255, 0.08);
     align-self: flex-start;
     margin-right: auto;
-    border-radius: 20px 20px 20px 4px; /* Modern asymmetrical rounded corners */
+    border-radius: 20px 20px 20px 4px;
     color: var(--text-primary);
 }
 
@@ -102,30 +97,28 @@
     font-size: 13px;
     font-weight: 600;
     color: #53bdeb;
-    /* Bright blue for better visibility on dark mode */
     margin-bottom: 4px;
     display: flex;
 }
 
 .soy-emisor .nombre-mensaje-chat-usuario {
     display: none;
-    /* Usually we don't show our own name in sent bubbles */
 }
 
-/* Message Text (Asunto) */
+/* Message Text */
 .asunto-mensaje-chat {
     font-size: 15.5px;
     line-height: 1.5;
     color: #ffffff;
     font-family: inherit;
     margin-bottom: 2px;
-    font-weight: 450; /* Slightly heavier for glass */
+    font-weight: 450;
 }
 
 /* Time */
 .hora-mensaje-chat {
     font-size: 11px;
-    color: var(--text-muted); /* More solid slate */
+    color: var(--text-muted);
     align-self: flex-end;
     display: flex;
     align-items: center;
@@ -138,7 +131,7 @@
     color: var(--wa-text-secondary);
 }
 
-/* Date Bubble inside chat */
+/* Date Bubble */
 .fecha-bloque-mensajes {
     user-select: none;
     align-self: center;
@@ -155,23 +148,17 @@
     text-transform: capitalize;
     position: sticky;
     top: 10px;
+    transform: translateZ(0);
 }
 
-/* ─── Agrupación de mensajes (Hilos Estilo Árbol) ───────────────────── */
-
-/* Espaciado para el árbol */
-/* ─── Agrupación de mensajes (Hilos Estilo Árbol Gordo) ──────────────── */
-
-/* ─── Agrupación de mensajes (Hilos Estilo Árbol Gordo - Revertido) ──── */
-
-.mensaje-chat.agrupado-arriba, 
+/* ─── Agrupación de mensajes ─────────────────────────────────────────── */
+.mensaje-chat.agrupado-arriba,
 .mensaje-chat.agrupado-abajo {
     position: relative;
-    margin-top: 4px !important; 
+    margin-top: 4px !important;
     margin-bottom: 4px !important;
 }
 
-/* El Tronco (Línea vertical gorda) */
 .mensaje-chat.agrupado-arriba::before,
 .mensaje-chat.agrupado-abajo::before {
     content: "";
@@ -181,25 +168,21 @@
     pointer-events: none;
 }
 
-/* Si tiene mensaje arriba, la línea sale desde arriba hasta la mitad */
 .mensaje-chat.agrupado-arriba::before {
-    top: -12px; 
+    top: -12px;
     height: calc(50% + 12px);
 }
 
-/* Si tiene mensaje abajo, la línea sale desde la mitad hasta el fondo */
 .mensaje-chat.agrupado-abajo::before {
     top: 50%;
     height: calc(50% + 12px);
 }
 
-/* Si tiene AMBOS, cubrimos todo el lateral */
 .mensaje-chat.agrupado-arriba.agrupado-abajo::before {
     top: -12px;
     height: calc(100% + 24px);
 }
 
-/* Las Ramas (Línea horizontal gorda) */
 .mensaje-chat.agrupado-arriba::after,
 .mensaje-chat.agrupado-abajo::after {
     content: "";
@@ -207,16 +190,15 @@
     height: 3px;
     width: 15px;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translateY(-50%) translateZ(0);
     z-index: 2;
     pointer-events: none;
 }
 
-/* Alineación RECEPTOR (Izquierda) */
 .soy-receptor.agrupado-arriba::before,
 .soy-receptor.agrupado-abajo::before {
     left: -18px;
-    background: #2b708d; /* Color sólido basado en el anterior para evitar brillos excesivos */
+    background: #2b708d;
 }
 
 .soy-receptor.agrupado-arriba::after,
@@ -226,11 +208,10 @@
     border-radius: 0 4px 4px 0;
 }
 
-/* Alineación EMISOR (Derecha) */
 .soy-emisor.agrupado-arriba::before,
 .soy-emisor.agrupado-abajo::before {
     right: -18px;
-    background: #4a4a4a; /* Gris sólido para evitar el efecto de suma de transparencias */
+    background: #4a4a4a;
 }
 
 .soy-emisor.agrupado-arriba::after,
@@ -240,22 +221,16 @@
     border-radius: 4px 0 0 4px;
 }
 
-/* Ocultar nombre en continuaciones */
 .agrupado-arriba .nombre-mensaje-chat-usuario {
     display: none !important;
 }
 
-/* Ajustes de Border Radius finales */
 .mensaje-chat.soy-receptor.agrupado-abajo { border-bottom-left-radius: 4px; }
 .mensaje-chat.soy-receptor.agrupado-arriba { border-top-left-radius: 4px; }
 .mensaje-chat.soy-emisor.agrupado-abajo { border-bottom-right-radius: 4px; }
 .mensaje-chat.soy-emisor.agrupado-arriba { border-top-right-radius: 4px; }
 
-
-/* Files / Attachments styling inside messages */
-
-
-/* Files / Attachments styling inside messages */
+/* Files / Attachments */
 .file-mensaje-chat,
 .mensaje-div-archivos {
     margin-top: 6px;
@@ -310,6 +285,7 @@
     animation: fadeIn 0.4s ease forwards;
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     color: var(--text-secondary);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
@@ -317,6 +293,8 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    will-change: transform, opacity;
+    transform: translateZ(0);
 }
 
 .mensaje-especial b {
@@ -329,17 +307,14 @@
     flex-shrink: 0;
 }
 
-/* tipo 0: usuario añadido */
 .mensaje-especial-añadido {
     border-color: rgba(0, 168, 132, 0.25);
 }
 
-/* tipo 1: usuario expulsado */
 .mensaje-especial-expulsado {
     border-color: rgba(229, 54, 18, 0.25);
 }
 
-/* Solicitud de añadir usuario (tipo 2) */
 .mensaje-solicitud-añadir {
     flex-direction: column;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -375,6 +350,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
+    will-change: transform;
 }
 
 .bt-solicitud-aceptar {
@@ -419,7 +395,10 @@
     justify-content: center;
     padding: 20px;
     backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
     animation: fadeInOverlay 0.25s ease-out;
+    will-change: opacity;
+    transform: translateZ(0);
 }
 
 .menu-ajustes-chat-interior {
@@ -432,27 +411,22 @@
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.1);
     animation: slideUpMenu 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform, opacity;
 }
 
 @keyframes fadeInOverlay {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes slideUpMenu {
     from {
         opacity: 0;
-        transform: translateY(30px) scale(0.95);
+        transform: translateY(30px) scale(0.95) translateZ(0);
     }
-
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0) scale(1) translateZ(0);
     }
 }
 
@@ -472,22 +446,22 @@
     cursor: help;
     transition: transform 0.2s ease, opacity 0.2s ease;
     animation: popIn_seguridad 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    will-change: transform, opacity;
 }
 
 .icono-seguridad:hover {
     opacity: 1;
-    transform: scale(1.2);
+    transform: scale(1.2) translateZ(0);
 }
 
 @keyframes popIn_seguridad {
     from {
         opacity: 0;
-        transform: scale(0.5);
+        transform: scale(0.5) translateZ(0);
     }
-
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) translateZ(0);
     }
 }
 

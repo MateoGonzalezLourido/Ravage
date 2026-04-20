@@ -3,7 +3,7 @@
 }
 
 /* =========================================
-   SECCIÓN DE ARCHIVOS DEL CHAT (Detaillado)
+   SECCIÓN DE ARCHIVOS DEL CHAT (Detallado)
    ========================================= */
 .ventana-archivos-mensaje {
     width: 0;
@@ -18,6 +18,8 @@
     flex-direction: column;
     flex-shrink: 0;
     z-index: 10;
+    will-change: width;
+    transform: translateZ(0);
 }
 
 .ventana-archivos-mensaje.abierto {
@@ -61,6 +63,7 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 10px;
+    will-change: transform;
 }
 
 .bt-accion-archivos:hover {
@@ -95,17 +98,18 @@
     min-width: 160px;
     z-index: 1000;
     animation: fadeInContextMenu 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+    transform: translateZ(0);
 }
 
 @keyframes fadeInContextMenu {
     from {
         opacity: 0;
-        transform: translateY(-5px);
+        transform: translateY(-5px) translateZ(0);
     }
-
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) translateZ(0);
     }
 }
 
@@ -119,6 +123,7 @@
     transition: all 0.15s;
     user-select: none;
     margin-bottom: 2px;
+    will-change: transform;
 }
 
 .context-menu-item:hover {

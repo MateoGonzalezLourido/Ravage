@@ -3,7 +3,7 @@
     justify-content: center;
     height: 100%;
     width: 100%;
-    background: transparent; /* Show global gradient */
+    background: transparent;
     box-sizing: border-box;
     overflow-y: auto;
     user-select: none;
@@ -25,7 +25,6 @@
 #seccion-historial-archivos::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.15);
     border-radius: 10px;
-    /* Margin technique to add padding to thumb inside textarea */
     border: 2px solid var(--wa-message-in);
 }
 
@@ -70,6 +69,7 @@
     margin-left: 15px;
     font-weight: 600;
     transition: all 0.2s;
+    will-change: transform;
 }
 
 .bt-limpiar-historial:hover {
@@ -95,6 +95,8 @@
     margin-bottom: 24px;
     overflow: hidden;
     box-shadow: var(--glass-shadow);
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .chat-historial-header {
@@ -149,6 +151,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .bt-descargar-directo-historial:hover {
@@ -201,8 +205,6 @@
 .ocultar-display {
     display: none !important;
 }
-
-
 
 #bt-seccion-historial-archivos {
     position: relative;
