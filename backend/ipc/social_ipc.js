@@ -9,7 +9,8 @@ import {
     eliminarUsuariosSilenciados,
     AÑADIR_CONTACTO,
     toggleInvisibleUsuario,
-    toggleMostrarCorreoUsuario
+    toggleMostrarCorreoUsuario,
+    GUARDAR_USUARIOS_EN_PERSISTENTE
 } from '../repositories/UserRepository.js';
 import {
     getListaContactos,
@@ -68,5 +69,9 @@ export function registerSocialHandlers() {
 
     ipcMain.handle("toggle-mostrar-correo-usuario", async () => {
         return await toggleMostrarCorreoUsuario()
+    })
+
+    ipcMain.handle("guardar-varios-usuarios-externos", async (_, usuarios) => {
+        return GUARDAR_USUARIOS_EN_PERSISTENTE(usuarios);
     })
 }

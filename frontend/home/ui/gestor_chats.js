@@ -422,7 +422,7 @@ async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_m
 
 let _usuario_scrolleando = false;
 let _timer_scroll_usuario = null;
-const UMBRAL_SCROLL_CARGA = 1000; // px desde el borde para disparar carga
+const PORCENTAJE_UMBRAL_CARGA = 0.35; // 30% de la altura total del scroll para disparar carga
 
 export function registrar_scroll_usuario() {
     const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
@@ -480,14 +480,16 @@ export function registrar_scroll_usuario() {
         const virt = obtener_estado_virtualizacion();
         if (!virt || virt.cargando) return;
 
+        const umbralDinamico = chatCuerpo.scrollHeight * PORCENTAJE_UMBRAL_CARGA;
+
         // Scroll cerca del tope → cargar mensajes más antiguos
-        if (chatCuerpo.scrollTop < UMBRAL_SCROLL_CARGA && virt.hay_mas_arriba) {
+        if (chatCuerpo.scrollTop < umbralDinamico && virt.hay_mas_arriba) {
             cargar_bloque_arriba();
         }
 
         // Scroll cerca del fondo → cargar mensajes más nuevos (si se reciclaron)
         const distanciaAlFondo = chatCuerpo.scrollHeight - chatCuerpo.scrollTop - chatCuerpo.clientHeight;
-        if (distanciaAlFondo < UMBRAL_SCROLL_CARGA && virt.hay_mas_abajo) {
+        if (distanciaAlFondo < umbralDinamico && virt.hay_mas_abajo) {
             cargar_bloque_abajo();
         }
     }, { passive: true });

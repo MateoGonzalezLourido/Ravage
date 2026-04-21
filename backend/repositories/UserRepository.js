@@ -263,6 +263,53 @@ export async function cambiarApodoUsuario(apodo) {
 }
 
 
+let session_cache_usuarios = new Map(); // Cache RAM de sesión (Persistente durante la sesión)
+const MAX_SESSION_CACHE_MB = 50; // Límite de la caché de sesión
+
+/**
+ * Revisa la caché de sesión para borrar usuarios de más de 15 min 
+ * o si se excede el límite de MB (borrando los más antiguos).
+ */
+export function REVISAR_LIMPIEZA_CACHE_SESION() {
+    const ahora = Date.now();
+    
+    // 1. Borrar los que tengan más de 15 minutos
+    let borradosTTL = 0;
+    for (const [id, entry] of session_cache_usuarios.entries()) {
+        if (ahora - entry.timestamp > 15 * 60 * 1000) {
+            session_cache_usuarios.delete(id);
+            borradosTTL++;
+        }
+    }
+    if (borradosTTL > 0) log.debug({ borrados: borradosTTL }, "Caché sesión: Limpieza por TTL (15 min)");
+
+    // 2. Controlar tamaño por MB
+    const items = Array.from(session_cache_usuarios.entries())
+        .sort((a, b) => a[1].timestamp - b[1].timestamp); // De más antiguo a más nuevo
+    
+    let currentMB = 0;
+    let borradosSize = 0;
+    for (const [id, entry] of items) {
+        const itemSize = JSON.stringify(entry.data).length * 2 / (1024 * 1024);
+        if (currentMB + itemSize > MAX_SESSION_CACHE_MB) {
+            session_cache_usuarios.delete(id);
+            borradosSize++;
+        } else {
+            currentMB += itemSize;
+        }
+    }
+    if (borradosSize > 0) log.debug({ borrados: borradosSize, currentMB: currentMB.toFixed(2) }, "Caché sesión: Limpieza por tamaño (50MB)");
+}
+
+function _faltan_datos(procesado, datos_usar) {
+    if (!datos_usar) return false;
+    const campos = datos_usar.split(" ");
+    for (const c of campos) {
+        if (c && procesado[c] === undefined) return true;
+    }
+    return false;
+}
+
 export async function ActualizarSecretKeyUsuario(actualizar = true) {
     const key = randomBytes(32).toString("hex");
     if (!actualizar) return key;
@@ -286,25 +333,54 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
 
     const id_propio = getIDMongodbUsuario();
     const esMiPropioUsuario = id_propio && idStr === id_propio.toString();
+    const ahora = Date.now();
 
-    if (!datos_usar && !esMiPropioUsuario) {
-        const cached = await getUsuarioDeCache(idStr);
-        if (cached) {
-            if (cached.mostrarCorreo === false) {
-                const sinCorreo = { ...cached };
-                delete sinCorreo.correo;
-                return sinCorreo;
+    let useCache = false;
+    let cachedEntry = session_cache_usuarios.get(idStr);
+
+    if (cachedEntry) {
+        const procesado = cachedEntry.data;
+        if (!datos_usar && !esMiPropioUsuario) {
+            useCache = true;
+        } else if (datos_usar) {
+            // TTL de 5 minutos para re-verificar mostrarCorreo e invisible
+            if (ahora - cachedEntry.timestamp <= 5 * 60 * 1000) {
+                // REVISIÓN: Si piden campos que no tenemos en caché, forzar consulta a DB
+                if (!_faltan_datos(procesado, datos_usar)) {
+                    log.debug({ id: idStr }, "Caché sesión: HIT (enviando a frontend)");
+                    useCache = true;
+                } else {
+                    log.debug({ id: idStr }, "Caché sesión: MISS (faltan campos en RAM)");
+                }
             }
-            return cached;
         }
     }
 
-    const datos_buscar = datos_usar || "correo apodo visible idamigo mostrarCorreo";
+    if (useCache) {
+        // Clonamos para no mutar el objeto original de la caché y asegurar que el ID sea string para IPC
+        const procesado = { ...cachedEntry.data };
+        if (procesado._id) procesado.id = procesado._id.toString();
+        
+        // REVISIÓN: Si piden campos que no tenemos en caché, forzar consulta a DB
+        if (!_faltan_datos(procesado, datos_usar)) {
+            // Al entregarlo, lo eliminamos de la caché persistente (ahora vivirá en la activa del frontend)
+            session_cache_usuarios.delete(idStr);
+
+            if (!esMiPropioUsuario && procesado.mostrarCorreo === false) {
+                const sinCorreo = { ...procesado };
+                delete sinCorreo.correo;
+                return sinCorreo;
+            }
+            return procesado;
+        }
+    }
+
+    const datos_buscar = datos_usar || "correo apodo visible idamigo mostrarCorreo invisible";
     const usuario = await User.findById(idStr, datos_buscar).lean();
     if (!usuario) return null;
 
     const procesado = procesarUsuario(usuario);
-    if (!datos_usar) await setUsuarioEnCache(procesado);
+    session_cache_usuarios.set(idStr, { data: procesado, timestamp: ahora });
 
     if (!esMiPropioUsuario && procesado.mostrarCorreo === false) {
         const sinCorreo = { ...procesado };
@@ -320,32 +396,119 @@ export async function obtener_varios_usuarios(ids, datos_usar = null) {
     log.info({ "ids": ids, "datos_usar": datos_usar }, "buscar datos usuarios")
     if (!Array.isArray(ids) || ids.length === 0) return [];
 
+    // Cada vez que se piden varios (ej. al abrir un chat o virtualizar), revisamos limpieza
+    REVISAR_LIMPIEZA_CACHE_SESION();
+
     const normalizedIds = ids.map(x => {
         if (x?.buffer) return new mongoose.Types.ObjectId(Buffer.from(Object.values(x.buffer)));
         return new mongoose.Types.ObjectId(x);
     }).filter(Boolean);
 
     const id_propio = getIDMongodbUsuario();
-    let query_datos = datos_usar || "correo apodo visible idamigo mostrarCorreo";
+    const ahora = Date.now();
+    let query_datos = datos_usar || "correo apodo visible idamigo mostrarCorreo invisible";
 
-    let usuarios_db = await User.find({ _id: { $in: normalizedIds } }, query_datos).lean();
+    const result = [];
+    const missingIds = [];
+
+    for (const nId of normalizedIds) {
+        const idStr = nId.toString();
+        const cachedEntry = session_cache_usuarios.get(idStr);
+        let useCache = false;
+
+        if (cachedEntry) {
+            const procesado = cachedEntry.data;
+            if (!datos_usar) {
+                useCache = true;
+            } else if (ahora - cachedEntry.timestamp <= 5 * 60 * 1000) {
+                // REVISIÓN: Si no faltan datos, lo usamos
+                if (!_faltan_datos(procesado, datos_usar)) {
+                    log.debug({ id: idStr }, "Caché sesión: HIT múltiple (enviando a frontend)");
+                    useCache = true;
+                } else {
+                    log.debug({ id: idStr }, "Caché sesión: MISS múltiple (faltan campos en RAM)");
+                }
+            }
+        }
+
+        if (useCache) {
+            // Clonamos para asegurar que el ID sea string para el transporte IPC al frontend
+            const procesado = { ...cachedEntry.data };
+            if (procesado._id) procesado.id = procesado._id.toString();
+            
+            // REVISIÓN: Si no faltan datos, lo usamos
+            if (!_faltan_datos(procesado, datos_usar)) {
+                log.debug({ id: idStr }, "Caché sesión: HIT múltiple (enviando a frontend)");
+                // Lo borramos de aquí porque va a pasar a la caché activa del frontend
+                session_cache_usuarios.delete(idStr);
+
+                if (idStr !== id_propio?.toString() && procesado.mostrarCorreo === false) {
+                    const sinCorreo = { ...procesado };
+                    delete sinCorreo.correo;
+                    result.push(sinCorreo);
+                } else {
+                    result.push(procesado);
+                }
+                continue; // Encontrado íntegro en caché, pasar al siguiente
+            }
+        } else {
+            // Antes de ir a DB, probar caché persistente (solo si no es búsqueda específica de campos sensibles)
+            // [ELIMINADO: La caché persistente ahora es en RAM y se gestiona en session_cache_usuarios]
+            missingIds.push(nId);
+        }
+    }
+
+    if (missingIds.length === 0) return result;
+
+    let usuarios_db = await User.find({ _id: { $in: missingIds } }, query_datos).lean();
     if (usuarios_db.length === 0) {
         query_datos="nombre";
-        usuarios_db = await ChatsRavage.find({ _id: { $in: normalizedIds } }, query_datos).lean();
+        usuarios_db = await ChatsRavage.find({ _id: { $in: missingIds } }, query_datos).lean();
     }
-    if (usuarios_db.length === 0) return [];
+    if (usuarios_db.length === 0) return result;
 
-    return usuarios_db.map(u => {
+    for (const u of usuarios_db) {
         const procesado = procesarUsuario(u);
         const idStr = procesado.id || procesado._id?.toString();
-
+        session_cache_usuarios.set(idStr, { data: procesado, timestamp: ahora });
+        
         if (idStr !== id_propio?.toString() && procesado.mostrarCorreo === false) {
             const sinCorreo = { ...procesado };
             delete sinCorreo.correo;
-            return sinCorreo;
+            result.push(sinCorreo);
+        } else {
+            result.push(procesado);
         }
-        return procesado;
-    });
+    }
+
+    return result;
+}
+
+/**
+ * Guarda una lista de usuarios en la caché persistente de sesión (Backend).
+ * Se usa cuando el frontend limpia su caché activa al cambiar de chat.
+ */
+export function GUARDAR_USUARIOS_EN_PERSISTENTE(usuarios) {
+    if (!Array.isArray(usuarios)) return;
+    const ahora = Date.now();
+    log.debug({ count: usuarios.length }, "Caché sesión: Recibiendo usuarios desde frontend");
+    for (const u of usuarios) {
+        const id = u.id || u._id?.toString();
+        if (id) {
+            // OPTIMIZACIÓN RAM: Para la caché persistente preferimos _id como Buffer/ObjectId
+            // y eliminamos el string redundante 'id'.
+            const paraCache = { ...u };
+            if (paraCache._id && typeof paraCache._id === 'string') {
+                try {
+                    paraCache._id = new mongoose.Types.ObjectId(paraCache._id);
+                } catch(e) {}
+            }
+            delete paraCache.id; // Ahorramos el espacio del string de 24 caracteres
+
+            session_cache_usuarios.set(id, { data: paraCache, timestamp: ahora });
+        }
+    }
+    REVISAR_LIMPIEZA_CACHE_SESION();
 }
 
 

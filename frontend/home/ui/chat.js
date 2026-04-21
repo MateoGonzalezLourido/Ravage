@@ -7,7 +7,7 @@ const nombre_defecto = "~no encontrado~"
 
 // ─── CONFIGURACIÓN DE VIRTUALIZACIÓN Y RENDIMIENTO ──────────────────────────
 const BLOQUE_MENSAJES = 30;           // Cantidad de mensajes por bloque de carga
-const MAX_MENSAJES_DOM = 90;          // Máximo de mensajes permitidos en el DOM antes de reciclar
+const MAX_MENSAJES_DOM = 150;         // Máximo de mensajes permitidos en el DOM antes de reciclar
 const MAX_BLOQUES_CACHE = 10;         // Cuántos bloques de paginación guardar en caché
 const SCANNER_BATCH_SIZE = 10;        // Tamaño mínimo de lote para enviar escáneres al worker
 const SCANNER_BATCH_INTERVAL = 50;    // Tiempo máximo de espera (ms) para completar un lote
@@ -502,6 +502,85 @@ export const crear_mensaje_html = async ({
 
 let controller_renderizado_activo = null;
 
+// ─── CACHE USUARIOS CHAT ACTIVO (RAM) ───────────────────────────────────────
+const CACHE_USUARIOS_ACTIVO = new Map(); // id -> { data, timestamp }
+let intervalo_reinicio_cache = null;
+const MAX_ACTIVE_CACHE_MB = 100; // Límite de la caché activa
+
+/**
+ * Agrega un usuario a la caché activa controlando el tamaño máximo.
+ */
+async function agregar_a_cache_activo(id, data) {
+    const ahora = Date.now();
+    CACHE_USUARIOS_ACTIVO.set(id, { data, timestamp: ahora });
+    
+    let totalSize = 0;
+    const items = Array.from(CACHE_USUARIOS_ACTIVO.entries())
+        .sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+    for (const [key, entry] of items) {
+        totalSize += JSON.stringify(entry.data).length * 2 / (1024 * 1024);
+    }
+
+    if (totalSize > MAX_ACTIVE_CACHE_MB) {
+        const desplazados = [];
+        for (const [key, entry] of items) {
+            if (totalSize <= MAX_ACTIVE_CACHE_MB) break;
+            desplazados.push(entry.data);
+            CACHE_USUARIOS_ACTIVO.delete(key);
+            totalSize -= (JSON.stringify(entry.data).length * 2 / (1024 * 1024));
+        }
+        if (desplazados.length > 0) {
+            console.debug(`[Cache Activa] Overflow detectado (${totalSize.toFixed(2)}MB). Desplazando ${desplazados.length} usuarios al backend.`);
+            await window.social_usuario.GUARDAR_VARIOS_DATOS_USUARIOS_EXTERNOS(desplazados);
+        }
+    }
+}
+
+
+export function iniciar_limpieza_cache_activo(num_participantes) {
+    if (intervalo_reinicio_cache) clearInterval(intervalo_reinicio_cache);
+    
+    let tiempo_reinicio;
+    if (num_participantes <= 5) tiempo_reinicio = 10 * 60 * 1000; // 10 min
+    else if (num_participantes <= 20) tiempo_reinicio = 15 * 60 * 1000; // 15 min
+    else tiempo_reinicio = 20 * 60 * 1000; // 20 min
+
+    intervalo_reinicio_cache = setInterval(() => {
+        const ahora = Date.now();
+        for (const [id, entry] of CACHE_USUARIOS_ACTIVO.entries()) {
+            // Borrar datos que tengan más de 3 minutos
+            if (ahora - entry.timestamp > 3 * 60 * 1000) {
+                CACHE_USUARIOS_ACTIVO.delete(id);
+            }
+        }
+    }, tiempo_reinicio);
+}
+
+export async function limpiar_cache_activo(ids_nuevos = []) {
+    if (intervalo_reinicio_cache) {
+        clearInterval(intervalo_reinicio_cache);
+        intervalo_reinicio_cache = null;
+    }
+    
+    const a_persistente = [];
+    const ids_nuevos_set = new Set(ids_nuevos.map(id => id.toString()));
+
+    for (const [id, entry] of CACHE_USUARIOS_ACTIVO.entries()) {
+        if (!ids_nuevos_set.has(id)) {
+            // Si no está en el nuevo chat, lo mandamos al backend para ahorrar RAM aquí
+            a_persistente.push(entry.data);
+            CACHE_USUARIOS_ACTIVO.delete(id);
+        }
+    }
+
+    if (a_persistente.length > 0) {
+        console.debug(`[Cache Activa] Cambio de chat: moviendo ${a_persistente.length} usuarios a caché persistente.`);
+        // Enviar al backend para que vivan en la RAM persistente de sesión
+        await window.social_usuario.GUARDAR_VARIOS_DATOS_USUARIOS_EXTERNOS(a_persistente);
+    }
+}
+
 // ─── VIRTUALIZACIÓN DE MENSAJES ──────────────────────────────────────────────
 
 let _virt = null;
@@ -594,11 +673,34 @@ async function _resolver_nombres(mensajes, contactos) {
         return emisor ? emisor.toString() : null;
     }).filter(Boolean))];
 
-    const data_usuarios = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(uniqueIds);
+    const missingIds = [];
+    const data_usuarios = [];
+    const ahora = Date.now();
+
+    // 1º Revisar en la caché activa de RAM
+    for (const id of uniqueIds) {
+        if (CACHE_USUARIOS_ACTIVO.has(id)) {
+            data_usuarios.push(CACHE_USUARIOS_ACTIVO.get(id).data);
+        } else {
+            missingIds.push(id);
+        }
+    }
+
+    // 2º Si faltan, pedirlos al backend (el backend mirará su propia caché persistente)
+    if (missingIds.length > 0) {
+        console.debug(`[Lazy Load] Pidiendo ${missingIds.length} usuarios al backend.`);
+        const fetched = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(missingIds);
+        for (const u of fetched) {
+            const id = u.id || u._id?.toString();
+            await agregar_a_cache_activo(id, u);
+            data_usuarios.push(u);
+        }
+    }
+
     const map_contactos = Object.fromEntries(contactos.map(c => [c.id, c.apodo]));
     return Object.fromEntries(data_usuarios.map(u => [
         u.id || u._id?.toString(),
-        map_contactos[u.id] || u.apodo || nombre_defecto
+        map_contactos[u.id || u._id?.toString()] || u.apodo || nombre_defecto
     ]));
 }
 
@@ -763,10 +865,27 @@ export async function cargar_bloque_arriba() {
         // Resolver nombres de emisores nuevos
         const idsNuevos = [...new Set(result.mensajes.map(m => (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString()).filter(Boolean))];
         const idsDesconocidos = idsNuevos.filter(id => !_virt.map_nombres[id]);
+        
         if (idsDesconocidos.length > 0) {
-            const datos = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(idsDesconocidos);
-            for (const u of datos) {
-                _virt.map_nombres[u.id || u._id?.toString()] = u.apodo || nombre_defecto;
+            const missingIds = [];
+            const ahora = Date.now();
+            
+            for (const id of idsDesconocidos) {
+                if (CACHE_USUARIOS_ACTIVO.has(id)) {
+                    const u = CACHE_USUARIOS_ACTIVO.get(id).data;
+                    _virt.map_nombres[id] = u.apodo || nombre_defecto;
+                } else {
+                    missingIds.push(id);
+                }
+            }
+
+            if (missingIds.length > 0) {
+                const datos = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(missingIds);
+                for (const u of datos) {
+                    const id = u.id || u._id?.toString();
+                    await agregar_a_cache_activo(id, u);
+                    _virt.map_nombres[id] = u.apodo || nombre_defecto;
+                }
             }
         }
 
@@ -823,9 +942,25 @@ export async function cargar_bloque_abajo() {
         const idsNuevos = [...new Set(result.mensajes.map(m => (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString()).filter(Boolean))];
         const idsDesconocidos = idsNuevos.filter(id => !_virt.map_nombres[id]);
         if (idsDesconocidos.length > 0) {
-            const datos = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(idsDesconocidos);
-            for (const u of datos) {
-                _virt.map_nombres[u.id || u._id?.toString()] = u.apodo || nombre_defecto;
+            const missingIds = [];
+            const ahora = Date.now();
+            
+            for (const id of idsDesconocidos) {
+                if (CACHE_USUARIOS_ACTIVO.has(id)) {
+                    const u = CACHE_USUARIOS_ACTIVO.get(id).data;
+                    _virt.map_nombres[id] = u.apodo || nombre_defecto;
+                } else {
+                    missingIds.push(id);
+                }
+            }
+
+            if (missingIds.length > 0) {
+                const datos = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(missingIds);
+                for (const u of datos) {
+                    const id = u.id || u._id?.toString();
+                    await agregar_a_cache_activo(id, u);
+                    _virt.map_nombres[id] = u.apodo || nombre_defecto;
+                }
             }
         }
 
@@ -864,6 +999,13 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             timer_escaneres_async = null;
         }
         procesando = false;
+
+        if (!_virt || _virt.id_chat !== datos._id) {
+            // Identificar IDs del nuevo chat para saber qué conservar en RAM activa
+            const ids_nuevos = (datos.usuarios || []).map(u => (u.id || u._id || u).toString());
+            await limpiar_cache_activo(ids_nuevos);
+            iniciar_limpieza_cache_activo(ids_nuevos.length || 2);
+        }
 
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;

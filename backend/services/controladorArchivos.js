@@ -92,7 +92,16 @@ async function saveCacheChatsFile(data) {
 }
 
 async function saveCacheUsuariosFile(data) {
-    await guardarArchivoGenerico('cacheUsuariosFrecuentes', data, 'global');
+    await asegurarCarpeta();
+    try {
+        await fs.promises.writeFile(
+            RTDF.cacheUsuariosFrecuentes,
+            JSON.stringify(data, null, 2),
+            { encoding: "utf8" }
+        );
+    } catch (err) {
+        log.error({ err }, "Error al guardar cacheUsuariosFrecuentes sin cifrar");
+    }
 }
 
 async function saveCacheHistorialBusquedasAñadirFile(data) {

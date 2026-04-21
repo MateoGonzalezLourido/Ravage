@@ -39,5 +39,8 @@ module.exports = {
     },
     TOGGLE_MOSTRAR_CORREO_USUARIO: () => {
         return ipcRenderer.invoke("toggle-mostrar-correo-usuario")
+    },
+    GUARDAR_VARIOS_DATOS_USUARIOS_EXTERNOS: (usuarios) => {
+        return ipcRenderer.invoke("guardar-varios-usuarios-externos", usuarios)
     }
 };

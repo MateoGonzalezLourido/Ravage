@@ -78,7 +78,7 @@ async function _asegurar_inicio() {
         const { forceDisk, limitRAM } = await _obtener_limite_actual();
         const maxInitialMB = forceDisk ? 256 : Math.min(limitRAM, 512);
 
-        const frecuentes_min = await readFileSession('cacheUsuariosFrecuentes') || [];
+        const frecuentes_min = await readFileSession('cacheUsuariosFrecuentes', false) || [];
         let loadedMB = 0;
 
         for (const m of frecuentes_min) {
