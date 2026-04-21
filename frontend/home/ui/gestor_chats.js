@@ -438,7 +438,7 @@ async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_m
 
 let _usuario_scrolleando = false;
 let _timer_scroll_usuario = null;
-const PORCENTAJE_UMBRAL_CARGA = 0.35; // 30% de la altura total del scroll para disparar carga
+const PORCENTAJE_UMBRAL_CARGA = 0.35; //% de la altura total del scroll para disparar carga
 
 export function registrar_scroll_usuario() {
     const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
@@ -455,36 +455,36 @@ export function registrar_scroll_usuario() {
     let rachaScroll = 0;
     let ultimoScrollTime = 0;
     let ultimaDireccion = 0;
-
+    const max_rachaScroll = 8;//evitar que el numero aumenten indefinidamente
     chatCuerpo.addEventListener("wheel", (e) => {
         if (e.ctrlKey) return;
-        
+
         const ahora = Date.now();
         const direccionActual = Math.sign(e.deltaY);
-        
-        // Detectar si es un scroll continuado en la misma dirección (intervalo de 150ms)
-        if (ahora - ultimoScrollTime < 300 && direccionActual === ultimaDireccion) {
-            rachaScroll++;
+
+        // Detectar si es un scroll continuado en la misma dirección (intervalo de ms)
+        if (ahora - ultimoScrollTime < 400 && direccionActual === ultimaDireccion) {
+            if (rachaScroll < max_rachaScroll) rachaScroll++;
         } else {
             rachaScroll = 0;
         }
-        
+
         ultimoScrollTime = ahora;
         ultimaDireccion = direccionActual;
 
-        // Si hay racha (>=3), aplicamos un boost del 10% (1.1)
-        const boost = rachaScroll >= 3 ? 1.2 : 1.0;
+        // aplicamos un boost del 10% (1.1)
+        const boost = rachaScroll >= 8 ? 2 : rachaScroll >= 3 ? 1.2 : 1.0;
         //amortizacion del scroll->cuanto mas pequeño mas frena
-        const factor = rachaScroll >= 3 ? 0.5 : 0.4;
-        
+        const factor = rachaScroll >= 8 ? 1.0 : rachaScroll >= 3 ? 0.5 : 0.4;
+
         let delta = e.deltaY;
-        
+
         // Manejar diferentes modos de delta (0: pixels, 1: lines, 2: pages)
         if (e.deltaMode === 1) delta *= 33;
         else if (e.deltaMode === 2) delta *= chatCuerpo.clientHeight;
 
         chatCuerpo.scrollTop += delta * factor;
-        
+
         if (e.cancelable) e.preventDefault();
         marcar();
     }, { passive: false });
