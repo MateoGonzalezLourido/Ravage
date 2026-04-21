@@ -388,7 +388,7 @@ export const crear_mensaje_html = async ({
     };
 
     const nombre_emisor_mensaje = (nombre, propio, esAdmin, tieneArriba) => {
-        if (propio || tieneArriba) return '';
+        if (propio) return '';
         return `<div class="nombre-mensaje-chat-usuario">
       <span>${escapeHTML(nombre)}${esAdmin
                 ? " <span style='font-size:0.9em;opacity:0.7'>·Admin</span>"
@@ -484,6 +484,33 @@ function _agrupar_por_dia(mensajes) {
         grupos[grupos.length - 1].mensajes.push(m);
     });
     return grupos;
+}
+
+function _rearmar_agrupacion_dom() {
+    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    if (!chatContainer) return;
+
+    // Procesamos por bloque-dia-chat para que la agrupación no salte entre días
+    const bloquesDia = chatContainer.querySelectorAll('.bloque-dia-chat');
+    
+    bloquesDia.forEach(bloque => {
+        const mensajesNodos = bloque.querySelectorAll('.mensaje-chat');
+        for (let i = 0; i < mensajesNodos.length; i++) {
+            const actual = mensajesNodos[i];
+            const emisorActual = actual.getAttribute('data-emisor-id');
+            
+            const prev = i > 0 ? mensajesNodos[i - 1] : null;
+            const emisorPrev = prev ? prev.getAttribute('data-emisor-id') : null;
+            const tieneArriba = emisorActual && emisorActual === emisorPrev;
+            
+            const next = i < mensajesNodos.length - 1 ? mensajesNodos[i + 1] : null;
+            const emisorNext = next ? next.getAttribute('data-emisor-id') : null;
+            const tieneAbajo = emisorActual && emisorActual === emisorNext;
+            
+            actual.classList.toggle('agrupado-arriba', tieneArriba);
+            actual.classList.toggle('agrupado-abajo', tieneAbajo);
+        }
+    });
 }
 
 function _calcular_agrupacion(mensajes) {
@@ -585,6 +612,8 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
         chatContainer.scrollTop = scrollTopAntes + (chatContainer.scrollHeight - scrollHeightAntes);
     }
 
+    _rearmar_agrupacion_dom();
+
     // Ejecutar escáneres asíncronos sobre los mensajes nuevos
     await new Promise(r => setTimeout(r, 0));
     const noEscaneados = chatContainer.querySelectorAll(".mensaje-chat:not(.scanned)");
@@ -629,6 +658,7 @@ function _reciclar_mensajes(extremo) {
         }
         
         if (_virt) _virt.hay_mas_abajo = true;
+        _rearmar_agrupacion_dom();
     } else {
         // Eliminar los mensajes más antiguos (del inicio)
         const scrollHeightAntes = chatContainer.scrollHeight;
@@ -651,6 +681,7 @@ function _reciclar_mensajes(extremo) {
         chatContainer.scrollTop = scrollTopAntes - (scrollHeightAntes - chatContainer.scrollHeight);
         
         if (_virt) _virt.hay_mas_arriba = true;
+        _rearmar_agrupacion_dom();
     }
 }
 
