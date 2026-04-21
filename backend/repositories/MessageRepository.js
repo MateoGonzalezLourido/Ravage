@@ -286,6 +286,45 @@ export async function obtener_datos_mensaje(id_chat, id_mensaje) {
     }
 }
 
+/**
+ * Obtiene mensajes paginados de un chat usando cursor basado en fecha.
+ * @param {string} id_chat - ID del chat
+ * @param {number} limit - Cantidad de mensajes a obtener (default 30)
+ * @param {string|null} before_date - Fecha ISO; solo se devuelven mensajes anteriores a esta fecha
+ * @returns {{ mensajes: Array, hay_mas: boolean }}
+ */
+export async function obtener_mensajes_paginados(id_chat, limit = 30, cursor_id = null, direction = 'older') {
+    try {
+        const query = { id_chat: new mongoose.Types.ObjectId(id_chat) };
+        if (cursor_id) {
+            query._id = direction === 'older'
+                ? { $lt: new mongoose.Types.ObjectId(cursor_id) }
+                : { $gt: new mongoose.Types.ObjectId(cursor_id) };
+        }
+
+        const chat = await ChatsRavage.findById(id_chat).lean();
+        if (!chat) return { mensajes: [], hay_mas: false };
+
+        const sortOrder = direction === 'older' ? -1 : 1;
+        const mensajes = await MessagesRavage.find(query)
+            .sort({ _id: sortOrder })
+            .limit(limit + 1)
+            .lean();
+
+        const hay_mas = mensajes.length > limit;
+        if (hay_mas) mensajes.pop();
+
+        await descifrarListaMensajes(mensajes, chat);
+        // Siempre devolver en orden cronológico (antiguo → nuevo)
+        if (direction === 'older') mensajes.reverse();
+
+        return { mensajes: convertirObjectId(mensajes), hay_mas };
+    } catch (e) {
+        log.error(e);
+        return { mensajes: [], hay_mas: false };
+    }
+}
+
 export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         log.error("ID de archivo no válido:", id);

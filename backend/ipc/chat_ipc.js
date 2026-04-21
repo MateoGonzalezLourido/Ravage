@@ -22,7 +22,8 @@ import {
 import {
     ENVIAR_MENSAJE,
     DESCARGAR_ARCHIVO,
-    obtener_datos_mensaje
+    obtener_datos_mensaje,
+    obtener_mensajes_paginados
 } from '../repositories/MessageRepository.js';
 import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { crearCacheChatActivo, obtenerCacheChatActivo } from '../STORAGE/CACHE/_cache_chat_activo.js';
@@ -116,6 +117,10 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("obtener-datos-mensaje", async (_, id_chat, id_mensaje) => {
         return await obtener_datos_mensaje(id_chat, id_mensaje)
+    })
+
+    ipcMain.handle("obtener-mensajes-chat-paginados", async (_, id_chat, limit, cursor_date, direction) => {
+        return await obtener_mensajes_paginados(id_chat, limit, cursor_date, direction)
     })
 
     ipcMain.handle("expulsar-usuario-chat", async (_, id_usuario, id_chat) => {

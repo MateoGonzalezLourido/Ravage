@@ -2,6 +2,10 @@ import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, abrir_chat_item,cambiar
 import { obtener_archivos_mensaje, limpiar_archivos_mensaje, cerrar_ventana_archivos } from './manejador_archivos.js'
 
 export async function manejar_input_escribiendo(textarea) {
+    // Auto-ajuste de altura instantáneo
+    textarea.style.height = "1px";
+    textarea.style.height = (textarea.scrollHeight) + "px";
+
     const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id;
     const result_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
     const esteg = result_seguridad.escaneres_seguridad?.ESCANER_ESTEGANOGRAFIA || result_seguridad?.ESCANER_ESTEGANOGRAFIA;
@@ -16,9 +20,8 @@ export async function manejar_input_escribiendo(textarea) {
         }
     }
     if (textarea.value.length > 1000) textarea.value = textarea.value.substring(0, 1000);
-    textarea.style.height = "38px"
-    textarea.style.height = (textarea.scrollHeight) + "px"
 }
+
 
 export async function enviar_mensaje_chat(textarea) {
     let mensaje = textarea.value.trim()
@@ -42,7 +45,7 @@ export async function enviar_mensaje_chat(textarea) {
     const copia_archivos = [...archivos_actuales]
     limpiar_archivos_mensaje() // Reset instantaneo de UI
     textarea.value = ""
-    textarea.style.height = "38px"
+    textarea.style.height = "35px" // Reset altura a la base de CSS (35px)
     cerrar_ventana_archivos()
 
     const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: copia_archivos, id_chat: id_chat, id_emisor: id_usuario })

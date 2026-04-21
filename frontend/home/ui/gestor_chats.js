@@ -6,8 +6,17 @@ import {
     Encontrar_Nombre_Chat_Usuario,
     crear_mensaje_html,
     aplicar_escaneres_asincronos,
-    texto_mostrar_fecha_mensajes_bloque
+    texto_mostrar_fecha_mensajes_bloque,
+    obtener_estado_virtualizacion,
+    destruir_virtualizacion,
+    cargar_bloque_arriba,
+    cargar_bloque_abajo
 } from './chat.js';
+import {
+    manejar_input_escribiendo,
+    enviar_mensaje_chat,
+    manejar_solicitud_chat
+} from './mensajes_eventos.js';
 
 export function cerrar_paneles_al_abrir_chat() {
     const infoSeccion = document.querySelector("#info-chat-seccion")
@@ -188,9 +197,18 @@ export async function abrir_chat_item(id_chat, force = false) {
         }
 
         limpiar_archivos_mensaje()
+        destruir_virtualizacion()
         document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+
+        const textarea = document.querySelector("#textarea-mensaje-escritura");
+        if (textarea) {
+            textarea.focus()
+            manejar_input_escribiendo(textarea)
+        }
+
         cerrar_paneles_al_abrir_chat()
         registrar_scroll_usuario()
+
 
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         chatContainer.addEventListener("click", (pulsado) => {
@@ -404,6 +422,7 @@ async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_m
 
 let _usuario_scrolleando = false;
 let _timer_scroll_usuario = null;
+const UMBRAL_SCROLL_CARGA = 1000; // px desde el borde para disparar carga
 
 export function registrar_scroll_usuario() {
     const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
@@ -419,6 +438,23 @@ export function registrar_scroll_usuario() {
 
     chatCuerpo.addEventListener("wheel", marcar, { passive: true });
     chatCuerpo.addEventListener("touchmove", marcar, { passive: true });
+
+    // Detectar scroll para virtualización: cargar más mensajes al llegar a los bordes
+    chatCuerpo.addEventListener("scroll", () => {
+        const virt = obtener_estado_virtualizacion();
+        if (!virt || virt.cargando) return;
+
+        // Scroll cerca del tope → cargar mensajes más antiguos
+        if (chatCuerpo.scrollTop < UMBRAL_SCROLL_CARGA && virt.hay_mas_arriba) {
+            cargar_bloque_arriba();
+        }
+
+        // Scroll cerca del fondo → cargar mensajes más nuevos (si se reciclaron)
+        const distanciaAlFondo = chatCuerpo.scrollHeight - chatCuerpo.scrollTop - chatCuerpo.clientHeight;
+        if (distanciaAlFondo < UMBRAL_SCROLL_CARGA && virt.hay_mas_abajo) {
+            cargar_bloque_abajo();
+        }
+    }, { passive: true });
 }
 
 let scrollTimeout = null;

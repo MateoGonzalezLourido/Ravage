@@ -106,12 +106,64 @@ function inicializar_eventos_globales() {
     })
 }
 
+/**
+ * Permite escribir en el último input/textarea activo sin tener que seleccionarlo manualmente.
+ */
+function inicializar_escritura_automatica() {
+    let ultimoInput = null;
+
+    // Rastrear el último input o textarea que tuvo el foco
+    document.addEventListener("focusin", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+            ultimoInput = e.target;
+        }
+    });
+
+    // Si se pulsa en el cuerpo del chat, el último input por defecto será el de escritura
+    document.addEventListener("click", (e) => {
+        if (e.target.closest("#cuerpo-mensajes-chat")) {
+            const chatInput = document.querySelector("#textarea-mensaje-escritura");
+            if (chatInput) ultimoInput = chatInput;
+        }
+
+        if (e.target.closest("#lista-chats") && !e.target.closest(".chat-componente-lista-chats")) {
+            const searchInput = document.querySelector("#input-buscar-chat");
+            if (searchInput) ultimoInput = searchInput;
+        }
+    });
+
+    window.addEventListener("keydown", (e) => {
+        // Si ya hay un elemento de entrada enfocado, dejar que el navegador maneje el evento normalmente
+        if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") {
+            return;
+        }
+
+        // Solo actuar si es una tecla imprimible (letra o número) o teclas de borrado
+        // Evitamos combinaciones con Ctrl, Alt, Meta o teclas de función/navegación
+        const esTeclaImprimible = (e.key.length === 1 || e.key === "Backspace" || e.key === "Delete") && !e.ctrlKey && !e.metaKey && !e.altKey;
+
+        if (esTeclaImprimible) {
+            // Buscar el objetivo: último usado, o el chat, o el buscador
+            const target = (ultimoInput && document.body.contains(ultimoInput) && ultimoInput.offsetParent !== null && !ultimoInput.disabled)
+                ? ultimoInput
+                : document.querySelector("#textarea-mensaje-escritura")
+                || document.querySelector("#input-buscar-chat");
+
+            if (target && !target.disabled) {
+                target.focus();
+                // Nota: Al enfocar durante el keydown, el carácter se escribirá automáticamente
+            }
+        }
+    });
+}
+
 // ==========================================
 // INICIALIZACIÓN DE LA APLICACIÓN (HUB)
 // ==========================================
 async function preparar_interfaz_y_servicios() {
     // 1. Registro de eventos permanentes
     inicializar_eventos_globales()
+    inicializar_escritura_automatica()
 
     document.querySelector("#bt-seccion-menu-cuenta-ajustes")?.addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
     document.querySelector("#bt-añadir-chat")?.addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))

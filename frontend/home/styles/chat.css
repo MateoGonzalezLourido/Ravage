@@ -15,11 +15,17 @@
 #cuerpo-mensajes-chat {
     flex-grow: 1;
     overflow-y: auto;
+    overflow-x: hidden; /* Evitar scroll horizontal */
     padding: 10px 6%;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    scroll-behavior: smooth;
+    transition: padding 0.3s ease;
+}
+
+/* Optimización para cuando hay paneles laterales abiertos */
+.panel-lateral-abierto #cuerpo-mensajes-chat {
+    padding: 10px 2%;
 }
 
 #cuerpo-mensajes-chat::-webkit-scrollbar {
@@ -53,11 +59,15 @@
     flex-direction: column;
     word-wrap: break-word;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: all 0.2s;
+    transition: all 0.2s, max-width 0.3s ease;
     animation: fadeIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     will-change: transform, opacity;
     user-select: text !important;
     cursor: default !important;
+}
+
+.panel-lateral-abierto .mensaje-chat {
+    max-width: 92%; /* Reducido un poco para evitar scroll X con scrollbar visible */
 }
 
 .mensaje-chat:hover {

@@ -10,6 +10,9 @@ module.exports = {
     OBTENER_DATOS_CHAT_UNICO: (id, datos_buscar = null) => {
         return ipcRenderer.invoke("obtener-datos-chat-unico-usuario", id, datos_buscar)
     },
+    OBTENER_MENSAJES_PAGINADOS: (id_chat, limit = 30, cursor_date = null, direction = 'older') => {
+        return ipcRenderer.invoke("obtener-mensajes-chat-paginados", id_chat, limit, cursor_date, direction)
+    },
     CREAR_CHAT_NUEVO: (ids, nombre, id_chat = null) => {
         return ipcRenderer.invoke("crear-chat-nuevo", ids, nombre, id_chat)
     },

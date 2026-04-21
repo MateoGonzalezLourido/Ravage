@@ -447,7 +447,8 @@ export const crear_mensaje_html = async ({
       ${tieneAbajo ? 'agrupado-abajo' : ''}"
       data-id="${escapeHTML(String(id_mensaje || ''))}"
       data-scanner-tags="${escapeHTML(tagsDetectados.join(','))}"
-      data-emisor-id="${escapeHTML(String(id_emisor))}">
+      data-emisor-id="${escapeHTML(String(id_emisor))}"
+      data-fecha="${escapeHTML(String(fecha))}">
       ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin, tieneArriba)}
       ${asunto_mensaje(textoFinal)}
       ${await archivos_mensaje(archivos)}
@@ -456,6 +457,301 @@ export const crear_mensaje_html = async ({
 };
 
 let controller_renderizado_activo = null;
+
+// ─── VIRTUALIZACIÓN DE MENSAJES ──────────────────────────────────────────────
+const BLOQUE_MENSAJES = 30;
+const MAX_MENSAJES_DOM = 90;
+
+let _virt = null;
+
+export function obtener_estado_virtualizacion() {
+    return _virt;
+}
+
+export function destruir_virtualizacion() {
+    _virt = null;
+}
+
+function _agrupar_por_dia(mensajes) {
+    const grupos = [];
+    let current_dia = null;
+    mensajes.forEach(m => {
+        const dateStr = new Date(m.data).toDateString();
+        if (dateStr !== current_dia) {
+            grupos.push({ fecha: m.data, mensajes: [] });
+            current_dia = dateStr;
+        }
+        grupos[grupos.length - 1].mensajes.push(m);
+    });
+    return grupos;
+}
+
+function _calcular_agrupacion(mensajes) {
+    return mensajes.map((m, index) => {
+        const id_emisor = m.emisor;
+        const prevMsg = index > 0 ? mensajes[index - 1] : null;
+        const tieneArriba = id_emisor === (prevMsg ? prevMsg.emisor : null);
+        const nextMsg = index < mensajes.length - 1 ? mensajes[index + 1] : null;
+        const tieneAbajo = id_emisor === (nextMsg ? nextMsg.emisor : null);
+        return { ...m, id_emisor, tieneArriba, tieneAbajo };
+    });
+}
+
+async function _construir_html_mensajes(mensajesConEstado, opciones) {
+    const { map_nombres, escaneres_seguridad, id_propio, datos_chat } = opciones;
+    const SuperaMin = datos_chat.usuarios?.length > 2;
+    if (!datos_chat.admins) datos_chat.admins = [];
+
+    return Promise.all(mensajesConEstado.map(async (m) => {
+        if (!m) return "";
+        const id_emisor = m.id_emisor || undefined;
+        if (!id_emisor) return "";
+        const propio = id_emisor === id_propio;
+        const esAdmin = SuperaMin && datos_chat.admins.includes(id_emisor);
+        const nombre = map_nombres[id_emisor] || nombre_defecto;
+        return crear_mensaje_html({
+            fecha: m.data, asunto: m.contenido[0]?.asunto || "",
+            archivos: m.contenido[0]?.archivos || [], propio,
+            nombre_emisor: nombre, esAdmin, escaneres_seguridad,
+            tieneArriba: m.tieneArriba, tieneAbajo: m.tieneAbajo,
+            id_emisor
+        });
+    }));
+}
+
+async function _resolver_nombres(mensajes, contactos) {
+    const uniqueIds = [...new Set(mensajes.map(m => {
+        const emisor = Array.isArray(m.emisor) ? m.emisor[0] : m.emisor;
+        return emisor ? emisor.toString() : null;
+    }).filter(Boolean))];
+
+    const data_usuarios = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(uniqueIds);
+    const map_contactos = Object.fromEntries(contactos.map(c => [c.id, c.apodo]));
+    return Object.fromEntries(data_usuarios.map(u => [
+        u.id || u._id?.toString(),
+        map_contactos[u.id] || u.apodo || nombre_defecto
+    ]));
+}
+
+/**
+ * Renderiza un bloque de mensajes en el DOM, pudiendo prepend (arriba) o append (abajo).
+ * Fusiona bloques de día cuando la fecha coincide con el bloque adyacente existente.
+ */
+async function _renderizar_bloque_en_dom(mensajes, opciones) {
+    const { map_nombres, escaneres_seguridad, id_propio, datos_chat, posicion } = opciones;
+    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    if (!chatContainer || mensajes.length === 0) return;
+
+    const grupos = _agrupar_por_dia(mensajes);
+    const esPrepend = posicion === 'prepend';
+    let scrollHeightAntes = 0, scrollTopAntes = 0;
+
+    if (esPrepend) {
+        scrollHeightAntes = chatContainer.scrollHeight;
+        scrollTopAntes = chatContainer.scrollTop;
+    }
+
+    const iteracion = esPrepend ? [...grupos].reverse() : grupos;
+
+    for (const grupo of iteracion) {
+        const fechaTexto = texto_mostrar_fecha_mensajes_bloque(new Date(grupo.fecha));
+        const mensajesConEstado = _calcular_agrupacion(grupo.mensajes);
+        const html_arr = await _construir_html_mensajes(mensajesConEstado, { map_nombres, escaneres_seguridad, id_propio, datos_chat });
+        const html_mensajes = html_arr.join('');
+
+        // Buscar bloque de día existente para fusionar
+        const bloqueAdyacente = esPrepend
+            ? chatContainer.querySelector(".bloque-dia-chat:first-child")
+            : chatContainer.querySelector(".bloque-dia-chat:last-child");
+        const fechaAdyacente = bloqueAdyacente?.querySelector(".fecha-bloque-mensajes span")?.textContent;
+
+        if (bloqueAdyacente && fechaTexto === fechaAdyacente) {
+            if (esPrepend) {
+                const dateHeader = bloqueAdyacente.querySelector(".fecha-bloque-mensajes");
+                dateHeader.insertAdjacentHTML("afterend", html_mensajes);
+            } else {
+                bloqueAdyacente.insertAdjacentHTML("beforeend", html_mensajes);
+            }
+        } else {
+            const html_dia = `<div class="bloque-dia-chat">
+                <div class="fecha-bloque-mensajes"><span>${fechaTexto}</span></div>
+                ${html_mensajes}
+            </div>`;
+            chatContainer.insertAdjacentHTML(esPrepend ? "afterbegin" : "beforeend", html_dia);
+        }
+    }
+
+    if (esPrepend) {
+        chatContainer.scrollTop = scrollTopAntes + (chatContainer.scrollHeight - scrollHeightAntes);
+    }
+
+    // Ejecutar escáneres asíncronos sobre los mensajes nuevos
+    await new Promise(r => setTimeout(r, 0));
+    const noEscaneados = chatContainer.querySelectorAll(".mensaje-chat:not(.scanned)");
+    for (const msgEl of noEscaneados) {
+        msgEl.classList.add("scanned");
+        const txt = msgEl.querySelector(".asunto-mensaje-chat")?.textContent || "";
+        aplicar_escaneres_asincronos(msgEl, txt, escaneres_seguridad);
+    }
+}
+
+/**
+ * Recicla (elimina) mensajes del extremo opuesto al scroll cuando el DOM supera MAX_MENSAJES_DOM.
+ * @param {'arriba'|'abajo'} extremo - Qué extremo reciclar
+ */
+function _reciclar_mensajes(extremo) {
+    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    if (!chatContainer) return;
+
+    const todos = chatContainer.querySelectorAll(".mensaje-chat");
+    if (todos.length <= MAX_MENSAJES_DOM) return;
+
+    const exceso = todos.length - MAX_MENSAJES_DOM;
+    if (exceso <= 0) return;
+
+    if (extremo === 'abajo') {
+        // Eliminar los mensajes más nuevos (del final)
+        const scrollHeightAntes = chatContainer.scrollHeight;
+        const scrollTopAntes = chatContainer.scrollTop;
+
+        for (let i = todos.length - 1; i >= todos.length - exceso; i--) {
+            todos[i].remove();
+        }
+        // Limpiar bloques de día vacíos
+        chatContainer.querySelectorAll(".bloque-dia-chat").forEach(b => {
+            if (!b.querySelector(".mensaje-chat")) b.remove();
+        });
+        
+        // Actualizar cursor de id más nueva
+        const nuevosTodos = chatContainer.querySelectorAll(".mensaje-chat");
+        if (nuevosTodos.length > 0 && _virt) {
+            _virt._id_mas_nuevo = nuevosTodos[nuevosTodos.length - 1].getAttribute("data-id");
+        }
+        
+        if (_virt) _virt.hay_mas_abajo = true;
+    } else {
+        // Eliminar los mensajes más antiguos (del inicio)
+        const scrollHeightAntes = chatContainer.scrollHeight;
+        const scrollTopAntes = chatContainer.scrollTop;
+
+        for (let i = 0; i < exceso; i++) {
+            todos[i].remove();
+        }
+        chatContainer.querySelectorAll(".bloque-dia-chat").forEach(b => {
+            if (!b.querySelector(".mensaje-chat")) b.remove();
+        });
+        
+        // Actualizar cursor de id más antigua
+        const nuevosTodos = chatContainer.querySelectorAll(".mensaje-chat");
+        if (nuevosTodos.length > 0 && _virt) {
+            _virt._id_mas_antiguo = nuevosTodos[0].getAttribute("data-id");
+        }
+        
+        // Ajustar scroll
+        chatContainer.scrollTop = scrollTopAntes - (scrollHeightAntes - chatContainer.scrollHeight);
+        
+        if (_virt) _virt.hay_mas_arriba = true;
+    }
+}
+
+/**
+ * Carga un bloque de mensajes más antiguos (scroll hacia arriba).
+ */
+export async function cargar_bloque_arriba() {
+    if (!_virt || _virt.cargando || !_virt.hay_mas_arriba) return;
+    _virt.cargando = true;
+    try {
+        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        if (!chatContainer) return;
+        const primerMsg = chatContainer.querySelector(".mensaje-chat");
+        if (!primerMsg) return;
+
+        // Obtener ID del mensaje más antiguo visible para usar como cursor
+        const idCursor = _virt._id_mas_antiguo;
+        const result = await window.chats.OBTENER_MENSAJES_PAGINADOS(
+            _virt.id_chat, BLOQUE_MENSAJES, idCursor, 'older'
+        );
+        if (!result || result.mensajes.length === 0) {
+            _virt.hay_mas_arriba = false;
+            return;
+        }
+
+        // Resolver nombres de emisores nuevos
+        const idsNuevos = [...new Set(result.mensajes.map(m => (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString()).filter(Boolean))];
+        const idsDesconocidos = idsNuevos.filter(id => !_virt.map_nombres[id]);
+        if (idsDesconocidos.length > 0) {
+            const datos = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(idsDesconocidos);
+            for (const u of datos) {
+                _virt.map_nombres[u.id || u._id?.toString()] = u.apodo || nombre_defecto;
+            }
+        }
+
+        await _renderizar_bloque_en_dom(result.mensajes, {
+            map_nombres: _virt.map_nombres,
+            escaneres_seguridad: _virt.escaneres_seguridad,
+            id_propio: _virt.id_propio,
+            datos_chat: _virt.datos_chat,
+            posicion: 'prepend'
+        });
+
+        _virt._id_mas_antiguo = result.mensajes[0]?._id || result.mensajes[0]?.id;
+        _virt.hay_mas_arriba = result.hay_mas;
+
+        // Reciclar mensajes del extremo inferior si hay demasiados en DOM
+        _reciclar_mensajes('abajo');
+    } finally {
+        _virt.cargando = false;
+    }
+}
+
+/**
+ * Carga un bloque de mensajes más nuevos (scroll hacia abajo, tras reciclaje).
+ */
+export async function cargar_bloque_abajo() {
+    if (!_virt || _virt.cargando || !_virt.hay_mas_abajo) return;
+    _virt.cargando = true;
+    try {
+        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        if (!chatContainer) return;
+        const msgs = chatContainer.querySelectorAll(".mensaje-chat");
+        if (msgs.length === 0) return;
+
+        const idCursor = _virt._id_mas_nuevo;
+        const result = await window.chats.OBTENER_MENSAJES_PAGINADOS(
+            _virt.id_chat, BLOQUE_MENSAJES, idCursor, 'newer'
+        );
+        if (!result || result.mensajes.length === 0) {
+            _virt.hay_mas_abajo = false;
+            return;
+        }
+
+        const idsNuevos = [...new Set(result.mensajes.map(m => (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString()).filter(Boolean))];
+        const idsDesconocidos = idsNuevos.filter(id => !_virt.map_nombres[id]);
+        if (idsDesconocidos.length > 0) {
+            const datos = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(idsDesconocidos);
+            for (const u of datos) {
+                _virt.map_nombres[u.id || u._id?.toString()] = u.apodo || nombre_defecto;
+            }
+        }
+
+        await _renderizar_bloque_en_dom(result.mensajes, {
+            map_nombres: _virt.map_nombres,
+            escaneres_seguridad: _virt.escaneres_seguridad,
+            id_propio: _virt.id_propio,
+            datos_chat: _virt.datos_chat,
+            posicion: 'append'
+        });
+
+        const lastMsg = result.mensajes[result.mensajes.length - 1];
+        _virt._id_mas_nuevo = lastMsg?._id || lastMsg?.id;
+        _virt.hay_mas_abajo = result.hay_mas;
+
+        // Reciclar mensajes del extremo superior si hay demasiados en DOM
+        _reciclar_mensajes('arriba');
+    } finally {
+        _virt.cargando = false;
+    }
+}
 
 async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
     if (!datos) return;
@@ -474,110 +770,63 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             if (datos.mensajes?.length > 0) {
                 console.warn("Se recibieron mensajes pero no son objetos válidos. Posible error de carga en backend.");
             }
+            // Inicializar virtualización vacía igualmente
+            _virt = {
+                id_chat: datos._id, datos_chat: datos, id_propio,
+                map_nombres: {}, escaneres_seguridad: {},
+                hay_mas_arriba: false, hay_mas_abajo: false, cargando: false,
+                _id_mas_antiguo: null, _id_mas_nuevo: null
+            };
             return;
         }
 
-        // 1. Pre-obtener todos los nombres en un solo lote (petición grande a DB)
-        const uniqueEmitterIds = [...new Set(mensajes.map(m => {
-            const emisor = Array.isArray(m.emisor) ? m.emisor[0] : m.emisor;
-            return emisor ? emisor.toString() : null;
-        }).filter(id => id))];
+        if (controller.abort) return;
 
-        const data_usuarios = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(uniqueEmitterIds);
+        const [map_nombres, escaneres_seguridad] = await Promise.all([
+            _resolver_nombres(mensajes, contactos),
+            window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(datos._id)
+        ]);
 
-        // Mapear contactos para búsqueda rápida
-        const map_contactos = Object.fromEntries(contactos.map(c => [c.id, c.apodo]));
-        const map_nombres = Object.fromEntries(data_usuarios.map(u => [u.id || u._id?.toString(), map_contactos[u.id] || u.apodo || nombre_defecto]));
+        if (controller.abort) return;
 
-        // 2. Agrupar mensajes por día
-        const grupos_por_dia = [];
-        let current_dia = null;
+        // Inicializar estado de virtualización
+        _virt = {
+            id_chat: datos._id,
+            datos_chat: datos,
+            id_propio,
+            map_nombres,
+            escaneres_seguridad,
+            hay_mas_arriba: mensajes.length >= BLOQUE_MENSAJES,
+            hay_mas_abajo: false,
+            cargando: false,
+            _id_mas_antiguo: mensajes[0]?._id || mensajes[0]?.id,
+            _id_mas_nuevo: mensajes[mensajes.length - 1]?._id || mensajes[mensajes.length - 1]?.id
+        };
 
-        mensajes.forEach(m => {
-            const dateStr = new Date(m.data).toDateString();
-            if (dateStr !== current_dia) {
-                grupos_por_dia.push({ fecha: m.data, mensajes: [] });
-                current_dia = dateStr;
-            }
-            grupos_por_dia[grupos_por_dia.length - 1].mensajes.push(m);
+        // Renderizar bloque inicial
+        await _renderizar_bloque_en_dom(mensajes, {
+            map_nombres, escaneres_seguridad, id_propio,
+            datos_chat: datos, posicion: 'append'
         });
 
-        // 3. Renderizar día a día (de más nuevo a más viejo)
-        const escaneres_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(datos._id)
-        const grupos_ordenados = [...grupos_por_dia].reverse();
-
-        for (const grupo of grupos_ordenados) {
-            if (controller.abort) return;
-
-            // Renderizar mensajes del día en paralelo
-            const mensajesConEstado = grupo.mensajes.map((m, index) => {
-                const id_emisor = m.emisor;
-                // Buscar si tiene uno arriba del mismo emisor
-                const prevMsg = index > 0 ? grupo.mensajes[index - 1] : null;
-                const prevEmisor = prevMsg ? (prevMsg.emisor) : null;
-                const tieneArriba = id_emisor === prevEmisor;
-
-                // Buscar si tiene uno abajo del mismo emisor
-                const nextMsg = index < grupo.mensajes.length - 1 ? grupo.mensajes[index + 1] : null;
-                const nextEmisor = nextMsg ? (nextMsg.emisor) : null;
-                const tieneAbajo = id_emisor === nextEmisor;
-
-                return { ...m, id_emisor, tieneArriba, tieneAbajo };
-            });
-
-            const SuperaMin = datos.usuarios?.length > 2
-            if (!datos.admins) datos.admins = []
-            const html_mensajes = await Promise.all(mensajesConEstado.map(async (m) => {
-                if (!m) return "";
-                const id_emisor = m.id_emisor || undefined;
-                if (!id_emisor) return "";
-
-                const propio = id_emisor === id_propio;
-                const esAdmin = SuperaMin && datos.admins.includes(id_emisor);
-                const nombre = map_nombres[id_emisor] || nombre_defecto;
-
-                return crear_mensaje_html({
-                    fecha: m.data,
-                    asunto: m.contenido[0]?.asunto || "",
-                    archivos: m.contenido[0]?.archivos || [],
-                    propio,
-                    nombre,
-                    esAdmin,
-                    escaneres_seguridad,
-                    tieneArriba: m.tieneArriba,
-                    tieneAbajo: m.tieneAbajo,
-                    id_emisor
+        // Asegurar scroll al fondo al abrir con una leve animación
+        chatContainer.style.overflowAnchor = "none";
+        
+        if (chatContainer.scrollHeight > chatContainer.clientHeight) {
+            // Empezar unos 300px arriba para que la animación de caída sea visible
+            chatContainer.scrollTop = Math.max(0, chatContainer.scrollHeight - chatContainer.clientHeight - 350);
+            
+            setTimeout(() => {
+                chatContainer.scrollTo({
+                    top: chatContainer.scrollHeight,
+                    behavior: 'smooth'
                 });
-            }));
-
-            const html_dia = `
-                <div class="bloque-dia-chat">
-                    <div class="fecha-bloque-mensajes"><span>${texto_mostrar_fecha_mensajes_bloque(new Date(grupo.fecha))}</span></div>
-                    ${html_mensajes.join('')}
-                </div>
-            `;
-
-
-            chatContainer.insertAdjacentHTML("afterbegin", html_dia);
-            scroll_fin_chat();
-
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html_dia;
-            const bloqueDia = tempDiv.firstElementChild;
-
-            await new Promise(resolve => setTimeout(resolve, 0));
-
-            const nuevosMensajes = bloqueDia.querySelectorAll(".mensaje-chat:not(.scanned)");
-            for (const msgEl of nuevosMensajes) {
-                msgEl.classList.add("scanned");
-                const textoOriginal = msgEl.querySelector(".asunto-mensaje-chat")?.textContent || "";
-                aplicar_escaneres_asincronos(msgEl, textoOriginal, escaneres_seguridad);
-            }
+                chatContainer.style.overflowAnchor = "auto";
+            }, 30);
+        } else {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            chatContainer.style.overflowAnchor = "auto";
         }
-        //parche para mover el scroll para abajo del chat al abrirlo
-        setTimeout(() => {
-            scroll_fin_chat()
-        }, 10);
     } catch (e) {
         console.error("Error crítico en renderizar_chat_progresivo_plano:", e);
     }
@@ -726,99 +975,101 @@ export async function mostrar_datos_chat_usaurios(e) {
         : "*No disponible";
 
     let html = `
-    <div class="info-chat-header">
-        <div id="bt-cerrar-info-chat">
-            <img src="../recursos/cruz.png" alt="cerrar">
-        </div>
-        <span>Información del chat</span>
-        ${soyAdmin ? `
-        <div id="bt-abrir-ajustes-chat">
-            <img src="../recursos/engranaje.png" alt="ajustes" title="Ajustes del chat">
-        </div>` : ''}
-
-    </div>
-
-    <div class="info-chat-cuerpo">
-        <div class="info-chat-perfil">
-            <div class="info-chat-nombre">
-                <span>${escapeHTML(nombre_chat)}</span>
+    <div class="info-chat-contenedor-fijo">
+        <div class="info-chat-header">
+            <div id="bt-cerrar-info-chat">
+                <img src="../recursos/cruz.png" alt="cerrar">
             </div>
-            <div class="info-chat-subtitulo">
-                ${integrantes_chat()}
-            </div>
+            <span>Información del chat</span>
+            ${soyAdmin ? `
+            <div id="bt-abrir-ajustes-chat">
+                <img src="../recursos/engranaje.png" alt="ajustes" title="Ajustes del chat">
+            </div>` : ''}
+
         </div>
 
-        <div class="info-chat-detalles">
-            <div class="info-chat-item">
-                <span class="info-chat-label">Mensajes</span>
-                <span class="info-chat-valor">${info_chat?.n_mensajes ?? info_chat?.mensajes?.length ?? 0}</span>
+        <div class="info-chat-cuerpo">
+            <div class="info-chat-perfil">
+                <div class="info-chat-nombre">
+                    <span>${escapeHTML(nombre_chat)}</span>
+                </div>
+                <div class="info-chat-subtitulo">
+                    ${integrantes_chat()}
+                </div>
             </div>
-            <div class="info-chat-item">
-                <span class="info-chat-label">Creado el</span>
-                <span class="info-chat-valor">${fecha_formateada}</span>
+
+            <div class="info-chat-detalles">
+                <div class="info-chat-item">
+                    <span class="info-chat-label">Mensajes</span>
+                    <span class="info-chat-valor">${info_chat?.n_mensajes ?? info_chat?.mensajes?.length ?? 0}</span>
+                </div>
+                <div class="info-chat-item">
+                    <span class="info-chat-label">Creado el</span>
+                    <span class="info-chat-valor">${fecha_formateada}</span>
+                </div>
             </div>
-        </div>
 
-        <div class="div-botones-info-chat">
-            <button id="bt-ver-archivos-chat">
-                Ver Archivos
-            </button>
-        </div>
+            <div class="div-botones-info-chat">
+                <button id="bt-ver-archivos-chat">
+                    Ver Archivos
+                </button>
+            </div>
 
-        ${await (async () => {
-            try {
-                if (!info_chat?.usuarios || !Array.isArray(info_chat.usuarios)) {
-                    return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes (0)</div><div class="info-chat-lista-items">No se pudieron cargar los participantes.</div></div>`
-                }
+            ${await (async () => {
+                try {
+                    if (!info_chat?.usuarios || !Array.isArray(info_chat.usuarios)) {
+                        return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes (0)</div><div class="info-chat-lista-items">No se pudieron cargar los participantes.</div></div>`
+                    }
 
-                let participantes_ids = [...new Set(info_chat.usuarios.map(u => normalizeIdHelper(u)))]// normalizar a string y quitar repetidos
-                participantes_ids = participantes_ids.filter(id => id && id !== id_mio?.toString())//quitar el id propio
+                    let participantes_ids = [...new Set(info_chat.usuarios.map(u => normalizeIdHelper(u)))]// normalizar a string y quitar repetidos
+                    participantes_ids = participantes_ids.filter(id => id && id !== id_mio?.toString())//quitar el id propio
 
-                // Obtener datos de todos los participantes en paralelo
-                const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id).catch(() => null))
-                const participantes_datos = await Promise.all(participantes_promesas)
+                    // Obtener datos de todos los participantes en paralelo
+                    const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id).catch(() => null))
+                    const participantes_datos = await Promise.all(participantes_promesas)
 
-                let lista_html = `
-                <div class="info-chat-lista-participantes">
-                    <div class="info-chat-lista-titulo">Participantes (${participantes_datos.length + 1}) <div id="bt-anadir-participante-chat">+</div></div>
-                    <div class="info-chat-lista-items">
-                    <div class="info-chat-participante-item" data-id="${id_mio}">
-                        <div class="info-chat-participante-info">
-                            <span class="info-chat-participante-nombre">Tú <span class="apodo-usuario-lista-participantes">(${await window.cuenta_usuario.GET_APODO_SESION().catch(() => "")})</span></span>
-                            ${info_chat.admins?.some(a => normalizeIdHelper(a) === id_mio?.toString()) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
+                    let lista_html = `
+                    <div class="info-chat-lista-participantes">
+                        <div class="info-chat-lista-titulo">Participantes (${participantes_datos.length + 1}) <div id="bt-anadir-participante-chat">+</div></div>
+                        <div class="info-chat-lista-items">
+                        <div class="info-chat-participante-item" data-id="${id_mio}">
+                            <div class="info-chat-participante-info">
+                                <span class="info-chat-participante-nombre">Tú <span class="apodo-usuario-lista-participantes">(${await window.cuenta_usuario.GET_APODO_SESION().catch(() => "")})</span></span>
+                                ${info_chat.admins?.some(a => normalizeIdHelper(a) === id_mio?.toString()) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
+                            </div>
                         </div>
-                    </div>
-                `
-                participantes_datos.forEach((p, index) => {
-                    const originalId = participantes_ids[index];
-                    const nombre = escapeHTML(p?.apodo || "Usuario Ravage");
-                    const correo = escapeHTML(p?.correo || "");
-
-                    const idStr = normalizeIdHelper(originalId);
-                    const esAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === idStr);
-                    const estaBloqueado = ids_bloqueados.includes(idStr);
-                    const estaSilenciado = ids_silenciados.includes(idStr);
-
-                    lista_html += `
-                    <div class="info-chat-participante-item" data-id="${idStr}" data-idamigo="${p?.idamigo || ""}">
-                        <div class="info-chat-participante-info">
-                            <span class="info-chat-participante-nombre">
-                                ${nombre}
-                                ${estaBloqueado ? '<img src="../recursos/bloqueado.png" class="icono-bloqueado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario bloqueado">' : (estaSilenciado ? '<img src="../recursos/silenciar.png" class="icono-silenciado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario silenciado">' : '')}
-                            </span>
-                            <span class="info-chat-participante-correo">${correo}</span>
-                            ${esAdmin ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
-                        </div>
-                    </div>
                     `
-                })
-                lista_html += `</div></div>`
-                return lista_html
-            } catch (err) {
-                console.error("Error al renderizar participantes:", err);
-                return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes</div><div class="info-chat-lista-items">Error al cargar la lista.</div></div>`
-            }
-        })()}
+                    participantes_datos.forEach((p, index) => {
+                        const originalId = participantes_ids[index];
+                        const nombre = escapeHTML(p?.apodo || "Usuario Ravage");
+                        const correo = escapeHTML(p?.correo || "");
+
+                        const idStr = normalizeIdHelper(originalId);
+                        const esAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === idStr);
+                        const estaBloqueado = ids_bloqueados.includes(idStr);
+                        const estaSilenciado = ids_silenciados.includes(idStr);
+
+                        lista_html += `
+                        <div class="info-chat-participante-item" data-id="${idStr}" data-idamigo="${p?.idamigo || ""}">
+                            <div class="info-chat-participante-info">
+                                <span class="info-chat-participante-nombre">
+                                    ${nombre}
+                                    ${estaBloqueado ? '<img src="../recursos/bloqueado.png" class="icono-bloqueado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario bloqueado">' : (estaSilenciado ? '<img src="../recursos/silenciar.png" class="icono-silenciado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario silenciado">' : '')}
+                                </span>
+                                <span class="info-chat-participante-correo">${correo}</span>
+                                ${esAdmin ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
+                            </div>
+                        </div>
+                        `
+                    })
+                    lista_html += `</div></div>`
+                    return lista_html
+                } catch (err) {
+                    console.error("Error al renderizar participantes:", err);
+                    return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes</div><div class="info-chat-lista-items">Error al cargar la lista.</div></div>`
+                }
+            })()}
+        </div>
     </div>`
 
     infoSeccion.replaceChildren();
@@ -827,6 +1078,8 @@ export async function mostrar_datos_chat_usaurios(e) {
     // Eventos de la sección de información
     document.querySelector("#bt-cerrar-info-chat")?.addEventListener("click", () => {
         infoSeccion.classList.remove("abierto")
+        const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
+        if (cuerpoChat) cuerpoChat.classList.remove("panel-lateral-abierto")
     })
 
     document.querySelector("#bt-abrir-ajustes-chat")?.addEventListener("click", () => {
@@ -979,17 +1232,30 @@ export async function mostrar_datos_chat_usaurios(e) {
     //mostrar seccion + cambiar css secciones
 
     if (infoSeccion) {
+        const ventanaArchivos = document.querySelector(".ventana-archivos-mensaje")
+        
+        // Si vamos a abrir info y archivos está abierto, cerramos archivos
+        if (!infoSeccion.classList.contains("abierto") && ventanaArchivos) {
+            // Cerramos archivos animadamente (esto coexistirá con la apertura de info)
+            if (typeof cerrar_ventana_archivos === "function") {
+                cerrar_ventana_archivos()
+            } else {
+                ventanaArchivos.classList.remove("abierto")
+                setTimeout(() => ventanaArchivos.remove(), 300)
+            }
+        }
+
         // Toggle the info section
         infoSeccion.classList.toggle("abierto")
-        // If it's now open, close the attachment menu if it exists (abruptly snap)
-        if (infoSeccion.classList.contains("abierto")) {
-            const ventanaArchivos = document.querySelector(".ventana-archivos-mensaje")
-            if (ventanaArchivos) {
-                // Snap close instantly without animation
-                ventanaArchivos.style.transition = "none"
-                ventanaArchivos.style.width = "0"
-                ventanaArchivos.classList.remove("abierto")
-                ventanaArchivos.remove()
+        
+        // Sincronizar clase en el contenedor padre para ajustes de ancho de mensajes
+        const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
+        if (cuerpoChat) {
+            const algunoAbierto = infoSeccion.classList.contains("abierto") || !!document.querySelector(".ventana-archivos-mensaje.abierto")
+            if (algunoAbierto) {
+                cuerpoChat.classList.add("panel-lateral-abierto")
+            } else {
+                cuerpoChat.classList.remove("panel-lateral-abierto")
             }
         }
     }

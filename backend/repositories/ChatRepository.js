@@ -70,7 +70,7 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
 
             for (let chat of data_obtenida) {
                 if (mensajes) {
-                    chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).limit(50).lean();
+                    chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).limit(30).lean();
                     await descifrarListaMensajes(chat.mensajes, chat);
                 }
                 await setChatEnCacheRaw(chat);
@@ -85,7 +85,7 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
 
             if (mensajes && !tieneMensajesFull) {
                 // El cache solo tiene IDs o nada. Cargar de DB.
-                chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).limit(50).lean();
+                chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).limit(30).lean();
                 await descifrarListaMensajes(chat.mensajes, chat);
                 // No actualizamos cache aquí porque ya tenemos la meta-info y no queremos guardar contenido
             } else if (!mensajes && tieneMensajesFull) {
@@ -124,7 +124,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
                 const tieneMensajesFull = chat_a_devolver.mensajes.length > 0 && typeof chat_a_devolver.mensajes[0] === 'object';
 
                 if (!tieneMensajesFull) {
-                    chat_a_devolver.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: -1 }).limit(50).lean();
+                    chat_a_devolver.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ _id: -1 }).limit(30).lean();
                     chat_a_devolver.mensajes.reverse();
                     await descifrarListaMensajes(chat_a_devolver.mensajes, chat_a_devolver);
                 }
@@ -153,7 +153,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
         if (!data_obtenida) return null;
 
         if (!datos_buscar || (Array.isArray(fields) && fields.includes("mensajes"))) {
-            data_obtenida.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: -1 }).limit(50).lean();
+            data_obtenida.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: -1 }).limit(30).lean();
             data_obtenida.mensajes.reverse();
             await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
         }

@@ -56,28 +56,35 @@ export async function abrir_ventana_archivos() {
     const ventana = document.createElement("div")
     ventana.className = "ventana-archivos-mensaje"
     ventana.innerHTML = `
-        <div class="info-chat-header">
-            <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header"><img src="../recursos/cruz.png"></div>
-            <div> <span>Archivos Adjuntos</span></div>
-            <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos" title="añadir archivo"><img src="../recursos/suma.png"></div>
-            <div id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro"><img src="../recursos/escoba.png"></div>
-        </div>
-        <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
-            <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-componente">${html_lista}</div>
+        <div class="info-chat-contenedor-fijo">
+            <div class="info-chat-header">
+                <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header"><img src="../recursos/cruz.png"></div>
+                <div> <span>Archivos Adjuntos</span></div>
+                <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos" title="añadir archivo"><img src="../recursos/suma.png"></div>
+                <div id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro"><img src="../recursos/escoba.png"></div>
+            </div>
+            <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
+                <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-componente">${html_lista}</div>
+            </div>
         </div>`
 
-    ventana.style.transition = "none"; ventana.style.width = "0"
+    ventana.classList.add("panel-lateral-ajustable")
+    ventana.style.width = "0"
     document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
 
     // Ocultar modal info si existe
     const infoSec = document.querySelector("#info-chat-seccion")
     if (infoSec && infoSec.classList.contains("abierto")) {
-        infoSec.style.transition = "none"; infoSec.classList.remove("abierto"); infoSec.style.width = "0";
-        requestAnimationFrame(() => requestAnimationFrame(() => { infoSec.style.transition = ""; infoSec.style.width = "" }))
+        // Animación simultánea: cerramos info mientras abrimos archivos
+        infoSec.classList.remove("abierto")
     }
 
     requestAnimationFrame(() => requestAnimationFrame(() => {
-        ventana.style.transition = ""; ventana.style.width = ""; ventana.classList.add("abierto")
+        ventana.style.width = "" // Permitir que CSS controle el ancho (350px en .abierto)
+        ventana.classList.add("abierto")
+        
+        const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
+        if (cuerpoChat) cuerpoChat.classList.add("panel-lateral-abierto")
     }))
 }
 
@@ -85,6 +92,16 @@ export function cerrar_ventana_archivos() {
     const ven = document.querySelector(".ventana-archivos-mensaje")
     if (ven) {
         ven.classList.remove("abierto")
+        
+        // Solo quitamos la clase de ajuste de chat si NO hay otros paneles abiertos (como info)
+        const infoSec = document.querySelector("#info-chat-seccion")
+        const algunOtroAbierto = infoSec && infoSec.classList.contains("abierto")
+        
+        if (!algunOtroAbierto) {
+            const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
+            if (cuerpoChat) cuerpoChat.classList.remove("panel-lateral-abierto")
+        }
+        
         setTimeout(() => ven.remove(), 310)
     }
 }
