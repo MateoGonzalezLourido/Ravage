@@ -436,7 +436,43 @@ export function registrar_scroll_usuario() {
         }, 1500);
     };
 
-    chatCuerpo.addEventListener("wheel", marcar, { passive: true });
+    let rachaScroll = 0;
+    let ultimoScrollTime = 0;
+    let ultimaDireccion = 0;
+
+    chatCuerpo.addEventListener("wheel", (e) => {
+        if (e.ctrlKey) return;
+        
+        const ahora = Date.now();
+        const direccionActual = Math.sign(e.deltaY);
+        
+        // Detectar si es un scroll continuado en la misma dirección (intervalo de 150ms)
+        if (ahora - ultimoScrollTime < 300 && direccionActual === ultimaDireccion) {
+            rachaScroll++;
+        } else {
+            rachaScroll = 0;
+        }
+        
+        ultimoScrollTime = ahora;
+        ultimaDireccion = direccionActual;
+
+        // Si hay racha (>=3), aplicamos un boost del 10% (1.1)
+        const boost = rachaScroll >= 3 ? 1.2 : 1.0;
+        //amortizacion del scroll->cuanto mas pequeño mas frena
+        const factor = rachaScroll >= 3 ? 0.5 : 0.4;
+        
+        let delta = e.deltaY;
+        
+        // Manejar diferentes modos de delta (0: pixels, 1: lines, 2: pages)
+        if (e.deltaMode === 1) delta *= 33;
+        else if (e.deltaMode === 2) delta *= chatCuerpo.clientHeight;
+
+        chatCuerpo.scrollTop += delta * factor;
+        
+        if (e.cancelable) e.preventDefault();
+        marcar();
+    }, { passive: false });
+
     chatCuerpo.addEventListener("touchmove", marcar, { passive: true });
 
     // Detectar scroll para virtualización: cargar más mensajes al llegar a los bordes
