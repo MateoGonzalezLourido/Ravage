@@ -9,7 +9,7 @@ import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { readFileSession } from '../services/controladorArchivos.js';
 import { setChatEnCacheRaw } from './ChatRepository.js';
 import { procesarUsuario } from './UserRepository.js';
-import { setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
+import { setUsuarioEnCache } from './UserRepository.js';
 
 import { descifrarListaMensajes, getMessageKey } from '../services/messageCryptoService.js';
 import {

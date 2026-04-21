@@ -106,11 +106,33 @@ export async function Get_datos_chat_abrir(id_chat) {
         usuarios: ids_usuarios,
         admins: datos_necesarios.admins,
         fecha_creacion: datos_necesarios.fecha_creacion,
-        n_mensajes: datos_necesarios.mensajes?.length || 0,
+        nmensajes: datos_necesarios.nmensajes,
         d_participantes: usuarios_detalles
     });
 
     return datos_necesarios;
+}
+
+/**
+ * Incrementa el contador de mensajes en la caché activa del chat.
+ * @param {string} id_chat - ID del chat a incrementar.
+ * @param {number} incremento - Cantidad a sumar (defecto 1).
+ */
+export async function INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, incremento = 1) {
+    if (!id_chat) return;
+    try {
+        const cache = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat);
+        if (cache) {
+            const nuevo_total = (Number(cache.nmensajes) || 0) + incremento;
+            await window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
+                _id: id_chat,
+                nmensajes: nuevo_total
+            });
+            console.log(`[Cache] Mensajes incrementados para ${id_chat}: +${incremento} (Total: ${nuevo_total})`);
+        }
+    } catch (e) {
+        console.error("Error al incrementar cache de mensajes:", e);
+    }
 }
 
 export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {

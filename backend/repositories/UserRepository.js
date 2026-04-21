@@ -5,7 +5,7 @@ import { ChatsRavage } from '../models/Chat.js';
 import { TokenSession } from '../models/Security.js';
 import { validateToken } from '../services/CreadorTokens.js';
 import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } from '../services/cryptoService.js';
-import { getUsuarioDeCache, setUsuarioEnCache } from '../STORAGE/CACHE/_cache_usuarios.js';
+
 import {
     getCorreoSesion, getUsuariosBloqueados, getUsuariosSilence, setUsuariosBloqueados, setUsuariosSilence,
     setFechaBloqueoContraseña, setFechaBloqueoCorreo, setFechaBloqueoApodo, setApodoSesion, setCorreoSesion,
@@ -265,6 +265,40 @@ export async function cambiarApodoUsuario(apodo) {
 
 let session_cache_usuarios = new Map(); // Cache RAM de sesión (Persistente durante la sesión)
 const MAX_SESSION_CACHE_MB = 50; // Límite de la caché de sesión
+
+/**
+ * Guarda un usuario en la caché de sesión.
+ */
+export async function setUsuarioEnCache(user) {
+    if (!user || (!user._id && !user.id)) return;
+    const id = (user._id || user.id).toString();
+    const ahora = Date.now();
+    session_cache_usuarios.set(id, { data: user, timestamp: ahora });
+    REVISAR_LIMPIEZA_CACHE_SESION();
+}
+
+/**
+ * Obtiene un usuario de la caché de sesión.
+ */
+export async function getUsuarioDeCache(id_usuario) {
+    if (!id_usuario) return null;
+    const id = id_usuario.toString();
+    const entry = session_cache_usuarios.get(id);
+    if (entry) {
+        // Actualizamos el timestamp para evitar que se limpie por TTL si se está usando
+        entry.timestamp = Date.now();
+        return entry.data;
+    }
+    return null;
+}
+
+/**
+ * Limpia toda la caché de usuarios de sesión.
+ */
+export async function clearCacheUsuarios() {
+    session_cache_usuarios.clear();
+}
+
 
 /**
  * Revisa la caché de sesión para borrar usuarios de más de 15 min 

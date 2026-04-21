@@ -1,4 +1,4 @@
-import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, abrir_chat_item,cambiar_datos_componente_lista_chats } from './gestor_chats.js'
+import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, abrir_chat_item, cambiar_datos_componente_lista_chats, INCREMENTAR_MENSAJES_CACHE_ACTIVA } from './gestor_chats.js'
 import { obtener_archivos_mensaje, limpiar_archivos_mensaje, cerrar_ventana_archivos } from './manejador_archivos.js'
 
 export async function manejar_input_escribiendo(textarea) {
@@ -60,6 +60,7 @@ export async function enviar_mensaje_chat(textarea) {
             id_mensaje: result.id_mensaje
         })
         await cambiar_datos_componente_lista_chats({ id_chat, data: {asunto:mensaje,data:new Date().toISOString(),emisor:id_usuario} })
+        await INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, 1);
     }
 }
 

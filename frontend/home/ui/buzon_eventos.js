@@ -1,4 +1,4 @@
-import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, refrescar_componente_lista_chats, cambiar_datos_componente_lista_chats } from './gestor_chats.js'
+import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, refrescar_componente_lista_chats, cambiar_datos_componente_lista_chats, INCREMENTAR_MENSAJES_CACHE_ACTIVA } from './gestor_chats.js'
 import { Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion } from './chat.js'
 import { safeIdSelector } from './seguridad_ui.js';
 
@@ -102,6 +102,9 @@ async function Cambio_buzonApi_mensaje(entrada, lote = null) {
     // Si no hay lote, creamos uno con la entrada única para unificar lógica
     const mensajes_a_procesar = lote || [entrada];
     const ultima_entrada = mensajes_a_procesar[mensajes_a_procesar.length - 1];
+
+    // 0. Incrementar contador de mensajes en caché activa
+    INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, mensajes_a_procesar.length);
 
     // 1. Actualizar el render del chat si está activo (abierto en pantalla)
     const chatAbierto = !!document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`);

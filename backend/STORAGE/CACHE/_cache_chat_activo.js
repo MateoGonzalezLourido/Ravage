@@ -52,7 +52,7 @@ export function crearCacheChatActivo(datos) {
         usuarios: 'usuarios',
         admins: 'admins',
         fecha_creacion: 'fecha_creacion',
-        n_mensajes: 'n_mensajes',
+        nmensajes: 'nmensajes',
         d_participantes: 'd_participantes'
     };
 

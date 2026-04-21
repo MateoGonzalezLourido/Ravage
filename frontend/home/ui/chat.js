@@ -1010,11 +1010,21 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;
 
-        const mensajes = (datos.mensajes || []).filter(m => m && typeof m === 'object');
+        let mensajes = (datos.mensajes || []).filter(m => m && typeof m === 'object');
+        let initial_paginacion_hay_mas = null;
+        
         if (mensajes.length === 0) {
-            if (datos.mensajes?.length > 0) {
-                console.warn("Se recibieron mensajes pero no son objetos válidos. Posible error de carga en backend.");
+            console.debug(`[Virtualización] No hay mensajes iniciales en datos. Pidiendo primer bloque al backend.`);
+            const result = await window.chats.OBTENER_MENSAJES_PAGINADOS(datos._id, BLOQUE_MENSAJES, null, 'older');
+            if (result && result.mensajes) {
+                mensajes = result.mensajes;
+                initial_paginacion_hay_mas = result.hay_mas;
+                // Actualizar datos.mensajes para que el resto de la función siga igual
+                datos.mensajes = mensajes;
             }
+        }
+
+        if (mensajes.length === 0) {
             // Inicializar virtualización vacía igualmente
             _virt = {
                 id_chat: datos._id, datos_chat: datos, id_propio,
@@ -1037,6 +1047,12 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 
         if (controller.abort) return;
 
+        let initial_hay_mas = mensajes.length >= BLOQUE_MENSAJES;
+        // Si los pedimos por paginación, el backend ya nos dijo si hay más
+        if (typeof initial_paginacion_hay_mas === 'boolean') {
+            initial_hay_mas = initial_paginacion_hay_mas;
+        }
+
         // Inicializar estado de virtualización
         _virt = {
             id_chat: datos._id,
@@ -1044,7 +1060,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             id_propio,
             map_nombres,
             escaneres_seguridad,
-            hay_mas_arriba: mensajes.length >= BLOQUE_MENSAJES,
+            hay_mas_arriba: initial_hay_mas,
             hay_mas_abajo: false,
             cargando: false,
             _id_mas_antiguo: mensajes[0]?._id || mensajes[0]?.id,
@@ -1197,7 +1213,7 @@ export async function mostrar_datos_chat_usaurios(e) {
         window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
             ...info_chat,
             seguridad: info_chat.seguridad || info_chat.escaneres_seguridad,
-            n_mensajes: info_chat.nmensajes ?? 0
+            nmensajes: info_chat.nmensajes ?? 0
         })
     }
 

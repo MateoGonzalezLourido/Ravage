@@ -132,14 +132,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
         if (cached) {
             if (!datos_buscar) {
                 // Caso: Pedir chat completo
-                let chat_a_devolver = { ...cached, mensajes: [...(cached.mensajes || [])] };
-                const tieneMensajesFull = chat_a_devolver.mensajes.length > 0 && typeof chat_a_devolver.mensajes[0] === 'object';
-
-                if (!tieneMensajesFull) {
-                    chat_a_devolver.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ _id: -1 }).limit(30).lean();
-                    chat_a_devolver.mensajes.reverse();
-                    await descifrarListaMensajes(chat_a_devolver.mensajes, chat_a_devolver);
-                }
+                let chat_a_devolver = { ...cached };
                 if (nmensajes !== null) chat_a_devolver.nmensajes = nmensajes;
                 return await resolverNombresYBloqueos(chat_a_devolver, id_chat_str);
             } else {
@@ -166,7 +159,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
         let data_obtenida = await ChatsRavage.findById(id_chat_str, projection).lean();
         if (!data_obtenida) return null;
 
-        if (!datos_buscar || (Array.isArray(fields) && fields.includes("mensajes"))) {
+        if (Array.isArray(fields) && fields.includes("mensajes")) {
             data_obtenida.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: -1 }).limit(30).lean();
             data_obtenida.mensajes.reverse();
             await descifrarListaMensajes(data_obtenida.mensajes, data_obtenida);
@@ -613,7 +606,7 @@ async function resolverNombresChats(chats) {
     let globales = {};
     if (ids_otros_necesarios.size > 0) {
         const missingIds = [];
-        const { getUsuarioDeCache, setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
+        const { getUsuarioDeCache, setUsuarioEnCache } = await import('./UserRepository.js');
 
         for (const id of ids_otros_necesarios) {
             const cached = await getUsuarioDeCache(id);
@@ -904,7 +897,7 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
 async function actualizarCacheUsuarioPropio() {
     const id_propio = getIDMongodbUsuario();
     if (!id_propio) return;
-    const { setUsuarioEnCache } = await import('../STORAGE/CACHE/_cache_usuarios.js');
+    const { setUsuarioEnCache } = await import('./UserRepository.js');
     const updatedUser = await User.findById(id_propio).lean();
     if (updatedUser) {
         const { procesarUsuario } = await import('./UserRepository.js');

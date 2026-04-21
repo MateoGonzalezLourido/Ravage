@@ -59,7 +59,6 @@ function _minificar_chat(chat) {
         u: chat.usuarios || chat.u,
         a: chat.admins || chat.a,
         y: chat.tipo || chat.y,
-        m: chat.mensajes || chat.m, // IDs de mensajes
         k: chat.ratchet_keys || chat.k,
         d: chat.metadata || chat.d
     };
@@ -74,7 +73,6 @@ function _desminificar_chat(m) {
         usuarios: m.u,
         admins: m.a,
         tipo: m.y,
-        mensajes: m.m,
         ratchet_keys: m.k,
         metadata: m.d
     };
