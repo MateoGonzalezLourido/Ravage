@@ -1,15 +1,14 @@
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { escapeHTML } from './seguridad_ui.js';
+import { cache_archivos_adjuntos, establecer_cache_archivos_adjuntos } from '../caches_datos.js';
 
-
-export let archivos_mensaje = []
 
 export function limpiar_archivos_mensaje() {
-    archivos_mensaje = []
+    establecer_cache_archivos_adjuntos([]);
 }
 
 export function obtener_archivos_mensaje() {
-    return [...archivos_mensaje]
+    return [...cache_archivos_adjuntos];
 }
 
 export async function render_html_lista_archivos() {
@@ -17,8 +16,8 @@ export async function render_html_lista_archivos() {
     //crear una cache que ayude a renderizar mas rapido
     const cache_propia_url_iconos = {}
     let guardados = 0
-    for (let i = 0; i < archivos_mensaje.length; i++) {
-        const activo = archivos_mensaje[i]
+    for (let i = 0; i < cache_archivos_adjuntos.length; i++) {
+        const activo = cache_archivos_adjuntos[i]
         let [url, idn] = [cache_propia_url_iconos[activo.extension] || null, true]
         if (!url) {
             [url, idn] = await url_icono_extension_img(activo.extension)
@@ -114,7 +113,7 @@ export async function añadir_archivos_dialogo() {
         let parts = fn.split('.'), ext = parts.length > 1 ? parts.pop() : "txt", no = parts.join('.')
         if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(no))) no = "Archivo"
         if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(ext))) ext = "txt"
-        archivos_mensaje.push({ nombre: no, extension: ext, ruta: activo })
+        cache_archivos_adjuntos.push({ nombre: no, extension: ext, ruta: activo })
     }
     actualizar_html_lista_archivos()
 }
@@ -122,7 +121,7 @@ export async function añadir_archivos_dialogo() {
 export function mostrar_menu_contextual_archivo(e, clkNode) {
     document.querySelector(".context-menu")?.remove()
     const indice = clkNode.dataset.indice
-    const archivo = archivos_mensaje[indice]
+    const archivo = cache_archivos_adjuntos[indice]
     if (!archivo) return;
 
     const mx = `
@@ -141,7 +140,7 @@ export function mostrar_menu_contextual_archivo(e, clkNode) {
     menu.addEventListener("click", (ev) => {
         const acc = ev.target.dataset.action
         if (acc === "borrar") {
-            archivos_mensaje.splice(indice, 1)
+            cache_archivos_adjuntos.splice(indice, 1)
             actualizar_html_lista_archivos()
         } else if (acc === "editar") {
             // Edición inline simplificada

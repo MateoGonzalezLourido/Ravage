@@ -1,4 +1,5 @@
 import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, refrescar_componente_lista_chats, cambiar_datos_componente_lista_chats, INCREMENTAR_MENSAJES_CACHE_ACTIVA } from './gestor_chats.js'
+import { ID_USUARIO_MONGO } from '../caches_datos.js'
 import { Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion } from './chat.js'
 import { safeIdSelector } from './seguridad_ui.js';
 
@@ -161,7 +162,7 @@ async function Cambio_buzonApi_mensaje(entrada, lote = null) {
 async function Cambio_buzonApi_unirse_grupo(entrada, esta_silenciado) {
     const nombreChat = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat })
     if (!esta_silenciado) {
-        const mi_id = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO();
+        const mi_id = ID_USUARIO_MONGO;
         if (entrada.data.usuarios.includes(mi_id)) {
             window.pushNotificacion({ prioridad: 0, texto: `Te has unido a un nuevo chat${nombreChat ? `\n${nombreChat}` : ``}`, tipo: "info" })
         }

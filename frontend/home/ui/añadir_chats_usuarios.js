@@ -1,5 +1,6 @@
 const $btnAgregar = document.querySelector("#bt-agregar-contacto-nuevo");
 import { escapeHTML } from './seguridad_ui.js';
+import { CORREO_USUARIO, _cache_lista_usuarios_añadir, establecer_cache_lista_usuarios_añadir } from '../caches_datos.js';
 
 const clase_cp_lista_contactos_añadidos = "componente-lista-contactos-añadidos-chat-crear"
 const $nombreChatNuevo = document.querySelector("#nombre-chat-nuevo-crear");
@@ -9,7 +10,7 @@ export function set_callback_actualizar_listas(cb) {
     _callback_actualizar_listas = cb;
 }
 
-let _cache_lista_usuarios_añadir = null
+
 export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat = "" }) {
     if (e) e.preventDefault()
 
@@ -127,11 +128,18 @@ function actualizar_lista_usuarios_añadir({ conjunto = null, remove = false, cl
 }
 
 function actualizar_cache_listas_usuarios_añadir(data, clean = false) {
-    if (clean) _cache_lista_usuarios_añadir = null
-    const MAX_CONTACTOS_CACHE = 5000//limitar cache
+    if (clean) {
+        establecer_cache_lista_usuarios_añadir(null);
+        return;
+    }
+    const MAX_CONTACTOS_CACHE = 5000; // limitar cache
 
-    if (_cache_lista_usuarios_añadir != data && data.length <= MAX_CONTACTOS_CACHE) _cache_lista_usuarios_añadir = data
-    else if (_cache_lista_usuarios_añadir != data) _cache_lista_usuarios_añadir = null//si la cache supera el limite es inutil guardar los datos, mejor limpiarla y esperar a que baje al limite
+    if (_cache_lista_usuarios_añadir != data && (!data || data.length <= MAX_CONTACTOS_CACHE)) {
+        establecer_cache_lista_usuarios_añadir(data);
+    }
+    else if (_cache_lista_usuarios_añadir != data) {
+        establecer_cache_lista_usuarios_añadir(null); // si la cache supera el limite es inutil guardar los datos, mejor limpiarla
+    }
 }
 function mirar_usuarios_añadir_lista() {
     /*funcion para recuperar la lista de usuarios para añadir del html
@@ -202,7 +210,7 @@ async function buscar_usuario_añadir_chat(e) {
             window.pushNotificacion({ prioridad: 2, texto: "Formato de correo no válido", tipo: "info" })
             return null
         }
-        const correo_usuario = await window.cuenta_usuario.OBTENER_CORREO_USUARIO()
+        const correo_usuario = CORREO_USUARIO
         if (texto_buscar === correo_usuario) return null
         else resultado = await buscar_y_procesar_cache(texto_buscar, true)
     }

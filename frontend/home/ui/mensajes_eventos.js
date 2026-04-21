@@ -1,4 +1,5 @@
 import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, abrir_chat_item, cambiar_datos_componente_lista_chats, INCREMENTAR_MENSAJES_CACHE_ACTIVA } from './gestor_chats.js'
+import { ID_USUARIO_MONGO } from '../caches_datos.js'
 import { obtener_archivos_mensaje, limpiar_archivos_mensaje, cerrar_ventana_archivos } from './manejador_archivos.js'
 
 export async function manejar_input_escribiendo(textarea) {
@@ -26,7 +27,7 @@ export async function manejar_input_escribiendo(textarea) {
 export async function enviar_mensaje_chat(textarea) {
     let mensaje = textarea.value.trim()
     const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
-    const id_usuario = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+    const id_usuario = ID_USUARIO_MONGO
     const archivos_actuales = obtener_archivos_mensaje()
 
     if (!mensaje && archivos_actuales.length === 0) return;

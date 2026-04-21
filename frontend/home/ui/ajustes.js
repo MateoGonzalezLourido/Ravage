@@ -2,6 +2,7 @@ export let bloquear_span_cambio_contraseña = false;
 export let bloquear_span_cambio_apodo = false;
 export let bloquear_span_cambio_correo = false;
 import { escapeHTML } from './seguridad_ui.js';
+import { APODO_USUARIO, establecer_apodo_usuario, CORREO_USUARIO, establecer_correo_usuario } from '../caches_datos.js';
 
 
 const formatoScroollAnimacion = {
@@ -102,14 +103,14 @@ async function cerrar_cuerpos_ajustes(no_cerrar) {
 }
 
 async function actualizar_datos_cuenta() {
-    const [fecha_creacion, fecha_bloqueo_apodo, fecha_bloqueo_correo, fecha_bloqueo_contraseña, apodo, correo] = await Promise.all([
+    const [fecha_creacion, fecha_bloqueo_apodo, fecha_bloqueo_correo, fecha_bloqueo_contraseña] = await Promise.all([
         window.cuenta_usuario.OBTENER_FECHA_CREACION_CUENTA(),
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_APODO(),
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CORREO(),
-        window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA(),
-        window.cuenta_usuario.GET_APODO_SESION(),
-        window.cuenta_usuario.OBTENER_CORREO_USUARIO()
+        window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA()
     ]);
+    const apodo = APODO_USUARIO;
+    const correo = CORREO_USUARIO;
 
     document.querySelector("#text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${escapeHTML(apodo)}</font>`;
     document.querySelector("#text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${escapeHTML(correo)}</font>`;
@@ -273,6 +274,7 @@ async function funcion_cambiar_apodo(e) {
                 if (final) {
                     window.pushNotificacion({ prioridad: 0, texto: "Apodo cambiado correctamente", tipo: "success" });
                     bloquear_span_cambio_apodo = true;
+                    establecer_apodo_usuario(apodo);
                     document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
                     if (typeof window.cambiar_menu_inicio_apodo === "function") window.cambiar_menu_inicio_apodo();
                 } else {
@@ -327,6 +329,7 @@ async function funcion_cambiar_correo(e) {
                     if (final) {
                         window.pushNotificacion({ prioridad: 1, texto: "Correo cambiado", tipo: "success" });
                         bloquear_span_cambio_correo = true;
+                        establecer_correo_usuario(email);
                         await window.paginas_app.CAMBIAR_PAGINA_SESION();
                     } else {
                         window.pushNotificacion({ prioridad: 0, texto: "Error al cambiar el correo", tipo: "error" });

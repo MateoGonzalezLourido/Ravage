@@ -36,6 +36,7 @@ import {
 import { manejar_descarga_archivo } from './ui/descarga_archivos.js'
 import { toggle_historial_descargas, mensaje_bienvenida_usuario } from './ui/navegacion_vistas.js'
 import { manejar_ui_cierre_sesion } from './ui/servicios_sesion.js'
+import { establecer_id_usuario, establecer_apodo_usuario, establecer_correo_usuario, cache_input_buscar_chat_ultimo, establecer_cache_busqueda_chat } from './caches_datos.js'
 
 // Inicializar el bridge de actualización para el backend
 set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
@@ -169,13 +170,14 @@ async function preparar_interfaz_y_servicios() {
     document.querySelector("#bt-añadir-chat")?.addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
     document.querySelector("#bt-seccion-historial-archivos")?.addEventListener("click", toggle_historial_descargas)
 
-    let cache_input_buscar_chat_ultimo = ""
+    
     const input_buscar_chat = document.querySelector("#input-buscar-chat")
     input_buscar_chat?.addEventListener("keyup", (e) => {
         e.preventDefault()
-        if (input_buscar_chat.value.trim() !== cache_input_buscar_chat_ultimo) {
-            ACTUALIZAR_LISTAS_CHAT(input_buscar_chat.value.trim())
-            cache_input_buscar_chat_ultimo = input_buscar_chat.value.trim()
+        const valor = input_buscar_chat.value.trim()
+        if (valor !== cache_input_buscar_chat_ultimo) {
+            ACTUALIZAR_LISTAS_CHAT(valor)
+            establecer_cache_busqueda_chat(valor)
         }
     })
 
@@ -211,6 +213,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         // 1. Procesos de arranque
+        console.log("[Renderer] Obteniendo ID de usuario...");
+        const [id_mongo, apodo, correo] = await Promise.all([
+            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
+            window.cuenta_usuario.GET_APODO_SESION(),
+            window.cuenta_usuario.OBTENER_CORREO_USUARIO()
+        ]);
+        
+        establecer_id_usuario(id_mongo);
+        establecer_apodo_usuario(apodo);
+        establecer_correo_usuario(correo);
+
         console.log("[Renderer] Lanzando mensaje de bienvenida...");
         mensaje_bienvenida_usuario().catch(e => console.error("Error bienvenida:", e))
 

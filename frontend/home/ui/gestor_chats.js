@@ -1,4 +1,5 @@
 import { limpiar_archivos_mensaje } from './manejador_archivos.js'
+import { ID_USUARIO_MONGO, batchRequestCache } from '../caches_datos.js'
 import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
 import {
     chat_componente_lista_estructura_html,
@@ -47,20 +48,7 @@ export function cerrar_paneles_al_abrir_chat() {
 // Variable global en el módulo para gestionar el bloqueo de carga de chats
 let id_chat_cargando = null;
 
-// Caché de corta duración para peticiones repetitivas durante procesamiento por lotes
-const batchRequestCache = {
-    data: new Map(),
 
-    async get(key, fetcher, ttl = 500) {
-        const now = Date.now();
-        const entry = this.data.get(key);
-
-        if (!entry || entry.expiry < now) {
-            this.data.set(key, { value: await fetcher(), expiry: now + ttl });
-        }
-        return this.data.get(key).value;
-    }
-};
 
 export async function Get_datos_chat_abrir(id_chat) {
     const resultados = await Promise.allSettled([
@@ -209,7 +197,7 @@ export async function abrir_chat_item(id_chat, force = false) {
 
         const [datos_chat, id_usuario] = await Promise.all([
             Get_datos_chat_abrir(id_chat),
-            window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+            ID_USUARIO_MONGO
         ])
 
         clearTimeout(timer_spin)
@@ -360,7 +348,7 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
 
     const [nombres_contactos, id_propio] = await Promise.all([
         batchRequestCache.get('contactos', () => window.social_usuario.OBTENER_CONTACTOS_USUARIO(), 30000),
-        batchRequestCache.get('id_propio', () => window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(), Infinity)
+        batchRequestCache.get('id_propio', () => ID_USUARIO_MONGO, Infinity)
     ]);
 
     const propio = id_propio && id_emisor == id_propio.toString();

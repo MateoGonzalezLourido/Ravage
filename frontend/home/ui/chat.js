@@ -1,4 +1,5 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
+import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
 import { safeIdSelector } from './seguridad_ui.js';
@@ -503,7 +504,7 @@ export const crear_mensaje_html = async ({
 let controller_renderizado_activo = null;
 
 // ─── CACHE USUARIOS CHAT ACTIVO (RAM) ───────────────────────────────────────
-const CACHE_USUARIOS_ACTIVO = new Map(); // id -> { data, timestamp }
+
 let intervalo_reinicio_cache = null;
 const MAX_ACTIVE_CACHE_MB = 100; // Límite de la caché activa
 
@@ -1217,7 +1218,7 @@ export async function mostrar_datos_chat_usaurios(e) {
         })
     }
 
-    const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+    const id_mio = ID_USUARIO_MONGO
     const soyAdmin = info_chat?.admins?.includes(id_mio) || false
 
     // Pre-obtener silenciados y bloqueados
@@ -1301,7 +1302,7 @@ export async function mostrar_datos_chat_usaurios(e) {
                         <div class="info-chat-lista-items">
                         <div class="info-chat-participante-item" data-id="${id_mio}">
                             <div class="info-chat-participante-info">
-                                <span class="info-chat-participante-nombre">Tú <span class="apodo-usuario-lista-participantes">(${await window.cuenta_usuario.GET_APODO_SESION().catch(() => "")})</span></span>
+                                <span class="info-chat-participante-nombre">Tú <span class="apodo-usuario-lista-participantes">(${APODO_USUARIO || ""})</span></span>
                                 ${info_chat.admins?.some(a => normalizeIdHelper(a) === id_mio?.toString()) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
                             </div>
                         </div>
@@ -1535,6 +1536,6 @@ async function Es_Contacto_Usuario(usuario_comprobar) {
 }
 //COMPROBAR SI ES EL USUARIO DE LA SESION
 export async function Es_usuario_Sesion(usuario_comprobar) {
-    const id_mio = await window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO()
+    const id_mio = ID_USUARIO_MONGO
     return usuario_comprobar === id_mio
 }

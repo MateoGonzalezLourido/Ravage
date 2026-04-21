@@ -1,4 +1,5 @@
 import { Encontrar_Nombre_Chat_Usuario, Crear_chat_html } from './chat.js'
+import { ID_USUARIO_MONGO } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { escapeHTML } from './seguridad_ui.js';
 
@@ -160,7 +161,7 @@ async function crear_eventos() {
             hacer_scroll_a_archivo(id_archivo)
         } else {
             const [id_usuario, lista_chats] = await Promise.all([
-                window.cuenta_usuario.OBTENER_ID_MONGODB_USUARIO(),
+                ID_USUARIO_MONGO,
                 window.cuenta_usuario.getListaChats()
             ])
 
