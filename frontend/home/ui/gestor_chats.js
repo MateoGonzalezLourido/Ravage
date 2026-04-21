@@ -18,6 +18,14 @@ import {
     manejar_solicitud_chat
 } from './mensajes_eventos.js';
 
+const MODELO_DATOS_NECESARIOS_CHAT = {
+    nombre: null,
+    usuarios: null,
+    admins: null,
+    fecha_creacion: null,
+    nmensajes: null
+};
+
 export function cerrar_paneles_al_abrir_chat() {
     const infoSeccion = document.querySelector("#info-chat-seccion")
     if (infoSeccion && infoSeccion.classList.contains("abierto")) {
@@ -56,16 +64,14 @@ const batchRequestCache = {
 
 export async function Get_datos_chat_abrir(id_chat) {
     const resultados = await Promise.allSettled([
-        window.chats.OBTENER_MODELO_DATOS_NECESARIOS_CHAT(),
         window.cache_persistente.getChatCache(id_chat),
         window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat)
     ]);
 
     const res = resultados.map(r => r.status === 'fulfilled' ? r.value : null);
-    const [template, cachePer, cacheAct] = res;
+    const [cachePer, cacheAct] = res;
 
-    if (!template) return null;
-    let datos_necesarios = { ...template };
+    let datos_necesarios = { ...MODELO_DATOS_NECESARIOS_CHAT };
 
     let ids_usuarios = cachePer?.usuarios || cacheAct?.participantes || null;
     let campos_chat_faltantes = [];
