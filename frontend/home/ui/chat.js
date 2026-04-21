@@ -5,6 +5,15 @@ import { safeIdSelector } from './seguridad_ui.js';
 
 const nombre_defecto = "~no encontrado~"
 
+// ─── CONFIGURACIÓN DE VIRTUALIZACIÓN Y RENDIMIENTO ──────────────────────────
+const BLOQUE_MENSAJES = 30;           // Cantidad de mensajes por bloque de carga
+const MAX_MENSAJES_DOM = 90;          // Máximo de mensajes permitidos en el DOM antes de reciclar
+const MAX_BLOQUES_CACHE = 10;         // Cuántos bloques de paginación guardar en caché
+const SCANNER_BATCH_SIZE = 10;        // Tamaño mínimo de lote para enviar escáneres al worker
+const SCANNER_BATCH_INTERVAL = 50;    // Tiempo máximo de espera (ms) para completar un lote
+const OPEN_CHAT_ANIMATION_OFFSET = 350; // Offset inicial para la animación de scroll al abrir chat
+
+
 // ─── DEFINICIÓN DE ESCÁNERES DE SEGURIDAD ──────────────────────────────────
 // Tipos: 
 // - sync: Modifican el texto durante el renderizado.
@@ -120,6 +129,34 @@ const normalizar_escaneres = (escaneres) =>
  */
 export async function aplicar_escaneres_asincronos(mensajeElement, texto, escaneres_habilitados = {}) {
     if (!mensajeElement) return;
+    const id_mensaje = mensajeElement.dataset.id || Math.random().toString(36).substr(2, 9);
+
+    if (_virt && id_mensaje) {
+        if (_virt.mensajes_escaneados.has(id_mensaje)) {
+            const cachedTags = _virt.cache_tags_asincronos[id_mensaje] || [];
+            if (cachedTags.length > 0) {
+                const tagsActuales = (mensajeElement.dataset.scannerTags || "").split(",").filter(Boolean);
+                const tagsFaltantes = cachedTags.filter(t => !tagsActuales.includes(t));
+                if (tagsFaltantes.length > 0) {
+                    let contenedorIconos = mensajeElement.querySelector(".contenedor-iconos-seguridad");
+                    if (!contenedorIconos) {
+                        contenedorIconos = document.createElement("div");
+                        contenedorIconos.className = "contenedor-iconos-seguridad";
+                        mensajeElement.appendChild(contenedorIconos);
+                    }
+                    for (const t of tagsFaltantes) {
+                        if (SCANNER_DEFINITIONS[t]?.render) {
+                            contenedorIconos.insertAdjacentHTML("beforeend", SCANNER_DEFINITIONS[t].render());
+                        }
+                    }
+                    mensajeElement.dataset.scannerTags = [...tagsActuales, ...tagsFaltantes].join(",");
+                    mensajeElement.classList.add("amenaza-detectada");
+                }
+            }
+            return;
+        }
+        _virt.mensajes_escaneados.add(id_mensaje);
+    }
 
     const tagsStr = mensajeElement.dataset.scannerTags || "";
     const tagsYaDetectados = tagsStr ? tagsStr.split(",").filter(t => t) : [];
@@ -139,8 +176,6 @@ export async function aplicar_escaneres_asincronos(mensajeElement, texto, escane
         mensajeElement.appendChild(contenedorIconos);
     }
 
-    const id_mensaje = mensajeElement.dataset.id || Math.random().toString(36).substr(2, 9);
-
     cola_escaneres_async.push({
         id_mensaje,
         mensajeElement,
@@ -151,10 +186,10 @@ export async function aplicar_escaneres_asincronos(mensajeElement, texto, escane
         huboDeteccion
     });
 
-    if (cola_escaneres_async.length >= 10) {
+    if (cola_escaneres_async.length >= SCANNER_BATCH_SIZE) {
         procesar_cola_escaneres_async();
     } else if (!timer_escaneres_async) {
-        timer_escaneres_async = setTimeout(procesar_cola_escaneres_async, 50);
+        timer_escaneres_async = setTimeout(procesar_cola_escaneres_async, SCANNER_BATCH_INTERVAL);
     }
 }
 
@@ -207,7 +242,16 @@ async function procesar_cola_escaneres_async() {
                 if (detectado) {
                     detectadoNuevo = true;
                     item.huboDeteccion = true;
-                    if (scanner.render) {
+                    item.tagsYaDetectados.push(id);
+                    
+                    if (_virt) {
+                        if (!_virt.cache_tags_asincronos[item.id_mensaje]) _virt.cache_tags_asincronos[item.id_mensaje] = [];
+                        if (!_virt.cache_tags_asincronos[item.id_mensaje].includes(id)) {
+                            _virt.cache_tags_asincronos[item.id_mensaje].push(id);
+                        }
+                    }
+                    
+                    if (scanner.render && document.body.contains(item.mensajeElement)) {
                         item.contenedorIconos.insertAdjacentHTML("beforeend", scanner.render());
                     }
                 }
@@ -459,8 +503,6 @@ export const crear_mensaje_html = async ({
 let controller_renderizado_activo = null;
 
 // ─── VIRTUALIZACIÓN DE MENSAJES ──────────────────────────────────────────────
-const BLOQUE_MENSAJES = 30;
-const MAX_MENSAJES_DOM = 90;
 
 let _virt = null;
 
@@ -699,9 +741,20 @@ export async function cargar_bloque_arriba() {
 
         // Obtener ID del mensaje más antiguo visible para usar como cursor
         const idCursor = _virt._id_mas_antiguo;
-        const result = await window.chats.OBTENER_MENSAJES_PAGINADOS(
-            _virt.id_chat, BLOQUE_MENSAJES, idCursor, 'older'
-        );
+        const cacheKey = `${idCursor}_older`;
+        
+        let result = _virt.cache_paginacion[cacheKey];
+        if (!result) {
+            result = await window.chats.OBTENER_MENSAJES_PAGINADOS(
+                _virt.id_chat, BLOQUE_MENSAJES, idCursor, 'older'
+            );
+            if (result && result.mensajes.length > 0) {
+                _virt.cache_paginacion[cacheKey] = result;
+                const keys = Object.keys(_virt.cache_paginacion);
+                if (keys.length > MAX_BLOQUES_CACHE) delete _virt.cache_paginacion[keys[0]];
+            }
+        }
+        
         if (!result || result.mensajes.length === 0) {
             _virt.hay_mas_arriba = false;
             return;
@@ -748,9 +801,20 @@ export async function cargar_bloque_abajo() {
         if (msgs.length === 0) return;
 
         const idCursor = _virt._id_mas_nuevo;
-        const result = await window.chats.OBTENER_MENSAJES_PAGINADOS(
-            _virt.id_chat, BLOQUE_MENSAJES, idCursor, 'newer'
-        );
+        const cacheKey = `${idCursor}_newer`;
+        
+        let result = _virt.cache_paginacion[cacheKey];
+        if (!result) {
+            result = await window.chats.OBTENER_MENSAJES_PAGINADOS(
+                _virt.id_chat, BLOQUE_MENSAJES, idCursor, 'newer'
+            );
+            if (result && result.mensajes.length > 0) {
+                _virt.cache_paginacion[cacheKey] = result;
+                const keys = Object.keys(_virt.cache_paginacion);
+                if (keys.length > MAX_BLOQUES_CACHE) delete _virt.cache_paginacion[keys[0]];
+            }
+        }
+
         if (!result || result.mensajes.length === 0) {
             _virt.hay_mas_abajo = false;
             return;
@@ -792,6 +856,14 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
         }
         const controller = { abort: false };
         controller_renderizado_activo = controller;
+        
+        // Limpiar colas de escáneres al cambiar de chat
+        cola_escaneres_async = [];
+        if (timer_escaneres_async) {
+            clearTimeout(timer_escaneres_async);
+            timer_escaneres_async = null;
+        }
+        procesando = false;
 
         const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
         if (!chatContainer) return;
@@ -806,7 +878,10 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
                 id_chat: datos._id, datos_chat: datos, id_propio,
                 map_nombres: {}, escaneres_seguridad: {},
                 hay_mas_arriba: false, hay_mas_abajo: false, cargando: false,
-                _id_mas_antiguo: null, _id_mas_nuevo: null
+                _id_mas_antiguo: null, _id_mas_nuevo: null,
+                cache_paginacion: {},
+                mensajes_escaneados: new Set(),
+                cache_tags_asincronos: {}
             };
             return;
         }
@@ -831,7 +906,10 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             hay_mas_abajo: false,
             cargando: false,
             _id_mas_antiguo: mensajes[0]?._id || mensajes[0]?.id,
-            _id_mas_nuevo: mensajes[mensajes.length - 1]?._id || mensajes[mensajes.length - 1]?.id
+            _id_mas_nuevo: mensajes[mensajes.length - 1]?._id || mensajes[mensajes.length - 1]?.id,
+            cache_paginacion: {},
+            mensajes_escaneados: new Set(),
+            cache_tags_asincronos: {}
         };
 
         // Renderizar bloque inicial
@@ -844,8 +922,8 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
         chatContainer.style.overflowAnchor = "none";
         
         if (chatContainer.scrollHeight > chatContainer.clientHeight) {
-            // Empezar unos 300px arriba para que la animación de caída sea visible
-            chatContainer.scrollTop = Math.max(0, chatContainer.scrollHeight - chatContainer.clientHeight - 350);
+            // Empezar unos píxeles arriba para que la animación de caída sea visible
+            chatContainer.scrollTop = Math.max(0, chatContainer.scrollHeight - chatContainer.clientHeight - OPEN_CHAT_ANIMATION_OFFSET);
             
             setTimeout(() => {
                 chatContainer.scrollTo({
