@@ -1,5 +1,5 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
-import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO } from '../caches_datos.js'
+import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
 import { safeIdSelector } from './seguridad_ui.js';
@@ -1302,7 +1302,7 @@ export async function mostrar_datos_chat_usaurios(e) {
                         <div class="info-chat-lista-items">
                         <div class="info-chat-participante-item" data-id="${id_mio}">
                             <div class="info-chat-participante-info">
-                                <span class="info-chat-participante-nombre">Tú <span class="apodo-usuario-lista-participantes">(${APODO_USUARIO || ""})</span></span>
+                                <span class="info-chat-participante-nombre">Tú <span class="apodo-usuario-lista-participantes">(${await obtener_apodo_usuario() || ""})</span></span>
                                 ${info_chat.admins?.some(a => normalizeIdHelper(a) === id_mio?.toString()) ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}
                             </div>
                         </div>

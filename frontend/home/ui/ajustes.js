@@ -2,7 +2,14 @@ export let bloquear_span_cambio_contraseña = false;
 export let bloquear_span_cambio_apodo = false;
 export let bloquear_span_cambio_correo = false;
 import { escapeHTML } from './seguridad_ui.js';
-import { APODO_USUARIO, establecer_apodo_usuario, CORREO_USUARIO, establecer_correo_usuario } from '../caches_datos.js';
+import { 
+    APODO_USUARIO, 
+    establecer_apodo_usuario, 
+    CORREO_USUARIO, 
+    establecer_correo_usuario,
+    obtener_apodo_usuario,
+    borrar_cache_apodo_usuario 
+} from '../caches_datos.js';
 
 
 const formatoScroollAnimacion = {
@@ -109,7 +116,7 @@ async function actualizar_datos_cuenta() {
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CORREO(),
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA()
     ]);
-    const apodo = APODO_USUARIO;
+    const apodo = await obtener_apodo_usuario();
     const correo = CORREO_USUARIO;
 
     document.querySelector("#text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${escapeHTML(apodo)}</font>`;
@@ -274,7 +281,10 @@ async function funcion_cambiar_apodo(e) {
                 if (final) {
                     window.pushNotificacion({ prioridad: 0, texto: "Apodo cambiado correctamente", tipo: "success" });
                     bloquear_span_cambio_apodo = true;
-                    establecer_apodo_usuario(apodo);
+                    
+                    // Borramos la caché para que se fuerce la recarga si se solicita de nuevo
+                    borrar_cache_apodo_usuario();
+                    
                     document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
                     if (typeof window.cambiar_menu_inicio_apodo === "function") window.cambiar_menu_inicio_apodo();
                 } else {

@@ -1,5 +1,5 @@
 import { crear_chat_historial_archivos_descargados } from './historial_archivos_descargados.js'
-import { APODO_USUARIO } from '../caches_datos.js'
+import { obtener_apodo_usuario } from '../caches_datos.js'
 
 export function toggle_historial_descargas() {
     const seccionHistorial = document.querySelector("#seccion-historial-archivos-alineador")
@@ -24,7 +24,7 @@ export function toggle_historial_descargas() {
 
 export async function mensaje_bienvenida_usuario() {
     const ajustes_app = await window.ajustes_app.OBTENER_AJUSTES_APP()
-    const apodo = APODO_USUARIO
+    const apodo = await obtener_apodo_usuario()
     if (ajustes_app?.MSBienvenida) {
         window.pushNotificacion({ prioridad: 0, texto: `Benvido ${apodo} `, tipo: "info" })
         window.ajustes_app.GUARDAR_AJUSTES_APP({ MSBienvenida: false })

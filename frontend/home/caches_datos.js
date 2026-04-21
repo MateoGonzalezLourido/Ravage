@@ -16,9 +16,24 @@ export function establecer_id_usuario(id) {
 }
 
 export function establecer_apodo_usuario(apodo) {
-    if (!apodo) return;
     APODO_USUARIO = apodo;
     console.log(`[Cache] Apodo de usuario establecido`);
+}
+
+/**
+ * Obtiene el apodo del usuario. Si no está en caché, lo solicita por IPC.
+ */
+export async function obtener_apodo_usuario() {
+    if (APODO_USUARIO === null) {
+        console.log("[Cache] Apodo no encontrado en RAM, solicitando por IPC...");
+        APODO_USUARIO = await window.cuenta_usuario.GET_APODO_SESION();
+    }
+    return APODO_USUARIO;
+}
+
+export function borrar_cache_apodo_usuario() {
+    APODO_USUARIO = null;
+    console.log("[Cache] Caché de apodo borrada");
 }
 
 export function establecer_correo_usuario(correo) {
