@@ -107,6 +107,18 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
         const id_chat_str = normalizeId(id_chat);
         if (!id_chat_str || !mongoose.Types.ObjectId.isValid(id_chat_str)) return null;
 
+        let nmensajes = null;
+        if (datos_buscar && datos_buscar.includes("nmensajes")) {
+            const parts = datos_buscar.trim().split(/\s+/);
+            const idx = parts.indexOf("nmensajes");
+            if (idx !== -1) {
+                nmensajes = await MessagesRavage.countDocuments({ id_chat: id_chat_str });
+                parts.splice(idx, 1);
+                datos_buscar = parts.join(" ");
+            }
+        }
+
+
         let projection = {};
         if (datos_buscar) {
             const fields = typeof datos_buscar === 'string' ? datos_buscar.trim().split(/\s+/) : (Array.isArray(datos_buscar) ? datos_buscar : [datos_buscar]);
@@ -128,6 +140,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
                     chat_a_devolver.mensajes.reverse();
                     await descifrarListaMensajes(chat_a_devolver.mensajes, chat_a_devolver);
                 }
+                if (nmensajes !== null) chat_a_devolver.nmensajes = nmensajes;
                 return await resolverNombresYBloqueos(chat_a_devolver, id_chat_str);
             } else {
                 // Caso: Campos específicos
@@ -143,6 +156,7 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
 
                 if (!missingSome && !pedir_mensajes) {
                     const [res] = await resolverNombresChats([filtered]);
+                    if (nmensajes !== null) res.nmensajes = nmensajes;
                     return convertirObjectId(res);
                 }
             }
@@ -159,10 +173,11 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
         }
 
         const final = await resolverNombresYBloqueos(data_obtenida, id_chat_str);
-        
+
         // Prune sensitive data for Renderer
         if (final && final.ratchet_keys) delete final.ratchet_keys;
-        
+        if (final && nmensajes !== null) final.nmensajes = nmensajes;
+
         return convertirObjectId(final);
     } catch (e) {
         log.error({ err: e }, "Error en obtener_datos_chat_unico");

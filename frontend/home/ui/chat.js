@@ -1037,11 +1037,11 @@ export async function mostrar_datos_chat_usaurios(e) {
     let info_chat = { ...(cache_persistente || {}), ...(cache_activo || {}) }
 
     // Campos necesarios para la vista de info
-    const campos_necesarios = ["usuarios", "admins", "fecha_creacion"]
-    const faltantes = campos_necesarios.filter(f => !info_chat[f])
+    const campos_necesarios = ["usuarios", "admins", "fecha_creacion", "nmensajes"]
+    const faltantes = campos_necesarios.filter(f => info_chat[f] === undefined)
 
     // Si no tenemos n_mensajes ni el array de mensajes, pedirlo
-    if (info_chat.n_mensajes === undefined && (!info_chat.mensajes || info_chat.mensajes.length === 0)) {
+    if (info_chat.nmensajes === undefined && (!info_chat.mensajes || info_chat.mensajes.length === 0)) {
         faltantes.push("mensajes")
     }
 
@@ -1055,7 +1055,7 @@ export async function mostrar_datos_chat_usaurios(e) {
         window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
             ...info_chat,
             seguridad: info_chat.seguridad || info_chat.escaneres_seguridad,
-            n_mensajes: info_chat.n_mensajes ?? info_chat.mensajes?.length ?? 0
+            n_mensajes: info_chat.nmensajes ?? 0
         })
     }
 
@@ -1110,7 +1110,7 @@ export async function mostrar_datos_chat_usaurios(e) {
             <div class="info-chat-detalles">
                 <div class="info-chat-item">
                     <span class="info-chat-label">Mensajes</span>
-                    <span class="info-chat-valor">${info_chat?.n_mensajes ?? info_chat?.mensajes?.length ?? 0}</span>
+                    <span class="info-chat-valor">${info_chat?.nmensajes ?? 0}</span>
                 </div>
                 <div class="info-chat-item">
                     <span class="info-chat-label">Creado el</span>
