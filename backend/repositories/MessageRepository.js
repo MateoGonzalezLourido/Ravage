@@ -49,9 +49,10 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         }
 
         // Buscar la entrada del emisor para sí mismo (donde guarda su cadena de envío)
+        const id_emisor_str = id_emisor.toString()
         const ratchet_entry = chat.ratchet_keys.find(k =>
-            k.emisor_id.toString() === id_emisor.toString() &&
-            k.receptor_id.toString() === id_emisor.toString()
+            k.emisor_id.toString() === id_emisor_str &&
+            k.receptor_id.toString() === id_emisor_str
         );
 
         if (!ratchet_entry) {

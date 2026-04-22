@@ -21,70 +21,62 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
             ).lean();
 
             for (const usr of usuariosPref) {
-                let bloqueado_o_silenciado = false;
+                let bloqueado_o_silenciado = usr.invisible ?? false;
 
-                // Usuario invisible = silenciado global, no recibe notificaciones
-                if (usr.invisible) bloqueado_o_silenciado = true;
-                
-                if (emisorId) {
+                if (!bloqueado_o_silenciado && emisorId) {
+                    const bloq = new Set((usr.users_bloq || []).map(id => id.toString()));
+                    const sil = new Set((usr.users_silence || []).map(id => id.toString()));
                     const strEmisor = emisorId.toString();
-                    if ((usr.users_bloq || []).some(id => id.toString() === strEmisor)) bloqueado_o_silenciado = true;
-                    if ((usr.users_silence || []).some(id => id.toString() === strEmisor)) bloqueado_o_silenciado = true;
+                    if (bloq.has(strEmisor) || sil.has(strEmisor)) bloqueado_o_silenciado = true;
                 }
-                
-                if (chatId) {
+
+                if (!bloqueado_o_silenciado && chatId) {
                     const strChat = chatId.toString();
                     const chatInfo = (usr.chats || []).find(c => c.id.toString() === strChat);
-                    if (chatInfo && (chatInfo.silenciado || chatInfo.bloqueado)) {
-                        bloqueado_o_silenciado = true;
-                    }
+                    if (chatInfo?.silenciado || chatInfo?.bloqueado) bloqueado_o_silenciado = true;
                 }
-                
-                if (!bloqueado_o_silenciado) {
-                    ids_finales.push(usr._id);
-                }
+
+                if (!bloqueado_o_silenciado) ids_finales.push(usr._id);
             }
         } else {
             ids_finales.push(...lista_ids);
         }
 
-        if (ids_finales.length === 0) return true;
+        if (ids_finales.length === 0) return;
 
+        const dataEncriptada = encriptarDatosSistema(data);
         await BuzonUsuarios.updateMany(
             { _id: { $in: ids_finales } },
             {
                 $push: {
                     entrada: {
-                        $each: [{ tipo, data: encriptarDatosSistema(data) }],
+                        $each: [{ tipo, data: dataEncriptada }],
                         $slice: -20
                     }
                 }
             },
             { upsert: true }
         );
-        return true;
     } catch (e) {
         log.error(e);
-        return false;
     }
 }
 
 export async function Revisar_Buzon_Usuario() {
     const userId = getIDMongodbUsuario();
     try {
-        const buzon = await BuzonUsuarios.findById(userId).lean();
+        const buzon = await BuzonUsuarios.findByIdAndUpdate(
+            userId,
+            { $set: { entrada: [] } },
+            { new: false, lean: true }
+        );
+
         if (!buzon || buzon.entrada.length === 0) return [];
-        
-        const entradas = buzon.entrada.map(ent => ({
+
+        return buzon.entrada.map(ent => ({
             tipo: ent.tipo,
             data: ent.data ? desencriptarDatosSistema(ent.data) : null
         }));
-
-        await BuzonUsuarios.updateOne(
-            { _id: userId },
-            { $set: { entrada: [] } }
-        );
-        return entradas;
     } catch (e) {
         log.error(e);
         return [];
