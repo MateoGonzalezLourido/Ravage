@@ -35,7 +35,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         if (!chat || !usuario) return false;
 
         // Comprobar si el usuario tiene el chat bloqueado
-        const chatUsuarioInfo = usuario.chats.find(c => c.id.toString() === id_chat.toString());
+        const chatUsuarioInfo = usuario.chats.find(c => c.id.equals(id_chat));
         if (chatUsuarioInfo && chatUsuarioInfo.bloqueado) {
             log.warn(`[ENVIAR_MENSAJE] Intento de envío en chat bloqueado (${id_chat}) por el usuario ${id_emisor}`);
             return false;
@@ -202,7 +202,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             target_entry.clave_envuelta = nuevaClave;
             target_entry.counter += 1;
         }
-        setChatEnCacheRaw(chat.toObject ? chat.toObject() : chat).catch(e => log.error(e));
+        setChatEnCacheRaw(chat).catch(e => log.error(e));
 
         // Rotación automática si el contador es muy alto (fire and forget)
         const ROTATION_THRESHOLD = 100;
@@ -224,25 +224,14 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                         "chats.$[chat].ultimomensaje": encriptarDatosSistema(asunto)
                     }
                 },
-                {
-                    arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }]
-                }
+                { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }] }
             );
-
-            // Refrescar caché con proyección mínima
-            const usuarios_afectados_db = await User.find(
-                { _id: { $in: ids_afectados } },
-                { chats: 1, _id: 1 }
-            ).lean();
-            for (const u of usuarios_afectados_db) {
-                await setUsuarioEnCache(procesarUsuario(u));
-            }
-        })();
+        })().catch(e => log.error(e));
 
         Añadir_Entrada_Buzon_Usuario({
             ids: chat.usuarios,
             tipo: 0,
-            data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString() }
+            data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString(), emisor: id_emisor }
         }).catch(e => log.error(e));
 
         // Preparar respuesta para el emisor con datos completos
