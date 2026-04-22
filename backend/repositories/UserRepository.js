@@ -29,7 +29,7 @@ const _syncCache = async (correoHash) => {
 
 export function procesarUsuario(usuario) {
     if (!usuario) return null;
-    
+
     // Asegurar que trabajamos con un objeto plano
     let result;
     if (typeof usuario.toObject === 'function') {
@@ -306,7 +306,7 @@ export async function clearCacheUsuarios() {
  */
 export function REVISAR_LIMPIEZA_CACHE_SESION() {
     const ahora = Date.now();
-    
+
     // 1. Borrar los que tengan más de 15 minutos
     let borradosTTL = 0;
     for (const [id, entry] of session_cache_usuarios.entries()) {
@@ -320,7 +320,7 @@ export function REVISAR_LIMPIEZA_CACHE_SESION() {
     // 2. Controlar tamaño por MB
     const items = Array.from(session_cache_usuarios.entries())
         .sort((a, b) => a[1].timestamp - b[1].timestamp); // De más antiguo a más nuevo
-    
+
     let currentMB = 0;
     let borradosSize = 0;
     for (const [id, entry] of items) {
@@ -394,7 +394,7 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
         // Clonamos para no mutar el objeto original de la caché y asegurar que el ID sea string para IPC
         const procesado = { ...cachedEntry.data };
         if (procesado._id) procesado.id = procesado._id.toString();
-        
+
         // REVISIÓN: Si piden campos que no tenemos en caché, forzar consulta a DB
         if (!_faltan_datos(procesado, datos_usar)) {
             // Al entregarlo, lo eliminamos de la caché persistente (ahora vivirá en la activa del frontend)
@@ -424,99 +424,82 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
 
     return procesado;
 }
-
-
 export async function obtener_varios_usuarios(ids, datos_usar = null) {
-    log.info({ "ids": ids, "datos_usar": datos_usar }, "buscar datos usuarios")
+    log.info({ ids, datos_usar }, "buscar datos usuarios");
+
     if (!Array.isArray(ids) || ids.length === 0) return [];
 
-    // Cada vez que se piden varios (ej. al abrir un chat o virtualizar), revisamos limpieza
     REVISAR_LIMPIEZA_CACHE_SESION();
 
-    const normalizedIds = ids.map(x => {
-        if (x?.buffer) return new mongoose.Types.ObjectId(Buffer.from(Object.values(x.buffer)));
-        return new mongoose.Types.ObjectId(x);
-    }).filter(Boolean);
+    const normalizedIds = ids.flatMap(x => {
+        try {
+            return x?.buffer
+                ? [new mongoose.Types.ObjectId(Buffer.from(Object.values(x.buffer)))]
+                : [new mongoose.Types.ObjectId(x)];
+        } catch { return []; }
+    });
 
-    const id_propio = getIDMongodbUsuario();
+    const id_propio = getIDMongodbUsuario()?.toString();
     const ahora = Date.now();
-    let query_datos = datos_usar || "correo apodo visible idamigo mostrarCorreo invisible";
+    const query_datos = datos_usar ?? "correo apodo visible idamigo mostrarCorreo invisible";
 
     const result = [];
     const missingIds = [];
 
     for (const nId of normalizedIds) {
         const idStr = nId.toString();
-        const cachedEntry = session_cache_usuarios.get(idStr);
-        let useCache = false;
+        const cached = session_cache_usuarios.get(idStr);
+        const hit = cached ? _resolver_cache_hit(cached, datos_usar, ahora) : null;
 
-        if (cachedEntry) {
-            const procesado = cachedEntry.data;
-            if (!datos_usar) {
-                useCache = true;
-            } else if (ahora - cachedEntry.timestamp <= 5 * 60 * 1000) {
-                // REVISIÓN: Si no faltan datos, lo usamos
-                if (!_faltan_datos(procesado, datos_usar)) {
-                    log.debug({ id: idStr }, "Caché sesión: HIT múltiple (enviando a frontend)");
-                    useCache = true;
-                } else {
-                    log.debug({ id: idStr }, "Caché sesión: MISS múltiple (faltan campos en RAM)");
-                }
-            }
-        }
-
-        if (useCache) {
-            // Clonamos para asegurar que el ID sea string para el transporte IPC al frontend
-            const procesado = { ...cachedEntry.data };
-            if (procesado._id) procesado.id = procesado._id.toString();
-            
-            // REVISIÓN: Si no faltan datos, lo usamos
-            if (!_faltan_datos(procesado, datos_usar)) {
-                log.debug({ id: idStr }, "Caché sesión: HIT múltiple (enviando a frontend)");
-                // Lo borramos de aquí porque va a pasar a la caché activa del frontend
-                session_cache_usuarios.delete(idStr);
-
-                if (idStr !== id_propio?.toString() && procesado.mostrarCorreo === false) {
-                    const sinCorreo = { ...procesado };
-                    delete sinCorreo.correo;
-                    result.push(sinCorreo);
-                } else {
-                    result.push(procesado);
-                }
-                continue; // Encontrado íntegro en caché, pasar al siguiente
-            }
+        if (hit) {
+            log.debug({ id: idStr }, "Caché sesión: HIT múltiple");
+            session_cache_usuarios.delete(idStr);
+            result.push(_filtrar_correo(hit, idStr, id_propio));
         } else {
-            // Antes de ir a DB, probar caché persistente (solo si no es búsqueda específica de campos sensibles)
-            // [ELIMINADO: La caché persistente ahora es en RAM y se gestiona en session_cache_usuarios]
             missingIds.push(nId);
         }
     }
 
     if (missingIds.length === 0) return result;
 
-    let usuarios_db = await User.find({ _id: { $in: missingIds } }, query_datos).lean();
-    if (usuarios_db.length === 0) {
-        query_datos="nombre";
-        usuarios_db = await ChatsRavage.find({ _id: { $in: missingIds } }, query_datos).lean();
+    const CHUNK_SIZE = 50;
+    const chunks = [];
+    for (let i = 0; i < missingIds.length; i += CHUNK_SIZE) {
+        chunks.push(missingIds.slice(i, i + CHUNK_SIZE));
     }
+
+    const usuarios_db = (await Promise.all(
+        chunks.map(chunk => User.find({ _id: { $in: chunk } }, query_datos).lean())
+    )).flat();
+
     if (usuarios_db.length === 0) return result;
 
     for (const u of usuarios_db) {
         const procesado = procesarUsuario(u);
-        const idStr = procesado.id || procesado._id?.toString();
+        const idStr = procesado.id ?? procesado._id?.toString();
         session_cache_usuarios.set(idStr, { data: procesado, timestamp: ahora });
-        
-        if (idStr !== id_propio?.toString() && procesado.mostrarCorreo === false) {
-            const sinCorreo = { ...procesado };
-            delete sinCorreo.correo;
-            result.push(sinCorreo);
-        } else {
-            result.push(procesado);
-        }
+        result.push(_filtrar_correo(procesado, idStr, id_propio));
     }
 
     return result;
 }
+
+function _resolver_cache_hit(cached, datos_usar, ahora) {
+    const { data, timestamp } = cached;
+    if (!datos_usar) return data;
+    const fresca = ahora - timestamp <= 5 * 60 * 1000;
+    if (fresca && !_faltan_datos(data, datos_usar)) return data;
+    return null;
+}
+
+function _filtrar_correo(usuario, idStr, id_propio) {
+    const base = { ...usuario, ...(usuario._id && { id: usuario._id.toString() }) };
+    if (idStr !== id_propio && usuario.mostrarCorreo === false) {
+        delete base.correo;
+    }
+    return base;
+}
+
 
 /**
  * Guarda una lista de usuarios en la caché persistente de sesión (Backend).
@@ -535,7 +518,7 @@ export function GUARDAR_USUARIOS_EN_PERSISTENTE(usuarios) {
             if (paraCache._id && typeof paraCache._id === 'string') {
                 try {
                     paraCache._id = new mongoose.Types.ObjectId(paraCache._id);
-                } catch(e) {}
+                } catch (e) { }
             }
             delete paraCache.id; // Ahorramos el espacio del string de 24 caracteres
 
