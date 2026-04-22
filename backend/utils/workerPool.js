@@ -7,20 +7,15 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ==========================================
-// WORKER POOL MULTI-CORE
-// ==========================================
+const MAX_WORKERS_CRYPTO = 4;
+const MAX_WORKERS_ESCANER = 2;
 
-/**
- * Calcula el número de workers a usar basándose en la configuración y CPUs reales.
- * @returns {number}
- */
-function calcularNumeroWorkers() {
+function calcularNumeroWorkers(max) {
     const cpusReales = os.cpus().length;
     const envVal = process.env.MAX_CPU_CORES_PARALEL;
 
     if (!envVal || envVal.toLowerCase() === 'none') {
-        const resultado = Math.max(2, cpusReales - 1);
+        const resultado = Math.min(max, Math.max(2, cpusReales - 1));
         log.info(`Workers (auto): ${resultado} de ${cpusReales} CPUs`);
         return resultado;
     }
@@ -28,15 +23,16 @@ function calcularNumeroWorkers() {
     const pedido = parseInt(envVal, 10);
     if (isNaN(pedido) || pedido < 1) {
         log.warn(`MAX_CPU_CORES_PARALEL inválido ("${envVal}"), usando modo automático`);
-        return Math.max(2, cpusReales - 1);
+        return Math.min(max, Math.max(2, cpusReales - 1));
     }
 
     if (pedido <= cpusReales) {
-        log.info(`Workers (manual): ${pedido} de ${cpusReales} CPUs`);
-        return pedido;
+        const resultado = Math.min(max, pedido);
+        log.info(`Workers (manual): ${resultado} de ${cpusReales} CPUs`);
+        return resultado;
     }
 
-    const fallback = Math.max(1, cpusReales - 1);
+    const fallback = Math.min(max, Math.max(1, cpusReales - 1));
     log.warn(`MAX_CPU_CORES_PARALEL=${pedido} excede CPUs reales (${cpusReales}), usando ${fallback}`);
     return fallback;
 }
@@ -45,26 +41,22 @@ function calcularNumeroWorkers() {
 let instanciaPool = null;
 
 class WorkerPool {
-    /**
-     * @param {string} workerPath - Ruta absoluta al archivo del worker
-     * @param {number} numWorkers - Cantidad de worker threads
-     * @param {object} [opciones]
-     * @param {number} [opciones.timeoutMs=30000] - Timeout por tarea
-     * @param {number} [opciones.maxCola=500] - Máximo de tareas en cola
-     */
     constructor(workerPath, numWorkers, opciones = {}) {
         this.workerPath = workerPath;
         this.numWorkers = numWorkers;
         this.timeoutMs = opciones.timeoutMs || 30000;
         this.maxCola = opciones.maxCola || 500;
+        this.idleTimeoutMs = opciones.idleTimeoutMs || 60000;
+        this._onIdle = opciones.onIdle || null;
+        this._idleTimer = null;
 
         /** @type {Worker[]} */
         this.workers = [];
 
-        /** @type {Set<number>} - índices de workers libres (O(1) lookup) */
+        /** @type {Set<number>} */
         this.libres = new Set();
 
-        /** @type {Array} - cola circular con índice de cabeza para shift O(1) */
+        /** @type {Array} */
         this.cola = [];
         this._colaHead = 0;
 
@@ -76,9 +68,15 @@ class WorkerPool {
         this._inicializado = false;
     }
 
-    /**
-     * Inicializa el pool lazily (se llama automáticamente en la primera tarea).
-     */
+    _resetIdleTimer() {
+        clearTimeout(this._idleTimer);
+        this._idleTimer = setTimeout(async () => {
+            log.info(`Worker Pool inactivo ${this.idleTimeoutMs}ms, destruyendo...`);
+            await this.terminar();
+            if (this._onIdle) this._onIdle();
+        }, this.idleTimeoutMs);
+    }
+
     _inicializar() {
         if (this._inicializado) return;
         this._inicializado = true;
@@ -90,10 +88,6 @@ class WorkerPool {
         log.info(`Worker Pool inicializado: ${this.numWorkers} workers con "${path.basename(this.workerPath)}"`);
     }
 
-    /**
-     * Crea o recrea un worker en el índice dado.
-     * @param {number} indice
-     */
     _crearWorker(indice) {
         const worker = new Worker(this.workerPath);
         this.workers[indice] = worker;
@@ -118,10 +112,6 @@ class WorkerPool {
         });
     }
 
-    /**
-     * Reemplaza un worker caído.
-     * @param {number} indice
-     */
     _reemplazarWorker(indice) {
         if (this._terminado) return;
         try {
@@ -132,11 +122,6 @@ class WorkerPool {
         }
     }
 
-    /**
-     * Rechaza todas las tareas pendientes de un worker específico.
-     * @param {number} indice
-     * @param {Error} error
-     */
     _rechazarPendientesWorker(indice, error) {
         for (const [id, pendiente] of this.pendientes) {
             if (pendiente.workerIndex === indice) {
@@ -147,11 +132,6 @@ class WorkerPool {
         }
     }
 
-    /**
-     * Maneja la respuesta de un worker.
-     * @param {number} indice
-     * @param {object} msg - { id, resultado?, error? }
-     */
     _manejarRespuesta(indice, msg) {
         const pendiente = this.pendientes.get(msg.id);
         if (!pendiente) return;
@@ -165,24 +145,19 @@ class WorkerPool {
             pendiente.resolve(msg.resultado);
         }
 
-        // Worker vuelve a estar libre
         this.libres.add(indice);
         this._procesarCola();
     }
 
-    /**
-     * Intenta despachar tareas de la cola a workers libres.
-     */
     _procesarCola() {
         while (this._colaHead < this.cola.length) {
             const idxLibre = this.libres.values().next().value;
-            if (idxLibre === undefined) break; // No hay workers libres
+            if (idxLibre === undefined) break;
 
             const { tarea, resolve, reject } = this.cola[this._colaHead];
             delete this.cola[this._colaHead];
             this._colaHead++;
 
-            // Compactar el array cuando acumule suficientes huecos
             if (this._colaHead > 100) {
                 this.cola = this.cola.slice(this._colaHead);
                 this._colaHead = 0;
@@ -192,9 +167,6 @@ class WorkerPool {
         }
     }
 
-    /**
-     * Envía una tarea a un worker específico.
-     */
     _enviarAlWorker(indice, tarea, resolve, reject) {
         const id = ++this._idCounter;
         this.libres.delete(indice);
@@ -220,15 +192,10 @@ class WorkerPool {
         }
     }
 
-    /**
-     * Ejecuta una tarea en un worker del pool.
-     * @param {string} tipo - Tipo de operación (ej: 'GENERAR_LLAVES_RSA')
-     * @param {object} datos - Datos para la operación
-     * @returns {Promise<any>}
-     */
     ejecutar(tipo, datos = {}) {
         if (this._terminado) return Promise.reject(new Error('Pool terminado'));
         this._inicializar();
+        this._resetIdleTimer();
 
         return new Promise((resolve, reject) => {
             const tarea = { tipo, datos };
@@ -246,17 +213,11 @@ class WorkerPool {
         });
     }
 
-    /**
-     * Ejecuta una tarea batch dividida entre todos los workers.
-     * @param {string} tipo - Tipo de operación
-     * @param {Array} items - Array de elementos a procesar
-     * @param {object} datosComunes - Datos compartidos entre todos los chunks
-     * @returns {Promise<Array>} - Resultado combinado en orden original
-     */
     async ejecutarBatch(tipo, items, datosComunes = {}) {
         if (this._terminado) throw new Error('Pool terminado');
         if (!items || items.length === 0) return [];
         this._inicializar();
+        this._resetIdleTimer();
 
         const numChunks = Math.min(this.numWorkers, items.length);
         const chunks = [];
@@ -295,20 +256,16 @@ class WorkerPool {
         return resultado;
     }
 
-    /**
-     * Termina todos los workers y limpia el pool.
-     */
     async terminar() {
         this._terminado = true;
+        clearTimeout(this._idleTimer);
 
-        // Rechazar todo lo que quede en cola
         for (let i = this._colaHead; i < this.cola.length; i++) {
             if (this.cola[i]) this.cola[i].reject(new Error('Pool terminado'));
         }
         this.cola = [];
         this._colaHead = 0;
 
-        // Rechazar pendientes
         for (const [id, pendiente] of this.pendientes) {
             clearTimeout(pendiente.timer);
             pendiente.reject(new Error('Pool terminado'));
@@ -332,25 +289,20 @@ class WorkerPool {
 // SINGLETON - Pool de Crypto Workers
 // ==========================================
 
-/**
- * Obtiene (o crea) la instancia singleton del pool de crypto workers.
- * @returns {WorkerPool}
- */
 export function getCryptoPool() {
-    if (!instanciaPool) {
-        const numWorkers = calcularNumeroWorkers();
+    if (!instanciaPool || instanciaPool._terminado) {
+        const numWorkers = calcularNumeroWorkers(MAX_WORKERS_CRYPTO);
         const workerPath = path.join(__dirname, 'cryptoWorker.js');
         instanciaPool = new WorkerPool(workerPath, numWorkers, {
             timeoutMs: 30000,
-            maxCola: 200
+            maxCola: 200,
+            idleTimeoutMs: 60000,
+            onIdle: () => { instanciaPool = null; }
         });
     }
     return instanciaPool;
 }
 
-/**
- * Termina el pool singleton (para shutdown limpio).
- */
 export async function terminarCryptoPool() {
     if (instanciaPool) {
         await instanciaPool.terminar();
@@ -365,12 +317,14 @@ export async function terminarCryptoPool() {
 let escanerInstanciaPool = null;
 
 export function getEscanerPool() {
-    if (!escanerInstanciaPool) {
-        const numWorkers = Math.max(1, calcularNumeroWorkers() - 1);
+    if (!escanerInstanciaPool || escanerInstanciaPool._terminado) {
+        const numWorkers = calcularNumeroWorkers(MAX_WORKERS_ESCANER);
         const workerPath = path.join(__dirname, 'escanerWorker.js');
         escanerInstanciaPool = new WorkerPool(workerPath, numWorkers, {
             timeoutMs: 30000,
-            maxCola: 500
+            maxCola: 500,
+            idleTimeoutMs: 60000,
+            onIdle: () => { escanerInstanciaPool = null; }
         });
     }
     return escanerInstanciaPool;

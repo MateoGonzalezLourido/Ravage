@@ -1,8 +1,7 @@
 // === Arranque ===
 // Cachea bytecode V8 para arranques posteriores más rápidos
 app.commandLine.appendSwitch('v8-cache-options', 'code');
-//limite de mb cache del motor v8
-const HEAP_LIMIT_MB = 512;
+app.commandLine.appendSwitch('no-first-run');
 
 // === GPU / Renderizado ===
 // Rasterización por GPU para scroll y animaciones más fluidos
@@ -12,16 +11,30 @@ app.commandLine.appendSwitch('enable-zero-copy');
 
 // === Memoria ===
 // Limita el heap V8 a 512MB (por defecto puede crecer sin límite)
+const HEAP_LIMIT_MB = 512;
 app.commandLine.appendSwitch('js-flags', `--max-old-space-size=${HEAP_LIMIT_MB} --expose-gc`);
+
 // === Batería / Background ===
 // Reduce prioridad del renderer cuando la ventana está en segundo plano
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
-// Throttlea timers y tareas cuando la app está en background
-app.commandLine.appendSwitch('enable-features', 'IntensiveWakeUpThrottling');
 
 // === Red ===
 // Precarga DNS para previsualizaciones de URL más rápidas
 app.commandLine.appendSwitch('enable-async-dns');
+// Desactiva networking en background
+app.commandLine.appendSwitch('disable-background-networking');
+
+// === Features — todo agrupado para evitar conflictos ===
+app.commandLine.appendSwitch('enable-features', 'IntensiveWakeUpThrottling,VaapiVideoDecoder');
+app.commandLine.appendSwitch('disable-features', 'TranslateUI,AutofillServerCommunication,Translate,MediaRouter,DialMediaRouteProvider,OptimizationHints');
+
+// === Chromium innecesario ===
+app.commandLine.appendSwitch('disable-default-apps');
+app.commandLine.appendSwitch('disable-extensions');
+app.commandLine.appendSwitch('disable-sync');
+app.commandLine.appendSwitch('disable-component-update');
+app.commandLine.appendSwitch('metrics-recording-only');
+app.commandLine.appendSwitch('no-pings');
 
 if (process.env.MODO_DEBUG === "true") {
     const HEAP_WARN_THRESHOLD = HEAP_LIMIT_MB * 0.8; // alerta al 80%
