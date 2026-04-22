@@ -7,11 +7,11 @@ import { safeIdSelector } from './seguridad_ui.js';
 const nombre_defecto = "~no encontrado~"
 
 // ─── CONFIGURACIÓN DE VIRTUALIZACIÓN Y RENDIMIENTO ──────────────────────────
-const BLOQUE_MENSAJES = 30;           // Cantidad de mensajes por bloque de carga
-const MAX_MENSAJES_DOM = 150;         // Máximo de mensajes permitidos en el DOM antes de reciclar
-const MAX_BLOQUES_CACHE = 10;         // Cuántos bloques de paginación guardar en caché
+const BLOQUE_MENSAJES = 20;           // Cantidad de mensajes por bloque de carga
+const MAX_MENSAJES_DOM = BLOQUE_MENSAJES * 15;         // Máximo de mensajes permitidos en el DOM antes de reciclar
+const MAX_BLOQUES_CACHE = 60;         // Cuántos bloques de paginación guardar en caché
 const SCANNER_BATCH_SIZE = 10;        // Tamaño mínimo de lote para enviar escáneres al worker
-const SCANNER_BATCH_INTERVAL = 50;    // Tiempo máximo de espera (ms) para completar un lote
+const SCANNER_BATCH_INTERVAL = 80;    // Tiempo máximo de espera (ms) para completar un lote
 const OPEN_CHAT_ANIMATION_OFFSET = 350; // Offset inicial para la animación de scroll al abrir chat
 
 
@@ -244,14 +244,14 @@ async function procesar_cola_escaneres_async() {
                     detectadoNuevo = true;
                     item.huboDeteccion = true;
                     item.tagsYaDetectados.push(id);
-                    
+
                     if (_virt) {
                         if (!_virt.cache_tags_asincronos[item.id_mensaje]) _virt.cache_tags_asincronos[item.id_mensaje] = [];
                         if (!_virt.cache_tags_asincronos[item.id_mensaje].includes(id)) {
                             _virt.cache_tags_asincronos[item.id_mensaje].push(id);
                         }
                     }
-                    
+
                     if (scanner.render && document.body.contains(item.mensajeElement)) {
                         item.contenedorIconos.insertAdjacentHTML("beforeend", scanner.render());
                     }
@@ -514,7 +514,7 @@ const MAX_ACTIVE_CACHE_MB = 100; // Límite de la caché activa
 async function agregar_a_cache_activo(id, data) {
     const ahora = Date.now();
     CACHE_USUARIOS_ACTIVO.set(id, { data, timestamp: ahora });
-    
+
     let totalSize = 0;
     const items = Array.from(CACHE_USUARIOS_ACTIVO.entries())
         .sort((a, b) => a[1].timestamp - b[1].timestamp);
@@ -541,7 +541,7 @@ async function agregar_a_cache_activo(id, data) {
 
 export function iniciar_limpieza_cache_activo(num_participantes) {
     if (intervalo_reinicio_cache) clearInterval(intervalo_reinicio_cache);
-    
+
     let tiempo_reinicio;
     if (num_participantes <= 5) tiempo_reinicio = 10 * 60 * 1000; // 10 min
     else if (num_participantes <= 20) tiempo_reinicio = 15 * 60 * 1000; // 15 min
@@ -563,7 +563,7 @@ export async function limpiar_cache_activo(ids_nuevos = []) {
         clearInterval(intervalo_reinicio_cache);
         intervalo_reinicio_cache = null;
     }
-    
+
     const a_persistente = [];
     const ids_nuevos_set = new Set(ids_nuevos.map(id => id.toString()));
 
@@ -608,32 +608,6 @@ function _agrupar_por_dia(mensajes) {
     return grupos;
 }
 
-function _rearmar_agrupacion_dom() {
-    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
-    if (!chatContainer) return;
-
-    // Procesamos por bloque-dia-chat para que la agrupación no salte entre días
-    const bloquesDia = chatContainer.querySelectorAll('.bloque-dia-chat');
-    
-    bloquesDia.forEach(bloque => {
-        const mensajesNodos = bloque.querySelectorAll('.mensaje-chat');
-        for (let i = 0; i < mensajesNodos.length; i++) {
-            const actual = mensajesNodos[i];
-            const emisorActual = actual.getAttribute('data-emisor-id');
-            
-            const prev = i > 0 ? mensajesNodos[i - 1] : null;
-            const emisorPrev = prev ? prev.getAttribute('data-emisor-id') : null;
-            const tieneArriba = emisorActual && emisorActual === emisorPrev;
-            
-            const next = i < mensajesNodos.length - 1 ? mensajesNodos[i + 1] : null;
-            const emisorNext = next ? next.getAttribute('data-emisor-id') : null;
-            const tieneAbajo = emisorActual && emisorActual === emisorNext;
-            
-            actual.classList.toggle('agrupado-arriba', tieneArriba);
-            actual.classList.toggle('agrupado-abajo', tieneAbajo);
-        }
-    });
-}
 
 function _calcular_agrupacion(mensajes) {
     return mensajes.map((m, index) => {
@@ -704,7 +678,30 @@ async function _resolver_nombres(mensajes, contactos) {
         map_contactos[u.id || u._id?.toString()] || u.apodo || nombre_defecto
     ]));
 }
+// Nueva función que sustituye a _rearmar_agrupacion_dom() en inserciones
+function _rearmar_agrupacion_dom() {
+    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
+    if (!chatContainer) return;
 
+    const todos = chatContainer.querySelectorAll(".mensaje-chat");
+    const len = todos.length;
+
+    for (let i = 0; i < len; i++) {
+        const actual = todos[i];
+        const emisorActual = actual.getAttribute('data-emisor-id');
+
+        const prev = i > 0 ? todos[i - 1] : null;
+        const next = i < len - 1 ? todos[i + 1] : null;
+
+        const mismoDiaArriba = prev && actual.closest('.bloque-dia-chat') === prev.closest('.bloque-dia-chat');
+        const mismoDiaAbajo = next && actual.closest('.bloque-dia-chat') === next.closest('.bloque-dia-chat');
+
+        actual.classList.toggle('agrupado-arriba',
+            mismoDiaArriba && emisorActual === prev.getAttribute('data-emisor-id'));
+        actual.classList.toggle('agrupado-abajo',
+            mismoDiaAbajo && emisorActual === next.getAttribute('data-emisor-id'));
+    }
+}
 /**
  * Renderiza un bloque de mensajes en el DOM, pudiendo prepend (arriba) o append (abajo).
  * Fusiona bloques de día cuando la fecha coincide con el bloque adyacente existente.
@@ -723,15 +720,20 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
         scrollTopAntes = chatContainer.scrollTop;
     }
 
-    const iteracion = esPrepend ? [...grupos].reverse() : grupos;
-
-    for (const grupo of iteracion) {
+    // FIX 1: construir todo el HTML en paralelo antes de tocar el DOM
+    const htmlPorGrupo = await Promise.all(grupos.map(async grupo => {
         const fechaTexto = texto_mostrar_fecha_mensajes_bloque(new Date(grupo.fecha));
         const mensajesConEstado = _calcular_agrupacion(grupo.mensajes);
         const html_arr = await _construir_html_mensajes(mensajesConEstado, { map_nombres, escaneres_seguridad, id_propio, datos_chat });
-        const html_mensajes = html_arr.join('');
+        return { fechaTexto, html_mensajes: html_arr.join('') };
+    }));
 
-        // Buscar bloque de día existente para fusionar
+    const iteracion = esPrepend ? [...htmlPorGrupo].reverse() : htmlPorGrupo;
+
+    // FIX 2: el for solo toca el DOM, sin awaits, y recoge referencias a nodos nuevos
+    const nodosNuevos = [];
+
+    for (const { fechaTexto, html_mensajes } of iteracion) {
         const bloqueAdyacente = esPrepend
             ? chatContainer.querySelector(".bloque-dia-chat:first-child")
             : chatContainer.querySelector(".bloque-dia-chat:last-child");
@@ -739,17 +741,21 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
 
         if (bloqueAdyacente && fechaTexto === fechaAdyacente) {
             if (esPrepend) {
-                const dateHeader = bloqueAdyacente.querySelector(".fecha-bloque-mensajes");
-                dateHeader.insertAdjacentHTML("afterend", html_mensajes);
+                bloqueAdyacente.querySelector(".fecha-bloque-mensajes").insertAdjacentHTML("afterend", html_mensajes);
             } else {
                 bloqueAdyacente.insertAdjacentHTML("beforeend", html_mensajes);
             }
+            bloqueAdyacente.querySelectorAll(".mensaje-chat:not(.scanned)").forEach(n => nodosNuevos.push(n));
         } else {
             const html_dia = `<div class="bloque-dia-chat">
                 <div class="fecha-bloque-mensajes"><span>${fechaTexto}</span></div>
                 ${html_mensajes}
             </div>`;
             chatContainer.insertAdjacentHTML(esPrepend ? "afterbegin" : "beforeend", html_dia);
+            const bloqueNuevo = esPrepend
+                ? chatContainer.querySelector(".bloque-dia-chat:first-child")
+                : chatContainer.querySelector(".bloque-dia-chat:last-child");
+            bloqueNuevo?.querySelectorAll(".mensaje-chat:not(.scanned)").forEach(n => nodosNuevos.push(n));
         }
     }
 
@@ -757,17 +763,18 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
         chatContainer.scrollTop = scrollTopAntes + (chatContainer.scrollHeight - scrollHeightAntes);
     }
 
+    // FIX 3: rearmar solo el borde en lugar de todos los mensajes
     _rearmar_agrupacion_dom();
 
-    // Ejecutar escáneres asíncronos sobre los mensajes nuevos
+    // FIX 2: escanear solo los nodos nuevos, no todo el DOM
     await new Promise(r => setTimeout(r, 0));
-    const noEscaneados = chatContainer.querySelectorAll(".mensaje-chat:not(.scanned)");
-    for (const msgEl of noEscaneados) {
+    for (const msgEl of nodosNuevos) {
         msgEl.classList.add("scanned");
         const txt = msgEl.querySelector(".asunto-mensaje-chat")?.textContent || "";
         aplicar_escaneres_asincronos(msgEl, txt, escaneres_seguridad);
     }
 }
+
 
 /**
  * Recicla (elimina) mensajes del extremo opuesto al scroll cuando el DOM supera MAX_MENSAJES_DOM.
@@ -795,13 +802,13 @@ function _reciclar_mensajes(extremo) {
         chatContainer.querySelectorAll(".bloque-dia-chat").forEach(b => {
             if (!b.querySelector(".mensaje-chat")) b.remove();
         });
-        
+
         // Actualizar cursor de id más nueva
         const nuevosTodos = chatContainer.querySelectorAll(".mensaje-chat");
         if (nuevosTodos.length > 0 && _virt) {
             _virt._id_mas_nuevo = nuevosTodos[nuevosTodos.length - 1].getAttribute("data-id");
         }
-        
+
         if (_virt) _virt.hay_mas_abajo = true;
         _rearmar_agrupacion_dom();
     } else {
@@ -815,16 +822,16 @@ function _reciclar_mensajes(extremo) {
         chatContainer.querySelectorAll(".bloque-dia-chat").forEach(b => {
             if (!b.querySelector(".mensaje-chat")) b.remove();
         });
-        
+
         // Actualizar cursor de id más antigua
         const nuevosTodos = chatContainer.querySelectorAll(".mensaje-chat");
         if (nuevosTodos.length > 0 && _virt) {
             _virt._id_mas_antiguo = nuevosTodos[0].getAttribute("data-id");
         }
-        
+
         // Ajustar scroll
         chatContainer.scrollTop = scrollTopAntes - (scrollHeightAntes - chatContainer.scrollHeight);
-        
+
         if (_virt) _virt.hay_mas_arriba = true;
         _rearmar_agrupacion_dom();
     }
@@ -845,7 +852,7 @@ export async function cargar_bloque_arriba() {
         // Obtener ID del mensaje más antiguo visible para usar como cursor
         const idCursor = _virt._id_mas_antiguo;
         const cacheKey = `${idCursor}_older`;
-        
+
         let result = _virt.cache_paginacion[cacheKey];
         if (!result) {
             result = await window.chats.OBTENER_MENSAJES_PAGINADOS(
@@ -857,7 +864,7 @@ export async function cargar_bloque_arriba() {
                 if (keys.length > MAX_BLOQUES_CACHE) delete _virt.cache_paginacion[keys[0]];
             }
         }
-        
+
         if (!result || result.mensajes.length === 0) {
             _virt.hay_mas_arriba = false;
             return;
@@ -866,11 +873,11 @@ export async function cargar_bloque_arriba() {
         // Resolver nombres de emisores nuevos
         const idsNuevos = [...new Set(result.mensajes.map(m => (Array.isArray(m.emisor) ? m.emisor[0] : m.emisor)?.toString()).filter(Boolean))];
         const idsDesconocidos = idsNuevos.filter(id => !_virt.map_nombres[id]);
-        
+
         if (idsDesconocidos.length > 0) {
             const missingIds = [];
             const ahora = Date.now();
-            
+
             for (const id of idsDesconocidos) {
                 if (CACHE_USUARIOS_ACTIVO.has(id)) {
                     const u = CACHE_USUARIOS_ACTIVO.get(id).data;
@@ -922,7 +929,7 @@ export async function cargar_bloque_abajo() {
 
         const idCursor = _virt._id_mas_nuevo;
         const cacheKey = `${idCursor}_newer`;
-        
+
         let result = _virt.cache_paginacion[cacheKey];
         if (!result) {
             result = await window.chats.OBTENER_MENSAJES_PAGINADOS(
@@ -945,7 +952,7 @@ export async function cargar_bloque_abajo() {
         if (idsDesconocidos.length > 0) {
             const missingIds = [];
             const ahora = Date.now();
-            
+
             for (const id of idsDesconocidos) {
                 if (CACHE_USUARIOS_ACTIVO.has(id)) {
                     const u = CACHE_USUARIOS_ACTIVO.get(id).data;
@@ -992,7 +999,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
         }
         const controller = { abort: false };
         controller_renderizado_activo = controller;
-        
+
         // Limpiar colas de escáneres al cambiar de chat
         cola_escaneres_async = [];
         if (timer_escaneres_async) {
@@ -1013,7 +1020,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 
         let mensajes = (datos.mensajes || []).filter(m => m && typeof m === 'object');
         let initial_paginacion_hay_mas = null;
-        
+
         if (mensajes.length === 0) {
             console.debug(`[Virtualización] No hay mensajes iniciales en datos. Pidiendo primer bloque al backend.`);
             const result = await window.chats.OBTENER_MENSAJES_PAGINADOS(datos._id, BLOQUE_MENSAJES, null, 'older');
@@ -1079,11 +1086,11 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 
         // Asegurar scroll al fondo al abrir con una leve animación
         chatContainer.style.overflowAnchor = "none";
-        
+
         if (chatContainer.scrollHeight > chatContainer.clientHeight) {
             // Empezar unos píxeles arriba para que la animación de caída sea visible
             chatContainer.scrollTop = Math.max(0, chatContainer.scrollHeight - chatContainer.clientHeight - OPEN_CHAT_ANIMATION_OFFSET);
-            
+
             setTimeout(() => {
                 chatContainer.scrollTo({
                     top: chatContainer.scrollHeight,
@@ -1284,19 +1291,19 @@ export async function mostrar_datos_chat_usaurios(e) {
             </div>
 
             ${await (async () => {
-                try {
-                    if (!info_chat?.usuarios || !Array.isArray(info_chat.usuarios)) {
-                        return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes (0)</div><div class="info-chat-lista-items">No se pudieron cargar los participantes.</div></div>`
-                    }
+            try {
+                if (!info_chat?.usuarios || !Array.isArray(info_chat.usuarios)) {
+                    return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes (0)</div><div class="info-chat-lista-items">No se pudieron cargar los participantes.</div></div>`
+                }
 
-                    let participantes_ids = [...new Set(info_chat.usuarios.map(u => normalizeIdHelper(u)))]// normalizar a string y quitar repetidos
-                    participantes_ids = participantes_ids.filter(id => id && id !== id_mio?.toString())//quitar el id propio
+                let participantes_ids = [...new Set(info_chat.usuarios.map(u => normalizeIdHelper(u)))]// normalizar a string y quitar repetidos
+                participantes_ids = participantes_ids.filter(id => id && id !== id_mio?.toString())//quitar el id propio
 
-                    // Obtener datos de todos los participantes en paralelo
-                    const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id).catch(() => null))
-                    const participantes_datos = await Promise.all(participantes_promesas)
+                // Obtener datos de todos los participantes en paralelo
+                const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id).catch(() => null))
+                const participantes_datos = await Promise.all(participantes_promesas)
 
-                    let lista_html = `
+                let lista_html = `
                     <div class="info-chat-lista-participantes">
                         <div class="info-chat-lista-titulo">Participantes (${participantes_datos.length + 1}) <div id="bt-anadir-participante-chat">+</div></div>
                         <div class="info-chat-lista-items">
@@ -1307,17 +1314,17 @@ export async function mostrar_datos_chat_usaurios(e) {
                             </div>
                         </div>
                     `
-                    participantes_datos.forEach((p, index) => {
-                        const originalId = participantes_ids[index];
-                        const nombre = escapeHTML(p?.apodo || "Usuario Ravage");
-                        const correo = escapeHTML(p?.correo || "");
+                participantes_datos.forEach((p, index) => {
+                    const originalId = participantes_ids[index];
+                    const nombre = escapeHTML(p?.apodo || "Usuario Ravage");
+                    const correo = escapeHTML(p?.correo || "");
 
-                        const idStr = normalizeIdHelper(originalId);
-                        const esAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === idStr);
-                        const estaBloqueado = ids_bloqueados.includes(idStr);
-                        const estaSilenciado = ids_silenciados.includes(idStr);
+                    const idStr = normalizeIdHelper(originalId);
+                    const esAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === idStr);
+                    const estaBloqueado = ids_bloqueados.includes(idStr);
+                    const estaSilenciado = ids_silenciados.includes(idStr);
 
-                        lista_html += `
+                    lista_html += `
                         <div class="info-chat-participante-item" data-id="${idStr}" data-idamigo="${p?.idamigo || ""}">
                             <div class="info-chat-participante-info">
                                 <span class="info-chat-participante-nombre">
@@ -1329,14 +1336,14 @@ export async function mostrar_datos_chat_usaurios(e) {
                             </div>
                         </div>
                         `
-                    })
-                    lista_html += `</div></div>`
-                    return lista_html
-                } catch (err) {
-                    console.error("Error al renderizar participantes:", err);
-                    return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes</div><div class="info-chat-lista-items">Error al cargar la lista.</div></div>`
-                }
-            })()}
+                })
+                lista_html += `</div></div>`
+                return lista_html
+            } catch (err) {
+                console.error("Error al renderizar participantes:", err);
+                return `<div class="info-chat-lista-participantes"><div class="info-chat-lista-titulo">Participantes</div><div class="info-chat-lista-items">Error al cargar la lista.</div></div>`
+            }
+        })()}
         </div>
     </div>`
 
@@ -1501,7 +1508,7 @@ export async function mostrar_datos_chat_usaurios(e) {
 
     if (infoSeccion) {
         const ventanaArchivos = document.querySelector(".ventana-archivos-mensaje")
-        
+
         // Si vamos a abrir info y archivos está abierto, cerramos archivos
         if (!infoSeccion.classList.contains("abierto") && ventanaArchivos) {
             // Cerramos archivos animadamente (esto coexistirá con la apertura de info)
@@ -1515,7 +1522,7 @@ export async function mostrar_datos_chat_usaurios(e) {
 
         // Toggle the info section
         infoSeccion.classList.toggle("abierto")
-        
+
         // Sincronizar clase en el contenedor padre para ajustes de ancho de mensajes
         const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
         if (cuerpoChat) {

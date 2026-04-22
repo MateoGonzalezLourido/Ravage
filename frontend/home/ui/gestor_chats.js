@@ -15,7 +15,6 @@ import {
 } from './chat.js';
 import {
     manejar_input_escribiendo,
-    enviar_mensaje_chat,
     manejar_solicitud_chat
 } from './mensajes_eventos.js';
 

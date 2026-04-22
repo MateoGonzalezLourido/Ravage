@@ -31,7 +31,7 @@ import { encontrar_usuario } from '../../repositories/UserRepository.js';
 import { createLogger } from '../../utils/logger.js';
 const log = createLogger('cache-hist-buscar');
 
-const LIMITE_HISTORIAL = 150;
+const LIMITE_HISTORIAL = 200;
 const SEMANA_MS = 7 * 24 * 60 * 60 * 1000;
 const DIAS_2_MS = 2 * 24 * 60 * 60 * 1000;
 const DIAS_90_MS = 90 * 24 * 60 * 60 * 1000;

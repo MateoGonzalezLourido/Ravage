@@ -15,12 +15,17 @@
 #cuerpo-mensajes-chat {
     flex-grow: 1;
     overflow-y: auto;
-    overflow-x: hidden; /* Evitar scroll horizontal */
+    overflow-x: hidden;
+    /* Evitar scroll horizontal */
     padding: 10px 6%;
     display: flex;
     flex-direction: column;
     gap: 4px;
     transition: padding 0.3s ease;
+    contain: layout style;
+    content-visibility: auto;
+    transform: translateZ(0);
+    will-change: scroll-position;
 }
 
 /* Optimización para cuando hay paneles laterales abiertos */
@@ -46,6 +51,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    contain: layout style;
 }
 
 /* Message Bubble Container */
@@ -59,20 +65,16 @@
     flex-direction: column;
     word-wrap: break-word;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    transition: all 0.2s, max-width 0.3s ease;
-    animation: fadeIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     will-change: transform, opacity;
     user-select: text !important;
     cursor: default !important;
+    contain: layout style;
+    animation: none;
 }
 
 .panel-lateral-abierto .mensaje-chat {
-    max-width: 92%; /* Reducido un poco para evitar scroll X con scrollbar visible */
-}
-
-.mensaje-chat:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    transform: translateY(-1px);
+    max-width: 92%;
+    /* Reducido un poco para evitar scroll X con scrollbar visible */
 }
 
 @keyframes fadeIn {
@@ -169,6 +171,8 @@
     position: sticky;
     top: 10px;
     transform: translateZ(0);
+    contain: layout style;
+    content-visibility: auto;
 }
 
 /* ─── Agrupación de mensajes ─────────────────────────────────────────── */
