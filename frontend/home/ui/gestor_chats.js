@@ -28,7 +28,7 @@ const MODELO_DATOS_NECESARIOS_CHAT = {
 };
 
 export function cerrar_paneles_al_abrir_chat() {
-    const infoSeccion = document.querySelector("#info-chat-seccion")
+    const infoSeccion = document.getElementById("info-chat-seccion")
     if (infoSeccion && infoSeccion.classList.contains("abierto")) {
         infoSeccion.classList.remove("abierto")
     }
@@ -37,8 +37,8 @@ export function cerrar_paneles_al_abrir_chat() {
         ventanaArchivos.classList.remove("abierto")
         setTimeout(() => ventanaArchivos.remove(), 310)
     }
-    const seccionHistorial = document.querySelector("#seccion-historial-archivos-alineador")
-    const chatUsuario = document.querySelector("#chat-usuario")
+    const seccionHistorial = document.getElementById("seccion-historial-archivos-alineador")
+    const chatUsuario = document.getElementById("chat-usuario")
     if (seccionHistorial && !seccionHistorial.classList.contains("ocultar-display")) {
         seccionHistorial.classList.add("ocultar-display")
         if (chatUsuario) chatUsuario.classList.remove("ocultar-display")
@@ -167,7 +167,7 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
             })
             .join("")
 
-        document.querySelector("#lista-chats-componentes").innerHTML = html
+        document.getElementById("lista-chats-componentes").innerHTML = html
     }
     catch (e) {
         throw e
@@ -176,7 +176,7 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
 
 let timer_spin;
 export async function abrir_chat_item(id_chat, force = false) {
-    if (!force && document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) {
+    if (!force && document.getElementById(`nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) {
         return;
     }
 
@@ -192,7 +192,7 @@ export async function abrir_chat_item(id_chat, force = false) {
         document.querySelectorAll(".sync-spinner").forEach(el => el.remove())
 
         timer_spin = setTimeout(() => {
-            document.querySelector("#chat-usuario").insertAdjacentHTML("afterbegin", "<div class='sync-spinner chat-spinner'></div>")
+            document.getElementById("chat-usuario").insertAdjacentHTML("afterbegin", "<div class='sync-spinner chat-spinner'></div>")
         }, 3000)
 
         const [datos_chat, id_usuario] = await Promise.all([
@@ -214,9 +214,9 @@ export async function abrir_chat_item(id_chat, force = false) {
 
         limpiar_archivos_mensaje()
         destruir_virtualizacion()
-        document.querySelector("#chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+        document.getElementById("chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
 
-        const textarea = document.querySelector("#textarea-mensaje-escritura");
+        const textarea = document.getElementById("textarea-mensaje-escritura");
         if (textarea) {
             textarea.focus()
             manejar_input_escribiendo(textarea)
@@ -226,7 +226,7 @@ export async function abrir_chat_item(id_chat, force = false) {
         registrar_scroll_usuario()
 
 
-        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        const chatContainer = document.getElementById("cuerpo-mensajes-chat");
         chatContainer.addEventListener("click", (pulsado) => {
             pulsado.currentTarget.querySelector(".asunto-svg")?.addEventListener("click", (el) => {
                 el.stopPropagation()
@@ -275,7 +275,7 @@ export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
                 const res = await window.chats.BLOQUEAR_CHAT(id_chat)
                 if (res?.success) {
                     window.pushNotificacion({ prioridad: 1, texto: "Bloqueo alterado", tipo: "success" })
-                    if (document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) await abrir_chat_item(id_chat, true)
+                    if (document.getElementById(`nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) await abrir_chat_item(id_chat, true)
                 }
             }
             await ACTUALIZAR_LISTAS_CHAT()
@@ -314,7 +314,7 @@ export async function refrescar_componente_lista_chats(id_chat, componente, noti
 
         componente.innerHTML = contenido_nuevo
 
-        const lista_contenedor = document.querySelector("#lista-chats-componentes")
+        const lista_contenedor = document.getElementById("lista-chats-componentes")
         if (lista_contenedor && componente) {
             lista_contenedor.prepend(componente)
         }
@@ -394,9 +394,9 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
 }
 
 async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad }) {
-    if (!document.querySelector(`#nav-prinicpal-chat-usaurio${safeIdSelector(id_chat_str)}`)) return;
+    if (!document.getElementById(`nav-prinicpal-chat-usaurio${safeIdSelector(id_chat_str)}`)) return;
 
-    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
     if (!chatContainer) return;
 
     // Evitar duplicados
@@ -441,7 +441,7 @@ let _timer_scroll_usuario = null;
 const PORCENTAJE_UMBRAL_CARGA = 0.35; //% de la altura total del scroll para disparar carga
 
 export function registrar_scroll_usuario() {
-    const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
+    const chatCuerpo = document.getElementById("cuerpo-mensajes-chat")
     if (!chatCuerpo) return;
 
     const marcar = () => {
@@ -514,7 +514,7 @@ export function registrar_scroll_usuario() {
 let scrollTimeout = null;
 export function scroll_fin_chat(forzar = false) {
     if (!forzar && _usuario_scrolleando) return;
-    const chatCuerpo = document.querySelector("#cuerpo-mensajes-chat")
+    const chatCuerpo = document.getElementById("cuerpo-mensajes-chat")
     if (chatCuerpo) {
         if (scrollTimeout) return;
 
@@ -540,7 +540,7 @@ export async function INICIO_CHAT_MENU_PRINCIPAL() {
 }
 
 export async function cambiar_datos_componente_lista_chats({ id_chat, data, notificacion = false }) {
-    const componente_lista = document.querySelector(`#lista-chats-componentes ${safeIdSelector(id_chat)}`)
+    const componente_lista = document.getElementById(`lista-chats-componentes ${safeIdSelector(id_chat)}`)
     if (componente_lista) {
         componente_lista.querySelector(".ultimo-mensaje-chat-lista span").innerHTML = escapeHTML(data?.asunto || "");
         componente_lista.querySelector(".fecha-chat-lista span").innerHTML = escapeHTML(texto_mostrar_fecha_mensajes_bloque(data?.data));

@@ -7,7 +7,7 @@ export async function manejar_input_escribiendo(textarea) {
     textarea.style.height = "1px";
     textarea.style.height = (textarea.scrollHeight) + "px";
 
-    const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id;
+    const id_chat = document.getElementById("nav-prinicpal-chat-usaurio")?.dataset.id;
     const result_seguridad = await window.escaneres_seguridad_app.ESCANERES_SEGURIDAD_MENSAJE(id_chat);
     const esteg = result_seguridad.escaneres_seguridad?.ESCANER_ESTEGANOGRAFIA || result_seguridad?.ESCANER_ESTEGANOGRAFIA;
 
@@ -26,7 +26,7 @@ export async function manejar_input_escribiendo(textarea) {
 
 export async function enviar_mensaje_chat(textarea) {
     let mensaje = textarea.value.trim()
-    const id_chat = document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
+    const id_chat = document.getElementById("nav-prinicpal-chat-usaurio")?.dataset.id
     const id_usuario = ID_USUARIO_MONGO
     const archivos_actuales = obtener_archivos_mensaje()
 

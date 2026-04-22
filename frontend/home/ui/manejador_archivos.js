@@ -72,7 +72,7 @@ export async function abrir_ventana_archivos() {
     document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
 
     // Ocultar modal info si existe
-    const infoSec = document.querySelector("#info-chat-seccion")
+    const infoSec = document.getElementById("info-chat-seccion")
     if (infoSec && infoSec.classList.contains("abierto")) {
         // Animación simultánea: cerramos info mientras abrimos archivos
         infoSec.classList.remove("abierto")
@@ -93,7 +93,7 @@ export function cerrar_ventana_archivos() {
         ven.classList.remove("abierto")
         
         // Solo quitamos la clase de ajuste de chat si NO hay otros paneles abiertos (como info)
-        const infoSec = document.querySelector("#info-chat-seccion")
+        const infoSec = document.getElementById("info-chat-seccion")
         const algunOtroAbierto = infoSec && infoSec.classList.contains("abierto")
         
         if (!algunOtroAbierto) {

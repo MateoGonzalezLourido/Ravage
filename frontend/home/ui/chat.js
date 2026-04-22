@@ -609,7 +609,7 @@ function _agrupar_por_dia(mensajes) {
 }
 
 function _rearmar_agrupacion_dom() {
-    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
     if (!chatContainer) return;
 
     // Procesamos por bloque-dia-chat para que la agrupación no salte entre días
@@ -711,7 +711,7 @@ async function _resolver_nombres(mensajes, contactos) {
  */
 async function _renderizar_bloque_en_dom(mensajes, opciones) {
     const { map_nombres, escaneres_seguridad, id_propio, datos_chat, posicion } = opciones;
-    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
     if (!chatContainer || mensajes.length === 0) return;
 
     const grupos = _agrupar_por_dia(mensajes);
@@ -774,7 +774,7 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
  * @param {'arriba'|'abajo'} extremo - Qué extremo reciclar
  */
 function _reciclar_mensajes(extremo) {
-    const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
     if (!chatContainer) return;
 
     const todos = chatContainer.querySelectorAll(".mensaje-chat");
@@ -837,7 +837,7 @@ export async function cargar_bloque_arriba() {
     if (!_virt || _virt.cargando || !_virt.hay_mas_arriba) return;
     _virt.cargando = true;
     try {
-        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        const chatContainer = document.getElementById("cuerpo-mensajes-chat");
         if (!chatContainer) return;
         const primerMsg = chatContainer.querySelector(".mensaje-chat");
         if (!primerMsg) return;
@@ -915,7 +915,7 @@ export async function cargar_bloque_abajo() {
     if (!_virt || _virt.cargando || !_virt.hay_mas_abajo) return;
     _virt.cargando = true;
     try {
-        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        const chatContainer = document.getElementById("cuerpo-mensajes-chat");
         if (!chatContainer) return;
         const msgs = chatContainer.querySelectorAll(".mensaje-chat");
         if (msgs.length === 0) return;
@@ -1008,7 +1008,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             iniciar_limpieza_cache_activo(ids_nuevos.length || 2);
         }
 
-        const chatContainer = document.querySelector("#cuerpo-mensajes-chat");
+        const chatContainer = document.getElementById("cuerpo-mensajes-chat");
         if (!chatContainer) return;
 
         let mensajes = (datos.mensajes || []).filter(m => m && typeof m === 'object');
@@ -1184,7 +1184,7 @@ const normalizeIdHelper = (id) => {
 export async function mostrar_datos_chat_usaurios(e) {
     e.preventDefault()
     // MOSTRAR DATOS DEL USUARIO Y DEL CHAT
-    const id_chat = e.currentTarget.dataset.id || document.querySelector("#nav-prinicpal-chat-usaurio")?.dataset.id
+    const id_chat = e.currentTarget.dataset.id || document.getElementById("nav-prinicpal-chat-usaurio")?.dataset.id
     if (!id_chat) return;
 
     const [cache_persistente, cache_activo] = await Promise.all([
@@ -1229,10 +1229,10 @@ export async function mostrar_datos_chat_usaurios(e) {
     const ids_silenciados = (silenciados || []).map(u => typeof u === "string" ? u : u.id || u._id || u);
     const ids_bloqueados = (bloqueados || []).map(u => typeof u === "string" ? u : u.id || u._id || u);
 
-    const infoSeccion = document.querySelector("#info-chat-seccion")
+    const infoSeccion = document.getElementById("info-chat-seccion")
 
     //crear html de la seccion
-    const nombre_chat = document.querySelector("#nombre-chat-nav span")?.textContent || nombre_defecto
+    const nombre_chat = document.getElementById("nombre-chat-nav span")?.textContent || nombre_defecto
     const integrantes_chat = () => {
         return `<div> ${[...new Set(info_chat?.usuarios)]?.length || 0} integrantes</div> `
     }
@@ -1344,13 +1344,13 @@ export async function mostrar_datos_chat_usaurios(e) {
     infoSeccion.insertAdjacentHTML("beforeend", html);
 
     // Eventos de la sección de información
-    document.querySelector("#bt-cerrar-info-chat")?.addEventListener("click", () => {
+    document.getElementById("bt-cerrar-info-chat")?.addEventListener("click", () => {
         infoSeccion.classList.remove("abierto")
         const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
         if (cuerpoChat) cuerpoChat.classList.remove("panel-lateral-abierto")
     })
 
-    document.querySelector("#bt-abrir-ajustes-chat")?.addEventListener("click", () => {
+    document.getElementById("bt-abrir-ajustes-chat")?.addEventListener("click", () => {
         // Crear el overlay y el contenedor usando las clases de chat.css
         const overlay = document.createElement("div");
         overlay.className = "overlay-ajustes-chat-full";
@@ -1370,11 +1370,11 @@ export async function mostrar_datos_chat_usaurios(e) {
         // TODO: Contenido del menú...
     })
 
-    document.querySelector("#bt-ver-archivos-chat")?.addEventListener("click", () => {
+    document.getElementById("bt-ver-archivos-chat")?.addEventListener("click", () => {
         // TODO: Implementar el menú de archivos mandados
     })
 
-    document.querySelector("#bt-anadir-participante-chat")?.addEventListener("click", (e) => {
+    document.getElementById("bt-anadir-participante-chat")?.addEventListener("click", (e) => {
         e.preventDefault()
         // TODO: Implementar el menú de añadir participante
         desplegar_menu_añadir_chat({ mostrar: true, id_chat: id_chat })

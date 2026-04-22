@@ -1,9 +1,9 @@
-const $btnAgregar = document.querySelector("#bt-agregar-contacto-nuevo");
+const $btnAgregar = document.getElementById("bt-agregar-contacto-nuevo");
 import { escapeHTML } from './seguridad_ui.js';
 import { CORREO_USUARIO, _cache_lista_usuarios_añadir, establecer_cache_lista_usuarios_añadir } from '../caches_datos.js';
 
 const clase_cp_lista_contactos_añadidos = "componente-lista-contactos-añadidos-chat-crear"
-const $nombreChatNuevo = document.querySelector("#nombre-chat-nuevo-crear");
+const $nombreChatNuevo = document.getElementById("nombre-chat-nuevo-crear");
 
 let _callback_actualizar_listas = null;
 export function set_callback_actualizar_listas(cb) {
@@ -15,11 +15,11 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
     if (e) e.preventDefault()
 
     //ELEMENTOS DOOM
-    const $btnCerrar = document.querySelector("#bt-cerrar-menu-añadir-chats");
-    const $inputBuscar = document.querySelector("#texto-buscar-chat-añadir");
-    const $resultados = document.querySelector("#resultados-busqueda-usaurios");
-    const $contactosGrupo = document.querySelector("#contactos-añadidos-grupo");
-    const menu_añadir_chat = document.querySelector("#alineador-seccion-añadir-chat")
+    const $btnCerrar = document.getElementById("bt-cerrar-menu-añadir-chats");
+    const $inputBuscar = document.getElementById("texto-buscar-chat-añadir");
+    const $resultados = document.getElementById("resultados-busqueda-usaurios");
+    const $contactosGrupo = document.getElementById("contactos-añadidos-grupo");
+    const menu_añadir_chat = document.getElementById("alineador-seccion-añadir-chat")
 
     //eventos
     async function anadir_chat_buscar_usuario(e) {
@@ -81,9 +81,9 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
 
 function actualizar_lista_usuarios_añadir({ conjunto = null, remove = false, clean = false }) {
     const clase_span_lista_contactos_añadidos = ".span-text-contactos-añadir"
-    const $lista_contactos_añadir = document.querySelector("#contactos-añadidos-grupo")
+    const $lista_contactos_añadir = document.getElementById("contactos-añadidos-grupo")
     const $span_text_contactos_añadidos = $lista_contactos_añadir?.querySelector(clase_span_lista_contactos_añadidos) || null
-    const $bt_agregar_contacto_nuevo = document.querySelector("#bt-agregar-contacto-nuevo")
+    const $bt_agregar_contacto_nuevo = document.getElementById("bt-agregar-contacto-nuevo")
 
     if (clean) $lista_contactos_añadir.replaceChildren()
     else if (remove) remove.currentTarget.remove()
@@ -201,7 +201,7 @@ async function buscar_usuario_añadir_chat(e) {
     }
 
     //buscar
-    const texto_buscar = document.querySelector("#texto-buscar-chat-añadir").value.trim()
+    const texto_buscar = document.getElementById("texto-buscar-chat-añadir").value.trim()
     let resultado;
     if (/[@]/.test(texto_buscar)) {//es correo
         // Comprobar si el correo es válido para reducir llamadas al DB
@@ -228,13 +228,13 @@ async function buscar_usuario_añadir_chat(e) {
     }
 
     //excluir usuarios ya existentes si es añadir usuario a un chat existente
-    const id_chat = document.querySelector("#bt-agregar-contacto-nuevo")?.dataset.id_chat || null
+    const id_chat = document.getElementById("bt-agregar-contacto-nuevo")?.dataset.id_chat || null
     if (id_chat) {
         const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, "usuarios")
         if (info_chat?.usuarios?.includes(resultado.id)) resultado = null
     }
 
-    const $resultados_busqueda_usaurios = document.querySelector("#resultados-busqueda-usaurios")
+    const $resultados_busqueda_usaurios = document.getElementById("resultados-busqueda-usaurios")
     if (resultado) {
         $resultados_busqueda_usaurios.innerHTML = `<div class="${clase_cp_posible_usuario_añadir}" data-id="${resultado.id}" data-nombre="${escapeHTML(resultado.nombre)}">${escapeHTML(resultado.nombre)}</div>`
         crear_eventos()

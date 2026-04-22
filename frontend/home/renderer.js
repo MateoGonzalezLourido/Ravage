@@ -28,7 +28,7 @@ import {
     enviar_mensaje_chat,
     manejar_solicitud_chat
 } from './ui/mensajes_eventos.js'
-
+document.getElementsByClassName
 import {
     inicializar_buzon_notificaciones
 } from './ui/buzon_eventos.js'
@@ -46,18 +46,18 @@ set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
 // ==========================================
 function inicializar_eventos_globales() {
     // 1. EVENTOS PANEL IZQUIERDO (Lista de Chats)
-    document.querySelector("#lista-chats-componentes")?.addEventListener("click", (e) => {
+    document.getElementById("lista-chats-componentes")?.addEventListener("click", (e) => {
         const componente = e.target.closest('.chat-componente-lista-chats')
         if (componente) { e.preventDefault(); abrir_chat_item(componente.dataset.id) }
     })
 
-    document.querySelector("#lista-chats-componentes")?.addEventListener("contextmenu", (e) => {
+    document.getElementById("lista-chats-componentes")?.addEventListener("contextmenu", (e) => {
         const componente = e.target.closest('.chat-componente-lista-chats')
         if (componente) { e.preventDefault(); mostrar_menu_contextual_lista_chats(e, componente.dataset.id) }
     })
 
     // 2. EVENTOS PANEL DERECHO (Chat Activo & Inputs)
-    const divChatUsuario = document.querySelector("#chat-usuario")
+    const divChatUsuario = document.getElementById("chat-usuario")
     if (divChatUsuario) {
         divChatUsuario.addEventListener("click", (e) => {
             const btnAceptarSol = e.target.closest(".bt-solicitud-aceptar")
@@ -123,12 +123,12 @@ function inicializar_escritura_automatica() {
     // Si se pulsa en el cuerpo del chat, el último input por defecto será el de escritura
     document.addEventListener("click", (e) => {
         if (e.target.closest("#cuerpo-mensajes-chat")) {
-            const chatInput = document.querySelector("#textarea-mensaje-escritura");
+            const chatInput = document.getElementById("textarea-mensaje-escritura");
             if (chatInput) ultimoInput = chatInput;
         }
 
         if (e.target.closest("#lista-chats") && !e.target.closest(".chat-componente-lista-chats")) {
-            const searchInput = document.querySelector("#input-buscar-chat");
+            const searchInput = document.getElementById("input-buscar-chat");
             if (searchInput) ultimoInput = searchInput;
         }
     });
@@ -147,8 +147,8 @@ function inicializar_escritura_automatica() {
             // Buscar el objetivo: último usado, o el chat, o el buscador
             const target = (ultimoInput && document.body.contains(ultimoInput) && ultimoInput.offsetParent !== null && !ultimoInput.disabled)
                 ? ultimoInput
-                : document.querySelector("#textarea-mensaje-escritura")
-                || document.querySelector("#input-buscar-chat");
+                : document.getElementById("textarea-mensaje-escritura")
+                || document.getElementById("input-buscar-chat");
 
             if (target && !target.disabled) {
                 target.focus();
@@ -166,12 +166,12 @@ async function preparar_interfaz_y_servicios() {
     inicializar_eventos_globales()
     inicializar_escritura_automatica()
 
-    document.querySelector("#bt-seccion-menu-cuenta-ajustes")?.addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
-    document.querySelector("#bt-añadir-chat")?.addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
-    document.querySelector("#bt-seccion-historial-archivos")?.addEventListener("click", toggle_historial_descargas)
+    document.getElementById("bt-seccion-menu-cuenta-ajustes")?.addEventListener("click", Todos_Los_Eventos_Funciones_Ajustes)
+    document.getElementById("bt-añadir-chat")?.addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
+    document.getElementById("bt-seccion-historial-archivos")?.addEventListener("click", toggle_historial_descargas)
 
     
-    const input_buscar_chat = document.querySelector("#input-buscar-chat")
+    const input_buscar_chat = document.getElementById("input-buscar-chat")
     input_buscar_chat?.addEventListener("keyup", (e) => {
         e.preventDefault()
         const valor = input_buscar_chat.value.trim()

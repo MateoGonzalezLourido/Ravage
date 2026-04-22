@@ -121,7 +121,7 @@ export async function crear_chat_historial_archivos_descargados() {
         }
     }
 
-    const listaContenido = document.querySelector("#historial-lista-contenido")
+    const listaContenido = document.getElementById("historial-lista-contenido")
     if (listaContenido) listaContenido.innerHTML = html.join('')
 
 
@@ -130,7 +130,7 @@ export async function crear_chat_historial_archivos_descargados() {
 
 async function crear_eventos() {
     // Evento limpiar historial (usar onclick para no acumular listeners si se recrean los eventos multiples veces sin destruir este boton estatico)
-    const btnLimpiar = document.querySelector("#bt-limpiar-historial-completo")
+    const btnLimpiar = document.getElementById("bt-limpiar-historial-completo")
     if (btnLimpiar) {
         btnLimpiar.onclick = async (e) => {
             e.preventDefault()
@@ -141,7 +141,7 @@ async function crear_eventos() {
     }
 
     // Click en un archivo para volver al chat
-    document.querySelector("#historial-lista-contenido")?.addEventListener("click", async e => {
+    document.getElementById("historial-lista-contenido")?.addEventListener("click", async e => {
         e.preventDefault()
         const el = e.target.closest(".archivo-historial-item")
         if (!el) return
@@ -149,14 +149,14 @@ async function crear_eventos() {
         const id_archivo = el.dataset.idArchivo
 
         // Ocultar historial, mostrar chat
-        document.querySelector("#seccion-historial-archivos-alineador").classList.add("ocultar-display")
-        const chatUsuario = document.querySelector("#chat-usuario")
+        document.getElementById("seccion-historial-archivos-alineador").classList.add("ocultar-display")
+        const chatUsuario = document.getElementById("chat-usuario")
         chatUsuario.classList.remove("ocultar-display")
-        const infoChatSeccion = document.querySelector("#info-chat-seccion")
+        const infoChatSeccion = document.getElementById("info-chat-seccion")
         if (infoChatSeccion) infoChatSeccion.classList.remove("ocultar-display")
 
         // Si el chat ya está cargado y es el mismo, solo scroll
-        const navChat = document.querySelector("#nav-prinicpal-chat-usaurio")
+        const navChat = document.getElementById("nav-prinicpal-chat-usaurio")
         if (navChat && navChat.dataset.id === id_chat) {
             hacer_scroll_a_archivo(id_archivo)
         } else {
@@ -181,7 +181,7 @@ async function crear_eventos() {
 
 
     // Evento para descarga directa desde historial
-    document.querySelector("#historial-lista-contenido").addEventListener("click", async (e) => {
+    document.getElementById("historial-lista-contenido").addEventListener("click", async (e) => {
         e.preventDefault()
         const btn = e.target.closest(".bt-descargar-directo-historial")
         if (!btn) return
@@ -228,7 +228,7 @@ async function crear_eventos() {
     })
 
     // Listener global para errores de imagen (fallback) - Evita inline handlers (CSP)
-    document.querySelector("#historial-lista-contenido")?.addEventListener("error", (e) => {
+    document.getElementById("historial-lista-contenido")?.addEventListener("error", (e) => {
         if (e.target.classList.contains("img-historial-archivo") && e.target.dataset.fallback) {
             e.target.src = e.target.dataset.fallback;
             delete e.target.dataset.fallback; // Evitar loop infinito

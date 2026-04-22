@@ -28,7 +28,7 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
 
     // Initial UI state
     cerrar_cuerpos_ajustes("cuenta");
-    const menuAjustes = document.querySelector("#seccion-menu-cuenta-ajustes");
+    const menuAjustes = document.getElementById("seccion-menu-cuenta-ajustes");
     menuAjustes.classList.remove("ocultar-display");
     menuAjustes.classList.add("flex-display");
 
@@ -64,24 +64,24 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
 
     ajustesEventosInicializados = true;
 
-    document.querySelector("#bt-cerrar-menu-ajustes").addEventListener("click", cerrar_ajustes_pagina);
-    document.querySelector("#bt-cerrar-sesion").addEventListener("click", cerrar_sesion_bt);
-    document.querySelector("#bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña);
-    document.querySelector("#bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo);
-    document.querySelector("#bt-cambiar-correo").addEventListener("click", funcion_cambiar_correo);
-    document.querySelector("#bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados);
-    document.querySelector("#bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados);
+    document.getElementById("bt-cerrar-menu-ajustes").addEventListener("click", cerrar_ajustes_pagina);
+    document.getElementById("bt-cerrar-sesion").addEventListener("click", cerrar_sesion_bt);
+    document.getElementById("bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña);
+    document.getElementById("bt-cambiar-apodo").addEventListener("click", funcion_cambiar_apodo);
+    document.getElementById("bt-cambiar-correo").addEventListener("click", funcion_cambiar_correo);
+    document.getElementById("bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados);
+    document.getElementById("bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados);
 
     // INICIAR CACHE SETTINGS
     await cargar_ajustes_cache();
     setup_cache_listeners();
-    document.querySelector("#bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
+    document.getElementById("bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
         e.preventDefault();
-        const menuCambio = document.querySelector("#alineador-menu-cambiar-data-cuenta");
+        const menuCambio = document.getElementById("alineador-menu-cambiar-data-cuenta");
         menuCambio.classList.remove("flex-display");
         menuCambio.classList.add("ocultar-display");
-        document.querySelector("#cambio-pass").value = "";
-        document.querySelector("#cambio-pass-confirm").value = "";
+        document.getElementById("cambio-pass").value = "";
+        document.getElementById("cambio-pass-confirm").value = "";
     });
 }
 
@@ -97,7 +97,7 @@ async function cerrar_cuerpos_ajustes(no_cerrar) {
     };
 
     for (const [key, idSuffix] of Object.entries(sectionMap)) {
-        const el = document.querySelector(`#cuerpo-ajustes-${idSuffix}`);
+        const el = document.getElementById(`cuerpo-ajustes-${idSuffix}`);
         if (no_cerrar === key) {
             el.classList.remove("ocultar-display");
             el.classList.add("flex-display");
@@ -119,9 +119,9 @@ async function actualizar_datos_cuenta() {
     const apodo = await obtener_apodo_usuario();
     const correo = CORREO_USUARIO;
 
-    document.querySelector("#text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${escapeHTML(apodo)}</font>`;
-    document.querySelector("#text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${escapeHTML(correo)}</font>`;
-    document.querySelector("#text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${escapeHTML(fecha_creacion)}`;
+    document.getElementById("text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${escapeHTML(apodo)}</font>`;
+    document.getElementById("text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${escapeHTML(correo)}</font>`;
+    document.getElementById("text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${escapeHTML(fecha_creacion)}`;
 
     const setLockText = (id, date) => {
         const el = document.querySelector(id);
@@ -135,7 +135,7 @@ async function actualizar_datos_cuenta() {
 
 function cerrar_ajustes_pagina(e) {
     if (e) e.preventDefault();
-    const menuAjustes = document.querySelector("#seccion-menu-cuenta-ajustes");
+    const menuAjustes = document.getElementById("seccion-menu-cuenta-ajustes");
     menuAjustes.classList.remove("flex-display");
     menuAjustes.classList.add("ocultar-display");
 
@@ -153,7 +153,7 @@ async function cerrar_sesion_bt(e) {
 
 function cambiar_seccion_menu_cambiar_datos_cuenta(tipo) {
     ["correo", "contraseña", "apodo"].forEach(t => {
-        const el = document.querySelector(`#seccion-cambiar-${t}-menu`);
+        const el = document.getElementById(`seccion-cambiar-${t}-menu`);
         if (tipo === t) {
             el.classList.remove("ocultar-display");
             el.classList.add("flex-display");
@@ -182,27 +182,27 @@ async function funcion_cambiar_contraseña(e) {
 
     const result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "contraseña" });
     if (result.success) {
-        const container = document.querySelector("#alineador-menu-cambiar-data-cuenta");
+        const container = document.getElementById("alineador-menu-cambiar-data-cuenta");
         container.classList.remove("ocultar-display");
         container.classList.add("flex-display");
         cambiar_seccion_menu_cambiar_datos_cuenta("contraseña");
-        document.querySelector("#cambio-pass").focus();
+        document.getElementById("cambio-pass").focus();
 
-        const form = document.querySelector("#form-cambio-contraseña");
+        const form = document.getElementById("form-cambio-contraseña");
         const submitHandler = async (ev) => {
             ev.preventDefault();
-            const pass = document.querySelector("#cambio-pass").value;
-            const confirm = document.querySelector("#cambio-pass-confirm").value;
+            const pass = document.getElementById("cambio-pass").value;
+            const confirm = document.getElementById("cambio-pass-confirm").value;
             const errorTextId = "#text-error-form-causa-cambio-contraseña";
 
             if (pass !== confirm) {
-                document.querySelector("#cambio-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto");
-                document.querySelector("#span-repetir-contraseña-cambio").classList.add("estrada-menu-registro-login-incorrecto");
+                document.getElementById("cambio-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto");
+                document.getElementById("span-repetir-contraseña-cambio").classList.add("estrada-menu-registro-login-incorrecto");
                 return;
             }
 
-            document.querySelector("#cambio-pass-confirm").classList.remove("estrada-menu-registro-login-incorrecto");
-            document.querySelector("#span-repetir-contraseña-cambio").classList.remove("estrada-menu-registro-login-incorrecto");
+            document.getElementById("cambio-pass-confirm").classList.remove("estrada-menu-registro-login-incorrecto");
+            document.getElementById("span-repetir-contraseña-cambio").classList.remove("estrada-menu-registro-login-incorrecto");
 
             if (pass.includes(" ")) return mostrarErrorForm(errorTextId, "*No puedes usar espacios*");
             if (pass.length > 30) return mostrarErrorForm(errorTextId, "*Longitud contraseña <=30*");
@@ -210,24 +210,24 @@ async function funcion_cambiar_contraseña(e) {
             const check = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: pass, tipo: "contraseña" });
             if (check?.success) {
                 form.removeEventListener("submit", submitHandler);
-                document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
-                document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.replace("ocultar-display", "flex-display");
-                document.querySelector("#bt-code-introducir-datos-cuenta").focus();
+                document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
+                document.getElementById("alineador-menu-cambiar-data-cuenta-validar-code").classList.replace("ocultar-display", "flex-display");
+                document.getElementById("bt-code-introducir-datos-cuenta").focus();
 
                 const setupVerification = () => {
-                    const closeBtn = document.querySelector("#bt-cerrar-menu-cambio-data-cuenta-cd");
+                    const closeBtn = document.getElementById("bt-cerrar-menu-cambio-data-cuenta-cd");
                     const closeHandler = (evVal) => {
                         evVal.preventDefault();
-                        document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.replace("flex-display", "ocultar-display");
+                        document.getElementById("alineador-menu-cambiar-data-cuenta-validar-code").classList.replace("flex-display", "ocultar-display");
                         bloquear_span_cambio_contraseña = false;
                         closeBtn.removeEventListener("click", closeHandler);
                     };
                     closeBtn.addEventListener("click", closeHandler);
 
-                    const verifyForm = document.querySelector("#form-validation-correo-ajustes-datos-cuenta");
+                    const verifyForm = document.getElementById("form-validation-correo-ajustes-datos-cuenta");
                     verifyForm.addEventListener("submit", async (evVerify) => {
                         evVerify.preventDefault();
-                        const code = document.querySelector("#bt-code-introducir-datos-cuenta").value;
+                        const code = document.getElementById("bt-code-introducir-datos-cuenta").value;
                         const finalResult = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(pass, code, "contraseña");
 
                         if (finalResult) {
@@ -262,14 +262,14 @@ async function funcion_cambiar_apodo(e) {
 
     const result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "apodo" });
     if (result.success) {
-        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.replace("ocultar-display", "flex-display");
+        document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("ocultar-display", "flex-display");
         cambiar_seccion_menu_cambiar_datos_cuenta("apodo");
-        document.querySelector("#cambio-apodo").focus();
+        document.getElementById("cambio-apodo").focus();
 
-        const form = document.querySelector("#form-cambio-apodo");
+        const form = document.getElementById("form-cambio-apodo");
         form.addEventListener("submit", async (ev) => {
             ev.preventDefault();
-            const apodo = document.querySelector("#cambio-apodo").value.trim();
+            const apodo = document.getElementById("cambio-apodo").value.trim();
             const errorId = "#text-error-form-causa-cambio-apodo";
 
             if (!(/^[a-zA-Z0-9_]/.test(apodo))) return mostrarErrorForm(errorId, "*No puedes usar espacios ni símbolos raros*");
@@ -285,7 +285,7 @@ async function funcion_cambiar_apodo(e) {
                     // Borramos la caché para que se fuerce la recarga si se solicita de nuevo
                     borrar_cache_apodo_usuario();
                     
-                    document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
+                    document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
                     if (typeof window.cambiar_menu_inicio_apodo === "function") window.cambiar_menu_inicio_apodo();
                 } else {
                     window.pushNotificacion({ prioridad: 0, texto: "No se pudo cambiar el apodo", tipo: "error" });
@@ -309,15 +309,15 @@ async function funcion_cambiar_correo(e) {
 
     const result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "correo" });
     if (result.success) {
-        document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.replace("ocultar-display", "flex-display");
+        document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("ocultar-display", "flex-display");
         cambiar_seccion_menu_cambiar_datos_cuenta("correo");
-        document.querySelector("#cambio-correo").focus();
+        document.getElementById("cambio-correo").focus();
 
-        const form = document.querySelector("#form-cambio-correo");
+        const form = document.getElementById("form-cambio-correo");
         form.addEventListener("submit", async (ev) => {
             ev.preventDefault();
-            const email = document.querySelector("#cambio-correo").value;
-            const pass = document.querySelector("#confirmar-contraseña-correo").value;
+            const email = document.getElementById("cambio-correo").value;
+            const pass = document.getElementById("confirmar-contraseña-correo").value;
             const errorId = "#text-error-form-causa-cambio-contraseña";
 
             if (email.length > 255) return mostrarErrorForm(errorId, "*Longitud correo <=255*");
@@ -327,14 +327,14 @@ async function funcion_cambiar_correo(e) {
 
             const check = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: email, tipo: "correo" });
             if (check?.success) {
-                document.querySelector("#alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
-                document.querySelector("#alineador-menu-cambiar-data-cuenta-validar-code").classList.replace("ocultar-display", "flex-display");
-                document.querySelector("#bt-code-introducir-datos-cuenta").focus();
+                document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
+                document.getElementById("alineador-menu-cambiar-data-cuenta-validar-code").classList.replace("ocultar-display", "flex-display");
+                document.getElementById("bt-code-introducir-datos-cuenta").focus();
 
-                const verifyForm = document.querySelector("#form-validation-correo-ajustes-datos-cuenta");
+                const verifyForm = document.getElementById("form-validation-correo-ajustes-datos-cuenta");
                 verifyForm.addEventListener("submit", async (evVerify) => {
                     evVerify.preventDefault();
-                    const code = document.querySelector("#bt-code-introducir-datos-cuenta").value;
+                    const code = document.getElementById("bt-code-introducir-datos-cuenta").value;
                     const final = await window.cuenta_usuario.CAMBIAR_DATOS_CUENTA(email, code, "correo");
                     if (final) {
                         window.pushNotificacion({ prioridad: 1, texto: "Correo cambiado", tipo: "success" });
@@ -354,7 +354,7 @@ async function funcion_cambiar_correo(e) {
 
 export async function ver_chats_silenciados(e) {
     if (e) e.stopPropagation();
-    const container = document.querySelector("#principal-lista-usuarios-silenciados");
+    const container = document.getElementById("principal-lista-usuarios-silenciados");
     const [contactos, silenciados] = await Promise.all([
         window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
         window.social_usuario.OBTENER_USUARIOS_SILENCIADOS()
@@ -403,15 +403,15 @@ export async function ver_chats_silenciados(e) {
         });
     }
 
-    document.querySelector("#lista-usuarios-silenciados").classList.replace("ocultar-display", "flex-display");
-    document.querySelector("#bt-cerrar-menu-lista-silenciados").onclick = () => {
-        document.querySelector("#lista-usuarios-silenciados").classList.replace("flex-display", "ocultar-display");
+    document.getElementById("lista-usuarios-silenciados").classList.replace("ocultar-display", "flex-display");
+    document.getElementById("bt-cerrar-menu-lista-silenciados").onclick = () => {
+        document.getElementById("lista-usuarios-silenciados").classList.replace("flex-display", "ocultar-display");
     };
 }
 
 export async function ver_chats_bloqueados(e) {
     if (e) e.stopPropagation();
-    const container = document.querySelector("#principal-lista-usuarios-bloqueados");
+    const container = document.getElementById("principal-lista-usuarios-bloqueados");
     container.innerHTML = "*CARGANDO...*";
 
     const users = await window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS();
@@ -434,20 +434,20 @@ export async function ver_chats_bloqueados(e) {
         });
     }
 
-    document.querySelector("#lista-usuarios-bloqueados").classList.replace("ocultar-display", "flex-display");
-    document.querySelector("#bt-cerrar-menu-lista-bloqueados").onclick = () => {
-        document.querySelector("#lista-usuarios-bloqueados").classList.replace("flex-display", "ocultar-display");
+    document.getElementById("lista-usuarios-bloqueados").classList.replace("ocultar-display", "flex-display");
+    document.getElementById("bt-cerrar-menu-lista-bloqueados").onclick = () => {
+        document.getElementById("lista-usuarios-bloqueados").classList.replace("flex-display", "ocultar-display");
     };
 }
 
 async function cargar_ajustes_cache() {
     const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
 
-    document.querySelector("#input-cache-chats-ram").value = ajustes.LIMITE_CHAT_CACHE_RAM || 1024
-    document.querySelector("#input-cache-chats-disk").value = ajustes.LIMITE_CHAT_CACHE_DISK || 2048
-    document.querySelector("#input-cache-usuarios-ram").value = ajustes.LIMITE_USER_CACHE_RAM || 512
-    document.querySelector("#input-cache-usuarios-disk").value = ajustes.LIMITE_USER_CACHE_DISK || 1024
-    document.querySelector("#check-forzar-disco").checked = ajustes.FORCE_DISK_CACHE || false
+    document.getElementById("input-cache-chats-ram").value = ajustes.LIMITE_CHAT_CACHE_RAM || 1024
+    document.getElementById("input-cache-chats-disk").value = ajustes.LIMITE_CHAT_CACHE_DISK || 2048
+    document.getElementById("input-cache-usuarios-ram").value = ajustes.LIMITE_USER_CACHE_RAM || 512
+    document.getElementById("input-cache-usuarios-disk").value = ajustes.LIMITE_USER_CACHE_DISK || 1024
+    document.getElementById("check-forzar-disco").checked = ajustes.FORCE_DISK_CACHE || false
 }
 
 function setup_cache_listeners() {
@@ -476,7 +476,7 @@ function setup_cache_listeners() {
         })
     })
 
-    document.querySelector("#check-forzar-disco").addEventListener("change", async (e) => {
+    document.getElementById("check-forzar-disco").addEventListener("change", async (e) => {
         const val = e.target.checked
         const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
         ajustes.FORCE_DISK_CACHE = val
@@ -486,12 +486,12 @@ function setup_cache_listeners() {
         await window.cache_persistente.setConfigCacheUsuarios({ FORCE_DISK_CACHE: val })
     })
 
-    document.querySelector("#bt-limpiar-cache-chats").addEventListener("click", async () => {
+    document.getElementById("bt-limpiar-cache-chats").addEventListener("click", async () => {
         const ok = await window.cache_persistente.clearCacheChats()
         if (ok) window.pushNotificacion({ prioridad: 2, texto: "Caché de chats limpiada", tipo: "success" })
     })
 
-    document.querySelector("#bt-limpiar-cache-usuarios").addEventListener("click", async () => {
+    document.getElementById("bt-limpiar-cache-usuarios").addEventListener("click", async () => {
         const ok = await window.cache_persistente.clearCacheUsuarios()
         if (ok) window.pushNotificacion({ prioridad: 2, texto: "Caché de usuarios limpiada", tipo: "success" })
     })
