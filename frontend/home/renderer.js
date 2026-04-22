@@ -79,7 +79,8 @@ function inicializar_eventos_globales() {
 
         divChatUsuario.addEventListener("keypress", (e) => {
             if (e.target.id === "textarea-mensaje-escritura" && e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault(); enviar_mensaje_chat(e.target)
+                e.preventDefault(); 
+                enviar_mensaje_chat(e.target)
             }
         })
     }

@@ -61,7 +61,7 @@ export async function enviar_mensaje_chat(textarea) {
             id_mensaje: result.id_mensaje
         })
         await cambiar_datos_componente_lista_chats({ id_chat, data: {asunto:mensaje,data:new Date().toISOString(),emisor:id_usuario} })
-        await INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, 1);
+        INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, 1);
     }
 }
 
