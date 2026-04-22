@@ -679,7 +679,7 @@ async function _resolver_nombres(mensajes, contactos) {
     ]));
 }
 // Nueva función que sustituye a _rearmar_agrupacion_dom() en inserciones
-function _rearmar_agrupacion_dom() {
+async function _rearmar_agrupacion_dom() {
     const chatContainer = document.getElementById("cuerpo-mensajes-chat");
     if (!chatContainer) return;
 
