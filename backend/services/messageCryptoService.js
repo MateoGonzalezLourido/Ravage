@@ -3,7 +3,7 @@ const log = createLogger('msg-crypto');
 import { descifrarContenido, descifrarConPrivada, ratchetChainKey, cifrarConPublica, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { ChatsRavage } from '../models/Chat.js';
-import { getCryptoPool } from '../utils/workerPool.js';
+import { getCryptoPool } from '../utils/workers/workerPool.js';
 
 /** Umbral mínimo de mensajes encriptados para activar batch paralelo */
 const UMBRAL_BATCH_PARALELO = 10;

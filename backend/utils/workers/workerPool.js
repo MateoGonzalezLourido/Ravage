@@ -1,7 +1,7 @@
-import { createLogger } from './logger.js';
+import { createLogger } from '../logger.js';
 const log = createLogger('worker-pool');
 import { Worker } from 'node:worker_threads';
-import { os, path } from './libs.js';
+import { os, path } from '../libs.js';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);

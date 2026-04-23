@@ -2,7 +2,7 @@ import { ipcMain } from "../utils/libs.js"
 import { escaneres_seguridad_mensaje_activados } from "../services/seguridad/escanerMensaje.js"
 import { obtenerPrevisualizacionUrl } from "../services/previsualizacion_url.js"
 import { createLogger } from '../utils/logger.js';
-import { getEscanerPool } from '../utils/workerPool.js';
+import { getEscanerPool } from '../utils/workers/workerPool.js';
 
 const log = createLogger('escanerMensaje');
 export function registerEscaneresAppHandlers() {

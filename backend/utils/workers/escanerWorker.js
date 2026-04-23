@@ -13,7 +13,7 @@ import {
     detectarCryptoBilleteras,
     detectarDireccionesIP,
     detectarHomoglifos
-} from '../services/seguridad/escanerMensaje.js';
+} from '../../services/seguridad/escanerMensaje.js';
 
 // Mapa unificado de funciones por tipo de tarea
 const funciones = {

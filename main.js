@@ -181,7 +181,7 @@ app.on('before-quit', async (event) => {
         const [dbRes, buzonRes, poolRes] = await Promise.allSettled([
             import("./backend/db/mongo.js"),
             import('./backend/services/buzonAPI.js'),
-            import('./backend/utils/workerPool.js')
+            import('./backend/utils/workers/workerPool.js')
         ]);
 
         // Terminar worker pool primero (operaciones en vuelo)

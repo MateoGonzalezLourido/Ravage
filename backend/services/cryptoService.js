@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('crypto');
-import { getCryptoPool } from '../utils/workerPool.js';
+import { getCryptoPool } from '../utils/workers/workerPool.js';
 import { 
     generateKeyPair,
     publicEncrypt, 
