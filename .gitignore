@@ -1,5 +1,7 @@
 node_modules/
-.env
+env/
+.env.config
+.env.secret
 .test_data/
 .APP_DATA/
 !RECURSOS y IDEAS/

@@ -14,7 +14,7 @@ async function connectDB() {
         socketTimeoutMS: 45000,
         maxPoolSize: 10,
         minPoolSize: 1,
-        connectTimeoutMS: 10000
+        connectTimeoutMS: 5000
     })
     .then(() => log.info("Conectado a MongoDB Atlas"))
     .catch((err) => log.error({ err }, "Error de conexión a MongoDB"));

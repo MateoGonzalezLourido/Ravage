@@ -43,8 +43,9 @@ import {
     privateDecrypt, createHmac, constants, randomInt,createPublicKey,createPrivateKey
 } from "node:crypto";
 
-import 'dotenv/config';
-
+import dotenv from 'dotenv';
+dotenv.config({ path: '../../env/.env.config' });
+dotenv.config({ path: '../../env/.env.secret' });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
