@@ -1,6 +1,7 @@
 export let bloquear_span_cambio_contraseña = false;
 export let bloquear_span_cambio_apodo = false;
 export let bloquear_span_cambio_correo = false;
+export let HILOS_DESACTIVADOS = false;
 import { escapeHTML } from './seguridad_ui.js';
 import { 
     APODO_USUARIO, 
@@ -458,6 +459,7 @@ async function cargar_ajustes_cache() {
 }
 
 export function aplicar_ajuste_hilos(desactivar) {
+    HILOS_DESACTIVADOS = desactivar;
     if (desactivar) {
         document.body.classList.add("sin-hilos-chat");
     } else {

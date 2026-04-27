@@ -3,6 +3,7 @@ import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_u
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
 import { safeIdSelector } from './seguridad_ui.js';
+import { HILOS_DESACTIVADOS } from './ajustes.js';
 
 const nombre_defecto = "~no encontrado~"
 
@@ -699,6 +700,14 @@ function _rearmar_agrupacion_dom() {
     const mensajes = chatContainer.querySelectorAll(".mensaje-chat");
     const len = mensajes.length;
     if (len === 0) return;
+
+    // Si los hilos están desactivados, limpiamos cualquier clase residual y salimos
+    if (HILOS_DESACTIVADOS) {
+        for (let i = 0; i < len; i++) {
+            mensajes[i].classList.remove('agrupado-arriba', 'agrupado-abajo');
+        }
+        return;
+    }
 
     let emisorPrev = null;
     let bloquePrev = null;

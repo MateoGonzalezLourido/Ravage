@@ -13,6 +13,7 @@ import {
     cargar_bloque_arriba,
     cargar_bloque_abajo
 } from './chat.js';
+import { HILOS_DESACTIVADOS } from './ajustes.js';
 import {
     manejar_input_escribiendo,
     manejar_solicitud_chat
@@ -429,10 +430,12 @@ async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_m
         nuevoBloque.appendChild(nuevoMensajeEl);
         chatContainer.appendChild(nuevoBloque);
     } else {
-        const lastMessage = lastBlock.querySelector(".mensaje-chat:last-child");
-        if (lastMessage?.dataset.emisorId === id_emisor) {
-            lastMessage.classList.add("agrupado-abajo");
-            nuevoMensajeEl.classList.add("agrupado-arriba");
+        if (!HILOS_DESACTIVADOS) {
+            const lastMessage = lastBlock.querySelector(".mensaje-chat:last-child");
+            if (lastMessage?.dataset.emisorId === id_emisor) {
+                lastMessage.classList.add("agrupado-abajo");
+                nuevoMensajeEl.classList.add("agrupado-arriba");
+            }
         }
         lastBlock.appendChild(nuevoMensajeEl);
     }
