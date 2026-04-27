@@ -36,7 +36,7 @@ import {
 import { manejar_descarga_archivo } from './ui/descarga_archivos.js'
 import { toggle_historial_descargas, mensaje_bienvenida_usuario } from './ui/navegacion_vistas.js'
 import { manejar_ui_cierre_sesion } from './ui/servicios_sesion.js'
-import { establecer_id_usuario, establecer_apodo_usuario, establecer_correo_usuario, cache_input_buscar_chat_ultimo, establecer_cache_busqueda_chat } from './caches_datos.js'
+import { establecer_id_usuario, establecer_apodo_usuario, establecer_correo_usuario, cache_input_buscar_chat_ultimo, establecer_cache_busqueda_chat, DOM_CACHE } from './caches_datos.js'
 
 // Inicializar el bridge de actualización para el backend
 set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
@@ -46,18 +46,18 @@ set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
 // ==========================================
 function inicializar_eventos_globales() {
     // 1. EVENTOS PANEL IZQUIERDO (Lista de Chats)
-    document.getElementById("lista-chats-componentes")?.addEventListener("click", (e) => {
+    DOM_CACHE.lista_chats_componentes?.addEventListener("click", (e) => {
         const componente = e.target.closest('.chat-componente-lista-chats')
         if (componente) { e.preventDefault(); abrir_chat_item(componente.dataset.id) }
     })
 
-    document.getElementById("lista-chats-componentes")?.addEventListener("contextmenu", (e) => {
+    DOM_CACHE.lista_chats_componentes?.addEventListener("contextmenu", (e) => {
         const componente = e.target.closest('.chat-componente-lista-chats')
         if (componente) { e.preventDefault(); mostrar_menu_contextual_lista_chats(e, componente.dataset.id) }
     })
 
     // 2. EVENTOS PANEL DERECHO (Chat Activo & Inputs)
-    const divChatUsuario = document.getElementById("chat-usuario")
+    const divChatUsuario = DOM_CACHE.chat_usuario
     if (divChatUsuario) {
         divChatUsuario.addEventListener("click", (e) => {
             const btnAceptarSol = e.target.closest(".bt-solicitud-aceptar")
@@ -124,12 +124,12 @@ function inicializar_escritura_automatica() {
     // Si se pulsa en el cuerpo del chat, el último input por defecto será el de escritura
     document.addEventListener("click", (e) => {
         if (e.target.closest("#cuerpo-mensajes-chat")) {
-            const chatInput = document.getElementById("textarea-mensaje-escritura");
+            const chatInput = DOM_CACHE.textarea_mensaje_escritura;
             if (chatInput) ultimoInput = chatInput;
         }
 
         if (e.target.closest("#lista-chats") && !e.target.closest(".chat-componente-lista-chats")) {
-            const searchInput = document.getElementById("input-buscar-chat");
+            const searchInput = DOM_CACHE.input_buscar_chat;
             if (searchInput) ultimoInput = searchInput;
         }
     });
@@ -148,8 +148,8 @@ function inicializar_escritura_automatica() {
             // Buscar el objetivo: último usado, o el chat, o el buscador
             const target = (ultimoInput && document.body.contains(ultimoInput) && ultimoInput.offsetParent !== null && !ultimoInput.disabled)
                 ? ultimoInput
-                : document.getElementById("textarea-mensaje-escritura")
-                || document.getElementById("input-buscar-chat");
+                : DOM_CACHE.textarea_mensaje_escritura
+                || DOM_CACHE.input_buscar_chat;
 
             if (target && !target.disabled) {
                 target.focus();
@@ -172,7 +172,8 @@ async function preparar_interfaz_y_servicios() {
     document.getElementById("bt-seccion-historial-archivos")?.addEventListener("click", toggle_historial_descargas)
 
     
-    const input_buscar_chat = document.getElementById("input-buscar-chat")
+    
+    const input_buscar_chat = DOM_CACHE.input_buscar_chat
     input_buscar_chat?.addEventListener("keyup", (e) => {
         e.preventDefault()
         const valor = input_buscar_chat.value.trim()
@@ -213,6 +214,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("[Renderer] DOMContentLoaded - Iniciando arranque...");
 
     try {
+        // 0. Inicializar caché del DOM
+        DOM_CACHE.inicializar_estaticos();
+
         // 1. Procesos de arranque
         console.log("[Renderer] Obteniendo ID de usuario...");
         const [id_mongo, apodo, correo] = await Promise.all([

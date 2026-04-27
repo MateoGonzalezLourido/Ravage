@@ -1,5 +1,5 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
-import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario } from '../caches_datos.js'
+import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario, DOM_CACHE } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
 import { safeIdSelector } from './seguridad_ui.js';
@@ -685,7 +685,7 @@ async function _resolver_nombres(mensajes, contactos) {
 }
 // Nueva función que sustituye a _rearmar_agrupacion_dom() en inserciones
 async function _rearmar_agrupacion_dom() {
-    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
+    const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;
     if (!chatContainer) return;
 
     const todos = chatContainer.querySelectorAll(".mensaje-chat");
@@ -713,7 +713,7 @@ async function _rearmar_agrupacion_dom() {
  */
 async function _renderizar_bloque_en_dom(mensajes, opciones) {
     const { map_nombres, escaneres_seguridad, id_propio, datos_chat, posicion } = opciones;
-    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
+    const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;
     if (!chatContainer || mensajes.length === 0) return;
 
     const grupos = _agrupar_por_dia(mensajes);
@@ -786,7 +786,7 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
  * @param {'arriba'|'abajo'} extremo - Qué extremo reciclar
  */
 function _reciclar_mensajes(extremo) {
-    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
+    const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;
     if (!chatContainer) return;
 
     const todos = chatContainer.querySelectorAll(".mensaje-chat");

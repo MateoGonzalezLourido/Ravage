@@ -1,10 +1,10 @@
 import { crear_chat_historial_archivos_descargados } from './historial_archivos_descargados.js'
-import { obtener_apodo_usuario } from '../caches_datos.js'
+import { obtener_apodo_usuario, DOM_CACHE } from '../caches_datos.js'
 
 export function toggle_historial_descargas() {
-    const seccionHistorial = document.getElementById("seccion-historial-archivos-alineador")
-    const chatUsuario = document.getElementById("chat-usuario")
-    const infoChatSeccion = document.getElementById("info-chat-seccion")
+    const seccionHistorial = DOM_CACHE.seccion_historial_archivos
+    const chatUsuario = DOM_CACHE.chat_usuario
+    const infoChatSeccion = DOM_CACHE.info_chat_seccion
 
     if (!seccionHistorial || !chatUsuario) return
 

@@ -1,5 +1,5 @@
 import { limpiar_archivos_mensaje } from './manejador_archivos.js'
-import { ID_USUARIO_MONGO, batchRequestCache } from '../caches_datos.js'
+import { ID_USUARIO_MONGO, batchRequestCache, DOM_CACHE } from '../caches_datos.js'
 import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
 import {
     chat_componente_lista_estructura_html,
@@ -27,7 +27,7 @@ const MODELO_DATOS_NECESARIOS_CHAT = {
 };
 
 export function cerrar_paneles_al_abrir_chat() {
-    const infoSeccion = document.getElementById("info-chat-seccion")
+    const infoSeccion = DOM_CACHE.info_chat_seccion
     if (infoSeccion && infoSeccion.classList.contains("abierto")) {
         infoSeccion.classList.remove("abierto")
     }
@@ -36,8 +36,8 @@ export function cerrar_paneles_al_abrir_chat() {
         ventanaArchivos.classList.remove("abierto")
         setTimeout(() => ventanaArchivos.remove(), 310)
     }
-    const seccionHistorial = document.getElementById("seccion-historial-archivos-alineador")
-    const chatUsuario = document.getElementById("chat-usuario")
+    const seccionHistorial = DOM_CACHE.seccion_historial_archivos
+    const chatUsuario = DOM_CACHE.chat_usuario
     if (seccionHistorial && !seccionHistorial.classList.contains("ocultar-display")) {
         seccionHistorial.classList.add("ocultar-display")
         if (chatUsuario) chatUsuario.classList.remove("ocultar-display")
@@ -176,7 +176,7 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
 
 let timer_spin;
 export async function abrir_chat_item(id_chat, force = false) {
-    if (!force && document.querySelector(`#nav-principal-chat-usuario[data-id="${id_chat}"]`)) {
+    if (!force && DOM_CACHE.nav_principal_chat_usuario?.dataset.id === id_chat) {
         scroll_fin_chat(true);
         return;
     }
@@ -193,7 +193,7 @@ export async function abrir_chat_item(id_chat, force = false) {
         document.querySelectorAll(".sync-spinner").forEach(el => el.remove())
 
         timer_spin = setTimeout(() => {
-            document.getElementById("chat-usuario").insertAdjacentHTML("afterbegin", "<div class='sync-spinner chat-spinner'></div>")
+            DOM_CACHE.chat_usuario?.insertAdjacentHTML("afterbegin", "<div class='sync-spinner chat-spinner'></div>")
         }, 3000)
 
         const [datos_chat, id_usuario] = await Promise.all([
@@ -215,9 +215,14 @@ export async function abrir_chat_item(id_chat, force = false) {
 
         limpiar_archivos_mensaje()
         destruir_virtualizacion()
-        document.getElementById("chat-usuario").innerHTML = await Crear_chat_html(datos_chat, id_usuario)
+        
+        const htmlChat = await Crear_chat_html(datos_chat, id_usuario);
+        DOM_CACHE.chat_usuario.innerHTML = htmlChat;
+        
+        // Refrescar caché de elementos dinámicos después de inyectar el HTML
+        DOM_CACHE.refrescar_elementos_chat();
 
-        const textarea = document.getElementById("textarea-mensaje-escritura");
+        const textarea = DOM_CACHE.textarea_mensaje_escritura;
         if (textarea) {
             textarea.focus()
             manejar_input_escribiendo(textarea)
@@ -227,8 +232,8 @@ export async function abrir_chat_item(id_chat, force = false) {
         registrar_scroll_usuario()
 
 
-        const chatContainer = document.getElementById("cuerpo-mensajes-chat");
-        chatContainer.addEventListener("click", (pulsado) => {
+        const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;
+        chatContainer?.addEventListener("click", (pulsado) => {
             pulsado.currentTarget.querySelector(".asunto-svg")?.addEventListener("click", (el) => {
                 el.stopPropagation()
                 navigator.clipboard.writeText(el.currentTarget.querySelector('svg').outerHTML);
@@ -315,7 +320,7 @@ export async function refrescar_componente_lista_chats(id_chat, componente, noti
 
         componente.innerHTML = contenido_nuevo
 
-        const lista_contenedor = document.getElementById("lista-chats-componentes")
+        const lista_contenedor = DOM_CACHE.lista_chats_componentes
         if (lista_contenedor && componente) {
             lista_contenedor.prepend(componente)
         }
@@ -395,9 +400,9 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
 }
 
 async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad }) {
-    if (!document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(id_chat_str)}`)) return;
+    if (DOM_CACHE.nav_principal_chat_usuario?.dataset.id !== id_chat_str) return;
 
-    const chatContainer = document.getElementById("cuerpo-mensajes-chat");
+    const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;
     if (!chatContainer) return;
 
     // Evitar duplicados
@@ -442,7 +447,7 @@ let _timer_scroll_usuario = null;
 const PORCENTAJE_UMBRAL_CARGA = 0.35; //% de la altura total del scroll para disparar carga
 
 export function registrar_scroll_usuario() {
-    const chatCuerpo = document.getElementById("cuerpo-mensajes-chat")
+    const chatCuerpo = DOM_CACHE.cuerpo_mensajes_chat
     if (!chatCuerpo) return;
 
     const marcar = () => {
@@ -500,7 +505,7 @@ export function registrar_scroll_usuario() {
 
         // Detección visual de "arriba de todo" (independiente de la carga)
         const isAtTop = scrollTop <= 25;
-        const navChat = document.getElementById("nav-principal-chat-usuario");
+        const navChat = DOM_CACHE.nav_principal_chat_usuario;
         if (navChat) {
             if (isAtTop) navChat.classList.add("at-top");
             else navChat.classList.remove("at-top");
@@ -526,7 +531,7 @@ export function registrar_scroll_usuario() {
 
 let scrollTimeout = null;
 export function scroll_fin_chat(forzar = false) {
-    const chatCuerpo = document.getElementById("cuerpo-mensajes-chat")
+    const chatCuerpo = DOM_CACHE.cuerpo_mensajes_chat
     if (!chatCuerpo) return;
 
     // Si el usuario está scrolleando manualmente NO bajamos automáticamente,

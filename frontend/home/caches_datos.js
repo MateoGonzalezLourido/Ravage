@@ -114,3 +114,44 @@ export function obtener_archivos_adjuntos_lista() {
     return Array.from(cache_archivos_adjuntos.values());
 }
 
+
+// --- CACHÉ DE ELEMENTOS DEL DOM (OPTIZACIÓN) ---
+
+/**
+ * Almacén central de referencias a elementos del DOM.
+ * Evita el uso repetitivo de querySelector/getElementById en eventos de alta frecuencia.
+ */
+export const DOM_CACHE = {
+    // Estáticos (No cambian durante la sesión)
+    lista_chats_componentes: null,
+    chat_usuario: null,
+    input_buscar_chat: null,
+    info_chat_seccion: null,
+    seccion_historial_archivos: null,
+    
+    // Dinámicos (Cambian al abrir un chat diferente)
+    cuerpo_mensajes_chat: null,
+    textarea_mensaje_escritura: null,
+    nav_principal_chat_usuario: null,
+
+    /**
+     * Inicializa las referencias a elementos que son permanentes en home.html
+     */
+    inicializar_estaticos() {
+        this.lista_chats_componentes = document.getElementById("lista-chats-componentes");
+        this.chat_usuario = document.getElementById("chat-usuario");
+        this.input_buscar_chat = document.getElementById("input-buscar-chat");
+        this.info_chat_seccion = document.getElementById("info-chat-seccion");
+        this.seccion_historial_archivos = document.getElementById("seccion-historial-archivos-alineador");
+    },
+
+    /**
+     * Actualiza las referencias a elementos que se recrean al abrir un chat.
+     * Debe llamarse después de inyectar el HTML del chat en chat-usuario.
+     */
+    refrescar_elementos_chat() {
+        this.cuerpo_mensajes_chat = document.getElementById("cuerpo-mensajes-chat");
+        this.textarea_mensaje_escritura = document.getElementById("textarea-mensaje-escritura");
+        this.nav_principal_chat_usuario = document.getElementById("nav-principal-chat-usuario");
+    }
+};
