@@ -1,5 +1,5 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
-import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario, DOM_CACHE } from '../caches_datos.js'
+import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario, DOM_CACHE, guardar_cache_virtualizacion, obtener_cache_virtualizacion } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat } from './gestor_chats.js'
 import { safeIdSelector } from './seguridad_ui.js';
@@ -592,6 +592,14 @@ export function obtener_estado_virtualizacion() {
 }
 
 export function destruir_virtualizacion() {
+    if (_virt) {
+        guardar_cache_virtualizacion(
+            _virt.id_chat,
+            _virt.datos_chat.mensajes,
+            _virt._hay_mas_inicial,
+            _virt.cache_paginacion
+        );
+    }
     _virt = null;
 }
 
@@ -1075,6 +1083,14 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 
         let mensajes = (datos.mensajes || []).filter(m => m && typeof m === 'object');
         let initial_paginacion_hay_mas = null;
+        let cache_virt = obtener_cache_virtualizacion(datos._id);
+
+        if (mensajes.length === 0 && cache_virt && cache_virt.mensajes_iniciales) {
+            console.debug(`[Virtualización] Usando caché RAM para mensajes iniciales de ${datos._id}`);
+            mensajes = cache_virt.mensajes_iniciales;
+            initial_paginacion_hay_mas = cache_virt.hay_mas_inicial;
+            datos.mensajes = mensajes;
+        }
 
         if (mensajes.length === 0) {
             console.debug(`[Virtualización] No hay mensajes iniciales en datos. Pidiendo primer bloque al backend.`);
@@ -1128,7 +1144,8 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             cargando: false,
             _id_mas_antiguo: mensajes[0]?._id || mensajes[0]?.id,
             _id_mas_nuevo: mensajes[mensajes.length - 1]?._id || mensajes[mensajes.length - 1]?.id,
-            cache_paginacion: {},
+            cache_paginacion: cache_virt && cache_virt.cache_paginacion ? { ...cache_virt.cache_paginacion } : {},
+            _hay_mas_inicial: initial_hay_mas,
             mensajes_escaneados: new Set(),
             cache_tags_asincronos: {}
         };

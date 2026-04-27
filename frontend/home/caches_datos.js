@@ -114,6 +114,73 @@ export function obtener_archivos_adjuntos_lista() {
     return Array.from(cache_archivos_adjuntos.values());
 }
 
+// --- CACHÉ DE VIRTUALIZACIÓN DE CHATS ---
+
+const MAX_CHATS_CACHE_VIRTUALIZACION = 10;
+const MAX_BLOQUES_PAGINACION_EXTRA = 3; // Bloques extra a guardar además de los mensajes iniciales (total 4)
+
+/**
+ * Caché de los primeros bloques de virtualización de chats.
+ * Almacena los bloques recuperados para evitar consultas a BD al alternar rápidamente entre chats.
+ */
+export const CACHE_VIRTUALIZACION = new Map();
+
+export function guardar_cache_virtualizacion(id_chat, mensajes_iniciales, hay_mas_inicial, cache_paginacion) {
+    if (!id_chat) return;
+
+    const paginacion_guardar = {};
+    let bloques_guardados = 0;
+    if (cache_paginacion) {
+        const keys = Object.keys(cache_paginacion);
+        for (let i = 0; i < Math.min(keys.length, MAX_BLOQUES_PAGINACION_EXTRA); i++) {
+            paginacion_guardar[keys[i]] = cache_paginacion[keys[i]];
+            bloques_guardados++;
+        }
+    }
+
+    CACHE_VIRTUALIZACION.set(id_chat, {
+        timestamp: Date.now(),
+        mensajes_iniciales,
+        hay_mas_inicial,
+        cache_paginacion: paginacion_guardar
+    });
+    console.debug(`[Cache Virtualización] Guardado chat ${id_chat} en RAM. Mensajes iniciales: ${mensajes_iniciales?.length || 0}. Bloques extra: ${bloques_guardados}`);
+
+    if (CACHE_VIRTUALIZACION.size > MAX_CHATS_CACHE_VIRTUALIZACION) {
+        let key_mas_vieja = null;
+        let tiempo_mas_viejo = Infinity;
+        for (const [key, value] of CACHE_VIRTUALIZACION.entries()) {
+            if (value.timestamp < tiempo_mas_viejo) {
+                tiempo_mas_viejo = value.timestamp;
+                key_mas_vieja = key;
+            }
+        }
+        if (key_mas_vieja) {
+            CACHE_VIRTUALIZACION.delete(key_mas_vieja);
+            console.debug(`[Cache Virtualización] Límite de ${MAX_CHATS_CACHE_VIRTUALIZACION} alcanzado. Chat viejo ${key_mas_vieja} eliminado.`);
+        }
+    }
+}
+
+export function obtener_cache_virtualizacion(id_chat) {
+    if (!id_chat) return null;
+    const cache = CACHE_VIRTUALIZACION.get(id_chat);
+    if (cache) {
+        cache.timestamp = Date.now(); // Actualizar uso (LRU)
+        console.debug(`[Cache Virtualización] Recuperado chat ${id_chat} de la RAM.`);
+        return cache;
+    }
+    return null;
+}
+
+export function invalidar_cache_virtualizacion(id_chat) {
+    if (!id_chat) return;
+    if (CACHE_VIRTUALIZACION.has(id_chat)) {
+        CACHE_VIRTUALIZACION.delete(id_chat);
+        console.debug(`[Cache Virtualización] Chat ${id_chat} invalidado por nueva actualización.`);
+    }
+}
+
 
 // --- CACHÉ DE ELEMENTOS DEL DOM (OPTIZACIÓN) ---
 

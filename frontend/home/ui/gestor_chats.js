@@ -1,5 +1,5 @@
 import { limpiar_archivos_mensaje } from './manejador_archivos.js'
-import { ID_USUARIO_MONGO, batchRequestCache, DOM_CACHE } from '../caches_datos.js'
+import { ID_USUARIO_MONGO, batchRequestCache, DOM_CACHE, invalidar_cache_virtualizacion } from '../caches_datos.js'
 import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
 import {
     chat_componente_lista_estructura_html,
@@ -340,6 +340,9 @@ export async function refrescar_componente_lista_chats(id_chat, componente, noti
 let cola_render = Promise.resolve();
 
 export function Actualizar_render_chat(params) {
+    if (params && params.chat) {
+        invalidar_cache_virtualizacion(params.chat.toString());
+    }
     // Precalcular datos ANTES de entrar en la cola (en paralelo con otros mensajes)
     const datos_promise = _preparar_datos_mensaje(params);
     cola_render = cola_render.then(async () => {
