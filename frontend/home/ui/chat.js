@@ -848,6 +848,8 @@ function _reciclar_mensajes(extremo) {
 export async function cargar_bloque_arriba() {
     if (!_virt || _virt.cargando || !_virt.hay_mas_arriba) return;
     _virt.cargando = true;
+    const navChat = document.getElementById("nav-principal-chat-usuario");
+    if (navChat) navChat.classList.add("loading-messages");
     try {
         const chatContainer = document.getElementById("cuerpo-mensajes-chat");
         if (!chatContainer) return;
@@ -917,6 +919,8 @@ export async function cargar_bloque_arriba() {
         _reciclar_mensajes('abajo');
     } finally {
         _virt.cargando = false;
+        const navChat = document.getElementById("nav-principal-chat-usuario");
+        if (navChat) navChat.classList.remove("loading-messages");
     }
 }
 

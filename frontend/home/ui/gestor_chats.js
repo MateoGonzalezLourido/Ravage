@@ -494,18 +494,30 @@ export function registrar_scroll_usuario() {
 
     // Detectar scroll para virtualización: cargar más mensajes al llegar a los bordes
     chatCuerpo.addEventListener("scroll", () => {
+        const scrollTop = Math.ceil(chatCuerpo.scrollTop);
+        const scrollHeight = chatCuerpo.scrollHeight;
+        const clientHeight = chatCuerpo.clientHeight;
+
+        // Detección visual de "arriba de todo" (independiente de la carga)
+        const isAtTop = scrollTop <= 25;
+        const navChat = document.getElementById("nav-principal-chat-usuario");
+        if (navChat) {
+            if (isAtTop) navChat.classList.add("at-top");
+            else navChat.classList.remove("at-top");
+        }
+
         const virt = obtener_estado_virtualizacion();
         if (!virt || virt.cargando) return;
 
-        const umbralDinamico = chatCuerpo.scrollHeight * PORCENTAJE_UMBRAL_CARGA;
+        const umbralDinamico = scrollHeight * PORCENTAJE_UMBRAL_CARGA;
 
-        // Scroll cerca del tope → cargar mensajes más antiguos
-        if (chatCuerpo.scrollTop < umbralDinamico && virt.hay_mas_arriba) {
+        // Scroll cerca del tope o en el tope absoluto → cargar mensajes más antiguos
+        if ((scrollTop < umbralDinamico || isAtTop) && virt.hay_mas_arriba) {
             cargar_bloque_arriba();
         }
 
         // Scroll cerca del fondo → cargar mensajes más nuevos (si se reciclaron)
-        const distanciaAlFondo = chatCuerpo.scrollHeight - chatCuerpo.scrollTop - chatCuerpo.clientHeight;
+        const distanciaAlFondo = scrollHeight - scrollTop - clientHeight;
         if (distanciaAlFondo < umbralDinamico && virt.hay_mas_abajo) {
             cargar_bloque_abajo();
         }
@@ -514,19 +526,23 @@ export function registrar_scroll_usuario() {
 
 let scrollTimeout = null;
 export function scroll_fin_chat(forzar = false) {
-    if (!forzar && _usuario_scrolleando) return;
     const chatCuerpo = document.getElementById("cuerpo-mensajes-chat")
-    if (chatCuerpo) {
-        if (scrollTimeout) return;
+    if (!chatCuerpo) return;
 
-        scrollTimeout = setTimeout(() => {
-            chatCuerpo.scrollTo({
-                top: chatCuerpo.scrollHeight,
-                behavior: "smooth"
-            });
-            scrollTimeout = null;
-        }, 150);
-    }
+    // Si el usuario está scrolleando manualmente NO bajamos automáticamente,
+    // A MENOS que ya esté prácticamente al final (en cuyo caso mantenemos el scroll pegado al fondo)
+    const estaAlFinal = (chatCuerpo.scrollHeight - Math.ceil(chatCuerpo.scrollTop) - chatCuerpo.clientHeight) < 50;
+
+    if (!forzar && _usuario_scrolleando && !estaAlFinal) return;
+    if (scrollTimeout) return;
+
+    scrollTimeout = setTimeout(() => {
+        chatCuerpo.scrollTo({
+            top: chatCuerpo.scrollHeight,
+            behavior: "smooth"
+        });
+        scrollTimeout = null;
+    }, 150);
 }
 
 // ─── INICIO Y UTILIDADES ──────────────────────────────────────────────────────

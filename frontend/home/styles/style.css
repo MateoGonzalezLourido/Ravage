@@ -1194,6 +1194,7 @@ input[type="number"]::-webkit-outer-spin-button {
    CABECERA DEL CHAT (Nav Principal)
    ========================================= */
 #nav-principal-chat-usuario {
+    position: relative;
     width: calc(100% - 32px);
     margin: 16px auto 8px auto;
     min-height: 64px !important;
@@ -1217,6 +1218,27 @@ input[type="number"]::-webkit-outer-spin-button {
 #nav-principal-chat-usuario:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
     transform: translateY(-1.5px);
+}
+
+#nav-principal-chat-usuario.loading-messages.at-top::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 10%;
+    right: 10%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #3b82f6, #60a5fa, #3b82f6, transparent);
+    background-size: 200% 100%;
+    animation: nav-loading-slide 1.5s infinite linear;
+    box-shadow: 0 2px 15px rgba(59, 130, 246, 0.6);
+    opacity: 1;
+    z-index: 11;
+    border-radius: 10px;
+}
+
+@keyframes nav-loading-slide {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 #nombre-chat-nav {
