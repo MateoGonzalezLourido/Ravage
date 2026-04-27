@@ -175,7 +175,8 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
 
 let timer_spin;
 export async function abrir_chat_item(id_chat, force = false) {
-    if (!force && document.getElementById(`nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) {
+    if (!force && document.getElementById(`nav-prinicpal-chat-usaurio`)?.dataset?.id==id_chat) {
+        scroll_fin_chat(true);
         return;
     }
 
