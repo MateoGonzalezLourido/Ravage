@@ -36,6 +36,9 @@ app.commandLine.appendSwitch('disable-component-update');
 app.commandLine.appendSwitch('metrics-recording-only');
 app.commandLine.appendSwitch('no-pings');
 
+import { app, ipcMain, path } from './backend/utils/libs.js';
+import { fileURLToPath } from 'url';
+
 if (process.env.MODO_DEBUG === "true") {
     const HEAP_WARN_THRESHOLD = HEAP_LIMIT_MB * 0.8; // alerta al 80%
 
@@ -53,9 +56,6 @@ if (process.env.MODO_DEBUG === "true") {
         }
     }, 5000);
 }
-
-import { app, ipcMain, path } from './backend/utils/libs.js';
-import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

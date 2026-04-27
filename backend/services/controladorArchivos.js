@@ -4,7 +4,19 @@ import { randomBytes, createCipheriv, createDecipheriv, fs, path, app } from '..
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../repositories/UserRepository.js';
 
-const SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
+// Clave secreta para cifrar archivos locales (ajustes, sesión, etc.)
+// Se inicializa de forma perezosa para evitar errores si process.env aún no está cargado
+let _SECRET_KEY_COKKIE;
+function getSecretKeyCokkie() {
+    if (!_SECRET_KEY_COKKIE) {
+        if (!process.env.SECRET_KEY_COKKIE) {
+            log.error("FALTA process.env.SECRET_KEY_COKKIE. Asegúrate de que el .env esté cargado.");
+            throw new Error("SECRET_KEY_COKKIE no definida");
+        }
+        _SECRET_KEY_COKKIE = Buffer.from(process.env.SECRET_KEY_COKKIE, 'hex');
+    }
+    return _SECRET_KEY_COKKIE;
+}
 const algorithm = "aes-256-gcm";
 
 // Rutas estandarizadas
@@ -137,7 +149,7 @@ async function readFileSession(rutaKey, cifrado = true) {
         const useGlobalKey = ['sessionFile', 'identity', 'cacheChatsFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile', 'cacheHistorialBusquedasAñadir'].includes(rutaKey);
 
         if (useGlobalKey) {
-            secretKey = SECRET_KEY_COKKIE;
+            secretKey = getSecretKeyCokkie();
         } else {
             const currentKey = getSecretKEY();
             if (!currentKey) {
@@ -182,7 +194,7 @@ async function getAjustesAppFile(nombre = null) {
 
         // Si el archivo ya está cifrado (tiene iv, tag, data)
         if (raw.iv && raw.tag && raw.data) {
-            const decipher = createDecipheriv(algorithm, SECRET_KEY_COKKIE, Buffer.from(raw.iv, "hex"));
+            const decipher = createDecipheriv(algorithm, getSecretKeyCokkie(), Buffer.from(raw.iv, "hex"));
             decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
             const decrypted = Buffer.concat([
                 decipher.update(Buffer.from(raw.data, "hex")),
@@ -236,7 +248,7 @@ async function limpiarArchivosCompleto() {
 async function CifrarDatosArchivos(data, especial) {
     let secretKey;
     if (especial === 'global' || especial === 'sessionFile') {
-        secretKey = SECRET_KEY_COKKIE;
+        secretKey = getSecretKeyCokkie();
     } else {
         secretKey = getSecretKEY() || await ActualizarSecretKeyUsuario();
     }
