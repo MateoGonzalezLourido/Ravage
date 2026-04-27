@@ -1193,7 +1193,7 @@ input[type="number"]::-webkit-outer-spin-button {
 /* =========================================
    CABECERA DEL CHAT (Nav Principal)
    ========================================= */
-#nav-prinicpal-chat-usaurio {
+#nav-principal-chat-usuario {
     width: calc(100% - 32px);
     margin: 16px auto 8px auto;
     min-height: 64px !important;
@@ -1214,7 +1214,7 @@ input[type="number"]::-webkit-outer-spin-button {
     transform: translateZ(0);
 }
 
-#nav-prinicpal-chat-usaurio:hover {
+#nav-principal-chat-usuario:hover {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
     transform: translateY(-1.5px);
 }

@@ -1154,7 +1154,7 @@ export async function Crear_chat_html(datos, id_propio) {
     }, 0);
 
     return `
-    <div id="nav-prinicpal-chat-usaurio" data-id="${datos?._id}">
+    <div id="nav-principal-chat-usuario" data-id="${datos?._id}">
         <div id="nombre-chat-nav"><span>${nombre_chat}</span></div>
     </div>
     
@@ -1194,10 +1194,10 @@ const normalizeIdHelper = (id) => {
     return id.toString();
 }
 
-export async function mostrar_datos_chat_usaurios(e) {
+export async function mostrar_datos_chat_usuarios(e) {
     e.preventDefault()
     // MOSTRAR DATOS DEL USUARIO Y DEL CHAT
-    const id_chat = e.currentTarget.dataset.id || document.getElementById("nav-prinicpal-chat-usaurio")?.dataset.id
+    const id_chat = e.currentTarget.dataset.id || document.querySelector("#nav-principal-chat-usuario")?.dataset.id
     if (!id_chat) return;
 
     const [cache_persistente, cache_activo] = await Promise.all([
@@ -1245,7 +1245,7 @@ export async function mostrar_datos_chat_usaurios(e) {
     const infoSeccion = document.getElementById("info-chat-seccion")
 
     //crear html de la seccion
-    const nombre_chat = document.getElementById("nombre-chat-nav span")?.textContent || nombre_defecto
+    const nombre_chat = document.querySelector("#nombre-chat-nav span")?.textContent || nombre_defecto
     const integrantes_chat = () => {
         return `<div> ${[...new Set(info_chat?.usuarios)]?.length || 0} integrantes</div> `
     }
@@ -1462,36 +1462,36 @@ export async function mostrar_datos_chat_usaurios(e) {
                 const resultado = await window.chats.EXPULSAR_USUARIO_CHAT(id, id_chat)
                 if (resultado) {
                     // actualizar seccion info chat
-                    mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
+                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
                 }
             }
             else if (action === "hacer-admin") {
                 const resultado = await window.chats.HACER_ADMIN_CHAT(id_chat, id);
                 if (resultado) {
-                    mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
+                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
                 }
             }
             else if (action === "quitar-admin") {
                 const resultado = await window.chats.QUITAR_ADMIN_CHAT(id_chat, id);
                 if (resultado) {
-                    mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
+                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
                 }
             }
             else if (action === "silenciar") {
                 await window.social_usuario.AÑADIR_USUARIO_SILENCIADOS(id, "");
-                mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
             }
             else if (action === "desilenciar") {
                 await window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(id);
-                mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
             }
             else if (action === "bloquear") {
                 await window.social_usuario.AÑADIR_USUARIO_BLOQUEADOS(id, "");
-                mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
             }
             else if (action === "desbloquear") {
                 await window.social_usuario.ELIMINAR_USUARIO_BLOQUEADO(id);
-                mostrar_datos_chat_usaurios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
             }
             else if (action === "añadir-contacto") { //editar nombre/extension
                 //comprobar si ya es contacto

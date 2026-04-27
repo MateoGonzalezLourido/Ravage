@@ -176,7 +176,7 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
 
 let timer_spin;
 export async function abrir_chat_item(id_chat, force = false) {
-    if (!force && document.getElementById(`nav-prinicpal-chat-usaurio`)?.dataset?.id==id_chat) {
+    if (!force && document.querySelector(`#nav-principal-chat-usuario[data-id="${id_chat}"]`)) {
         scroll_fin_chat(true);
         return;
     }
@@ -276,7 +276,7 @@ export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
                 const res = await window.chats.BLOQUEAR_CHAT(id_chat)
                 if (res?.success) {
                     window.pushNotificacion({ prioridad: 1, texto: "Bloqueo alterado", tipo: "success" })
-                    if (document.getElementById(`nav-prinicpal-chat-usaurio${safeIdSelector(id_chat)}`)) await abrir_chat_item(id_chat, true)
+                    if (document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(id_chat)}`)) await abrir_chat_item(id_chat, true)
                 }
             }
             await ACTUALIZAR_LISTAS_CHAT()
@@ -395,7 +395,7 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
 }
 
 async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad }) {
-    if (!document.getElementById(`nav-prinicpal-chat-usaurio${safeIdSelector(id_chat_str)}`)) return;
+    if (!document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(id_chat_str)}`)) return;
 
     const chatContainer = document.getElementById("cuerpo-mensajes-chat");
     if (!chatContainer) return;
@@ -541,7 +541,7 @@ export async function INICIO_CHAT_MENU_PRINCIPAL() {
 }
 
 export async function cambiar_datos_componente_lista_chats({ id_chat, data, notificacion = false }) {
-    const componente_lista = document.getElementById(`lista-chats-componentes ${safeIdSelector(id_chat)}`)
+    const componente_lista = document.querySelector(`#lista-chats-componentes ${safeIdSelector(id_chat)}`)
     if (componente_lista) {
         componente_lista.querySelector(".ultimo-mensaje-chat-lista span").innerHTML = escapeHTML(data?.asunto || "");
         componente_lista.querySelector(".fecha-chat-lista span").innerHTML = escapeHTML(texto_mostrar_fecha_mensajes_bloque(data?.data));

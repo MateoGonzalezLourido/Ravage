@@ -12,7 +12,7 @@ export async function manejar_descarga_archivo(e) {
     const tag = el.dataset.tag
     const emisor_id = el.dataset.emisor
     const ratchet_info = el.dataset.ratchet ? JSON.parse(decodeURIComponent(el.dataset.ratchet)) : null
-    const id_chat = document.getElementById("nav-prinicpal-chat-usaurio")?.dataset.id
+    const id_chat = document.querySelector("#nav-principal-chat-usuario")?.dataset.id
     
     const resultado = await window.chats.DESCARGAR_ARCHIVO(id_archivo, nombre_archivo, iv, tag, id_chat, ratchet_info, emisor_id)
     

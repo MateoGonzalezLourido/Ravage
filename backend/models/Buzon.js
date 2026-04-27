@@ -11,13 +11,12 @@ const EntradaSchema = new mongoose.Schema({
     data: { type: EncryptedDataSchema, required: true }
 });
 
+const MAX_ENTRADAS = 200;
 
 const BuzonSchema = new mongoose.Schema({
-    id_usuario: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
-    entrada: [EntradaSchema]
+    entrada: [EntradaSchema],
+    createdAt: { type: Date, default: Date.now }
 });
-
-const MAX_ENTRADAS = 200;
 
 BuzonSchema.pre('save', function (next) {
     if (this.entrada.length > MAX_ENTRADAS) {
@@ -28,4 +27,6 @@ BuzonSchema.pre('save', function (next) {
 
 BuzonSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
 
-export const BuzonUsuarios = mongoose.model("BuzonUsuarios", BuzonSchema, "buzon");
+const BuzonUsuarios = mongoose.model("BuzonUsuarios", BuzonSchema, "buzon");
+
+export { BuzonUsuarios, MAX_ENTRADAS };

@@ -3,7 +3,7 @@ import { optimizar_ventana } from '../global/optimizar_ventana.js';
 optimizar_ventana()
 // ─── IMPORTS DE COMPONENTES Y UTILIDADES ──────────────────────────────────
 import { desplegar_menu_añadir_chat, set_callback_actualizar_listas } from './ui/añadir_chats_usuarios.js'
-import { mostrar_datos_chat_usaurios } from './ui/chat.js'
+import { mostrar_datos_chat_usuarios } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes } from './ui/ajustes.js'
 
 // ─── IMPORTS DE MÓDULOS REFACTORIZADOS (NUEVA ARQUITECTURA) ───────────────
@@ -66,7 +66,7 @@ function inicializar_eventos_globales() {
             const btnRechazarSol = e.target.closest(".bt-solicitud-rechazar")
             if (btnRechazarSol) { e.preventDefault(); manejar_solicitud_chat(btnRechazarSol, false); return }
 
-            if (e.target.closest("#nav-prinicpal-chat-usaurio")) { mostrar_datos_chat_usaurios(e); return }
+            if (e.target.closest("#nav-principal-chat-usuario")) { mostrar_datos_chat_usuarios(e); return }
             if (e.target.closest("#bt-añadir-archivo-mensaje-escritura")) { abrir_ventana_archivos(); return }
 
             // Delegación descarga archivos

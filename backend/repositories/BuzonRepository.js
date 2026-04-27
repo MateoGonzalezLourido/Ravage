@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('buzon-repo');
-import { BuzonUsuarios } from '../models/Buzon.js';
+import { BuzonUsuarios, MAX_ENTRADAS } from '../models/Buzon.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { encriptarDatosSistema, desencriptarDatosSistema } from '../services/cryptoService.js';
 import { User } from '../models/User.js';
@@ -44,19 +44,30 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
 
         if (ids_finales.length === 0) return;
 
+        // Excluir al emisor para que no reciba notificaciones de sus propios actos
+        const ids_filtrados = emisorId 
+            ? ids_finales.filter(id => id.toString() !== emisorId.toString())
+            : ids_finales;
+
+        if (ids_filtrados.length === 0) return;
+
         const dataEncriptada = encriptarDatosSistema(data);
-        await BuzonUsuarios.updateMany(
-            { _id: { $in: ids_finales } },
-            {
-                $push: {
-                    entrada: {
-                        $each: [{ tipo, data: dataEncriptada }],
-                        $slice: -20
+        const operations = ids_filtrados.map(id => ({
+            updateOne: {
+                filter: { _id: id },
+                update: {
+                    $push: {
+                        entrada: {
+                            $each: [{ tipo, data: dataEncriptada }],
+                            $slice: -MAX_ENTRADAS
+                        }
                     }
-                }
-            },
-            { upsert: true }
-        );
+                },
+                upsert: true
+            }
+        }));
+
+        await BuzonUsuarios.bulkWrite(operations);
     } catch (e) {
         log.error(e);
     }

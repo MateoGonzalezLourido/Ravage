@@ -17,7 +17,7 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
     //ELEMENTOS DOOM
     const $btnCerrar = document.getElementById("bt-cerrar-menu-añadir-chats");
     const $inputBuscar = document.getElementById("texto-buscar-chat-añadir");
-    const $resultados = document.getElementById("resultados-busqueda-usaurios");
+    const $resultados = document.getElementById("resultados-busqueda-usuarios");
     const $contactosGrupo = document.getElementById("contactos-añadidos-grupo");
     const menu_añadir_chat = document.getElementById("alineador-seccion-añadir-chat")
 
@@ -178,7 +178,7 @@ function quitar_usuarios_lista_añadir(id) {
 
 async function buscar_usuario_añadir_chat(e) {
     /*Buscar el id o correo de un usuario; solo se busca coincidencias exactas, por lo que el resultado es 1 o 0 usuarios*/
-    const clase_cp_posible_usuario_añadir = "componente-posible-usaurio-añadir"
+    const clase_cp_posible_usuario_añadir = "componente-posible-usuario-añadir"
 
     async function buscar_y_procesar_cache(dato, esCorreo) {
         try {
@@ -234,13 +234,13 @@ async function buscar_usuario_añadir_chat(e) {
         if (info_chat?.usuarios?.includes(resultado.id)) resultado = null
     }
 
-    const $resultados_busqueda_usaurios = document.getElementById("resultados-busqueda-usaurios")
+    const $resultados_busqueda_usuarios = document.getElementById("resultados-busqueda-usuarios")
     if (resultado) {
-        $resultados_busqueda_usaurios.innerHTML = `<div class="${clase_cp_posible_usuario_añadir}" data-id="${resultado.id}" data-nombre="${escapeHTML(resultado.nombre)}">${escapeHTML(resultado.nombre)}</div>`
+        $resultados_busqueda_usuarios.innerHTML = `<div class="${clase_cp_posible_usuario_añadir}" data-id="${resultado.id}" data-nombre="${escapeHTML(resultado.nombre)}">${escapeHTML(resultado.nombre)}</div>`
         crear_eventos()
     }
     else {
-        $resultados_busqueda_usaurios.innerHTML = `*No hay resultados`
+        $resultados_busqueda_usuarios.innerHTML = `*No hay resultados`
         return;//evitar eventos doom
     }
 

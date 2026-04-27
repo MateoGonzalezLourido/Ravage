@@ -156,7 +156,7 @@ async function crear_eventos() {
         if (infoChatSeccion) infoChatSeccion.classList.remove("ocultar-display")
 
         // Si el chat ya está cargado y es el mismo, solo scroll
-        const navChat = document.getElementById("nav-prinicpal-chat-usaurio")
+        const navChat = document.querySelector("#nav-principal-chat-usuario")
         if (navChat && navChat.dataset.id === id_chat) {
             hacer_scroll_a_archivo(id_archivo)
         } else {
