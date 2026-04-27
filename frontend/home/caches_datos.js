@@ -12,12 +12,10 @@ export let CORREO_USUARIO = null;
 export function establecer_id_usuario(id) {
     if (!id) return;
     ID_USUARIO_MONGO = id;
-    console.log(`[Cache] ID de usuario establecido`);
 }
 
 export function establecer_apodo_usuario(apodo) {
     APODO_USUARIO = apodo;
-    console.log(`[Cache] Apodo de usuario establecido`);
 }
 
 /**
@@ -25,7 +23,6 @@ export function establecer_apodo_usuario(apodo) {
  */
 export async function obtener_apodo_usuario() {
     if (APODO_USUARIO === null) {
-        console.log("[Cache] Apodo no encontrado en RAM, solicitando por IPC...");
         APODO_USUARIO = await window.cuenta_usuario.GET_APODO_SESION();
     }
     return APODO_USUARIO;
@@ -33,13 +30,11 @@ export async function obtener_apodo_usuario() {
 
 export function borrar_cache_apodo_usuario() {
     APODO_USUARIO = null;
-    console.log("[Cache] Caché de apodo borrada");
 }
 
 export function establecer_correo_usuario(correo) {
     if (!correo) return;
     CORREO_USUARIO = correo;
-    console.log(`[Cache] Correo de usuario establecido`);
 }
 
 // --- CACHÉ DE UI Y ESTADO TEMPORAL ---
@@ -74,23 +69,48 @@ export const CACHE_USUARIOS_ACTIVO = new Map();
  * Centralizado para evitar duplicidad de peticiones en un corto periodo de tiempo.
  */
 export const batchRequestCache = {
-    data: new Map(),
+    _data: new Map(),
 
     async get(key, fetcher, ttl = 500) {
         const now = Date.now();
-        const entry = this.data.get(key);
+        const entry = this._data.get(key);
 
-        if (!entry || entry.expiry < now) {
-            this.data.set(key, { value: await fetcher(), expiry: now + ttl });
+        if (entry && entry.expiry > now) {
+            return entry.value;
         }
-        return this.data.get(key).value;
+
+        const value = await fetcher();
+        this._data.set(key, { value, expiry: now + ttl });
+        
+        // Limpieza automática simple si crece mucho
+        if (this._data.size > 100) {
+            const keys = this._data.keys();
+            for (let i = 0; i < 20; i++) {
+                this._data.delete(keys.next().value);
+            }
+        }
+
+        return value;
+    },
+
+    clear() {
+        this._data.clear();
     }
 };
 
 /**
  * Almacena los archivos seleccionados para el próximo mensaje que se va a enviar.
+ * Se usa un Map si se necesita búsqueda por nombre/id, pero para envío secuencial Array es suficiente.
+ * Optamos por Map para evitar duplicados por ruta.
  */
-export let cache_archivos_adjuntos = [];
+export const cache_archivos_adjuntos = new Map();
 export function establecer_cache_archivos_adjuntos(archivos) {
-    cache_archivos_adjuntos = archivos;
+    cache_archivos_adjuntos.clear();
+    if (Array.isArray(archivos)) {
+        archivos.forEach(a => cache_archivos_adjuntos.set(a.path || a.name, a));
+    }
 }
+export function obtener_archivos_adjuntos_lista() {
+    return Array.from(cache_archivos_adjuntos.values());
+}
+

@@ -1,6 +1,10 @@
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { escapeHTML } from './seguridad_ui.js';
-import { cache_archivos_adjuntos, establecer_cache_archivos_adjuntos } from '../caches_datos.js';
+import { 
+    cache_archivos_adjuntos, 
+    establecer_cache_archivos_adjuntos, 
+    obtener_archivos_adjuntos_lista 
+} from '../caches_datos.js';
 
 
 export function limpiar_archivos_mensaje() {
@@ -8,35 +12,38 @@ export function limpiar_archivos_mensaje() {
 }
 
 export function obtener_archivos_mensaje() {
-    return [...cache_archivos_adjuntos];
+    return obtener_archivos_adjuntos_lista();
 }
 
 export async function render_html_lista_archivos() {
     const html = []
-    //crear una cache que ayude a renderizar mas rapido
     const cache_propia_url_iconos = {}
     let guardados = 0
-    for (let i = 0; i < cache_archivos_adjuntos.length; i++) {
-        const activo = cache_archivos_adjuntos[i]
+    const lista = obtener_archivos_adjuntos_lista();
+    
+    for (let i = 0; i < lista.length; i++) {
+        const activo = lista[i]
         let [url, idn] = [cache_propia_url_iconos[activo.extension] || null, true]
         if (!url) {
             [url, idn] = await url_icono_extension_img(activo.extension)
             cache_propia_url_iconos[activo.extension] = url
             guardados++
         }
-        //borrar ultimo si guardados>=200
         if (guardados >= 200) {
             delete cache_propia_url_iconos[Object.keys(cache_propia_url_iconos)[0]]
             guardados--
         }
+        
+        // Usamos la ruta o el nombre como ID único para el dataset
+        const fileId = activo.ruta || activo.nombre;
+        
         html.push(`
-        <div data-indice="${i}" class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
+        <div data-id="${escapeHTML(fileId)}" class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
             <div class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
                 <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
                     <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
                     <span class="info-chat-participante-nombre">${idn ? escapeHTML(activo.nombre) : escapeHTML(activo.nombre) + "." + escapeHTML(activo.extension)}</span>
                 </div>
-
             </div>
         </div>`)
     }
@@ -71,15 +78,13 @@ export async function abrir_ventana_archivos() {
     ventana.style.width = "0"
     document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
 
-    // Ocultar modal info si existe
     const infoSec = document.getElementById("info-chat-seccion")
     if (infoSec && infoSec.classList.contains("abierto")) {
-        // Animación simultánea: cerramos info mientras abrimos archivos
         infoSec.classList.remove("abierto")
     }
 
     requestAnimationFrame(() => requestAnimationFrame(() => {
-        ventana.style.width = "" // Permitir que CSS controle el ancho (350px en .abierto)
+        ventana.style.width = "" 
         ventana.classList.add("abierto")
         
         const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
@@ -91,8 +96,6 @@ export function cerrar_ventana_archivos() {
     const ven = document.querySelector(".ventana-archivos-mensaje")
     if (ven) {
         ven.classList.remove("abierto")
-        
-        // Solo quitamos la clase de ajuste de chat si NO hay otros paneles abiertos (como info)
         const infoSec = document.getElementById("info-chat-seccion")
         const algunOtroAbierto = infoSec && infoSec.classList.contains("abierto")
         
@@ -107,21 +110,25 @@ export function cerrar_ventana_archivos() {
 
 export async function añadir_archivos_dialogo() {
     const archivos = await window.chats.SELECCIONAR_ARCHIVOS()
+    if (!archivos) return;
+
+    const listaActual = obtener_archivos_adjuntos_lista();
     for (const activo of archivos) {
         const est = activo.includes('\\') ? activo.split('\\') : activo.split('/')
         const fn = est[est.length - 1]
         let parts = fn.split('.'), ext = parts.length > 1 ? parts.pop() : "txt", no = parts.join('.')
         if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(no))) no = "Archivo"
         if (!(await window.validadores.VALIDAR_NOMBRE_ARCHIVO(ext))) ext = "txt"
-        cache_archivos_adjuntos.push({ nombre: no, extension: ext, ruta: activo })
+        listaActual.push({ nombre: no, extension: ext, ruta: activo })
     }
+    establecer_cache_archivos_adjuntos(listaActual);
     actualizar_html_lista_archivos()
 }
 
 export function mostrar_menu_contextual_archivo(e, clkNode) {
     document.querySelector(".context-menu")?.remove()
-    const indice = clkNode.dataset.indice
-    const archivo = cache_archivos_adjuntos[indice]
+    const fileId = clkNode.dataset.id;
+    const archivo = cache_archivos_adjuntos.get(fileId);
     if (!archivo) return;
 
     const mx = `
@@ -140,10 +147,9 @@ export function mostrar_menu_contextual_archivo(e, clkNode) {
     menu.addEventListener("click", (ev) => {
         const acc = ev.target.dataset.action
         if (acc === "borrar") {
-            cache_archivos_adjuntos.splice(indice, 1)
+            cache_archivos_adjuntos.delete(fileId);
             actualizar_html_lista_archivos()
         } else if (acc === "editar") {
-            // Edición inline simplificada
             const span = clkNode.querySelector("span")
             span.style.display = "none"
             const tx = document.createElement("input")
@@ -158,7 +164,6 @@ export function mostrar_menu_contextual_archivo(e, clkNode) {
                 }
             })
             tx.addEventListener("blur", () => {
-                // Si pulsa fuera (blur), se cancela la edición restaurando el HTML original
                 actualizar_html_lista_archivos()
             })
             clkNode.querySelector(".contenido-item-archivo-lista").appendChild(tx)
@@ -167,3 +172,4 @@ export function mostrar_menu_contextual_archivo(e, clkNode) {
         menu.remove()
     })
 }
+
