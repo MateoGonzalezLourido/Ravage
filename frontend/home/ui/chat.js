@@ -688,16 +688,18 @@ async function _resolver_nombres(mensajes, contactos) {
  * Optimiza la agrupación visual (burbujas continuas del mismo emisor).
  * @param {HTMLElement} contenedor - Opcional, si se pasa, solo procesa los hijos de este contenedor.
  */
-async function _rearmar_agrupacion_dom(contenedor = null) {
-    const chatContainer = contenedor || DOM_CACHE.cuerpo_mensajes_chat;
+/**
+ * Optimiza la agrupación visual (burbujas continuas del mismo emisor).
+ * Procesa todos los mensajes en el DOM de forma eficiente.
+ */
+function _rearmar_agrupacion_dom() {
+    const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;
     if (!chatContainer) return;
 
-    // Si pasamos un contenedor específico (bloque-dia), solo procesamos ese bloque
     const mensajes = chatContainer.querySelectorAll(".mensaje-chat");
     const len = mensajes.length;
     if (len === 0) return;
 
-    // Usar un loop optimizado y evitar re-leer atributos si es posible
     let emisorPrev = null;
     let bloquePrev = null;
 
@@ -706,47 +708,29 @@ async function _rearmar_agrupacion_dom(contenedor = null) {
         const emisorActual = actual.getAttribute('data-emisor-id');
         const bloqueActual = actual.parentElement;
 
+        // ¿Tiene alguien arriba del mismo emisor y en el mismo bloque?
         const tieneArriba = (emisorActual === emisorPrev && bloqueActual === bloquePrev);
         
-        // El actual tiene alguien arriba si el anterior era del mismo emisor y mismo bloque
+        // Aplicar clase arriba si ha cambiado
         if (actual.classList.contains('agrupado-arriba') !== tieneArriba) {
             actual.classList.toggle('agrupado-arriba', tieneArriba);
         }
 
-        // El anterior tiene alguien abajo si el actual es del mismo emisor y mismo bloque
+        // Si el actual tiene alguien arriba, entonces el anterior tiene alguien abajo
         if (i > 0) {
             const anterior = mensajes[i - 1];
             if (anterior.classList.contains('agrupado-abajo') !== tieneArriba) {
                 anterior.classList.toggle('agrupado-abajo', tieneArriba);
             }
         }
+        
+        // Asegurarnos de que el último mensaje no tenga agrupado-abajo residual
+        if (i === len - 1) {
+            actual.classList.remove('agrupado-abajo');
+        }
 
         emisorPrev = emisorActual;
         bloquePrev = bloqueActual;
-    }
-}
-
-/**
- * Re-arma la agrupación solo en el punto de unión entre dos bloques.
- */
-function _rearmar_agrupacion_frontera(nodoReferencia, esPrepend = false) {
-    if (!nodoReferencia) return;
-    
-    const actual = nodoReferencia;
-    const adyacente = esPrepend ? actual.previousElementSibling : actual.nextElementSibling;
-    
-    if (!adyacente || !actual.classList.contains('mensaje-chat') || !adyacente.classList.contains('mensaje-chat')) return;
-    
-    const mismoEmisor = actual.getAttribute('data-emisor-id') === adyacente.getAttribute('data-emisor-id');
-    const mismoBloque = actual.parentElement === adyacente.parentElement;
-    const agrupados = mismoEmisor && mismoBloque;
-
-    if (esPrepend) {
-        actual.classList.toggle('agrupado-abajo', agrupados);
-        adyacente.classList.toggle('agrupado-arriba', agrupados);
-    } else {
-        actual.classList.toggle('agrupado-arriba', agrupados);
-        adyacente.classList.toggle('agrupado-abajo', agrupados);
     }
 }
 /**
@@ -821,21 +805,8 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
         chatContainer.scrollTop = scrollTopAntes + (chatContainer.scrollHeight - scrollHeightAntes);
     }
 
-    // FIX 3: Re-agrupar de forma mucho más eficiente (solo los nuevos y sus bordes)
-    if (nodosNuevos.length > 0) {
-        const primerNuevo = nodosNuevos[0];
-        const ultimoNuevo = nodosNuevos[nodosNuevos.length - 1];
-        
-        // Procesar solo los bloques que contienen nodos nuevos
-        const bloquesAfectados = new Set(nodosNuevos.map(n => n.parentElement));
-        for (const bloque of bloquesAfectados) {
-            _rearmar_agrupacion_dom(bloque);
-        }
-        
-        // Asegurar la unión con los existentes
-        _rearmar_agrupacion_frontera(primerNuevo, true);
-        _rearmar_agrupacion_frontera(ultimoNuevo, false);
-    }
+    // FIX 3: Re-agrupar todo en una sola pasada rápida
+    _rearmar_agrupacion_dom();
 
     // FIX 2: escanear solo los nodos nuevos, no todo el DOM
     await new Promise(r => setTimeout(r, 0));

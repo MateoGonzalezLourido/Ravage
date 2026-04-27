@@ -22,7 +22,7 @@
     flex-direction: column;
     gap: 4px;
     transition: padding 0.3s ease;
-    contain: content;
+    contain: layout style;
     content-visibility: auto;
     transform: translateZ(0);
     will-change: scroll-position, transform;
@@ -51,7 +51,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    contain: content;
+    contain: layout style;
     will-change: transform;
 }
 
@@ -69,7 +69,7 @@
     will-change: transform, opacity;
     user-select: text !important;
     cursor: default !important;
-    contain: content;
+    contain: layout style;
     animation: none;
 }
 
@@ -172,7 +172,7 @@
     position: sticky;
     top: 10px;
     transform: translateZ(0);
-    contain: content;
+    contain: layout style;
     content-visibility: auto;
     will-change: transform;
 }
