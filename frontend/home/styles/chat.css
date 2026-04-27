@@ -17,7 +17,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     /* Evitar scroll horizontal */
-    padding: 10px 6%;
+    padding: 10px 5%;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -26,6 +26,11 @@
     content-visibility: auto;
     transform: translateZ(0);
     will-change: scroll-position, transform;
+}
+
+body.sin-hilos-chat .mensaje-chat::before,
+body.sin-hilos-chat .mensaje-chat::after {
+    display: none !important;
 }
 
 /* Optimización para cuando hay paneles laterales abiertos */

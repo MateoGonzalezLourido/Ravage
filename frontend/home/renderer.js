@@ -4,7 +4,7 @@ optimizar_ventana()
 // ─── IMPORTS DE COMPONENTES Y UTILIDADES ──────────────────────────────────
 import { desplegar_menu_añadir_chat, set_callback_actualizar_listas } from './ui/añadir_chats_usuarios.js'
 import { mostrar_datos_chat_usuarios } from './ui/chat.js'
-import { Todos_Los_Eventos_Funciones_Ajustes } from './ui/ajustes.js'
+import { Todos_Los_Eventos_Funciones_Ajustes, aplicar_ajuste_hilos } from './ui/ajustes.js'
 
 // ─── IMPORTS DE MÓDULOS REFACTORIZADOS (NUEVA ARQUITECTURA) ───────────────
 import {
@@ -228,6 +228,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         establecer_id_usuario(id_mongo);
         establecer_apodo_usuario(apodo);
         establecer_correo_usuario(correo);
+
+        // 1.1 Cargar ajustes visuales
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
+        aplicar_ajuste_hilos(ajustes.DESACTIVAR_HILOS_VISUALES || false);
 
         console.log("[Renderer] Lanzando mensaje de bienvenida...");
         mensaje_bienvenida_usuario().catch(e => console.error("Error bienvenida:", e))

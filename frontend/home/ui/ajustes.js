@@ -449,6 +449,20 @@ async function cargar_ajustes_cache() {
     document.getElementById("input-cache-usuarios-ram").value = ajustes.LIMITE_USER_CACHE_RAM || 512
     document.getElementById("input-cache-usuarios-disk").value = ajustes.LIMITE_USER_CACHE_DISK || 1024
     document.getElementById("check-forzar-disco").checked = ajustes.FORCE_DISK_CACHE || false
+    
+    const checkHilos = document.getElementById("check-desactivar-hilos");
+    if (checkHilos) {
+        checkHilos.checked = ajustes.DESACTIVAR_HILOS_VISUALES || false;
+        aplicar_ajuste_hilos(checkHilos.checked);
+    }
+}
+
+export function aplicar_ajuste_hilos(desactivar) {
+    if (desactivar) {
+        document.body.classList.add("sin-hilos-chat");
+    } else {
+        document.body.classList.remove("sin-hilos-chat");
+    }
 }
 
 function setup_cache_listeners() {
@@ -485,6 +499,15 @@ function setup_cache_listeners() {
 
         await window.cache_persistente.setConfigCacheChats({ FORCE_DISK_CACHE: val })
         await window.cache_persistente.setConfigCacheUsuarios({ FORCE_DISK_CACHE: val })
+    })
+
+    document.getElementById("check-desactivar-hilos").addEventListener("change", async (e) => {
+        const val = e.target.checked
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
+        ajustes.DESACTIVAR_HILOS_VISUALES = val
+        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes)
+        
+        aplicar_ajuste_hilos(val);
     })
 
     document.getElementById("bt-limpiar-cache-chats").addEventListener("click", async () => {
