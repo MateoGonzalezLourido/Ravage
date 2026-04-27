@@ -19,14 +19,14 @@ async function escaneres_seguridad_mensaje_activados(id_chat = null) {
         'ESCANER_DIRECCIONES_IP', 'ESCANER_HOMOGLIFOS'
     ]);
     //obtener ajustes propios del chat globales en db
-    let ajustes_chat_globales = obtenerCacheChatActivo("seguridad")
+    let ajustes_chat_globales = id_chat ? obtenerCacheChatActivo(id_chat, "seguridad") : null;
 
     if (!ajustes_chat_globales && id_chat) {
         // cargar a db y guardar en cache
         const chatDB = await obtener_datos_chat_unico(id_chat, 'escaneres_seguridad');
         if (chatDB && chatDB.escaneres_seguridad) {
             ajustes_chat_globales = chatDB.escaneres_seguridad;
-            crearCacheChatActivo(ajustes_chat_globales);
+            crearCacheChatActivo({ _id: id_chat, seguridad: ajustes_chat_globales });
         }
     }
     //obtener datos del chat

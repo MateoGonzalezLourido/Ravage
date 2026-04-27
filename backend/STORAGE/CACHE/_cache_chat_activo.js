@@ -43,17 +43,22 @@ export function crearCacheChatActivo(datos) {
 
     let chat_data = _cache_chats_activos.get(id) || {};
 
-    const campos = ['seguridad', 'usuarios', 'admins', 'fecha_creacion', 'nmensajes', 'd_participantes'];
+    const campos = ['nombre', 'seguridad', 'usuarios', 'admins', 'fecha_creacion', 'nmensajes', 'd_participantes'];
     let modificado = false;
 
     for (const key of campos) {
         if (datos[key] !== undefined && chat_data[key] !== datos[key]) {
+            // Evitar sobrescribir nombre con null/undefined si ya tenemos uno
+            if (key === 'nombre' && !datos[key] && chat_data[key]) {
+                continue;
+            }
             chat_data[key] = datos[key];
             modificado = true;
         }
     }
 
     if (modificado || !_cache_chats_activos.has(id)) {
+        log.debug(`Actualizando cache activa para chat ${id}: ${JSON.stringify(chat_data)}`);
         // Re-insertar para mantener el orden (FIFO en Iterador)
         _cache_chats_activos.delete(id);
         _cache_chats_activos.set(id, chat_data);

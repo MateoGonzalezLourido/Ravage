@@ -637,7 +637,8 @@ async function resolverNombresChats(chats) {
     return chats.map(chat => {
         // Desencriptar el nombre si existe
         if (chat.nombre && typeof chat.nombre === 'object' && chat.nombre.data) {
-            chat.nombre = desencriptarDatosSistema(chat.nombre);
+            const nombreDec = desencriptarDatosSistema(chat.nombre);
+            chat.nombre = nombreDec || "Grupo sin nombre (Cifrado)";
         }
 
         if (!chat.nombre) {

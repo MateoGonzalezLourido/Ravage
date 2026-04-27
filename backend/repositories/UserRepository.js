@@ -40,7 +40,8 @@ export function procesarUsuario(usuario) {
     }
 
     if (result.apodo && typeof result.apodo === 'object') {
-        result.apodo = desencriptarDatosSistema(result.apodo);
+        const apodoDec = desencriptarDatosSistema(result.apodo);
+        result.apodo = apodoDec || "Usuario Ravage";
     }
     if (result.correo && typeof result.correo === 'object') {
         result.correo = desencriptarDatosSistema(result.correo);

@@ -310,7 +310,7 @@ export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
 
 export const chat_componente_lista_estructura_html = (datos_usar) => {
     //recuperar nombre del chat
-    const nombre = (datos_usar) => { return escapeHTML(datos_usar?.nombre) || `&lt;&lt;no encontrado&gt;&gt;` }
+    const nombre = (datos_usar) => { return escapeHTML(datos_usar?.nombre) || `Chat sin nombre` }
 
     //recuperar ultima vez
     const ultima_vez = (datos_usar) => {
@@ -673,10 +673,15 @@ async function _resolver_nombres(mensajes, contactos) {
     }
 
     const map_contactos = Object.fromEntries(contactos.map(c => [c.id, c.apodo]));
-    return Object.fromEntries(data_usuarios.map(u => [
-        u.id || u._id?.toString(),
-        map_contactos[u.id || u._id?.toString()] || u.apodo || nombre_defecto
-    ]));
+    return Object.fromEntries(data_usuarios.map(u => {
+        const id = u.id || u._id?.toString();
+        const apodo_contacto = map_contactos[id];
+        const apodo_global = u.apodo;
+        
+        if (apodo_contacto) return [id, apodo_contacto];
+        if (apodo_global) return [id, "~" + apodo_global];
+        return [id, nombre_defecto];
+    }));
 }
 // Nueva función que sustituye a _rearmar_agrupacion_dom() en inserciones
 async function _rearmar_agrupacion_dom() {
@@ -1130,7 +1135,8 @@ export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, 
     if (indice_contacto === -1) {
         // Si no es contacto, intentamos obtener su apodo externo
         const data_externo = await window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id_buscar, "apodo")
-        return data_externo?.apodo || "Usuario desconocido"
+        const apodo = data_externo?.apodo;
+        return apodo ? "~" + apodo : nombre_defecto
     }
     else return nombres_contactos[indice_contacto].apodo
 }
