@@ -1156,24 +1156,21 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             datos_chat: datos, posicion: 'append'
         });
 
-        // Asegurar scroll al fondo al abrir con una leve animación
-        chatContainer.style.overflowAnchor = "none";
+        // Asegurar scroll al fondo al abrir (instantáneo para evitar bugs con imágenes cargando)
+        chatContainer.style.overflowAnchor = "auto";
+        chatContainer.scrollTop = chatContainer.scrollHeight;
 
-        if (chatContainer.scrollHeight > chatContainer.clientHeight) {
-            // Empezar unos píxeles arriba para que la animación de caída sea visible
-            chatContainer.scrollTop = Math.max(0, chatContainer.scrollHeight - chatContainer.clientHeight - OPEN_CHAT_ANIMATION_OFFSET);
-
-            setTimeout(() => {
-                chatContainer.scrollTo({
-                    top: chatContainer.scrollHeight,
-                    behavior: 'smooth'
-                });
-                chatContainer.style.overflowAnchor = "auto";
-            }, 30);
-        } else {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            chatContainer.style.overflowAnchor = "auto";
-        }
+        // Por si alguna imagen asíncrona expande el chat después de renderizar
+        setTimeout(() => {
+            if (chatContainer.scrollTop + chatContainer.clientHeight < chatContainer.scrollHeight) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }, 100);
+        setTimeout(() => {
+            if (chatContainer.scrollTop + chatContainer.clientHeight < chatContainer.scrollHeight) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }, 300);
     } catch (e) {
         console.error("Error crítico en renderizar_chat_progresivo_plano:", e);
     }
