@@ -129,6 +129,24 @@ export const DOM_CACHE = {
     info_chat_seccion: null,
     seccion_historial_archivos: null,
     
+    // Ajustes
+    menu_ajustes: null,
+    menu_cambiar_datos_cuenta: null,
+    lista_silenciados: null,
+    lista_bloqueados: null,
+
+    // Añadir Chats
+    menu_añadir_chat: null,
+    input_buscar_usuario_añadir: null,
+    resultados_busqueda_usuarios: null,
+    lista_contactos_añadir_grupo: null,
+    btn_crear_chat_nuevo: null,
+    input_nombre_chat_nuevo: null,
+
+    // Historial
+    lista_contenido_historial: null,
+    btn_limpiar_historial: null,
+    
     // Dinámicos (Cambian al abrir un chat diferente)
     cuerpo_mensajes_chat: null,
     textarea_mensaje_escritura: null,
@@ -138,11 +156,30 @@ export const DOM_CACHE = {
      * Inicializa las referencias a elementos que son permanentes en home.html
      */
     inicializar_estaticos() {
+        // Básicos
         this.lista_chats_componentes = document.getElementById("lista-chats-componentes");
         this.chat_usuario = document.getElementById("chat-usuario");
         this.input_buscar_chat = document.getElementById("input-buscar-chat");
         this.info_chat_seccion = document.getElementById("info-chat-seccion");
         this.seccion_historial_archivos = document.getElementById("seccion-historial-archivos-alineador");
+
+        // Ajustes
+        this.menu_ajustes = document.getElementById("seccion-menu-cuenta-ajustes");
+        this.menu_cambiar_datos_cuenta = document.getElementById("alineador-menu-cambiar-data-cuenta");
+        this.lista_silenciados = document.getElementById("lista-usuarios-silenciados");
+        this.lista_bloqueados = document.getElementById("lista-usuarios-bloqueados");
+
+        // Añadir Chats
+        this.menu_añadir_chat = document.getElementById("alineador-seccion-añadir-chat");
+        this.input_buscar_usuario_añadir = document.getElementById("texto-buscar-chat-añadir");
+        this.resultados_busqueda_usuarios = document.getElementById("resultados-busqueda-usuarios");
+        this.lista_contactos_añadir_grupo = document.getElementById("contactos-añadidos-grupo");
+        this.btn_crear_chat_nuevo = document.getElementById("bt-agregar-contacto-nuevo");
+        this.input_nombre_chat_nuevo = document.getElementById("nombre-chat-nuevo-crear");
+
+        // Historial
+        this.lista_contenido_historial = document.getElementById("historial-lista-contenido");
+        this.btn_limpiar_historial = document.getElementById("bt-limpiar-historial-completo");
     },
 
     /**

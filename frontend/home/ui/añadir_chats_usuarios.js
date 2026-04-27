@@ -1,9 +1,8 @@
-const $btnAgregar = document.getElementById("bt-agregar-contacto-nuevo");
+import { CORREO_USUARIO, _cache_lista_usuarios_añadir, establecer_cache_lista_usuarios_añadir, DOM_CACHE } from '../caches_datos.js';
+
 import { escapeHTML } from './seguridad_ui.js';
-import { CORREO_USUARIO, _cache_lista_usuarios_añadir, establecer_cache_lista_usuarios_añadir } from '../caches_datos.js';
 
 const clase_cp_lista_contactos_añadidos = "componente-lista-contactos-añadidos-chat-crear"
-const $nombreChatNuevo = document.getElementById("nombre-chat-nuevo-crear");
 
 let _callback_actualizar_listas = null;
 export function set_callback_actualizar_listas(cb) {
@@ -14,12 +13,13 @@ export function set_callback_actualizar_listas(cb) {
 export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat = "" }) {
     if (e) e.preventDefault()
 
-    //ELEMENTOS DOOM
+    //ELEMENTOS DOOM (Cacheados)
     const $btnCerrar = document.getElementById("bt-cerrar-menu-añadir-chats");
-    const $inputBuscar = document.getElementById("texto-buscar-chat-añadir");
-    const $resultados = document.getElementById("resultados-busqueda-usuarios");
-    const $contactosGrupo = document.getElementById("contactos-añadidos-grupo");
-    const menu_añadir_chat = document.getElementById("alineador-seccion-añadir-chat")
+    const $inputBuscar = DOM_CACHE.input_buscar_usuario_añadir;
+    const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
+    const $contactosGrupo = DOM_CACHE.lista_contactos_añadir_grupo;
+    const menu_añadir_chat = DOM_CACHE.menu_añadir_chat;
+    const $btnAgregar = DOM_CACHE.btn_crear_chat_nuevo;
 
     //eventos
     async function anadir_chat_buscar_usuario(e) {
@@ -34,42 +34,42 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
     }
     function activar_eventos_menu_añadir_chat() {
 
-        $btnCerrar.addEventListener("click", evento_cerrar_menu_añadir_chat)
+        $btnCerrar?.addEventListener("click", evento_cerrar_menu_añadir_chat)
 
-        $inputBuscar.addEventListener("keydown", anadir_chat_buscar_usuario)
-        $btnAgregar.addEventListener("click", crear_chat_nuevo)
+        $inputBuscar?.addEventListener("keydown", anadir_chat_buscar_usuario)
+        $btnAgregar?.addEventListener("click", crear_chat_nuevo)
     }
     function desactivar_eventos_menu_añadir_chat() {
 
-        $btnCerrar.removeEventListener("click", evento_cerrar_menu_añadir_chat)
-        $inputBuscar.removeEventListener("keydown", anadir_chat_buscar_usuario)
-        $btnAgregar.removeEventListener("click", crear_chat_nuevo)
+        $btnCerrar?.removeEventListener("click", evento_cerrar_menu_añadir_chat)
+        $inputBuscar?.removeEventListener("keydown", anadir_chat_buscar_usuario)
+        $btnAgregar?.removeEventListener("click", crear_chat_nuevo)
     }
     if (mostrar) {
         //cancelar limpiar cache historial busquedas
         window.cache_persistente.cancelarLimpiezaVariableCacheHistorial().catch(e => console.error(e));
 
-        //cambiar el idchat del boton crear chat, para en vez de crear chat añadir usuario a ese chat
-        $btnAgregar.dataset.id_chat = id_chat
+        if (menu_añadir_chat) {
+            menu_añadir_chat.classList.remove("ocultar-display")
+            menu_añadir_chat.classList.add("flex-display")
+        }
 
-        menu_añadir_chat.classList.remove("ocultar-display")
-        menu_añadir_chat.classList.add("flex-display")
-
-        $inputBuscar.focus()
+        $inputBuscar?.focus()
         //crear eventos
         activar_eventos_menu_añadir_chat()
     }
     else {
-
-        menu_añadir_chat.classList.remove("flex-display")
-        menu_añadir_chat.classList.add("ocultar-display")
+        if (menu_añadir_chat) {
+            menu_añadir_chat.classList.remove("flex-display")
+            menu_añadir_chat.classList.add("ocultar-display")
+        }
 
         //limpiar datos y html
         actualizar_lista_usuarios_añadir({ clean: true })
-        $inputBuscar.value = ""
-        $resultados.innerHTML = "<span>*Sin resultados</span>"
-        $contactosGrupo.innerHTML = "<span>*Agregar usuarios para el chat</span>"
-        $nombreChatNuevo.value = ""
+        if ($inputBuscar) $inputBuscar.value = ""
+        if ($resultados) $resultados.innerHTML = "<span>*Sin resultados</span>"
+        if ($contactosGrupo) $contactosGrupo.innerHTML = "<span>*Agregar usuarios para el chat</span>"
+        if (DOM_CACHE.input_nombre_chat_nuevo) DOM_CACHE.input_nombre_chat_nuevo.value = ""
 
         //limpiar eventos
         desactivar_eventos_menu_añadir_chat()
@@ -81,9 +81,9 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
 
 function actualizar_lista_usuarios_añadir({ conjunto = null, remove = false, clean = false }) {
     const clase_span_lista_contactos_añadidos = ".span-text-contactos-añadir"
-    const $lista_contactos_añadir = document.getElementById("contactos-añadidos-grupo")
+    const $lista_contactos_añadir = DOM_CACHE.lista_contactos_añadir_grupo
     const $span_text_contactos_añadidos = $lista_contactos_añadir?.querySelector(clase_span_lista_contactos_añadidos) || null
-    const $bt_agregar_contacto_nuevo = document.getElementById("bt-agregar-contacto-nuevo")
+    const $bt_agregar_contacto_nuevo = DOM_CACHE.btn_crear_chat_nuevo
 
     if (clean) $lista_contactos_añadir.replaceChildren()
     else if (remove) remove.currentTarget.remove()
@@ -201,7 +201,7 @@ async function buscar_usuario_añadir_chat(e) {
     }
 
     //buscar
-    const texto_buscar = document.getElementById("texto-buscar-chat-añadir").value.trim()
+    const texto_buscar = DOM_CACHE.input_buscar_usuario_añadir?.value.trim() || ""
     let resultado;
     if (/[@]/.test(texto_buscar)) {//es correo
         // Comprobar si el correo es válido para reducir llamadas al DB
@@ -228,13 +228,13 @@ async function buscar_usuario_añadir_chat(e) {
     }
 
     //excluir usuarios ya existentes si es añadir usuario a un chat existente
-    const id_chat = document.getElementById("bt-agregar-contacto-nuevo")?.dataset.id_chat || null
+    const id_chat = DOM_CACHE.btn_crear_chat_nuevo?.dataset.id_chat || null
     if (id_chat) {
         const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, "usuarios")
         if (info_chat?.usuarios?.includes(resultado.id)) resultado = null
     }
 
-    const $resultados_busqueda_usuarios = document.getElementById("resultados-busqueda-usuarios")
+    const $resultados_busqueda_usuarios = DOM_CACHE.resultados_busqueda_usuarios
     if (resultado) {
         $resultados_busqueda_usuarios.innerHTML = `<div class="${clase_cp_posible_usuario_añadir}" data-id="${resultado.id}" data-nombre="${escapeHTML(resultado.nombre)}">${escapeHTML(resultado.nombre)}</div>`
         crear_eventos()
@@ -263,10 +263,10 @@ async function crear_chat_nuevo(e) {
     if (contactos_añadir.length === 0) return null
 
     //conseguir id del chat (si es para añadir usuarios a un chat existente)
-    const id_chat = $btnAgregar?.dataset.id_chat
+    const id_chat = DOM_CACHE.btn_crear_chat_nuevo?.dataset.id_chat
 
     //nombre del chat
-    let nombre = $nombreChatNuevo.value.trim()
+    let nombre = DOM_CACHE.input_nombre_chat_nuevo?.value.trim() || ""
     // Comprobar si el nombre es válido
     if (nombre !== "") {
         const esNombreValido = await window.validadores.VALIDAR_NOMBRE_ARCHIVO(nombre)

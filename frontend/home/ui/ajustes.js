@@ -8,7 +8,8 @@ import {
     CORREO_USUARIO, 
     establecer_correo_usuario,
     obtener_apodo_usuario,
-    borrar_cache_apodo_usuario 
+    borrar_cache_apodo_usuario,
+    DOM_CACHE 
 } from '../caches_datos.js';
 
 
@@ -28,9 +29,9 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
 
     // Initial UI state
     cerrar_cuerpos_ajustes("cuenta");
-    const menuAjustes = document.getElementById("seccion-menu-cuenta-ajustes");
-    menuAjustes.classList.remove("ocultar-display");
-    menuAjustes.classList.add("flex-display");
+    const menuAjustes = DOM_CACHE.menu_ajustes;
+    menuAjustes?.classList.remove("ocultar-display");
+    menuAjustes?.classList.add("flex-display");
 
     if (ajustesEventosInicializados) {
         await cargar_ajustes_cache();
@@ -77,9 +78,9 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     setup_cache_listeners();
     document.getElementById("bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
         e.preventDefault();
-        const menuCambio = document.getElementById("alineador-menu-cambiar-data-cuenta");
-        menuCambio.classList.remove("flex-display");
-        menuCambio.classList.add("ocultar-display");
+        const menuCambio = DOM_CACHE.menu_cambiar_datos_cuenta;
+        menuCambio?.classList.remove("flex-display");
+        menuCambio?.classList.add("ocultar-display");
         document.getElementById("cambio-pass").value = "";
         document.getElementById("cambio-pass-confirm").value = "";
     });
@@ -135,9 +136,9 @@ async function actualizar_datos_cuenta() {
 
 function cerrar_ajustes_pagina(e) {
     if (e) e.preventDefault();
-    const menuAjustes = document.getElementById("seccion-menu-cuenta-ajustes");
-    menuAjustes.classList.remove("flex-display");
-    menuAjustes.classList.add("ocultar-display");
+    const menuAjustes = DOM_CACHE.menu_ajustes;
+    menuAjustes?.classList.remove("flex-display");
+    menuAjustes?.classList.add("ocultar-display");
 
     // Reset state if necessary
     bloquear_span_cambio_contraseña = true; // Match renderer.js behavior
@@ -182,9 +183,9 @@ async function funcion_cambiar_contraseña(e) {
 
     const result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "contraseña" });
     if (result.success) {
-        const container = document.getElementById("alineador-menu-cambiar-data-cuenta");
-        container.classList.remove("ocultar-display");
-        container.classList.add("flex-display");
+        const container = DOM_CACHE.menu_cambiar_datos_cuenta;
+        container?.classList.remove("ocultar-display");
+        container?.classList.add("flex-display");
         cambiar_seccion_menu_cambiar_datos_cuenta("contraseña");
         document.getElementById("cambio-pass").focus();
 
@@ -210,7 +211,7 @@ async function funcion_cambiar_contraseña(e) {
             const check = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: pass, tipo: "contraseña" });
             if (check?.success) {
                 form.removeEventListener("submit", submitHandler);
-                document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
+                DOM_CACHE.menu_cambiar_datos_cuenta?.classList.replace("flex-display", "ocultar-display");
                 document.getElementById("alineador-menu-cambiar-data-cuenta-validar-code").classList.replace("ocultar-display", "flex-display");
                 document.getElementById("bt-code-introducir-datos-cuenta").focus();
 
@@ -262,7 +263,7 @@ async function funcion_cambiar_apodo(e) {
 
     const result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "apodo" });
     if (result.success) {
-        document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("ocultar-display", "flex-display");
+        DOM_CACHE.menu_cambiar_datos_cuenta?.classList.replace("ocultar-display", "flex-display");
         cambiar_seccion_menu_cambiar_datos_cuenta("apodo");
         document.getElementById("cambio-apodo").focus();
 
@@ -285,7 +286,7 @@ async function funcion_cambiar_apodo(e) {
                     // Borramos la caché para que se fuerce la recarga si se solicita de nuevo
                     borrar_cache_apodo_usuario();
                     
-                    document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
+                    DOM_CACHE.menu_cambiar_datos_cuenta?.classList.replace("flex-display", "ocultar-display");
                     if (typeof window.cambiar_menu_inicio_apodo === "function") window.cambiar_menu_inicio_apodo();
                 } else {
                     window.pushNotificacion({ prioridad: 0, texto: "No se pudo cambiar el apodo", tipo: "error" });
@@ -309,7 +310,7 @@ async function funcion_cambiar_correo(e) {
 
     const result = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ tipo: "correo" });
     if (result.success) {
-        document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("ocultar-display", "flex-display");
+        DOM_CACHE.menu_cambiar_datos_cuenta?.classList.replace("ocultar-display", "flex-display");
         cambiar_seccion_menu_cambiar_datos_cuenta("correo");
         document.getElementById("cambio-correo").focus();
 
@@ -327,7 +328,7 @@ async function funcion_cambiar_correo(e) {
 
             const check = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: email, tipo: "correo" });
             if (check?.success) {
-                document.getElementById("alineador-menu-cambiar-data-cuenta").classList.replace("flex-display", "ocultar-display");
+                DOM_CACHE.menu_cambiar_datos_cuenta?.classList.replace("flex-display", "ocultar-display");
                 document.getElementById("alineador-menu-cambiar-data-cuenta-validar-code").classList.replace("ocultar-display", "flex-display");
                 document.getElementById("bt-code-introducir-datos-cuenta").focus();
 
@@ -403,9 +404,9 @@ export async function ver_chats_silenciados(e) {
         });
     }
 
-    document.getElementById("lista-usuarios-silenciados").classList.replace("ocultar-display", "flex-display");
+    DOM_CACHE.lista_silenciados?.classList.replace("ocultar-display", "flex-display");
     document.getElementById("bt-cerrar-menu-lista-silenciados").onclick = () => {
-        document.getElementById("lista-usuarios-silenciados").classList.replace("flex-display", "ocultar-display");
+        DOM_CACHE.lista_silenciados?.classList.replace("flex-display", "ocultar-display");
     };
 }
 
@@ -434,9 +435,9 @@ export async function ver_chats_bloqueados(e) {
         });
     }
 
-    document.getElementById("lista-usuarios-bloqueados").classList.replace("ocultar-display", "flex-display");
+    DOM_CACHE.lista_bloqueados?.classList.replace("ocultar-display", "flex-display");
     document.getElementById("bt-cerrar-menu-lista-bloqueados").onclick = () => {
-        document.getElementById("lista-usuarios-bloqueados").classList.replace("flex-display", "ocultar-display");
+        DOM_CACHE.lista_bloqueados?.classList.replace("flex-display", "ocultar-display");
     };
 }
 

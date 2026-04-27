@@ -3,7 +3,8 @@ import { escapeHTML } from './seguridad_ui.js';
 import { 
     cache_archivos_adjuntos, 
     establecer_cache_archivos_adjuntos, 
-    obtener_archivos_adjuntos_lista 
+    obtener_archivos_adjuntos_lista,
+    DOM_CACHE
 } from '../caches_datos.js';
 
 
@@ -78,7 +79,7 @@ export async function abrir_ventana_archivos() {
     ventana.style.width = "0"
     document.querySelector(".seccion-cuerpo-chat").appendChild(ventana)
 
-    const infoSec = document.getElementById("info-chat-seccion")
+    const infoSec = DOM_CACHE.info_chat_seccion
     if (infoSec && infoSec.classList.contains("abierto")) {
         infoSec.classList.remove("abierto")
     }
@@ -96,7 +97,7 @@ export function cerrar_ventana_archivos() {
     const ven = document.querySelector(".ventana-archivos-mensaje")
     if (ven) {
         ven.classList.remove("abierto")
-        const infoSec = document.getElementById("info-chat-seccion")
+        const infoSec = DOM_CACHE.info_chat_seccion
         const algunOtroAbierto = infoSec && infoSec.classList.contains("abierto")
         
         if (!algunOtroAbierto) {

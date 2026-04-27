@@ -1,5 +1,5 @@
 import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, refrescar_componente_lista_chats, cambiar_datos_componente_lista_chats, INCREMENTAR_MENSAJES_CACHE_ACTIVA } from './gestor_chats.js'
-import { ID_USUARIO_MONGO } from '../caches_datos.js'
+import { ID_USUARIO_MONGO, DOM_CACHE } from '../caches_datos.js'
 import { Encontrar_Nombre_Chat_Usuario, Es_usuario_Sesion } from './chat.js'
 import { safeIdSelector } from './seguridad_ui.js';
 
@@ -111,7 +111,7 @@ async function Cambio_buzonApi_mensaje(entrada, lote = null) {
     // 1. Actualizar el render del chat si está activo (abierto en pantalla)
     const chatAbierto = !!document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(id_chat)}`);
     
-    if (chatAbierto && document.getElementById("chat-usuario")) {
+    if (chatAbierto && DOM_CACHE.chat_usuario) {
         // Si hay muchos mensajes, podríamos querer optimizar esto más, 
         // pero por ahora los procesamos todos para que aparezcan en el chat.
         for (const msg_ent of mensajes_a_procesar) {
@@ -194,7 +194,7 @@ async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
 
     if (isMe) {
         if (document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(entrada.data.chat)}`)) {
-            document.getElementById("chat-usuario").replaceChildren();
+            DOM_CACHE.chat_usuario?.replaceChildren();
         }
 
         if (!esta_silenciado) {
@@ -216,7 +216,7 @@ async function Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado) {
 
     if (isMe) {
         if (document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(entrada.data.chat)}`)) {
-            document.getElementById("chat-usuario").replaceChildren();
+            DOM_CACHE.chat_usuario?.replaceChildren();
         }
 
         if (!esta_silenciado) {
