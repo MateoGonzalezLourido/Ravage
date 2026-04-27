@@ -1,3 +1,293 @@
+/* MENU AJUSTES */
+#bt-seccion-menu-cuenta-ajustes {
+    position: relative;
+    cursor: pointer;
+    border-radius: 7px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    padding: 1.5px;
+    margin-right: 4px;
+}
+
+#bt-seccion-menu-cuenta-ajustes:hover {
+    box-shadow: 0px 0px 3px rgba(136, 138, 138, 0.681);
+}
+
+#bt-seccion-menu-cuenta-ajustes img {
+    width: 36px;
+    height: 36px;
+    filter: invert(0.9);
+}
+
+#seccion-menu-cuenta-ajustes {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: flex;
+    z-index: 1000 !important;
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+#bt-cerrar-menu-ajustes {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2000 !important;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    transition: all 0.2s;
+    will-change: transform;
+}
+
+#bt-cerrar-menu-ajustes:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(90deg);
+}
+
+#bt-cerrar-menu-ajustes img {
+    width: 20px;
+    height: 20px;
+    filter: invert(1);
+    opacity: 0.6;
+}
+
+#seccion-menu-cuenta-ajustes .menu-navegacion-ajustes {
+    width: 260px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.02);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    padding: 60px 20px;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#seccion-menu-cuenta-ajustes .menu-navegacion-ajustes div {
+    padding: 12px 20px;
+    border-radius: 12px;
+    color: #94a3b8;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+#seccion-menu-cuenta-ajustes .menu-navegacion-ajustes div:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #f8fafc;
+}
+
+#seccion-menu-cuenta-ajustes .menu-navegacion-ajustes div.active {
+    background: rgba(99, 102, 241, 0.15) !important;
+    color: #a5b4fc !important;
+    font-weight: 600;
+    box-shadow: inset 4px 0 0 #6366f1;
+}
+
+.cuerpo-menu-ajustes {
+    flex: 1;
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    padding: 60px 9%;
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.menu-ajustes-sub {
+    width: 100%;
+    max-width: 100%;
+    display: none;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.menu-ajustes-sub.flex-display {
+    display: flex !important;
+}
+
+.menu-ajustes-sub .label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 2px;
+    max-width: calc(100% - 20px);
+    min-width: fit-content;
+}
+
+.menu-ajustes-sub .label span {
+    font-size: 15px;
+    color: #e2e8f0;
+}
+
+.menu-ajustes-sub .label button {
+    background: #6366f1;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: auto;
+    margin-right: 8px;
+    will-change: transform;
+}
+
+.menu-ajustes-sub .label button:hover {
+    background: #4f46e5;
+    transform: translateY(-1px);
+}
+
+.menu-ajustes-sub .titulo-ajustes {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+    margin-bottom: 16px;
+    margin-top: 24px;
+}
+
+.menu-ajustes-sub input[type="checkbox"] {
+    width: 36px;
+    height: 20px;
+    appearance: none;
+    background: #334155;
+    border-radius: 20px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.menu-ajustes-sub input[type="checkbox"]:checked {
+    background: #6366f1;
+}
+
+.menu-ajustes-sub input[type="checkbox"]::before {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: white;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.3s;
+    will-change: transform;
+}
+
+.menu-ajustes-sub input[type="checkbox"]:checked::before {
+    transform: translateX(16px);
+}
+
+#text-cuenta-creada-fecha {
+    margin-top: 12px;
+    font-style: italic;
+    color: rgb(112, 139, 130);
+}
+
+/* Modals to change data (Password, Email, Nickname) */
+#alineador-menu-cambiar-data-cuenta {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    will-change: transform;
+    transform: translateZ(0);
+    z-index: 101 !important;
+}
+
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña {
+    width: 380px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 30px;
+    border-radius: 24px;
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña h2 {
+    width: 100%;
+    text-align: center;
+    padding: 0;
+    margin: 0;
+    font-size: 17px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña label {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+}
+
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña input {
+    height: 44px;
+    background: var(--input-bg);
+    color: white;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding-left: 14px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#alineador-menu-cambiar-data-cuenta .menu-cambiar-contraseña input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.bt-cambiar-pass-alineador-button {
+    display: flex;
+    justify-content: center;
+}
+
+.seccion-cambiar-data-menu {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Original contents of ajustes.css */
 #cuerpo-ajustes-cuenta .label span font {
     font-weight: 700;
     overflow-x: auto;

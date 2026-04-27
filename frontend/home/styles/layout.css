@@ -1,0 +1,111 @@
+/* Main structural containers */
+#menu-chats-inicio {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+}
+
+#lista-chats {
+    width: 25%;
+    min-width: 280px;
+    max-width: 400px;
+    background: rgba(10, 10, 15, 0.4);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-right: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+.division-2 {
+    flex-grow: 1;
+    height: 100vh;
+    width: 75%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--wa-bg-default);
+    position: relative;
+    z-index: 1;
+}
+
+.division-2::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
+    background-repeat: repeat;
+    opacity: 0.08;
+    z-index: -1;
+    pointer-events: none;
+    transform: translateZ(0);
+}
+
+/* Header / Navigation */
+#nav-menu-inicio {
+    width: 100%;
+    max-height: 64px;
+    min-height: 64px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--glass-border);
+    justify-content: flex-end;
+    z-index: 10;
+}
+
+.seccion-cuerpo-chat {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+/* Sidebar Panels */
+.panel-lateral-ajustable {
+    width: 0;
+    height: 100%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-left: 0 solid var(--glass-border);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-width 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 10;
+    will-change: width;
+    transform: translateZ(0);
+    position: relative;
+}
+
+.panel-lateral-ajustable.abierto {
+    width: 350px;
+    border-left-width: 1px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    #lista-chats { width: 300px; }
+}
+
+@media (max-width: 768px) {
+    #lista-chats { width: 250px; }
+    .panel-lateral-ajustable.abierto { width: 300px; }
+}
