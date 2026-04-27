@@ -456,6 +456,23 @@ async function cargar_ajustes_cache() {
         checkHilos.checked = ajustes.DESACTIVAR_HILOS_VISUALES || false;
         aplicar_ajuste_hilos(checkHilos.checked);
     }
+    
+    const checkFondo = document.getElementById("check-desactivar-segundo-plano");
+    if (checkFondo) {
+        checkFondo.checked = ajustes.DESACTIVAR_SEGUNDO_PLANO || false;
+    }
+
+    // Notificaciones OS
+    const notiChecks = [
+        { id: "check-noti-os-msg-individual",    key: "NOTI_OS_MENSAJE_INDIVIDUAL" },
+        { id: "check-noti-os-msg-grupal",         key: "NOTI_OS_MENSAJE_GRUPAL" },
+        { id: "check-noti-os-descarga-individual",key: "NOTI_OS_DESCARGA_INDIVIDUAL" },
+        { id: "check-noti-os-descarga-grupal",    key: "NOTI_OS_DESCARGA_GRUPAL" },
+    ];
+    for (const { id, key } of notiChecks) {
+        const el = document.getElementById(id);
+        if (el) el.checked = ajustes[key] !== false; // true por defecto
+    }
 }
 
 export function aplicar_ajuste_hilos(desactivar) {
@@ -512,6 +529,13 @@ function setup_cache_listeners() {
         aplicar_ajuste_hilos(val);
     })
 
+    document.getElementById("check-desactivar-segundo-plano")?.addEventListener("change", async (e) => {
+        const val = e.target.checked;
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
+        ajustes.DESACTIVAR_SEGUNDO_PLANO = val;
+        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
+    });
+
     document.getElementById("bt-limpiar-cache-chats").addEventListener("click", async () => {
         const ok = await window.cache_persistente.clearCacheChats()
         if (ok) window.pushNotificacion({ prioridad: 2, texto: "Caché de chats limpiada", tipo: "success" })
@@ -521,4 +545,19 @@ function setup_cache_listeners() {
         const ok = await window.cache_persistente.clearCacheUsuarios()
         if (ok) window.pushNotificacion({ prioridad: 2, texto: "Caché de usuarios limpiada", tipo: "success" })
     })
+
+    // Listeners notificaciones OS
+    const notiChecks = [
+        { id: "check-noti-os-msg-individual",     key: "NOTI_OS_MENSAJE_INDIVIDUAL" },
+        { id: "check-noti-os-msg-grupal",          key: "NOTI_OS_MENSAJE_GRUPAL" },
+        { id: "check-noti-os-descarga-individual", key: "NOTI_OS_DESCARGA_INDIVIDUAL" },
+        { id: "check-noti-os-descarga-grupal",     key: "NOTI_OS_DESCARGA_GRUPAL" },
+    ];
+    for (const { id, key } of notiChecks) {
+        document.getElementById(id)?.addEventListener("change", async (e) => {
+            const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
+            ajustes[key] = e.target.checked;
+            await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
+        });
+    }
 }

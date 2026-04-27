@@ -116,6 +116,10 @@ export const BrowserWindow = createElectronProxy('BrowserWindow');
 export const ipcMain = createElectronProxy('ipcMain');
 export const ipcRenderer = createElectronProxy('ipcRenderer');
 export const dialog = createElectronProxy('dialog');
+export const Tray = createElectronProxy('Tray');
+export const Menu = createElectronProxy('Menu');
+export const nativeImage = createElectronProxy('nativeImage');
+export const ElectronNotification = createElectronProxy('Notification');
 
 // ==========================================
 // 4. EXTERNAL LIBRARIES (¡Perezosas!)

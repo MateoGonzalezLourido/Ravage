@@ -63,6 +63,64 @@ const __dirname = path.dirname(__filename);
 let socket;
 let mainWindow;
 let ipcHandlersRegistered = false;
+let isQuitting = false;
+
+// ── Tray singleton ─────────────────────────────────────────────────────────
+// En Linux, Tray.destroy() dentro de su propio callback causa un error GTK
+// nativo que no es interceptable desde JS. La solución es mantener el Tray
+// vivo durante toda la sesión y alternar entre el icono real y una imagen
+// vacía para simular mostrar/ocultar sin jamás destruir el widget GTK.
+let _tray = null;
+let _trayVisible = false;
+let _trayIconPath = null;
+let _TrayClass = null;
+let _MenuClass = null;
+
+async function _initTrayClasses() {
+    if (_TrayClass) return;
+    const mod = await import('./backend/utils/libs.js');
+    _TrayClass      = mod.Tray;
+    _MenuClass      = mod.Menu;
+    _trayIconPath   = path.join(__dirname, 'frontend/recursos/RavageIcono.png');
+}
+
+async function showTray() {
+    await _initTrayClasses();
+
+    // Crear siempre una instancia nueva (la anterior fue destruida)
+    _tray = new _TrayClass(_trayIconPath);
+    _tray.setContextMenu(_MenuClass.buildFromTemplate([
+        { label: 'Abrir Ravage', click: () => mostrarVentana() },
+        { label: 'Salir',        click: () => { isQuitting = true; app.quit(); } }
+    ]));
+    _tray.setToolTip('Ravage (Segundo plano)');
+    _tray.on('click', () => mostrarVentana());
+
+    _trayVisible = true;
+}
+
+function hideTray() {
+    if (!_tray || !_trayVisible) return;
+    const t = _tray;
+    _tray = null;
+    _trayVisible = false;
+
+    // Esperar 300ms para que GTK termine de procesar el evento de click
+    // antes de destruir el widget — evita el assertion GTK nativo en Linux
+    setTimeout(() => {
+        try { t.destroy(); } catch { /* warning GTK ignorado */ }
+    }, 300);
+}
+
+
+function mostrarVentana() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+    }
+    // hideTray() se llama también desde el evento 'show' de la ventana
+}
+
 
 async function registerAllHandlers(window, sock) {
     if (ipcHandlersRegistered) return;
@@ -128,7 +186,7 @@ async function createMainWindowHome(AutoLogin = false) {
             ],
             spellcheck: false,
             v8CacheOptions: 'bypassHeatCheck',
-            backgroundThrottling: true
+            backgroundThrottling: false
         }
     });
     const pageToLoad = AutoLogin
@@ -140,6 +198,25 @@ async function createMainWindowHome(AutoLogin = false) {
     mainWindow.maximize();
     mainWindow.show();
 
+    mainWindow.on('close', async (event) => {
+        if (!isQuitting) {
+            event.preventDefault();
+            const { getAjustesAppFile } = await import('./backend/services/controladorArchivos.js');
+            const ajustes = await getAjustesAppFile();
+            if (ajustes.DESACTIVAR_SEGUNDO_PLANO) {
+                isQuitting = true;
+                app.quit();
+            } else {
+                mainWindow.hide();
+                showTray(); // fire-and-forget (async)
+            }
+        }
+    });
+
+    // Ocultar el tray automáticamente en cuanto la ventana se muestra
+    // (cubre todos los orígenes: click en tray, notificación OS, second-instance...)
+    mainWindow.on('show', () => hideTray());
+
     // Registrar handlers una sola vez
     await registerAllHandlers(mainWindow, socket);
 }
@@ -150,10 +227,7 @@ if (!gotTheLock) {
     app.quit();
 } else {
     app.on('second-instance', () => {
-        if (mainWindow) {
-            if (mainWindow.isMinimized()) mainWindow.restore();
-            mainWindow.focus();
-        }
+        if (mainWindow) mostrarVentana();
     });
 
     app.whenReady().then(async () => {
@@ -176,6 +250,7 @@ if (!gotTheLock) {
 }
 
 app.on('before-quit', async (event) => {
+    isQuitting = true;
     event.preventDefault();
     try {
         const [dbRes, buzonRes, poolRes] = await Promise.allSettled([

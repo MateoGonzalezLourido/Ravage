@@ -14,6 +14,12 @@ export const AJUSTES_APP_DEFAULT = {
     FORCE_DISK_CACHE: false,
     //utilidades
     PREVISUALIZACION_URL: true,
+    DESACTIVAR_SEGUNDO_PLANO: false,
+    // Notificaciones del sistema operativo
+    NOTI_OS_MENSAJE_INDIVIDUAL: true,
+    NOTI_OS_MENSAJE_GRUPAL: true,
+    NOTI_OS_DESCARGA_INDIVIDUAL: true,
+    NOTI_OS_DESCARGA_GRUPAL: true,
 
     // Configuración por defecto de Escáneres de Seguridad(0:desactivado,1:escanear,2:borrar peligro)
     ESCANER_ESTEGANOGRAFIA: 1,

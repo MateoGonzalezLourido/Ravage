@@ -2,6 +2,8 @@ import { BuzonUsuarios } from '../models/Buzon.js';
 import { getIDMongodbUsuario, getListaChats, getUsuariosSilence, getUsuariosBloqueados } from '../STORAGE/Variables_sesion.js';
 import { desencriptarDatosSistema } from '../services/cryptoService.js';
 import { createLogger } from '../utils/logger.js';
+import { procesarNotificacionOSEntrada } from './notificaciones_os.js';
+import { getAjustesAppFile } from './controladorArchivos.js';
 const log = createLogger('buzon');
 
 let changeStream = null;
@@ -68,6 +70,24 @@ export async function iniciarBuzon(io, mainWindow) {
         if (docFiltrado && docFiltrado.entrada && docFiltrado.entrada.length > 0) {
             io.to(myUserId.toString()).emit("nueva-notificacion", docFiltrado);
             mainWindow.webContents.send("nueva-notificacion", docFiltrado);
+
+            // Notificaciones nativas del OS — async fire-and-forget (no bloqueamos el stream)
+            (async () => {
+                try {
+                    const ajustesOS = await getAjustesAppFile();
+                    const onClickCb = () => {
+                        if (!mainWindow.isDestroyed()) {
+                            mainWindow.show();
+                            mainWindow.focus();
+                        }
+                    };
+                    for (const entrada of docFiltrado.entrada) {
+                        procesarNotificacionOSEntrada({ entrada, ajustes: ajustesOS || {}, mainWindow, onClickCb });
+                    }
+                } catch (err) {
+                    log.error({ err }, 'Error al procesar notificaciones OS');
+                }
+            })();
         }
     });
     changeStream.on("error", (err) => {
