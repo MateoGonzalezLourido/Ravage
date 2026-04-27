@@ -399,6 +399,8 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
     return { html, fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad };
 }
 
+const _temp_msg_container = document.createElement("div");
+
 async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad }) {
     if (DOM_CACHE.nav_principal_chat_usuario?.dataset.id !== id_chat_str) return;
 
@@ -408,23 +410,17 @@ async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_m
     // Evitar duplicados
     if (id_mensaje && chatContainer.querySelector(`.mensaje-chat[data-id="${id_mensaje}"]`)) return;
 
-    const lastBlock = chatContainer.querySelector(".bloque-dia-chat:last-child");
+    const lastBlock = chatContainer.lastElementChild; // .bloque-dia-chat
     const fechaActualText = texto_mostrar_fecha_mensajes_bloque(new Date(fecha));
-    const esNuevoDia = !lastBlock || lastBlock.querySelector(".fecha-bloque-mensajes span")?.innerHTML !== fechaActualText;
+    
+    // Evitar leer innerHTML si podemos
+    const esNuevoDia = !lastBlock || 
+                      lastBlock.classList.contains('bloque-dia-chat') === false ||
+                      lastBlock.querySelector(".fecha-bloque-mensajes span")?.textContent !== fechaActualText;
 
-    // Parsear html a elemento real para manipular clases antes de insertar
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = html;
-    const nuevoMensajeEl = tempDiv.firstElementChild;
-
-    // Agrupación
-    if (!esNuevoDia) {
-        const lastMessage = lastBlock.querySelector(".mensaje-chat:last-child");
-        if (lastMessage?.dataset.emisorId === id_emisor) {
-            lastMessage.classList.add("agrupado-abajo");
-            nuevoMensajeEl.classList.add("agrupado-arriba");
-        }
-    }
+    // Reutilizar contenedor temporal para el parseo
+    _temp_msg_container.innerHTML = html;
+    const nuevoMensajeEl = _temp_msg_container.firstElementChild;
 
     if (esNuevoDia) {
         const nuevoBloque = document.createElement("div");
@@ -433,9 +429,15 @@ async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_m
         nuevoBloque.appendChild(nuevoMensajeEl);
         chatContainer.appendChild(nuevoBloque);
     } else {
+        const lastMessage = lastBlock.querySelector(".mensaje-chat:last-child");
+        if (lastMessage?.dataset.emisorId === id_emisor) {
+            lastMessage.classList.add("agrupado-abajo");
+            nuevoMensajeEl.classList.add("agrupado-arriba");
+        }
         lastBlock.appendChild(nuevoMensajeEl);
     }
 
+    // Usar requestIdleCallback o similar si es posible, o al menos no bloquear
     aplicar_escaneres_asincronos(nuevoMensajeEl, mensaje, escaneres_seguridad);
     scroll_fin_chat();
 }

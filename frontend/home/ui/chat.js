@@ -684,27 +684,69 @@ async function _resolver_nombres(mensajes, contactos) {
     }));
 }
 // Nueva función que sustituye a _rearmar_agrupacion_dom() en inserciones
-async function _rearmar_agrupacion_dom() {
-    const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;
+/**
+ * Optimiza la agrupación visual (burbujas continuas del mismo emisor).
+ * @param {HTMLElement} contenedor - Opcional, si se pasa, solo procesa los hijos de este contenedor.
+ */
+async function _rearmar_agrupacion_dom(contenedor = null) {
+    const chatContainer = contenedor || DOM_CACHE.cuerpo_mensajes_chat;
     if (!chatContainer) return;
 
-    const todos = chatContainer.querySelectorAll(".mensaje-chat");
-    const len = todos.length;
+    // Si pasamos un contenedor específico (bloque-dia), solo procesamos ese bloque
+    const mensajes = chatContainer.querySelectorAll(".mensaje-chat");
+    const len = mensajes.length;
+    if (len === 0) return;
+
+    // Usar un loop optimizado y evitar re-leer atributos si es posible
+    let emisorPrev = null;
+    let bloquePrev = null;
 
     for (let i = 0; i < len; i++) {
-        const actual = todos[i];
+        const actual = mensajes[i];
         const emisorActual = actual.getAttribute('data-emisor-id');
+        const bloqueActual = actual.parentElement;
 
-        const prev = i > 0 ? todos[i - 1] : null;
-        const next = i < len - 1 ? todos[i + 1] : null;
+        const tieneArriba = (emisorActual === emisorPrev && bloqueActual === bloquePrev);
+        
+        // El actual tiene alguien arriba si el anterior era del mismo emisor y mismo bloque
+        if (actual.classList.contains('agrupado-arriba') !== tieneArriba) {
+            actual.classList.toggle('agrupado-arriba', tieneArriba);
+        }
 
-        const mismoDiaArriba = prev && actual.closest('.bloque-dia-chat') === prev.closest('.bloque-dia-chat');
-        const mismoDiaAbajo = next && actual.closest('.bloque-dia-chat') === next.closest('.bloque-dia-chat');
+        // El anterior tiene alguien abajo si el actual es del mismo emisor y mismo bloque
+        if (i > 0) {
+            const anterior = mensajes[i - 1];
+            if (anterior.classList.contains('agrupado-abajo') !== tieneArriba) {
+                anterior.classList.toggle('agrupado-abajo', tieneArriba);
+            }
+        }
 
-        actual.classList.toggle('agrupado-arriba',
-            mismoDiaArriba && emisorActual === prev.getAttribute('data-emisor-id'));
-        actual.classList.toggle('agrupado-abajo',
-            mismoDiaAbajo && emisorActual === next.getAttribute('data-emisor-id'));
+        emisorPrev = emisorActual;
+        bloquePrev = bloqueActual;
+    }
+}
+
+/**
+ * Re-arma la agrupación solo en el punto de unión entre dos bloques.
+ */
+function _rearmar_agrupacion_frontera(nodoReferencia, esPrepend = false) {
+    if (!nodoReferencia) return;
+    
+    const actual = nodoReferencia;
+    const adyacente = esPrepend ? actual.previousElementSibling : actual.nextElementSibling;
+    
+    if (!adyacente || !actual.classList.contains('mensaje-chat') || !adyacente.classList.contains('mensaje-chat')) return;
+    
+    const mismoEmisor = actual.getAttribute('data-emisor-id') === adyacente.getAttribute('data-emisor-id');
+    const mismoBloque = actual.parentElement === adyacente.parentElement;
+    const agrupados = mismoEmisor && mismoBloque;
+
+    if (esPrepend) {
+        actual.classList.toggle('agrupado-abajo', agrupados);
+        adyacente.classList.toggle('agrupado-arriba', agrupados);
+    } else {
+        actual.classList.toggle('agrupado-arriba', agrupados);
+        adyacente.classList.toggle('agrupado-abajo', agrupados);
     }
 }
 /**
@@ -738,6 +780,10 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
     // FIX 2: el for solo toca el DOM, sin awaits, y recoge referencias a nodos nuevos
     const nodosNuevos = [];
 
+    // FIX 2: Mínimas operaciones al DOM
+    const fragment = document.createDocumentFragment();
+    const tempDiv = document.createElement("div");
+
     for (const { fechaTexto, html_mensajes } of iteracion) {
         const bloqueAdyacente = esPrepend
             ? chatContainer.querySelector(".bloque-dia-chat:first-child")
@@ -745,22 +791,29 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
         const fechaAdyacente = bloqueAdyacente?.querySelector(".fecha-bloque-mensajes span")?.textContent;
 
         if (bloqueAdyacente && fechaTexto === fechaAdyacente) {
+            // Si el bloque ya existe, insertamos los mensajes dentro
+            tempDiv.innerHTML = html_mensajes;
+            const msgs = Array.from(tempDiv.children);
             if (esPrepend) {
-                bloqueAdyacente.querySelector(".fecha-bloque-mensajes").insertAdjacentHTML("afterend", html_mensajes);
+                const fechaEl = bloqueAdyacente.querySelector(".fecha-bloque-mensajes");
+                msgs.reverse().forEach(m => fechaEl.after(m));
             } else {
-                bloqueAdyacente.insertAdjacentHTML("beforeend", html_mensajes);
+                msgs.forEach(m => bloqueAdyacente.appendChild(m));
             }
-            bloqueAdyacente.querySelectorAll(".mensaje-chat:not(.scanned)").forEach(n => nodosNuevos.push(n));
+            msgs.forEach(n => nodosNuevos.push(n));
         } else {
-            const html_dia = `<div class="bloque-dia-chat">
+            // Si el bloque no existe, lo creamos
+            tempDiv.innerHTML = `<div class="bloque-dia-chat">
                 <div class="fecha-bloque-mensajes"><span>${fechaTexto}</span></div>
                 ${html_mensajes}
             </div>`;
-            chatContainer.insertAdjacentHTML(esPrepend ? "afterbegin" : "beforeend", html_dia);
-            const bloqueNuevo = esPrepend
-                ? chatContainer.querySelector(".bloque-dia-chat:first-child")
-                : chatContainer.querySelector(".bloque-dia-chat:last-child");
-            bloqueNuevo?.querySelectorAll(".mensaje-chat:not(.scanned)").forEach(n => nodosNuevos.push(n));
+            const nuevoBloque = tempDiv.firstElementChild;
+            if (esPrepend) {
+                chatContainer.prepend(nuevoBloque);
+            } else {
+                chatContainer.appendChild(nuevoBloque);
+            }
+            nuevoBloque.querySelectorAll(".mensaje-chat").forEach(n => nodosNuevos.push(n));
         }
     }
 
@@ -768,8 +821,21 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
         chatContainer.scrollTop = scrollTopAntes + (chatContainer.scrollHeight - scrollHeightAntes);
     }
 
-    // FIX 3: rearmar solo el borde en lugar de todos los mensajes
-    _rearmar_agrupacion_dom();
+    // FIX 3: Re-agrupar de forma mucho más eficiente (solo los nuevos y sus bordes)
+    if (nodosNuevos.length > 0) {
+        const primerNuevo = nodosNuevos[0];
+        const ultimoNuevo = nodosNuevos[nodosNuevos.length - 1];
+        
+        // Procesar solo los bloques que contienen nodos nuevos
+        const bloquesAfectados = new Set(nodosNuevos.map(n => n.parentElement));
+        for (const bloque of bloquesAfectados) {
+            _rearmar_agrupacion_dom(bloque);
+        }
+        
+        // Asegurar la unión con los existentes
+        _rearmar_agrupacion_frontera(primerNuevo, true);
+        _rearmar_agrupacion_frontera(ultimoNuevo, false);
+    }
 
     // FIX 2: escanear solo los nodos nuevos, no todo el DOM
     await new Promise(r => setTimeout(r, 0));
