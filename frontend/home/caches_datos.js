@@ -117,7 +117,7 @@ export function obtener_archivos_adjuntos_lista() {
 // --- CACHÉ DE VIRTUALIZACIÓN DE CHATS ---
 
 const MAX_CHATS_CACHE_VIRTUALIZACION = 10;
-const MAX_BLOQUES_PAGINACION_EXTRA = 3; // Bloques extra a guardar además de los mensajes iniciales (total 4)
+const MAX_BLOQUES_PAGINACION_EXTRA = 5; // Bloques extra a guardar además de los mensajes iniciales (total 6)
 
 /**
  * Caché de los primeros bloques de virtualización de chats.
