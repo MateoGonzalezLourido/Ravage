@@ -22,10 +22,10 @@
     flex-direction: column;
     gap: 4px;
     transition: padding 0.3s ease;
-    contain: layout style;
+    contain: content;
     content-visibility: auto;
     transform: translateZ(0);
-    will-change: scroll-position;
+    will-change: scroll-position, transform;
 }
 
 /* Optimización para cuando hay paneles laterales abiertos */
@@ -51,7 +51,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    contain: layout style;
+    contain: content;
+    will-change: transform;
 }
 
 /* Message Bubble Container */
@@ -68,7 +69,7 @@
     will-change: transform, opacity;
     user-select: text !important;
     cursor: default !important;
-    contain: layout style;
+    contain: content;
     animation: none;
 }
 
@@ -171,8 +172,9 @@
     position: sticky;
     top: 10px;
     transform: translateZ(0);
-    contain: layout style;
+    contain: content;
     content-visibility: auto;
+    will-change: transform;
 }
 
 /* ─── Agrupación de mensajes ─────────────────────────────────────────── */
