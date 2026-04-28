@@ -1,16 +1,14 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { app } from 'electron';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const DB_PATH = path.join(__dirname, 'cache.db');
+const ruta_base = app ? app.getPath('userData') : path.join(process.cwd(), '.test_data');
+const DB_PATH = path.join(ruta_base, 'cache.db');
 
 // Asegurarse de que el directorio existe
-if (!fs.existsSync(__dirname)) {
-    fs.mkdirSync(__dirname, { recursive: true });
+if (!fs.existsSync(ruta_base)) {
+    fs.mkdirSync(ruta_base, { recursive: true });
 }
 
 const db = new Database(DB_PATH);
