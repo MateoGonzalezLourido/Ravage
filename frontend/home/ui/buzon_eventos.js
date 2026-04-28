@@ -137,11 +137,12 @@ async function Cambio_buzonApi_mensaje(entrada, lote = null) {
     }
 
     // 2. Actualizar el componente de la lista lateral (Sidebar)
-    const chatC = Array.from(document.querySelectorAll(".chat-componente-lista-chats")).find(el => el.dataset.id == id_chat);
+    const id_chat_str = String(id_chat);
+    const chatC = document.querySelector(`#lista-chats-componentes ${safeIdSelector(id_chat_str)}`);
     
     if (chatC) {
         // Solo refrescamos visualmente el item una vez, con la info del último mensaje
-        await refrescar_componente_lista_chats(id_chat, chatC, !esta_silenciado && !chatAbierto);
+        await refrescar_componente_lista_chats(id_chat_str, chatC, !esta_silenciado && !chatAbierto);
         
         // Notificación sonora/visual (solo si no está silenciado y el chat no está abierto)
         if (!esta_silenciado && !chatAbierto) {

@@ -291,18 +291,19 @@ export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
 
 export async function refrescar_componente_lista_chats(id_chat, componente, notificacion = false) {
     try {
+        const id_chat_str = String(id_chat);
         const [info_chats, lista_usuario] = await Promise.all([
-            window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: [{ id: id_chat }], grupales: null, mensajes: false }),
+            window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: [{ id: id_chat_str }], grupales: null, mensajes: false }),
             window.chats.OBTENER_CHATS_USUARIO()
         ])
 
-        const info_chat = info_chats[0]
+        const info_chat = info_chats?.[0]
         if (!info_chat) return
 
-        const chat_usuario = lista_usuario.find(c => (c.id || c._id) == id_chat)
+        const chat_usuario = lista_usuario.find(c => String(c.id || c._id) === id_chat_str)
 
         const datos_usar = {
-            id: id_chat,
+            id: id_chat_str,
             ultimoCambio: chat_usuario?.ultimoCambio,
             usuarios: info_chat.usuarios,
             nombre: info_chat.nombre,
@@ -566,12 +567,35 @@ export async function INICIO_CHAT_MENU_PRINCIPAL() {
 }
 
 export async function cambiar_datos_componente_lista_chats({ id_chat, data, notificacion = false }) {
-    const componente_lista = document.querySelector(`#lista-chats-componentes ${safeIdSelector(id_chat)}`)
+    const id_chat_str = String(id_chat);
+    const componente_lista = document.querySelector(`#lista-chats-componentes ${safeIdSelector(id_chat_str)}`)
+    
     if (componente_lista) {
-        componente_lista.querySelector(".ultimo-mensaje-chat-lista span").innerHTML = escapeHTML(data?.asunto || "");
-        componente_lista.querySelector(".fecha-chat-lista span").innerHTML = escapeHTML(texto_mostrar_fecha_mensajes_bloque(data?.data));
-    }
-    if (notificacion) {
-        componente_lista.classList.add("nuevo-mensaje-notificacion")
+        // Actualizar último mensaje si viene en la data
+        const asunto = data?.asunto || data?.data?.asunto || (typeof data === 'string' ? data : "");
+        if (asunto) {
+            const elMsg = componente_lista.querySelector(".ultimo-mensaje-chat-lista span");
+            if (elMsg) elMsg.innerHTML = escapeHTML(asunto);
+        }
+
+        // Actualizar fecha si viene
+        const fecha = data?.fecha || data?.data?.data || data?.data;
+        if (fecha) {
+            const elFecha = componente_lista.querySelector(".fecha-chat-lista span");
+            if (elFecha) elFecha.innerHTML = escapeHTML(texto_mostrar_fecha_mensajes_bloque(fecha));
+        }
+
+        // Reordenar: mover al principio de la lista
+        const lista_contenedor = DOM_CACHE.lista_chats_componentes;
+        if (lista_contenedor) {
+            // Solo movemos si no hay un filtro de búsqueda activo que pueda verse afectado
+            // o si simplemente queremos que el más reciente esté arriba siempre.
+            // Para Ravage, el comportamiento esperado es que suba al tope.
+            lista_contenedor.prepend(componente_lista);
+        }
+
+        if (notificacion) {
+            componente_lista.classList.add("nuevo-mensaje-notificacion")
+        }
     }
 }
