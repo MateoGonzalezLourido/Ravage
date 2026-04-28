@@ -12,7 +12,9 @@ import {
     createHmac,
     createPublicKey,
     createPrivateKey,
-    constants
+    constants,
+    gzipSync,
+    gunzipSync
 } from '../utils/libs.js';
 import { promisify } from 'node:util';
 const generateKeyPairAsync = (typeof generateKeyPair === 'function') ? promisify(generateKeyPair) : null;
@@ -71,15 +73,19 @@ export function encriptarDatosSistema(datos) {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', getSystemKey(), iv);
     
+    const jsonStr = typeof datos === 'string' ? datos : JSON.stringify(datos);
+    const compressed = gzipSync(Buffer.from(jsonStr, 'utf8'));
+
     const encrypted = Buffer.concat([
-        cipher.update(typeof datos === 'string' ? datos : JSON.stringify(datos), 'utf8'),
+        cipher.update(compressed),
         cipher.final()
     ]);
     
     return {
         data: encrypted.toString('hex'),
         iv: iv.toString('hex'),
-        tag: cipher.getAuthTag().toString('hex')
+        tag: cipher.getAuthTag().toString('hex'),
+        compressed: true
     };
 }
 
@@ -92,11 +98,15 @@ export function desencriptarDatosSistema(encriptado) {
         const decipher = createDecipheriv('aes-256-gcm', getSystemKey(), Buffer.from(encriptado.iv, 'hex'));
         decipher.setAuthTag(Buffer.from(encriptado.tag, 'hex'));
         
-        const decrypted = Buffer.concat([
+        let decrypted = Buffer.concat([
             decipher.update(Buffer.from(encriptado.data, 'hex')),
             decipher.final()
         ]);
         
+        if (encriptado.compressed) {
+            decrypted = gunzipSync(decrypted);
+        }
+
         return decrypted.toString('utf8');
     } catch (e) {
         log.error({ err: e }, "Error al desencriptar datos del sistema");
@@ -151,8 +161,11 @@ export function cifrarContenido(contenido, key) {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', key, iv);
     
+    const jsonStr = typeof contenido === 'string' ? contenido : JSON.stringify(contenido);
+    const compressed = gzipSync(Buffer.from(jsonStr, 'utf8'));
+
     const encrypted = Buffer.concat([
-        cipher.update(typeof contenido === 'string' ? contenido : JSON.stringify(contenido), 'utf8'),
+        cipher.update(compressed),
         cipher.final()
     ]);
     
@@ -161,7 +174,8 @@ export function cifrarContenido(contenido, key) {
     return {
         data: encrypted.toString('hex'),
         iv: iv.toString('hex'),
-        tag: tag.toString('hex')
+        tag: tag.toString('hex'),
+        compressed: true
     };
 }
 
@@ -170,11 +184,15 @@ export function descifrarContenido(cifrado, key) {
     const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(cifrado.iv, 'hex'));
     decipher.setAuthTag(Buffer.from(cifrado.tag, 'hex'));
     
-    const decrypted = Buffer.concat([
+    let decrypted = Buffer.concat([
         decipher.update(Buffer.from(cifrado.data, 'hex')),
         decipher.final()
     ]);
     
+    if (cifrado.compressed) {
+        decrypted = gunzipSync(decrypted);
+    }
+
     return decrypted.toString('utf8');
 }
 
