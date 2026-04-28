@@ -181,6 +181,44 @@ export function invalidar_cache_virtualizacion(id_chat) {
     }
 }
 
+/**
+ * Limpieza agresiva de cache para liberar RAM en segundo plano.
+ * Deja solo los 3 chats más recientes y reduce a la mitad sus bloques.
+ */
+export function limpiar_cache_virtualizacion_segundo_plano() {
+    console.log('[Cleanup RAM] Iniciando limpieza de cache de virtualización en el Frontend...');
+    
+    // 1. Dejar solo 3 chats en la cache (los más recientes)
+    if (CACHE_VIRTUALIZACION.size > 3) {
+        const entries = Array.from(CACHE_VIRTUALIZACION.entries());
+        entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+        
+        const aMantener = entries.slice(0, 3);
+        CACHE_VIRTUALIZACION.clear();
+        for (const [key, value] of aMantener) {
+            CACHE_VIRTUALIZACION.set(key, value);
+        }
+        console.debug(`[Cleanup RAM] Cache virtualización reducida a los 3 chats más recientes.`);
+    }
+
+    // 2. Liberar la mitad de los bloques de cada chat restante
+    for (const [id, cache] of CACHE_VIRTUALIZACION.entries()) {
+        if (cache.cache_paginacion) {
+            const keys = Object.keys(cache.cache_paginacion);
+            const total = keys.length;
+            if (total > 0) {
+                const aMantenerCount = Math.ceil(total / 2);
+                const nuevaPaginacion = {};
+                for (let i = 0; i < aMantenerCount; i++) {
+                    nuevaPaginacion[keys[i]] = cache.cache_paginacion[keys[i]];
+                }
+                cache.cache_paginacion = nuevaPaginacion;
+                console.debug(`[Cleanup RAM] Liberada mitad de bloques para chat ${id} (${total} -> ${aMantenerCount}).`);
+            }
+        }
+    }
+}
+
 
 // --- CACHÉ DE ELEMENTOS DEL DOM (OPTIZACIÓN) ---
 
@@ -257,5 +295,17 @@ export const DOM_CACHE = {
         this.cuerpo_mensajes_chat = document.getElementById("cuerpo-mensajes-chat");
         this.textarea_mensaje_escritura = document.getElementById("textarea-mensaje-escritura");
         this.nav_principal_chat_usuario = document.getElementById("nav-principal-chat-usuario");
+    },
+
+    /**
+     * Libera todas las referencias al DOM para ahorrar RAM.
+     */
+    limpiar_cache_dom() {
+        for (const key in this) {
+            if (typeof this[key] !== "function") {
+                this[key] = null;
+            }
+        }
+        console.debug("[Cleanup RAM] Cache de elementos DOM liberada.");
     }
 };

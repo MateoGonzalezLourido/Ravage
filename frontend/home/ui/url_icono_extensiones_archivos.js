@@ -144,7 +144,7 @@ function _estimar_tamano_cache_mb(data) {
 async function getCacheUrlImgExtensiones() {
     resetearTimerLimpieza()
     /*si esta vacio devolver siempre null */
-    return _cache_img_extensiones
+    return _cache_local_iconos
 }
 /*
 *@description Resetear timer de limpieza
@@ -152,7 +152,19 @@ async function getCacheUrlImgExtensiones() {
 function resetearTimerLimpieza() {
     if (timer_limpieza) clearTimeout(timer_limpieza)
     timer_limpieza = setTimeout(() => {
-        _cache_img_extensiones = null
+        _cache_local_iconos = null
         timer_limpieza = null
     }, TIEMPO_EXPIRACION)
+}
+
+/**
+ * Limpia la cache de iconos inmediatamente para liberar RAM.
+ */
+export function limpiar_cache_iconos() {
+    _cache_local_iconos = null;
+    if (timer_limpieza) {
+        clearTimeout(timer_limpieza);
+        timer_limpieza = null;
+    }
+    console.debug("[Cleanup RAM] Cache de iconos de extensiones liberada.");
 }

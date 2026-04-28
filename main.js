@@ -122,6 +122,45 @@ function mostrarVentana() {
 }
 
 
+async function limpiarRecursosSegundoPlano() {
+    console.log('[Cleanup] Liberando recursos para liberar RAM...');
+    try {
+        const [poolRes, cacheChatRes, cacheArchivosRes, cacheHistorialRes] = await Promise.allSettled([
+            import('./backend/utils/workers/workerPool.js'),
+            import('./backend/STORAGE/CACHE/_cache_chat_activo.js'),
+            import('./backend/STORAGE/CACHE/_cache_archivos_descargados.js'),
+            import('./backend/STORAGE/CACHE/_cache_historial_busquedas_añadir_usuario.js')
+        ]);
+
+        if (poolRes.status === 'fulfilled') {
+            await poolRes.value.terminarCryptoPool();
+            await poolRes.value.terminarEscanerPool();
+        }
+        if (cacheChatRes.status === 'fulfilled') {
+            cacheChatRes.value.borrarCacheChatActivo();
+        }
+        if (cacheArchivosRes.status === 'fulfilled') {
+            await cacheArchivosRes.value.clearCacheArchivosDescargados();
+        }
+        if (cacheHistorialRes.status === 'fulfilled') {
+            await cacheHistorialRes.value.limpiar_historial_completo();
+        }
+
+        // Notificar al Frontend para limpiar sus caches de RAM
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('limpiar-ram-frontend');
+        }
+
+        if (global.gc) {
+            global.gc();
+            console.log('[Cleanup] Garbage Collector ejecutado.');
+        }
+    } catch (err) {
+        console.error('[Cleanup] Error durante la limpieza:', err);
+    }
+}
+
+
 async function registerAllHandlers(window, sock) {
     if (ipcHandlersRegistered) return;
     ipcHandlersRegistered = true;
@@ -244,6 +283,7 @@ async function createMainWindowHome(AutoLogin = false) {
             } else {
                 mainWindow.hide();
                 showTray(); // fire-and-forget (async)
+                await limpiarRecursosSegundoPlano();
             }
         }
     });
@@ -292,9 +332,8 @@ app.on('before-quit', async (event) => {
         ]);
 
         // Terminar worker pool primero (operaciones en vuelo)
-        if (poolRes.status === 'fulfilled') {
-            await poolRes.value.terminarCryptoPool();
-        }
+        await limpiarRecursosSegundoPlano();
+
         if (buzonRes.status === 'fulfilled') {
             await buzonRes.value.detenerBuzon();
         }

@@ -9,5 +9,8 @@ module.exports={
     },
     CERRANDO_SESION: (callback) => {
         ipcRenderer.on("cerrando-sesion", (_, mostrar) => callback(mostrar));
+    },
+    LIMPIAR_RAM: (callback) => {
+        ipcRenderer.on("limpiar-ram-frontend", () => callback());
     }
 }

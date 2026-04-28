@@ -36,7 +36,16 @@ import {
 import { manejar_descarga_archivo } from './ui/descarga_archivos.js'
 import { toggle_historial_descargas, mensaje_bienvenida_usuario } from './ui/navegacion_vistas.js'
 import { manejar_ui_cierre_sesion } from './ui/servicios_sesion.js'
-import { establecer_id_usuario, establecer_apodo_usuario, establecer_correo_usuario, cache_input_buscar_chat_ultimo, establecer_cache_busqueda_chat, DOM_CACHE } from './caches_datos.js'
+import { limpiar_cache_iconos } from './ui/url_icono_extensiones_archivos.js'
+import {
+    establecer_id_usuario,
+    establecer_apodo_usuario,
+    establecer_correo_usuario,
+    cache_input_buscar_chat_ultimo,
+    establecer_cache_busqueda_chat,
+    DOM_CACHE,
+    limpiar_cache_virtualizacion_segundo_plano
+} from './caches_datos.js'
 
 // Inicializar el bridge de actualización para el backend
 set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
@@ -185,6 +194,22 @@ async function preparar_interfaz_y_servicios() {
 
     // 2. Gestión global de fin de sesión (Listener)
     window.avisos_ui.CERRANDO_SESION(manejar_ui_cierre_sesion)
+
+    // 3. Limpieza de RAM (Backend signal)
+    window.avisos_ui.LIMPIAR_RAM(() => {
+        limpiar_cache_virtualizacion_segundo_plano();
+        limpiar_cache_iconos();
+        DOM_CACHE.limpiar_cache_dom();
+    })
+
+    // 4. Recuperación de RAM (Re-inicializar al volver)
+    window.addEventListener('focus', () => {
+        if (DOM_CACHE.lista_chats_componentes === null) {
+            console.log("[Cleanup RAM] Re-inicializando cache DOM al recuperar foco.");
+            DOM_CACHE.inicializar_estaticos();
+            DOM_CACHE.refrescar_elementos_chat();
+        }
+    });
 }
 
 // ==========================================
