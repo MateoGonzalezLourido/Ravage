@@ -2,10 +2,7 @@ const { ipcRenderer } = require('electron');
 
 module.exports = {
     cache_persistente: {
-        getChatCache: (id) => ipcRenderer.invoke("get-chat-cache", id),
-        setChatCache: (chat) => ipcRenderer.invoke("set-chat-cache", chat),
-        setConfigCacheChats: (config) => ipcRenderer.invoke("set-config-cache-chats", config),
-        clearCacheChats: () => ipcRenderer.invoke("clear-cache-chats"),
+
         getUsuarioCache: (id) => ipcRenderer.invoke("get-usuario-cache", id),
         setConfigCacheUsuarios: (config) => ipcRenderer.invoke("set-config-cache-usuarios", config),
         clearCacheUsuarios: () => ipcRenderer.invoke("clear-cache-usuarios"),

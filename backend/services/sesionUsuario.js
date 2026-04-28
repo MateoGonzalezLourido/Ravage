@@ -23,7 +23,7 @@ import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, createHash, machineIdSync } from '../utils/libs.js';
 import { generarLlavesRSA, hashDatosSistema } from './cryptoService.js';
-import { clearCacheChats } from '../STORAGE/CACHE/_cache_chats.js';
+
 import { clearCacheUsuarios, setUsuarioEnCache } from '../repositories/UserRepository.js';
 import { clearCacheArchivosDescargados } from '../STORAGE/CACHE/_cache_archivos_descargados.js';
 
@@ -425,7 +425,7 @@ async function cerrarSesionUsuario(correo) {
         //limpiar ficheros cache
         const arreglos = [
             clearFileSession('sessionFile'),
-            clearCacheChats(),
+
             clearCacheUsuarios(),
             clearCacheArchivosDescargados()
         ];

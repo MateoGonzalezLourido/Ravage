@@ -8,7 +8,7 @@ import { getIDMongodbUsuario, getInvisibleUsuario, setUsuariosSilence, setUsuari
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
 import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
-import { getChatDeCache, setChatEnCache } from '../STORAGE/CACHE/_cache_chats.js';
+
 
 const log = createLogger('chat-repo');
 
@@ -22,14 +22,7 @@ function normalizeId(id) {
  * Helper para normalizar el chat antes de guardarlo en cache (sin contenido de mensajes).
  */
 export async function setChatEnCacheRaw(chat) {
-    if (!chat) return;
-    const chatCopia = { ...chat };
-    if (chatCopia.mensajes && Array.isArray(chatCopia.mensajes)) {
-        // Guardar solo IDs para seguir la regla de "no contenido" y ahorrar espacio
-        chatCopia.mensajes = chatCopia.mensajes.map(m => m._id || m.id);
-        chatCopia._hasFullMessages = false;
-    }
-    await setChatEnCache(chatCopia);
+    // No-op: cache_chats has been removed
 }
 
 export async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
@@ -50,16 +43,7 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
         if (chatIds.length === 0) return [];
 
         const result = [];
-        const missingIds = [];
-
-        for (const id of chatIds) {
-            const cached = await getChatDeCache(id);
-            if (cached) {
-                result.push(cached);
-            } else {
-                missingIds.push(id);
-            }
-        }
+        const missingIds = chatIds;
 
         if (missingIds.length > 0) {
             log.info({ missing: missingIds.length }, "Cargando chats faltantes desde MongoDB");
@@ -125,40 +109,13 @@ export async function obtener_datos_chat_unico(id_chat, datos_buscar = null) {
             fields.forEach(f => { if (f) projection[f] = 1; });
         }
 
-        // 1. Intentar obtener de CACHE primero
-        const cached = await getChatDeCache(id_chat_str);
-        const fields = Array.isArray(datos_buscar) ? datos_buscar : (typeof datos_buscar === 'string' ? datos_buscar.trim().split(/\s+/) : []);
-
-        if (cached) {
-            if (!datos_buscar) {
-                // Caso: Pedir chat completo
-                let chat_a_devolver = { ...cached };
-                if (nmensajes !== null) chat_a_devolver.nmensajes = nmensajes;
-                return await resolverNombresYBloqueos(chat_a_devolver, id_chat_str);
-            } else {
-                // Caso: Campos específicos
-                let filtered = { _id: cached._id };
-                let missingSome = false;
-                let pedir_mensajes = false;
-
-                fields.forEach(f => {
-                    if (f === "mensajes") pedir_mensajes = true;
-                    else if (f && f in cached) filtered[f] = cached[f];
-                    else if (f) missingSome = true;
-                });
-
-                if (!missingSome && !pedir_mensajes) {
-                    const [res] = await resolverNombresChats([filtered]);
-                    if (nmensajes !== null) res.nmensajes = nmensajes;
-                    return convertirObjectId(res);
-                }
-            }
-        }
+        // Cache persistente eliminado: ir directamente a DB logic below
 
         // 2. Ir a DB
         let data_obtenida = await ChatsRavage.findById(id_chat_str, projection).lean();
         if (!data_obtenida) return null;
 
+        const fields = Array.isArray(datos_buscar) ? datos_buscar : (typeof datos_buscar === 'string' ? datos_buscar.trim().split(/\s+/) : []);
         if (Array.isArray(fields) && fields.includes("mensajes")) {
             data_obtenida.mensajes = await MessagesRavage.find({ id_chat: id_chat_str }).sort({ data: -1 }).limit(30).lean();
             data_obtenida.mensajes.reverse();

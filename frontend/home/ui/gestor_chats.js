@@ -52,21 +52,19 @@ let id_chat_cargando = null;
 
 export async function Get_datos_chat_abrir(id_chat) {
     const resultados = await Promise.allSettled([
-        window.cache_persistente.getChatCache(id_chat),
         window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat)
     ]);
 
     const res = resultados.map(r => r.status === 'fulfilled' ? r.value : null);
-    const [cachePer, cacheAct] = res;
+    const [cacheAct] = res;
 
     let datos_necesarios = { ...MODELO_DATOS_NECESARIOS_CHAT };
 
-    let ids_usuarios = cachePer?.usuarios || cacheAct?.usuarios || null;
+    let ids_usuarios = cacheAct?.usuarios || null;
     let campos_chat_faltantes = [];
 
     for (const key of Object.keys(datos_necesarios)) {
         if (cacheAct?.[key]) datos_necesarios[key] = cacheAct[key];
-        else if (cachePer?.[key]) datos_necesarios[key] = cachePer[key];
         else if (key !== 'd_usuarios' && key !== 'usuarios') campos_chat_faltantes.push(key);
     }
 
@@ -93,7 +91,7 @@ export async function Get_datos_chat_abrir(id_chat) {
     datos_necesarios.usuarios = ids_usuarios;
     datos_necesarios._id = id_chat;
 
-    window.cache_persistente.setChatCache(datos_necesarios);
+
     window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
         _id: id_chat,
         nombre: datos_necesarios.nombre,
@@ -365,8 +363,6 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
 
     const [info_chat, result_seguridad, nombre_emisor] = await Promise.all([
         batchRequestCache.get(`info_chat_${id_chat_str}`, async () => {
-            const cache = await window.cache_persistente.getChatCache(id_chat_str).catch(() => null);
-            if (cache) return cache;
             const activo = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat_str).catch(() => null);
             if (activo && (activo._id === id_chat_str || activo.id === id_chat_str)) return activo;
             return await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat_str).catch(() => null);

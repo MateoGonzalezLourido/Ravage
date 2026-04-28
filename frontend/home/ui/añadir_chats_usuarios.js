@@ -29,20 +29,75 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
             await buscar_usuario_añadir_chat(e)
         }
     }
+
+    async function manejar_input_sugerencias(e) {
+        const texto = e.target.value.trim().toLowerCase();
+        const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
+
+        if (texto.length < 2) {
+            $resultados.innerHTML = "<span>* Sin resultados</span>";
+            $resultados.classList.add("empty-state");
+            return;
+        }
+
+        try {
+            const history = await window.cache_persistente.obtenerHistorialBusquedas();
+            if (history && history.datos) {
+                const filtrados = history.datos.filter(d =>
+                    d.datoUsadoBuscar.toLowerCase().includes(texto)
+                ).slice(0, 5);
+
+                if (filtrados.length > 0) {
+                    mostrar_sugerencias_historial(filtrados);
+                } else {
+                    $resultados.innerHTML = "<span>* Sin resultados</span>";
+                    $resultados.classList.add("empty-state");
+                }
+            }
+        } catch (err) {
+            console.error("Error al obtener sugerencias:", err);
+        }
+    }
+
+    function mostrar_sugerencias_historial(sugerencias) {
+        const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
+        $resultados.classList.remove("empty-state");
+
+        let html = '<div class="sugerencias-historial-container">';
+        html += '<span class="sugerencias-titulo">Sugerencias del historial:</span>';
+        sugerencias.forEach(s => {
+            html += `<div class="sugerencia-item" data-dato="${escapeHTML(s.datoUsadoBuscar)}">
+                        <img src="../recursos/reciente.png" class="sugerencia-icon" alt="reciente">
+                        <span>${escapeHTML(s.datoUsadoBuscar)}</span>
+                     </div>`;
+        });
+        html += '</div>';
+
+        $resultados.innerHTML = html;
+
+        $resultados.querySelectorAll(".sugerencia-item").forEach(item => {
+            item.addEventListener("click", async (e) => {
+                const dato = e.currentTarget.dataset.dato;
+                if ($inputBuscar) {
+                    $inputBuscar.value = dato;
+                    await buscar_usuario_añadir_chat({ key: "Enter", preventDefault: () => { } })
+                }
+            });
+        });
+    }
     const evento_cerrar_menu_añadir_chat = () => {
         desplegar_menu_añadir_chat({ mostrar: false })
     }
     function activar_eventos_menu_añadir_chat() {
-
         $btnCerrar?.addEventListener("click", evento_cerrar_menu_añadir_chat)
-
         $inputBuscar?.addEventListener("keydown", anadir_chat_buscar_usuario)
+        $inputBuscar?.addEventListener("input", manejar_input_sugerencias)
         $btnAgregar?.addEventListener("click", crear_chat_nuevo)
     }
     function desactivar_eventos_menu_añadir_chat() {
-
         $btnCerrar?.removeEventListener("click", evento_cerrar_menu_añadir_chat)
         $inputBuscar?.removeEventListener("keydown", anadir_chat_buscar_usuario)
+        $inputBuscar?.removeEventListener("input", manejar_input_sugerencias)
         $btnAgregar?.removeEventListener("click", crear_chat_nuevo)
     }
     if (mostrar) {
@@ -177,7 +232,6 @@ function quitar_usuarios_lista_añadir(id) {
 }
 
 async function buscar_usuario_añadir_chat(e) {
-    /*Buscar el id o correo de un usuario; solo se busca coincidencias exactas, por lo que el resultado es 1 o 0 usuarios*/
     const clase_cp_posible_usuario_añadir = "componente-posible-usuario-añadir"
 
     async function buscar_y_procesar_cache(dato, esCorreo) {

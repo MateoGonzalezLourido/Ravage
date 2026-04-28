@@ -127,15 +127,15 @@ async function registerAllHandlers(window, sock) {
     ipcHandlersRegistered = true;
 
     const [
-        { registerSessionHandlers },
-        { registerValidadoresHandlers },
-        { registerChatHandlers },
-        { registerSocialHandlers },
-        { registerCacheArchivosDescargadosHandlers },
-        { registerCachePersistentHandlers },
-        { registerEscaneresAppHandlers },
-        { getAjustesAppFile, saveAjustesAppFile }
-    ] = await Promise.all([
+        sessionRes,
+        validadoresRes,
+        chatRes,
+        socialRes,
+        cacheArchivosRes,
+        cachePersistentRes,
+        escaneresRes,
+        controladorRes
+    ] = await Promise.allSettled([
         import('./backend/ipc/session_ipc.js'),
         import('./backend/ipc/validadores_ipc.js'),
         import('./backend/ipc/chat_ipc.js'),
@@ -146,20 +146,52 @@ async function registerAllHandlers(window, sock) {
         import('./backend/services/controladorArchivos.js')
     ]);
 
-    registerSessionHandlers(window);
-    registerValidadoresHandlers();
-    registerChatHandlers(window, sock);
-    registerSocialHandlers();
-    registerCacheArchivosDescargadosHandlers();
-    registerCachePersistentHandlers();
-    registerEscaneresAppHandlers();
+    if (sessionRes.status === 'fulfilled') {
+        try { sessionRes.value.registerSessionHandlers(window); }
+        catch (e) { console.error('[IPC] Error en registerSessionHandlers:', e.message); }
+    } else console.error('[IPC] Fallo session_ipc:', sessionRes.reason);
 
-    ipcMain.handle("obtener-ajustes-app", async (_, nombre) => {
-        return await getAjustesAppFile(nombre);
-    });
-    ipcMain.handle("guardar-ajustes-app", async (_, data) => {
-        return await saveAjustesAppFile({ data, create: false });
-    });
+    if (validadoresRes.status === 'fulfilled') {
+        try { validadoresRes.value.registerValidadoresHandlers(); }
+        catch (e) { console.error('[IPC] Error en registerValidadoresHandlers:', e.message); }
+    } else console.error('[IPC] Fallo validadores_ipc:', validadoresRes.reason);
+
+    if (chatRes.status === 'fulfilled') {
+        try { chatRes.value.registerChatHandlers(window, sock); }
+        catch (e) { console.error('[IPC] Error en registerChatHandlers:', e.message); }
+    } else console.error('[IPC] Fallo chat_ipc:', chatRes.reason);
+
+    if (socialRes.status === 'fulfilled') {
+        try { socialRes.value.registerSocialHandlers(); }
+        catch (e) { console.error('[IPC] Error en registerSocialHandlers:', e.message); }
+    } else console.error('[IPC] Fallo social_ipc:', socialRes.reason);
+
+    if (cacheArchivosRes.status === 'fulfilled') {
+        try { cacheArchivosRes.value.registerCacheArchivosDescargadosHandlers(); }
+        catch (e) { console.error('[IPC] Error en registerCacheArchivosDescargadosHandlers:', e.message); }
+    } else console.error('[IPC] Fallo cache_archivos_descargados_ipc (SQLite):', cacheArchivosRes.reason?.message);
+
+    if (cachePersistentRes.status === 'fulfilled') {
+        try { cachePersistentRes.value.registerCachePersistentHandlers(); }
+        catch (e) { console.error('[IPC] Error en registerCachePersistentHandlers:', e.message); }
+    } else console.error('[IPC] Fallo cache_persistent_ipc (SQLite):', cachePersistentRes.reason?.message);
+
+    if (escaneresRes.status === 'fulfilled') {
+        try { escaneresRes.value.registerEscaneresAppHandlers(); }
+        catch (e) { console.error('[IPC] Error en registerEscaneresAppHandlers:', e.message); }
+    } else console.error('[IPC] Fallo escaneres_app_ipc:', escaneresRes.reason);
+
+    if (controladorRes.status === 'fulfilled') {
+        const { getAjustesAppFile, saveAjustesAppFile } = controladorRes.value;
+        ipcMain.handle("obtener-ajustes-app", async (_, nombre) => {
+            return await getAjustesAppFile(nombre);
+        });
+        ipcMain.handle("guardar-ajustes-app", async (_, data) => {
+            return await saveAjustesAppFile({ data, create: false });
+        });
+    } else {
+        console.error('[IPC] Fallo controladorArchivos:', controladorRes.reason);
+    }
 }
 
 async function createMainWindowHome(AutoLogin = false) {
@@ -193,6 +225,9 @@ async function createMainWindowHome(AutoLogin = false) {
         ? path.join(__dirname, 'frontend', 'home', 'home.html')
         : path.join(__dirname, 'frontend', 'sesion-log', 'sesion.html');
 
+    // Registrar handlers antes de cargar el contenido para evitar race conditions
+    await registerAllHandlers(mainWindow, socket);
+
     mainWindow.loadFile(pageToLoad);
 
     mainWindow.maximize();
@@ -216,9 +251,6 @@ async function createMainWindowHome(AutoLogin = false) {
     // Ocultar el tray automáticamente en cuanto la ventana se muestra
     // (cubre todos los orígenes: click en tray, notificación OS, second-instance...)
     mainWindow.on('show', () => hideTray());
-
-    // Registrar handlers una sola vez
-    await registerAllHandlers(mainWindow, socket);
 }
 
 const gotTheLock = app.requestSingleInstanceLock();

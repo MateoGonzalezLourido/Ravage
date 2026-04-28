@@ -1,4 +1,4 @@
-import { readFileSession, saveCacheHistorialBusquedasAñadirFile } from '../../services/controladorArchivos.js';
+import db from './database.js';
 import { encontrar_usuario } from '../../repositories/UserRepository.js';
 import { createLogger } from '../../utils/logger.js';
 const log = createLogger('cache-hist-buscar');
@@ -8,65 +8,38 @@ const SEMANA_MS = 7 * 24 * 60 * 60 * 1000;
 const DIAS_2_MS = 2 * 24 * 60 * 60 * 1000;
 const DIAS_90_MS = 90 * 24 * 60 * 60 * 1000;
 
-// _cache_historial contendrá { datos: Map, fecha_actualizado_global }
-let _cache_historial_map = null;
-let _fecha_actualizado_global = Date.now();
-let _timeout_limpieza_ram = null;
+// Preparar sentencias
+const stmt_insert = db.prepare('INSERT OR REPLACE INTO historial_busquedas (datoUsadoBuscar, _id, veces_buscado, ultima_vez) VALUES (?, ?, ?, ?)');
+const stmt_get_by_dato = db.prepare('SELECT * FROM historial_busquedas WHERE datoUsadoBuscar = ?');
+const stmt_get_by_id = db.prepare('SELECT * FROM historial_busquedas WHERE _id = ?');
+const stmt_delete_by_dato = db.prepare('DELETE FROM historial_busquedas WHERE datoUsadoBuscar = ?');
+const stmt_delete_by_id = db.prepare('DELETE FROM historial_busquedas WHERE _id = ?');
+const stmt_clear = db.prepare('DELETE FROM historial_busquedas');
+const stmt_get_all = db.prepare('SELECT * FROM historial_busquedas ORDER BY ultima_vez DESC');
+const stmt_count = db.prepare('SELECT COUNT(*) as count FROM historial_busquedas');
+const stmt_get_candidates = db.prepare('SELECT * FROM historial_busquedas');
 
-export function cancelar_limpieza_variable_cache() {
-    if (_timeout_limpieza_ram) {
-        clearTimeout(_timeout_limpieza_ram);
-        _timeout_limpieza_ram = null;
-    }
-}
+let _fecha_actualizado_global = Date.now();
 
 async function _asegurar_inicio() {
-    cancelar_limpieza_variable_cache();
-    if (_cache_historial_map) return;
-    try {
-        const guardado = await readFileSession('cacheHistorialBusquedasAñadir');
-        if (guardado && Array.isArray(guardado.datos)) {
-            _cache_historial_map = new Map();
-            for (const d of guardado.datos) {
-                // Usamos una clave compuesta o preferimos el datoUsadoBuscar por ser único en búsquedas
-                _cache_historial_map.set(d.datoUsadoBuscar, d);
-            }
-            _fecha_actualizado_global = guardado.fecha_actualizado_global || Date.now();
-        } else {
-            _cache_historial_map = new Map();
-            _fecha_actualizado_global = Date.now();
-        }
-        await _revisar_cache_semanal();
-    } catch (e) {
-        log.error({ err: e }, "Error iniciando cache de historial");
-        _cache_historial_map = new Map();
-        _fecha_actualizado_global = Date.now();
-    }
+    await _revisar_cache_semanal();
 }
 
-async function _guardar_en_disco() {
-    try {
-        const datos_array = Array.from(_cache_historial_map.values());
-        await saveCacheHistorialBusquedasAñadirFile({
-            datos: datos_array,
-            fecha_actualizado_global: _fecha_actualizado_global,
-            cantidad_guardados: datos_array.length
-        });
-    } catch (e) {
-        log.error({ err: e }, "Error guardando cache historial");
-    }
+export function cancelar_limpieza_variable_cache() {
+    // Ya no es necesario con SQLite directo
 }
 
 export async function revisar_mongodb_datos() {
     await _asegurar_inicio();
     let modificado = false;
     
-    for (const [key, item] of _cache_historial_map.entries()) {
+    const items = stmt_get_all.all();
+    for (const item of items) {
         const esCorreo = item.datoUsadoBuscar.includes('@');
         try {
             const valid = await encontrar_usuario(item.datoUsadoBuscar, esCorreo);
             if (!valid) {
-                _cache_historial_map.delete(key);
+                stmt_delete_by_dato.run(item.datoUsadoBuscar);
                 modificado = true;
             }
         } catch(e) {
@@ -76,7 +49,6 @@ export async function revisar_mongodb_datos() {
     
     if (modificado) {
         _fecha_actualizado_global = Date.now();
-        await _guardar_en_disco();
     }
 }
 
@@ -88,134 +60,94 @@ async function _revisar_cache_semanal() {
 }
 
 function _borrar_inteligentemente() {
-    if (_cache_historial_map.size <= LIMITE_HISTORIAL) return;
+    const count = stmt_count.get().count;
+    if (count <= LIMITE_HISTORIAL) return;
     
     const ahora = Date.now();
-    let keyABorrar = null;
+    const items = stmt_get_candidates.all();
     
-    // Buscar candidatos con más de 2 días
     let mejorCandidato = null;
     let masViejo = null;
 
-    for (const [key, d] of _cache_historial_map.entries()) {
+    for (const d of items) {
         const antiguedad = ahora - d.ultima_vez;
         
-        if (!masViejo || d.ultima_vez < masViejo.val.ultima_vez) {
-            masViejo = { key, val: d };
+        if (!masViejo || d.ultima_vez < masViejo.ultima_vez) {
+            masViejo = d;
         }
 
         if (antiguedad > DIAS_2_MS) {
             const esMuyViejo = antiguedad > DIAS_90_MS;
             
             if (!mejorCandidato) {
-                mejorCandidato = { key, val: d, esMuyViejo };
+                mejorCandidato = { ...d, esMuyViejo };
                 continue;
             }
 
-            // Prioridad 1: Más de 90 días
             if (esMuyViejo && !mejorCandidato.esMuyViejo) {
-                mejorCandidato = { key, val: d, esMuyViejo };
+                mejorCandidato = { ...d, esMuyViejo };
             } 
             else if (esMuyViejo === mejorCandidato.esMuyViejo) {
-                // Prioridad 2: Menos veces buscado
-                if (d.veces_buscado < mejorCandidato.val.veces_buscado) {
-                    mejorCandidato = { key, val: d, esMuyViejo };
+                if (d.veces_buscado < mejorCandidato.veces_buscado) {
+                    mejorCandidato = { ...d, esMuyViejo };
                 } 
-                // Prioridad 3: Más tiempo sin usarse
-                else if (d.veces_buscado === mejorCandidato.val.veces_buscado && d.ultima_vez < mejorCandidato.val.ultima_vez) {
-                    mejorCandidato = { key, val: d, esMuyViejo };
+                else if (d.veces_buscado === mejorCandidato.veces_buscado && d.ultima_vez < mejorCandidato.ultima_vez) {
+                    mejorCandidato = { ...d, esMuyViejo };
                 }
             }
         }
     }
     
-    keyABorrar = mejorCandidato ? mejorCandidato.key : (masViejo ? masViejo.key : null);
-    
-    if (keyABorrar) {
-        _cache_historial_map.delete(keyABorrar);
+    const itemABorrar = mejorCandidato || masViejo;
+    if (itemABorrar) {
+        stmt_delete_by_dato.run(itemABorrar.datoUsadoBuscar);
     }
 }
 
 export async function añadir_historial(id, datoUsado) {
     await _asegurar_inicio();
     
-    // Búsqueda rápida por datoUsado (clave del Map)
-    let item = _cache_historial_map.get(datoUsado);
-    
-    // Si no está por datoUsado, buscar por _id en los valores (menos frecuente)
+    let item = stmt_get_by_dato.get(datoUsado);
     if (!item) {
-        for (const d of _cache_historial_map.values()) {
-            if (d._id === id) {
-                item = d;
-                break;
-            }
-        }
+        item = stmt_get_by_id.get(id);
     }
 
     if (item) {
-        item.veces_buscado += 1;
-        item.ultima_vez = Date.now();
+        stmt_insert.run(item.datoUsadoBuscar, item._id, item.veces_buscado + 1, Date.now());
     } else {
-        _cache_historial_map.set(datoUsado, {
-            _id: id,
-            datoUsadoBuscar: datoUsado,
-            veces_buscado: 1,
-            ultima_vez: Date.now()
-        });
+        stmt_insert.run(datoUsado, id, 1, Date.now());
         
-        while (_cache_historial_map.size > LIMITE_HISTORIAL) {
+        while (stmt_count.get().count > LIMITE_HISTORIAL) {
             _borrar_inteligentemente();
         }
     }
-    
-    await _guardar_en_disco();
 }
 
 export async function borrar_historial_usuario(id_o_dato) {
     await _asegurar_inicio();
     
-    if (_cache_historial_map.has(id_o_dato)) {
-        _cache_historial_map.delete(id_o_dato);
-        await _guardar_en_disco();
-        return true;
-    }
+    const info = stmt_delete_by_dato.run(id_o_dato);
+    if (info.changes > 0) return true;
 
-    // Si no está por clave, buscar por ID en valores
-    for (const [key, d] of _cache_historial_map.entries()) {
-        if (d._id === id_o_dato) {
-            _cache_historial_map.delete(key);
-            await _guardar_en_disco();
-            return true;
-        }
-    }
-    return false;
+    const infoId = stmt_delete_by_id.run(id_o_dato);
+    return infoId.changes > 0;
 }
 
 export async function limpiar_historial_completo() {
-    _cache_historial_map = new Map();
+    stmt_clear.run();
     _fecha_actualizado_global = Date.now();
-    await saveCacheHistorialBusquedasAñadirFile({
-        datos: [],
-        fecha_actualizado_global: _fecha_actualizado_global,
-        cantidad_guardados: 0
-    });
 }
 
 export async function obtener_historial() {
     await _asegurar_inicio();
+    const datos = stmt_get_all.all();
     return {
-        datos: Array.from(_cache_historial_map.values()),
+        datos: datos,
         fecha_actualizado_global: _fecha_actualizado_global,
-        cantidad_guardados: _cache_historial_map.size
+        cantidad_guardados: datos.length
     };
 }
 
 export function limpiar_variable_cache() {
-    if (_timeout_limpieza_ram) clearTimeout(_timeout_limpieza_ram);
-    _timeout_limpieza_ram = setTimeout(() => {
-        _cache_historial_map = null;
-        _timeout_limpieza_ram = null;
-    }, 5000);
+    // No aplica con SQLite
 }
-
-

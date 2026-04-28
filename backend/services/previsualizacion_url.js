@@ -102,7 +102,7 @@ export async function obtenerPrevisualizacionUrl(targetUrl) {
  * <a href="${p.urlActiva}" class="url-preview-card" target="_blank" rel="noopener noreferrer">
  * 
  *    <!-- PORTADA DE LA PÁGINA (Si existe) -->
- *    ${p.imagen ? `<img src="${p.imagen}" class="url-preview-img" alt="Vista previa">` : ''}
+ *    ${p.imagen ? `<img src="${p.imagen}" class="url-preview-img" alt="Vista previa" loading="lazy" decoding="async">` : ''}
  * 
  *    <div class="url-preview-contenido">
  *       <!-- TÍTULO PRINCIPAL DE LA PÁGINA -->

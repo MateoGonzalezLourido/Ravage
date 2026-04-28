@@ -88,7 +88,7 @@ export async function crear_chat_historial_archivos_descargados() {
                     <div class="archivo-historial-item" data-id-archivo="${archivo.id_archivo}" data-id-chat="${chat.id_chat}">
                         <div class="archivo-info-historial">
                             <div class="archivo-info-historial-avatar">
-                                <img src="${archivo.url_img}" alt="" class="img-historial-archivo" data-fallback="../recursos/extensionesArchivos/cualquiera.svg">
+                                <img src="${archivo.url_img}" alt="" class="img-historial-archivo" data-fallback="../recursos/extensionesArchivos/cualquiera.svg" loading="lazy" decoding="async">
 
                             </div>
                             <div class="archivo-info-historial-details">
@@ -108,7 +108,7 @@ export async function crear_chat_historial_archivos_descargados() {
 
                                 data-id-chat="${chat.id_chat}" 
                                 title="Volver a descargar">
-                            <img src="../recursos/descargar.png" alt="Descargar">
+                            <img src="../recursos/descargar.png" alt="Descargar" loading="lazy" decoding="async">
                         </button>
                     </div>
                 </div>

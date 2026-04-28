@@ -88,10 +88,7 @@ vi.mock('../models/Message.js', () => ({
     }
 }));
 
- vi.mock('../STORAGE/CACHE/_cache_chats.js', () => ({
-    getChatDeCache: vi.fn(),
-    setChatEnCache: vi.fn()
-}));
+
 
 vi.mock('../STORAGE/Variables_sesion.js', () => ({
     getIDMongodbUsuario: vi.fn(() => 'user123')

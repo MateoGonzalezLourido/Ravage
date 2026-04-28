@@ -1,19 +1,18 @@
-import { saveCacheArchivosDescargadosFile, readFileSession, getAjustesAppFile, saveAjustesAppFile } from '../../services/controladorArchivos.js'
+import db from './database.js';
+import { getAjustesAppFile, saveAjustesAppFile } from '../../services/controladorArchivos.js'
 import { createLogger } from '../../utils/logger.js';
 const log = createLogger('cache-archivos-desc');
 
-let _cache_archivos_descargados = new Map();
 const LIMITE_RAM_MB = 256;
 const TIEMPO_EXPIRACION = 5 * 60 * 1000; // 5 minutos
-let timer_limpieza = null;
 
-function resetearTimerLimpieza() {
-    if (timer_limpieza) clearTimeout(timer_limpieza);
-    timer_limpieza = setTimeout(() => {
-        _cache_archivos_descargados.clear();
-        timer_limpieza = null;
-    }, TIEMPO_EXPIRACION);
-}
+// Preparar sentencias
+const stmt_insert = db.prepare('INSERT OR REPLACE INTO archivos_descargados (id, data, timestamp) VALUES (?, ?, ?)');
+const stmt_select_all = db.prepare('SELECT data FROM archivos_descargados ORDER BY timestamp ASC');
+const stmt_delete = db.prepare('DELETE FROM archivos_descargados WHERE id = ?');
+const stmt_clear = db.prepare('DELETE FROM archivos_descargados');
+const stmt_count = db.prepare('SELECT COUNT(*) as count FROM archivos_descargados');
+const stmt_get_oldest = db.prepare('SELECT id, data FROM archivos_descargados ORDER BY timestamp ASC LIMIT 1');
 
 /**
  * Estima el tamaño en bytes de un objeto de forma rápida.
@@ -46,19 +45,13 @@ function _estimar_tamano_mb(data) {
 }
 
 export async function getCacheArchivosDescargados() {
-    resetearTimerLimpieza();
-    if (_cache_archivos_descargados.size > 0) {
-        return Array.from(_cache_archivos_descargados.values());
-    }
-    const data = await readFileSession('cacheArchivosDescargados') || [];
-    _cache_archivos_descargados = new Map(data.map(item => [item.id || item.ruta || Math.random(), item]));
-    return data;
+    const rows = stmt_select_all.all();
+    return rows.map(r => JSON.parse(r.data));
 }
 
 export async function setCacheArchivosDescargados(cache = "c") {
     if (cache === "c") {
-        _cache_archivos_descargados.clear();
-        await saveCacheArchivosDescargadosFile([]);
+        stmt_clear.run();
         return true;
     }
 
@@ -66,36 +59,36 @@ export async function setCacheArchivosDescargados(cache = "c") {
         return false;
     }
 
-    const [limite, _] = await Promise.all([
-        obtenerLimiteCacheArchivosDescargados(),
-        getCacheArchivosDescargados()
-    ]);
-
-    const id = cache.id || cache.ruta || Date.now();
+    const limite = await obtenerLimiteCacheArchivosDescargados();
+    const id = (cache.id || cache.ruta || Date.now()).toString();
     
-    // Si ya existe, lo borramos para que al re-insertar quede al final (FIFO en Iterador)
-    if (_cache_archivos_descargados.has(id)) {
-        _cache_archivos_descargados.delete(id);
-    }
-    _cache_archivos_descargados.set(id, cache);
+    // Insertar o actualizar
+    stmt_insert.run(id, JSON.stringify(cache), Date.now());
 
     // Límite por cantidad
-    if (_cache_archivos_descargados.size > limite) {
-        const firstKey = _cache_archivos_descargados.keys().next().value;
-        _cache_archivos_descargados.delete(firstKey);
+    let currentCount = stmt_count.get().count;
+    while (currentCount > limite) {
+        const oldest = stmt_get_oldest.get();
+        if (oldest) {
+            stmt_delete.run(oldest.id);
+            currentCount--;
+        } else break;
     }
 
-    // Límite por RAM
-    let currentMB = _estimar_tamano_mb(Array.from(_cache_archivos_descargados.values()));
-    while (currentMB > LIMITE_RAM_MB && _cache_archivos_descargados.size > 0) {
-        const firstKey = _cache_archivos_descargados.keys().next().value;
-        const item = _cache_archivos_descargados.get(firstKey);
-        currentMB -= _estimar_tamano_mb(item);
-        _cache_archivos_descargados.delete(firstKey);
+    // Límite por RAM (estimación basada en los datos en la base de datos)
+    // Nota: Esto puede ser costoso si hay muchos datos, pero seguimos la lógica original
+    const allData = stmt_select_all.all().map(r => JSON.parse(r.data));
+    let currentMB = _estimar_tamano_mb(allData);
+    
+    while (currentMB > LIMITE_RAM_MB) {
+        const oldest = stmt_get_oldest.get();
+        if (oldest) {
+            const itemSize = _estimar_tamano_mb(JSON.parse(oldest.data));
+            stmt_delete.run(oldest.id);
+            currentMB -= itemSize;
+        } else break;
     }
 
-    await saveCacheArchivosDescargadosFile(Array.from(_cache_archivos_descargados.values()));
-    resetearTimerLimpieza();
     return true;
 }
 
@@ -108,8 +101,7 @@ export async function setLimiteCacheArchivosDescargados(limite) {
 }
 
 export async function clearCacheArchivosDescargados() {
-    _cache_archivos_descargados.clear();
-    await saveCacheArchivosDescargadosFile([]);
+    stmt_clear.run();
 }
 
 async function obtenerLimiteCacheArchivosDescargados() {

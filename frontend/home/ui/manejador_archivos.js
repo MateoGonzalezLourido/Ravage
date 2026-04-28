@@ -42,7 +42,7 @@ export async function render_html_lista_archivos() {
         <div data-id="${escapeHTML(fileId)}" class="info-chat-participante-item ventana-archivos-mensaje-cuerpo-componente-item">
             <div class="info-chat-participante-info ventana-archivos-mensaje-cuerpo-componente-item-nombre">
                 <div class="contenido-item-archivo-lista" style="display: flex; align-items: center; gap: 10px;">
-                    <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;">
+                    <img draggable="false" src="${url}" style="width: 24px; height: 24px; border-radius: 4px; object-fit: contain;" loading="lazy" decoding="async">
                     <span class="info-chat-participante-nombre">${idn ? escapeHTML(activo.nombre) : escapeHTML(activo.nombre) + "." + escapeHTML(activo.extension)}</span>
                 </div>
             </div>
@@ -65,10 +65,10 @@ export async function abrir_ventana_archivos() {
     ventana.innerHTML = `
         <div class="info-chat-contenedor-fijo">
             <div class="info-chat-header">
-                <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header"><img src="../recursos/cruz.png"></div>
+                <div id="bt-cerrar-archivos-mensaje" class="bt-cerrar-archivos-header"><img src="../recursos/cruz.png" loading="lazy" decoding="async"></div>
                 <div> <span>Archivos Adjuntos</span></div>
-                <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos" title="añadir archivo"><img src="../recursos/suma.png"></div>
-                <div id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro"><img src="../recursos/escoba.png"></div>
+                <div id="bt-añadir-archivos-mensaje-escritura" class="bt-accion-archivos" title="añadir archivo"><img src="../recursos/suma.png" loading="lazy" decoding="async"></div>
+                <div id="bt-limpiar-archivos-mensaje-escritura" class="bt-accion-archivos bt-accion-archivos-peligro"><img src="../recursos/escoba.png" loading="lazy" decoding="async"></div>
             </div>
             <div class="info-chat-cuerpo ventana-archivos-mensaje-cuerpo">
                 <div class="info-chat-lista-participantes ventana-archivos-mensaje-cuerpo-componente">${html_lista}</div>

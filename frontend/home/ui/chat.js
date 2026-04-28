@@ -35,7 +35,7 @@ const SCANNER_DEFINITIONS = {
             }
             return { text, detected: false };
         },
-        render: () => `<img src="../recursos/seguridad/zalgo.svg" class="icono-seguridad" title="Zalgo detectado">`
+        render: () => `<img src="../recursos/seguridad/zalgo.svg" class="icono-seguridad" title="Zalgo detectado" loading="lazy" decoding="async">`
     },
     ESCANER_ESTEGANOGRAFIA: {
         id: "ESCANER_ESTEGANOGRAFIA",
@@ -53,49 +53,49 @@ const SCANNER_DEFINITIONS = {
             }
             return { text, detected: false };
         },
-        render: () => `<img src="../recursos/seguridad/escudo.svg" class="icono-seguridad" title="Caracteres invisibles detectados (posible esteganografía)">`
+        render: () => `<img src="../recursos/seguridad/escudo.svg" class="icono-seguridad" title="Caracteres invisibles detectados (posible esteganografía)" loading="lazy" decoding="async">`
     },
     ESCANER_URL_MALICIOSA: {
         id: "ESCANER_URL_MALICIOSA",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_url_maliciosa(text),
-        render: () => `<img src="../recursos/seguridad/url_peligro.svg" class="icono-seguridad" title="URL potencialmente maliciosa detectada">`
+        render: () => `<img src="../recursos/seguridad/url_peligro.svg" class="icono-seguridad" title="URL potencialmente maliciosa detectada" loading="lazy" decoding="async">`
     },
     ESCANER_XSS: {
         id: "ESCANER_XSS",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_xss(text),
-        render: () => `<img src="../recursos/seguridad/xss.svg" class="icono-seguridad" title="Posible inyección de código detectada">`
+        render: () => `<img src="../recursos/seguridad/xss.svg" class="icono-seguridad" title="Posible inyección de código detectada" loading="lazy" decoding="async">`
     },
     ESCANER_CODIGO: {
         id: "ESCANER_CODIGO",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_codigo(text),
-        render: () => `<img src="../recursos/seguridad/codigo.svg" class="icono-seguridad" title="Fragmento de código detectado">`
+        render: () => `<img src="../recursos/seguridad/codigo.svg" class="icono-seguridad" title="Fragmento de código detectado" loading="lazy" decoding="async">`
     },
     ESCANER_COMANDOS_TERMINAL: {
         id: "ESCANER_COMANDOS_TERMINAL",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_comandos_terminal(text),
-        render: () => `<img src="../recursos/seguridad/terminal.svg" class="icono-seguridad" title="Comando de terminal peligroso detectado">`
+        render: () => `<img src="../recursos/seguridad/terminal.svg" class="icono-seguridad" title="Comando de terminal peligroso detectado" loading="lazy" decoding="async">`
     },
     ESCANER_CRYPTO_BILLETERAS: {
         id: "ESCANER_CRYPTO_BILLETERAS",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_crypto_billeteras(text),
-        render: () => `<img src="../recursos/seguridad/crypto.svg" class="icono-seguridad" title="Dirección de criptomoneda detectada (posible estafa)">`
+        render: () => `<img src="../recursos/seguridad/crypto.svg" class="icono-seguridad" title="Dirección de criptomoneda detectada (posible estafa)" loading="lazy" decoding="async">`
     },
     ESCANER_DIRECCIONES_IP: {
         id: "ESCANER_DIRECCIONES_IP",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_direcciones_ip(text),
-        render: () => `<img src="../recursos/seguridad/ip.svg" class="icono-seguridad" title="Dirección IP detectada (posible riesgo de privacidad)">`
+        render: () => `<img src="../recursos/seguridad/ip.svg" class="icono-seguridad" title="Dirección IP detectada (posible riesgo de privacidad)" loading="lazy" decoding="async">`
     },
     ESCANER_HOMOGLIFOS: {
         id: "ESCANER_HOMOGLIFOS",
         type: "async",
         async_detect: (text) => window.escaneres_seguridad_app.detectar_homoglifos(text),
-        render: () => `<img src="../recursos/seguridad/homoglifo.svg" class="icono-seguridad" title="Caracteres homoglifos detectados (posible suplantación)">`
+        render: () => `<img src="../recursos/seguridad/homoglifo.svg" class="icono-seguridad" title="Caracteres homoglifos detectados (posible suplantación)" loading="lazy" decoding="async">`
     }
 };
 
@@ -369,8 +369,8 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
         ${ultimo_mensaje(datos_usar)}
         ${ultima_vez(datos_usar)}
         <div class="iconos-estado-chat">
-            ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" class="icono-estado-lista icono-bloqueado" title="Chat bloqueado">' : ''}
-            ${datos_usar.silenciado ? '<img src="../recursos/silenciar.png" class="icono-estado-lista icono-silenciado" title="Chat silenciado">' : ''}
+            ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" class="icono-estado-lista icono-bloqueado" title="Chat bloqueado" loading="lazy" decoding="async">' : ''}
+            ${datos_usar.silenciado ? '<img src="../recursos/silenciar.png" class="icono-estado-lista icono-silenciado" title="Chat silenciado" loading="lazy" decoding="async">' : ''}
         </div>
     </div>`
 
@@ -477,7 +477,7 @@ export const crear_mensaje_html = async ({
           data-tag="${escapeHTML(archivo?.tag || '')}"
           data-emisor="${emisor_id}"
           data-ratchet="${ratchet_json}">
-          <div><img src="${url}"><span>${escapeHTML(nombre_mostrar)}</span></div>
+          <div><img src="${url}" loading="lazy" decoding="async"><span>${escapeHTML(nombre_mostrar)}</span></div>
         </div>`);
         }
         html.push('</div>');
@@ -1179,11 +1179,8 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 export async function Encontrar_Nombre_Chat_Usuario({ id_buscar, grupal = true, contactos = null }) {
     //si grupal: false->es un usuario, true->puede ser un chat grupal
     if (grupal) {
-        //buscar en tabla general de chats
-        let chat_grupal = await window.cache_persistente.getChatCache(id_buscar)
-        if (!chat_grupal) {
-            chat_grupal = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_buscar)
-        }
+        //buscar en cache activa de chats
+        let chat_grupal = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_buscar)
         if (!chat_grupal) {
             chat_grupal = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_buscar, "nombre")
         }
@@ -1228,7 +1225,7 @@ export async function Crear_chat_html(datos, id_propio) {
 
     <div class="seccion-escritura-mensaje-chat" ${datos.bloqueado ? 'style="background: rgba(255,0,0,0.05);"' : ''}>
         <div id="bt-añadir-archivo-mensaje-escritura" ${datos.bloqueado ? 'style="display:none;"' : ''}>        
-            <img src="../recursos/carpeta.svg" alt="" draggable="false">
+            <img src="../recursos/carpeta.svg" alt="" draggable="false" loading="lazy" decoding="async">
         </div>
         <textarea id="textarea-mensaje-escritura" 
             placeholder="${datos.bloqueado ? 'Este chat está bloqueado' : 'Escribe un mensaje'}" 
@@ -1264,13 +1261,10 @@ export async function mostrar_datos_chat_usuarios(e) {
     const id_chat = e.currentTarget.dataset.id || document.querySelector("#nav-principal-chat-usuario")?.dataset.id
     if (!id_chat) return;
 
-    const [cache_persistente, cache_activo] = await Promise.all([
-        window.cache_persistente.getChatCache(id_chat),
-        window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat)
-    ])
+    const cache_activo = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat)
 
-    // Combinar cachespriorizando el activo para datos más frescos
-    let info_chat = { ...(cache_persistente || {}), ...(cache_activo || {}) }
+    // Combinar caches priorizando el activo (ahora es el único cache local)
+    let info_chat = { ...(cache_activo || {}) }
 
     // Campos necesarios para la vista de info
     const campos_necesarios = ["usuarios", "admins", "fecha_creacion", "nmensajes"]
@@ -1323,12 +1317,12 @@ export async function mostrar_datos_chat_usuarios(e) {
     <div class="info-chat-contenedor-fijo">
         <div class="info-chat-header">
             <div id="bt-cerrar-info-chat">
-                <img src="../recursos/cruz.png" alt="cerrar">
+                <img src="../recursos/cruz.png" alt="cerrar" loading="lazy" decoding="async">
             </div>
             <span>Información del chat</span>
             ${soyAdmin ? `
             <div id="bt-abrir-ajustes-chat">
-                <img src="../recursos/engranaje.png" alt="ajustes" title="Ajustes del chat">
+                <img src="../recursos/engranaje.png" alt="ajustes" title="Ajustes del chat" loading="lazy" decoding="async">
             </div>` : ''}
 
         </div>
@@ -1399,7 +1393,7 @@ export async function mostrar_datos_chat_usuarios(e) {
                             <div class="info-chat-participante-info">
                                 <span class="info-chat-participante-nombre">
                                     ${nombre}
-                                    ${estaBloqueado ? '<img src="../recursos/bloqueado.png" class="icono-bloqueado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario bloqueado">' : (estaSilenciado ? '<img src="../recursos/silenciar.png" class="icono-silenciado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario silenciado">' : '')}
+                                    ${estaBloqueado ? '<img src="../recursos/bloqueado.png" class="icono-bloqueado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario bloqueado" loading="lazy" decoding="async">' : (estaSilenciado ? '<img src="../recursos/silenciar.png" class="icono-silenciado" style="width: 14px; height: 14px; opacity: 0.6; margin-left: 5px; flex-shrink: 0;" title="Usuario silenciado" loading="lazy" decoding="async">' : '')}
                                 </span>
                                 <span class="info-chat-participante-correo">${correo}</span>
                                 ${esAdmin ? `<span class="info-chat-participante-admin" style="color: gray; font-size: 11px;">Admin</span>` : ""}

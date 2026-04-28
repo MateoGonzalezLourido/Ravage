@@ -346,7 +346,6 @@ Ravage/
 │   │   ├── Variables_sesion.js      # Variables de sesión en memoria (getters/setters)
 │   │   ├── ajustes_defecto.js       # Configuración por defecto de la app
 │   │   └── CACHE/
-│   │       ├── _cache_chats.js      # Caché de chats (RAM + disco, LFU + protección temporal)
 │   │       ├── _cache_usuarios.js   # Caché de usuarios (RAM + disco, LFU + protección temporal)
 │   │       ├── _cache_img_extensiones.js  # Caché de iconos de extensiones de archivo
 │   │       └── _cache_archivos_descargados.js  # Caché de historial de descargas

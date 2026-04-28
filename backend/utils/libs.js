@@ -56,7 +56,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../env/.env.secret') });
 const electronLoader = () => {
     try {
         return require('electron');
-    } catch {
+    } catch (err) {
         // En entorno de Node puro (como tests de importación) devolver mocks básicos
         const mockPath = (p) => `${process.cwd()}/${p || 'tmp'}`;
         return {
