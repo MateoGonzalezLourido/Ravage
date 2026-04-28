@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('archivo-ctrl');
-import { randomBytes, createCipheriv, createDecipheriv, fs, path, app } from '../utils/libs.js';
+import { randomBytes, createCipheriv, createDecipheriv, fs, path, app, gzipSync, gunzipSync } from '../utils/libs.js';
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../repositories/UserRepository.js';
 
@@ -62,7 +62,7 @@ async function guardarArchivoGenerico(rutaKey, data, especial = false) {
         const dataFinal = await CifrarDatosArchivos(data, especial);
         await fs.promises.writeFile(
             RTDF[rutaKey],
-            JSON.stringify(dataFinal, null, 2),
+            JSON.stringify(dataFinal),
             { encoding: "utf8" }
         );
     } catch (err) {
@@ -123,7 +123,7 @@ async function saveAjustesAppFile({ data = {}, create = false }) {
         const encrypted = await CifrarDatosArchivos(data_usar, 'global');
         await fs.promises.writeFile(
             RTDF.ajustesAPP,
-            JSON.stringify(encrypted, null, 2),
+            JSON.stringify(encrypted),
             { encoding: "utf8" }
         );
         return true;
@@ -164,10 +164,14 @@ async function readFileSession(rutaKey, cifrado = true) {
         const decipher = createDecipheriv(algorithm, finalKey, Buffer.from(raw.iv, "hex"));
         decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
 
-        const decrypted = Buffer.concat([
+        let decrypted = Buffer.concat([
             decipher.update(Buffer.from(raw.data, "hex")),
             decipher.final()
         ]);
+
+        if (raw.compressed) {
+            decrypted = gunzipSync(decrypted);
+        }
 
         return JSON.parse(decrypted.toString());
     } catch (e) {
@@ -196,10 +200,15 @@ async function getAjustesAppFile(nombre = null) {
         if (raw.iv && raw.tag && raw.data) {
             const decipher = createDecipheriv(algorithm, getSecretKeyCokkie(), Buffer.from(raw.iv, "hex"));
             decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
-            const decrypted = Buffer.concat([
+            let decrypted = Buffer.concat([
                 decipher.update(Buffer.from(raw.data, "hex")),
                 decipher.final()
             ]);
+
+            if (raw.compressed) {
+                decrypted = gunzipSync(decrypted);
+            }
+
             obj = JSON.parse(decrypted.toString());
         } else {
             // Retrocompatibilidad: si era plano
@@ -259,15 +268,18 @@ async function CifrarDatosArchivos(data, especial) {
     const iv = randomBytes(12);
     const cipher = createCipheriv(algorithm, finalKey, iv);
 
+    const compressedData = gzipSync(JSON.stringify(data));
+
     const encrypted = Buffer.concat([
-        cipher.update(JSON.stringify(data)),
+        cipher.update(compressedData),
         cipher.final()
     ]);
 
     return {
         iv: iv.toString("hex"),
         tag: cipher.getAuthTag().toString("hex"),
-        data: encrypted.toString("hex")
+        data: encrypted.toString("hex"),
+        compressed: true
     };
 }
 

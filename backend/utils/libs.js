@@ -42,6 +42,7 @@ import {
     generateKeyPairSync, generateKeyPair, publicEncrypt,
     privateDecrypt, createHmac, constants, randomInt,createPublicKey,createPrivateKey
 } from "node:crypto";
+import { gzipSync, gunzipSync, deflateSync, inflateSync } from "node:zlib";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -161,5 +162,6 @@ export {
     fs, path, os, http, https, Transform, __dirname, __filename,
     createHash, randomBytes, createCipheriv, createDecipheriv,
     generateKeyPairSync, generateKeyPair, publicEncrypt,
-    privateDecrypt, createHmac, constants, randomInt,createPublicKey,createPrivateKey
+    privateDecrypt, createHmac, constants, randomInt,createPublicKey,createPrivateKey,
+    gzipSync, gunzipSync, deflateSync, inflateSync
 };
