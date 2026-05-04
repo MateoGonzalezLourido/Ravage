@@ -1,6 +1,7 @@
 > [!WARNING]
 > Ravage actualmente está sufriendo grandes cambios constantemente. Debido a la falta de un release estable no podemos garantizar que este readme documente todo lo necesario para poder usar la ultima versión disponible.
 > El proyecto actualmente apenas tiene documentacion e issues claros, para no retrasar el desarrollo, debido a que no hay participación externa.Si alguien quiere contribuir se actualizará todo
+> Puede visitar https://deepwiki.com/MateoGonzalezLourido/Ravage/  , que genera un readme con ia del proyecto
 
 <div align="center">
 
