@@ -1584,6 +1584,19 @@ export async function mostrar_datos_chat_usuarios(e) {
             }
         }
 
+        const vaAAbrir = !infoSeccion.classList.contains("abierto")
+        const chatUsuario = document.getElementById("chat-usuario")
+
+        // Fijar el ancho del chat al valor final ANTES de la animación para evitar reflows por frame
+        if (vaAAbrir && chatUsuario) {
+            chatUsuario.style.width = Math.max(chatUsuario.offsetWidth - 350, 0) + 'px'
+            chatUsuario.style.flexGrow = '0'
+            setTimeout(() => {
+                chatUsuario.style.width = ''
+                chatUsuario.style.flexGrow = ''
+            }, 310)
+        }
+
         // Toggle the info section
         infoSeccion.classList.toggle("abierto")
 

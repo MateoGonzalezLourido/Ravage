@@ -84,10 +84,21 @@ export async function abrir_ventana_archivos() {
         infoSec.classList.remove("abierto")
     }
 
+    // Fijar el ancho del chat al valor final ANTES de la animación para evitar reflows por frame
+    const chatUsuario = document.getElementById("chat-usuario")
+    if (chatUsuario) {
+        chatUsuario.style.width = Math.max(chatUsuario.offsetWidth - 350, 0) + 'px'
+        chatUsuario.style.flexGrow = '0'
+        setTimeout(() => {
+            chatUsuario.style.width = ''
+            chatUsuario.style.flexGrow = ''
+        }, 310)
+    }
+
     requestAnimationFrame(() => requestAnimationFrame(() => {
-        ventana.style.width = "" 
+        ventana.style.width = ""
         ventana.classList.add("abierto")
-        
+
         const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
         if (cuerpoChat) cuerpoChat.classList.add("panel-lateral-abierto")
     }))
