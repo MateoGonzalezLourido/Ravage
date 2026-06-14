@@ -3,7 +3,8 @@ import { mongoose } from '../utils/libs.js';
 const EncryptedDataSchema = new mongoose.Schema({
     data: { type: String, required: true },
     iv: { type: String, required: true },
-    tag: { type: String, required: true }
+    tag: { type: String, required: true },
+    compressed: { type: Boolean, default: false }
 }, { _id: false });
 
 const EntradaSchema = new mongoose.Schema({
