@@ -1381,6 +1381,41 @@ body.sin-hilos-chat .mensaje-chat::after {
     font-weight: 500;
 }
 
+.archivo-info-chat-wrap {
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    transition: background 0.18s;
+}
+
+.archivo-info-chat-wrap:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.bt-descargar-info-chat {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.18s;
+    margin-right: 4px;
+}
+
+.bt-descargar-info-chat:hover {
+    background: rgba(168, 85, 247, 0.2);
+}
+
+.bt-descargar-info-chat img {
+    width: 18px;
+    height: 18px;
+    filter: brightness(0.8);
+}
+
 /* Barra de sincronización */
 .sync-mailbox-bar {
     position: fixed;

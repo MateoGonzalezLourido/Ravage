@@ -1447,11 +1447,27 @@ export async function mostrar_datos_chat_usuarios(e) {
 
         document.querySelector(".ventana-archivos-mensaje")?.remove()
 
+        // Recopilar archivos visibles en el DOM del chat actual
+        const archivos_map = new Map()
+        document.querySelectorAll("#cuerpo-mensajes-chat .archivo-mensaje-div-archivos").forEach(el => {
+            const id_archivo = el.dataset.id
+            if (!id_archivo) return
+            if (!archivos_map.has(id_archivo)) {
+                archivos_map.set(id_archivo, {
+                    id_archivo,
+                    nombre: el.dataset.nombre || '',
+                    iv: el.dataset.iv || '',
+                    tag: el.dataset.tag || '',
+                    emisor_id: el.dataset.emisor || '',
+                    ratchet_info: el.dataset.ratchet ? (() => { try { return JSON.parse(decodeURIComponent(el.dataset.ratchet)) } catch { return null } })() : null,
+                    descargas: 0
+                })
+            }
+        })
+
+        // Fusionar con la caché de descargas para añadir contadores
         const cache_archivos = await window.cache_archivos_descargados.getCacheArchivosDescargados()
         const archivos_raw = (cache_archivos || []).filter(a => a.id_chat === id_chat)
-
-        // Deduplicar por id_archivo contando descargas
-        const archivos_map = new Map()
         for (const a of archivos_raw) {
             if (!archivos_map.has(a.id_archivo)) {
                 archivos_map.set(a.id_archivo, { ...a, descargas: 1 })
@@ -1459,24 +1475,43 @@ export async function mostrar_datos_chat_usuarios(e) {
                 archivos_map.get(a.id_archivo).descargas++
             }
         }
+
         const archivos = [...archivos_map.values()]
 
         let contenido_html
         if (archivos.length === 0) {
-            contenido_html = `<div style="color:rgba(255,255,255,0.4);font-size:13px;text-align:center;padding:32px 16px;">No hay archivos descargados en este chat</div>`
+            contenido_html = `<div style="color:rgba(255,255,255,0.4);font-size:13px;text-align:center;padding:32px 16px;">No hay archivos en este chat</div>`
         } else {
             const items = []
             for (const archivo of archivos) {
                 const ext = archivo.nombre?.includes(".") ? archivo.nombre.split(".").pop() : "txt"
                 const [url_img] = await url_icono_extension_img(ext)
+                const subtitulo = archivo.descargas > 1
+                    ? `Descargado ${archivo.descargas} veces`
+                    : archivo.descargas === 1
+                        ? 'Descargado una vez'
+                        : 'No descargado'
+                const ratchet_enc = archivo.ratchet_info ? encodeURIComponent(JSON.stringify(archivo.ratchet_info)) : ''
                 items.push(`
-                    <div class="info-chat-participante-item" style="gap:10px;cursor:pointer;"
-                        data-id-archivo="${escapeHTML(String(archivo.id_archivo))}">
-                        <img src="${url_img}" style="width:30px;height:30px;object-fit:contain;flex-shrink:0;" loading="lazy" decoding="async">
-                        <div class="info-chat-participante-info">
-                            <span class="info-chat-participante-nombre">${escapeHTML(archivo.nombre)}</span>
-                            <span class="info-chat-participante-correo">${archivo.descargas > 1 ? `Descargado ${archivo.descargas} veces` : 'Descargado una vez'}</span>
+                    <div class="archivo-info-chat-wrap" data-id-archivo="${escapeHTML(String(archivo.id_archivo))}">
+                        <div class="info-chat-participante-item" style="gap:10px;cursor:pointer;flex:1;min-width:0;">
+                            <img src="${url_img}" style="width:30px;height:30px;object-fit:contain;flex-shrink:0;" loading="lazy" decoding="async">
+                            <div class="info-chat-participante-info">
+                                <span class="info-chat-participante-nombre">${escapeHTML(archivo.nombre)}</span>
+                                <span class="info-chat-participante-correo">${subtitulo}</span>
+                            </div>
                         </div>
+                        <button class="bt-descargar-info-chat"
+                            data-id="${escapeHTML(String(archivo.id_archivo))}"
+                            data-nombre="${escapeHTML(archivo.nombre)}"
+                            data-iv="${escapeHTML(archivo.iv || '')}"
+                            data-tag="${escapeHTML(archivo.tag || '')}"
+                            data-emisor="${escapeHTML(archivo.emisor_id || '')}"
+                            data-ratchet="${escapeHTML(ratchet_enc)}"
+                            data-id-chat="${escapeHTML(id_chat)}"
+                            title="Descargar archivo">
+                            <img src="../recursos/descargar.png" alt="Descargar" loading="lazy" decoding="async">
+                        </button>
                     </div>`)
             }
             contenido_html = `
@@ -1523,8 +1558,38 @@ export async function mostrar_datos_chat_usuarios(e) {
             }, 300)
         })
 
-        ventana.querySelector(".info-chat-cuerpo").addEventListener("click", e => {
-            const item = e.target.closest("[data-id-archivo]")
+        ventana.querySelector(".info-chat-cuerpo").addEventListener("click", async e => {
+            // Descarga directa desde el panel
+            const btn = e.target.closest(".bt-descargar-info-chat")
+            if (btn) {
+                if (btn.disabled) return
+                btn.disabled = true
+                btn.style.opacity = "0.5"
+                try {
+                    const { id, nombre, iv, tag, emisor, ratchet, idChat } = btn.dataset
+                    const ratchet_info = ratchet ? JSON.parse(decodeURIComponent(ratchet)) : null
+                    const resultado = await window.chats.DESCARGAR_ARCHIVO(id, nombre, iv, tag, idChat, ratchet_info, emisor)
+                    if (!resultado) {
+                        window.pushNotificacion({ prioridad: 1, texto: `Fallo al descargar: ${nombre}`, tipo: "error" })
+                    } else {
+                        const [url_img] = await url_icono_extension_img(nombre.includes(".") ? nombre.split(".").pop() : "txt")
+                        await window.cache_archivos_descargados.setCacheArchivosDescargados({
+                            id_chat: idChat, id_archivo: id, nombre, url_img, iv, tag, ratchet_info, emisor_id: emisor, fecha: new Date().toISOString()
+                        })
+                        // Actualizar subtítulo del item
+                        const wrap = btn.closest(".archivo-info-chat-wrap")
+                        const subtituloEl = wrap?.querySelector(".info-chat-participante-correo")
+                        if (subtituloEl) subtituloEl.textContent = "Descargado"
+                    }
+                } finally {
+                    btn.disabled = false
+                    btn.style.opacity = "1"
+                }
+                return
+            }
+
+            // Scroll al archivo en el chat
+            const item = e.target.closest(".archivo-info-chat-wrap")
             if (!item) return
             const id_archivo = item.dataset.idArchivo
             const el_archivo = document.querySelector(`.archivo-mensaje-div-archivos[data-id="${id_archivo}"]`)
