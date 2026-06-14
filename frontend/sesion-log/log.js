@@ -38,7 +38,6 @@ async function preload_pag() {
             btnCambiarReg: document.getElementById('bt-cambiar-registro'),
             btnCambiarLog: document.getElementById('bt-cambiar-login'),
             btnCambiarLogValidation: document.getElementById('bt-cambiar-login-validation-code'),
-            btnCambiarPass: document.getElementById('bt-cambiar-contraseña-login'),
             btnVolverLogin: document.getElementById('bt-volver-login-confirmacion-cuenta'),
 
             syncBar: document.getElementById('sync-mailbox-bar'),
@@ -140,11 +139,6 @@ document.addEventListener("DOMContentLoaded", () => {
     elements.btnVolverLogin.addEventListener("click", (e) => {
         e.preventDefault();
         mostrarSeccion(elements.seccionLogin);
-    });
-
-    elements.btnCambiarPass.addEventListener("click", (e) => {
-        e.stopPropagation();
-        window.paginas_app.CAMBIAR_PAGINA_SOPORTE();
     });
 
     // Forms
