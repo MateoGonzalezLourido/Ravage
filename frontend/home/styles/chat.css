@@ -78,10 +78,10 @@ body.sin-hilos-chat .mensaje-chat::after {
     animation: none;
 }
 
-/* Solo el mensaje clickado permite seleccionar texto */
-.mensaje-chat.texto-seleccionable,
-.mensaje-chat.texto-seleccionable .asunto-mensaje-chat,
-.mensaje-chat.texto-seleccionable .asunto-mensaje-chat span {
+/* Solo el mensaje sobre el que se hace hover permite seleccionar texto */
+.mensaje-chat:hover,
+.mensaje-chat:hover .asunto-mensaje-chat,
+.mensaje-chat:hover .asunto-mensaje-chat span {
     user-select: text !important;
     cursor: text !important;
 }

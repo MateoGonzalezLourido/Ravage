@@ -238,19 +238,6 @@ export async function abrir_chat_item(id_chat, force = false) {
                 el.stopPropagation()
                 navigator.clipboard.writeText(el.currentTarget.querySelector('svg').outerHTML);
             })
-
-            // Selección de texto: activar solo en el mensaje clickado
-            const mensajeClickado = pulsado.target.closest(".mensaje-chat");
-            const anteriores = chatContainer.querySelectorAll(".mensaje-chat.texto-seleccionable");
-            anteriores.forEach(m => {
-                if (m !== mensajeClickado) m.classList.remove("texto-seleccionable");
-            });
-            if (mensajeClickado) {
-                mensajeClickado.classList.add("texto-seleccionable");
-            } else {
-                // Click fuera de cualquier mensaje -> limpiar selección
-                window.getSelection()?.removeAllRanges();
-            }
         })
 
     } finally {
