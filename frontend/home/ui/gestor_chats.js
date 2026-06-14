@@ -25,7 +25,8 @@ const MODELO_DATOS_NECESARIOS_CHAT = {
     usuarios: null,
     admins: null,
     fecha_creacion: null,
-    nmensajes: null
+    nmensajes: null,
+    msfijado: null
 };
 
 export function cerrar_paneles_al_abrir_chat() {
@@ -101,7 +102,8 @@ export async function Get_datos_chat_abrir(id_chat) {
         admins: datos_necesarios.admins,
         fecha_creacion: datos_necesarios.fecha_creacion,
         nmensajes: datos_necesarios.nmensajes,
-        d_participantes: usuarios_detalles
+        d_participantes: usuarios_detalles,
+        msfijado: datos_necesarios.msfijado
     });
 
     return datos_necesarios;

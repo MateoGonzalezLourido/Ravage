@@ -7,7 +7,7 @@ import { mongoose, GridFSBucket, ObjectId, fs, randomBytes } from '../utils/libs
 import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { readFileSession } from '../services/controladorArchivos.js';
-import { setChatEnCacheRaw } from './ChatRepository.js';
+import { setChatEnCacheRaw, normalizeId } from './ChatRepository.js';
 import { procesarUsuario } from './UserRepository.js';
 import { setUsuarioEnCache } from './UserRepository.js';
 
@@ -257,10 +257,13 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 
 export async function obtener_datos_mensaje(id_chat, id_mensaje) {
     try {
-        const chat = await ChatsRavage.findById(new mongoose.Types.ObjectId(id_chat)).lean();
+        const id_chat_str = normalizeId(id_chat);
+        const id_mensaje_str = normalizeId(id_mensaje);
+
+        const chat = await ChatsRavage.findById(new mongoose.Types.ObjectId(id_chat_str)).lean();
         const mensaje = await MessagesRavage.findOne({
-            id_chat: new mongoose.Types.ObjectId(id_chat),
-            _id: new mongoose.Types.ObjectId(id_mensaje)
+            id_chat: new mongoose.Types.ObjectId(id_chat_str),
+            _id: new mongoose.Types.ObjectId(id_mensaje_str)
         }).lean();
         if (!mensaje) return null;
 
@@ -373,4 +376,145 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
             })
             .on("error", reject);
     });
+}
+
+export async function ELIMINAR_MENSAJE(id_chat, id_mensaje) {
+    try {
+        const id_chat_str = normalizeId(id_chat);
+        const id_mensaje_str = normalizeId(id_mensaje);
+
+        const { getIDMongodbUsuario } = await import('../STORAGE/Variables_sesion.js');
+        const id_propio = getIDMongodbUsuario();
+        if (!id_propio) return { success: false, message: 'Sin sesión' };
+
+        const chat = await ChatsRavage.findById(id_chat_str).lean();
+        if (!chat) return { success: false, message: 'Chat no encontrado' };
+
+        const esMiembro = (chat.usuarios || []).some(u => u.toString() === id_propio.toString());
+        if (!esMiembro) return { success: false, message: 'No eres miembro del chat' };
+
+        const mensaje = await MessagesRavage.findOne({
+            _id: new mongoose.Types.ObjectId(id_mensaje_str),
+            id_chat: new mongoose.Types.ObjectId(id_chat_str)
+        }).lean();
+        if (!mensaje) return { success: false, message: 'Mensaje no encontrado' };
+
+        const esAdmin = (chat.admins || []).some(a => a.toString() === id_propio.toString());
+        const esEmisor = mensaje.emisor && mensaje.emisor.toString() === id_propio.toString();
+
+        if (!esEmisor && !esAdmin) {
+            return { success: false, message: 'Sin permisos para eliminar este mensaje' };
+        }
+
+        // Eliminar archivos de GridFS si los hay
+        const archivos = mensaje.contenido?.[0]?.archivos || [];
+        if (archivos.length > 0) {
+            const bucket = new GridFSBucket(mongoose.connection.db, { bucketName: 'ArchivosChats' });
+            for (const archivo of archivos) {
+                const idArchivo = archivo.id || archivo._id;
+                if (idArchivo) {
+                    try {
+                        await bucket.delete(new mongoose.Types.ObjectId(idArchivo.toString()));
+                    } catch (e) {
+                        log.warn({ idArchivo }, '[ELIMINAR_MENSAJE] No se pudo borrar archivo de GridFS');
+                    }
+                }
+            }
+        }
+
+        // Marcar mensaje como borrado (limpiar contenido)
+        const asunto_encriptado = encriptarDatosSistema("Este mensaje ha sido eliminado");
+        
+        await MessagesRavage.updateOne(
+            { _id: new mongoose.Types.ObjectId(id_mensaje_str) },
+            {
+                $set: {
+                    contenido: [{ asunto: asunto_encriptado, archivos: [] }],
+                    encriptado: null,
+                    especial: { borrado: true }
+                }
+            }
+        );
+
+        // Si el chat tenía fijado este mensaje, desfijarlo automáticamente
+        if (chat.msfijado && chat.msfijado.toString() === id_mensaje_str.toString()) {
+            await ChatsRavage.updateOne(
+                { _id: new mongoose.Types.ObjectId(id_chat_str) },
+                { $set: { msfijado: null } }
+            );
+            chat.msfijado = null;
+            setChatEnCacheRaw(chat).catch(e => log.error(e));
+        }
+
+        log.info({ id_mensaje_str, id_chat_str }, '[ELIMINAR_MENSAJE] Mensaje eliminado');
+        return { success: true };
+    } catch (e) {
+        log.error({ err: e }, '[ELIMINAR_MENSAJE] Error');
+        return { success: false, message: 'Error interno' };
+    }
+}
+
+export async function FIJAR_MENSAJE(id_chat, id_mensaje) {
+    try {
+        const id_chat_str = normalizeId(id_chat);
+        const id_mensaje_str = normalizeId(id_mensaje);
+
+        const { getIDMongodbUsuario } = await import('../STORAGE/Variables_sesion.js');
+        const id_propio = getIDMongodbUsuario();
+        if (!id_propio) return { success: false, message: 'Sin sesión' };
+
+        const chat = await ChatsRavage.findById(id_chat_str).lean();
+        if (!chat) return { success: false, message: 'Chat no encontrado' };
+
+        const esAdmin = (chat.admins || []).some(a => a.toString() === id_propio.toString());
+        if (!esAdmin) return { success: false, message: 'Solo los admins pueden fijar mensajes' };
+
+        const existe = await MessagesRavage.exists({
+            _id: new mongoose.Types.ObjectId(id_mensaje_str),
+            id_chat: new mongoose.Types.ObjectId(id_chat_str)
+        });
+        if (!existe) return { success: false, message: 'Mensaje no encontrado' };
+
+        await ChatsRavage.updateOne(
+            { _id: new mongoose.Types.ObjectId(id_chat_str) },
+            { $set: { msfijado: new mongoose.Types.ObjectId(id_mensaje_str) } }
+        );
+        chat.msfijado = new mongoose.Types.ObjectId(id_mensaje_str);
+        setChatEnCacheRaw(chat).catch(e => log.error(e));
+
+        log.info({ id_mensaje_str, id_chat_str }, '[FIJAR_MENSAJE] Mensaje fijado');
+        return { success: true };
+    } catch (e) {
+        log.error({ err: e }, '[FIJAR_MENSAJE] Error');
+        return { success: false, message: 'Error interno' };
+    }
+}
+
+export async function DESFIJAR_MENSAJE(id_chat) {
+    try {
+        const id_chat_str = normalizeId(id_chat);
+
+        const { getIDMongodbUsuario } = await import('../STORAGE/Variables_sesion.js');
+        const id_propio = getIDMongodbUsuario();
+        if (!id_propio) return { success: false, message: 'Sin sesión' };
+
+        const chat = await ChatsRavage.findById(id_chat_str).lean();
+        if (!chat) return { success: false, message: 'Chat no encontrado' };
+
+        const esAdmin = (chat.admins || []).some(a => a.toString() === id_propio.toString());
+        if (!esAdmin) return { success: false, message: 'Solo los admins pueden desfijar mensajes' };
+
+        await ChatsRavage.updateOne(
+            { _id: new mongoose.Types.ObjectId(id_chat_str) },
+            { $set: { msfijado: null } }
+        );
+        chat.msfijado = null;
+        setChatEnCacheRaw(chat).catch(e => log.error(e));
+
+        log.info({ id_chat_str }, '[DESFIJAR_MENSAJE] Mensaje desfijado');
+        return { success: true };
+    } catch (e) {
+        log.error({ err: e }, '[DESFIJAR_MENSAJE] Error');
+        return { success: false, message: 'Error interno' };
+    }
 }

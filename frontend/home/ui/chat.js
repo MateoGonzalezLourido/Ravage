@@ -423,11 +423,14 @@ export const crear_mensaje_html = async ({
     id_mensaje = null, fecha, asunto = "", archivos = [],
     propio = false, nombre_emisor, esAdmin = false,
     escaneres_seguridad = {}, tieneArriba = false,
-    tieneAbajo = false, id_emisor = ""
+    tieneAbajo = false, id_emisor = "", borrado = false
 }) => {
 
     //todo: añadir parse para urls (<span class="url">url</span>) y añadirle un evento con el previsualizador de urls
-    const asunto_mensaje = (asunto) => {
+    const asunto_mensaje = (asunto, borrado) => {
+        if (borrado) {
+            return `<div class="asunto-mensaje-chat" style="font-style: italic; opacity: 0.7;">🚫 Este mensaje ha sido eliminado</div>`;
+        }
         const partes = asunto.split(/(<(?:\w+:)?svg[\s\S]*?<\/(?:\w+:)?svg>)/gi);
         const asuntoFormateado = partes.map(parte =>
             /^<(?:\w+:)?svg/i.test(parte)
@@ -502,8 +505,8 @@ export const crear_mensaje_html = async ({
       data-emisor-id="${escapeHTML(String(id_emisor))}"
       data-fecha="${escapeHTML(String(fecha))}">
       ${nombre_emisor_mensaje(nombre_emisor, propio, esAdmin, tieneArriba)}
-      ${asunto_mensaje(textoFinal)}
-      ${await archivos_mensaje(archivos)}
+      ${asunto_mensaje(textoFinal, borrado)}
+      ${borrado ? '' : await archivos_mensaje(archivos)}
       ${hora_mandado(fecha)}
     </div>`;
 };
@@ -648,11 +651,11 @@ async function _construir_html_mensajes(mensajesConEstado, opciones) {
         const esAdmin = SuperaMin && datos_chat.admins.includes(id_emisor);
         const nombre = map_nombres[id_emisor] || nombre_defecto;
         return crear_mensaje_html({
-            fecha: m.data, asunto: m.contenido[0]?.asunto || "",
+            id_mensaje: m.id || m._id, fecha: m.data, asunto: m.contenido[0]?.asunto || "",
             archivos: m.contenido[0]?.archivos || [], propio,
             nombre_emisor: nombre, esAdmin, escaneres_seguridad,
             tieneArriba: m.tieneArriba, tieneAbajo: m.tieneAbajo,
-            id_emisor
+            id_emisor, borrado: m.especial?.borrado || false
         });
     }));
 }
@@ -1156,6 +1159,38 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
             cache_tags_asincronos: {}
         };
 
+        // Cargar datos del mensaje fijado si existe
+        if (datos.msfijado) {
+            window.chats.OBTENER_DATOS_MENSAJE(datos._id, datos.msfijado).then(res => {
+                if (res && controller && !controller.abort) {
+                    const txtNode = document.getElementById("texto-mensaje-fijado");
+                    if (txtNode) {
+                        if (res.especial?.borrado) {
+                            txtNode.innerText = "🚫 Este mensaje ha sido eliminado";
+                        } else {
+                            const txt = res.contenido?.[0]?.asunto || (res.contenido?.[0]?.archivos?.length ? '📎 Archivo adjunto' : 'Mensaje vacío');
+                            txtNode.innerText = txt;
+                            txtNode.style.fontStyle = "normal";
+                        }
+                    }
+                }
+            }).catch(e => console.error("Error al obtener mensaje fijado:", e));
+        }
+
+        // Evento botón Desfijar
+        const btnDesfijar = document.getElementById("bt-desfijar-mensaje");
+        if (btnDesfijar) {
+            btnDesfijar.addEventListener("click", async () => {
+                const res = await window.chats.DESFIJAR_MENSAJE(datos._id);
+                if (res?.success) {
+                    document.getElementById("banner-mensaje-fijado")?.remove();
+                    window.pushNotificacion({ prioridad: 1, texto: "Mensaje desfijado", tipo: "success" });
+                } else {
+                    window.pushNotificacion({ prioridad: 0, texto: "Error al desfijar", tipo: "error" });
+                }
+            });
+        }
+
         // Renderizar bloque inicial
         await _renderizar_bloque_en_dom(mensajes, {
             map_nombres, escaneres_seguridad, id_propio,
@@ -1225,6 +1260,28 @@ export async function Crear_chat_html(datos, id_propio) {
         <div id="nombre-chat-nav"><span>${nombre_chat}</span></div>
     </div>
     
+    ${datos?.msfijado ? `
+    <div id="banner-mensaje-fijado" data-id="${datos.msfijado}">
+        <div class="banner-fijado-icono">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L8 8H3l4 4-1.5 7L12 16l6.5 3L17 12l4-4h-5L12 2z"/>
+            </svg>
+        </div>
+        <div class="banner-fijado-contenido">
+            <span class="banner-fijado-etiqueta">Mensaje fijado</span>
+            <span id="texto-mensaje-fijado">Cargando...</span>
+        </div>
+        ${datos.admins && datos.admins.includes(id_propio) ? `
+        <div id="bt-desfijar-mensaje" title="Desfijar mensaje">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </div>
+        ` : ''}
+    </div>
+    ` : ''}
+
     <div id="cuerpo-mensajes-chat">
 
     </div>

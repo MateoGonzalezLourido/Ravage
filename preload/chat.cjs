@@ -51,5 +51,14 @@ module.exports = {
     },
     OBTENER_CACHE_CHAT_ACTIVO: (id, bloque) => {
         return ipcRenderer.invoke("obtener-cache-chat-activo", id, bloque)
+    },
+    ELIMINAR_MENSAJE: (id_chat, id_mensaje) => {
+        return ipcRenderer.invoke("eliminar-mensaje", id_chat, id_mensaje)
+    },
+    FIJAR_MENSAJE: (id_chat, id_mensaje) => {
+        return ipcRenderer.invoke("fijar-mensaje", id_chat, id_mensaje)
+    },
+    DESFIJAR_MENSAJE: (id_chat) => {
+        return ipcRenderer.invoke("desfijar-mensaje", id_chat)
     }
 };

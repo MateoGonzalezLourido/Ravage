@@ -12,7 +12,7 @@ import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } fro
 
 const log = createLogger('chat-repo');
 
-function normalizeId(id) {
+export function normalizeId(id) {
     if (!id) return null;
     const res = convertirObjectId(id);
     return (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();

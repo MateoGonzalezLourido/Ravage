@@ -26,7 +26,8 @@ import {
 import {
     manejar_input_escribiendo,
     enviar_mensaje_chat,
-    manejar_solicitud_chat
+    manejar_solicitud_chat,
+    mostrar_menu_contextual_mensaje
 } from './ui/mensajes_eventos.js'
 document.getElementsByClassName
 import {
@@ -63,6 +64,14 @@ function inicializar_eventos_globales() {
     DOM_CACHE.lista_chats_componentes?.addEventListener("contextmenu", (e) => {
         const componente = e.target.closest('.chat-componente-lista-chats')
         if (componente) { e.preventDefault(); mostrar_menu_contextual_lista_chats(e, componente.dataset.id) }
+    })
+
+    DOM_CACHE.chat_usuario?.addEventListener("contextmenu", (e) => {
+        const mensaje_node = e.target.closest('.mensaje-chat');
+        if (mensaje_node) {
+            e.preventDefault();
+            mostrar_menu_contextual_mensaje(e, mensaje_node);
+        }
     })
 
     // 2. EVENTOS PANEL DERECHO (Chat Activo & Inputs)

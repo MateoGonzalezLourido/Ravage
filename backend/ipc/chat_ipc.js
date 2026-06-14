@@ -23,7 +23,10 @@ import {
     ENVIAR_MENSAJE,
     DESCARGAR_ARCHIVO,
     obtener_datos_mensaje,
-    obtener_mensajes_paginados
+    obtener_mensajes_paginados,
+    ELIMINAR_MENSAJE,
+    FIJAR_MENSAJE,
+    DESFIJAR_MENSAJE
 } from '../repositories/MessageRepository.js';
 import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { crearCacheChatActivo, obtenerCacheChatActivo } from '../STORAGE/CACHE/_cache_chat_activo.js';
@@ -148,5 +151,17 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("obtener-cache-chat-activo", async (_, id, bloque) => {
         return obtenerCacheChatActivo(id, bloque)
+    })
+
+    ipcMain.handle("eliminar-mensaje", async (_, id_chat, id_mensaje) => {
+        return await ELIMINAR_MENSAJE(id_chat, id_mensaje)
+    })
+
+    ipcMain.handle("fijar-mensaje", async (_, id_chat, id_mensaje) => {
+        return await FIJAR_MENSAJE(id_chat, id_mensaje)
+    })
+
+    ipcMain.handle("desfijar-mensaje", async (_, id_chat) => {
+        return await DESFIJAR_MENSAJE(id_chat)
     })
 }
