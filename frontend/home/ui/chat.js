@@ -1456,121 +1456,153 @@ export async function mostrar_datos_chat_usuarios(e) {
         const item = e.target.closest(".info-chat-participante-item")
         if (!item) return
         const id = item.dataset.id
+        const idamigo = item.dataset.idamigo || ""
+        const nombre = item.querySelector(".info-chat-participante-nombre")?.textContent || ""
         //si es el propio usuario-> no mostrar menu contextual
         if (await Es_usuario_Sesion(id)) return;
 
         //menu contextual participantes
-        const soyAdmin = info_chat.admins?.includes(id_mio) || false;
-        const targetEsAdmin = info_chat.admins?.includes(id) || false;
+        const soyAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === id_mio?.toString()) || false;
+        const targetEsAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === id) || false;
 
-        let html_contextMenu = `
-            <div class="context-menu context-menu-participantes" style="position: fixed; z-index: 1000;">
-                ${!(await Es_Contacto_Usuario(id)) ? `<div class="context-menu-item" data-action="añadir-contacto">Añadir Contacto</div>` : ``}
-            </div>
-        `
-        // Inyectar opciones de admin
-        const divContent = [];
+        const items = [];
+
+        if (!(await Es_Contacto_Usuario(id))) {
+            items.push(`<div class="context-menu-item" data-action="añadir-contacto">Añadir Contacto</div>`);
+        }
 
         if (soyAdmin) {
-            divContent.push(`<div class="context-menu-item" data-action="expulsar">Expulsar</div>`);
+            items.push(`<div class="context-menu-item" data-action="expulsar">Expulsar</div>`);
             if (targetEsAdmin) {
-                divContent.push(`<div class="context-menu-item" data-action="quitar-admin">Quitar Admin</div>`);
+                items.push(`<div class="context-menu-item" data-action="quitar-admin">Quitar Admin</div>`);
             } else {
-                divContent.push(`<div class="context-menu-item" data-action="hacer-admin">Hacer Admin</div>`);
+                items.push(`<div class="context-menu-item" data-action="hacer-admin">Hacer Admin</div>`);
             }
         }
 
         const esta_bloqueado = ids_bloqueados.includes(id);
         const esta_silenciado = ids_silenciados.includes(id);
 
-        const texto_bloquear = esta_bloqueado ? "Desbloquear usuario" : "Bloquear usuario";
-        const action_bloquear = esta_bloqueado ? "desbloquear" : "bloquear";
+        items.push(`<div class="context-menu-item" data-action="${esta_silenciado ? "desilenciar" : "silenciar"}">${esta_silenciado ? "Desilenciar usuario" : "Silenciar usuario"}</div>`);
+        items.push(`<div class="context-menu-item" data-action="${esta_bloqueado ? "desbloquear" : "bloquear"}">${esta_bloqueado ? "Desbloquear usuario" : "Bloquear usuario"}</div>`);
 
-        const texto_silenciar = esta_silenciado ? "Desilenciar usuario" : "Silenciar usuario";
-        const action_silenciar = esta_silenciado ? "desilenciar" : "silenciar";
+        document.querySelector(".context-menu-participantes")?.remove()
 
-        divContent.push(`<div class="context-menu-item" data-action="${action_silenciar}">${texto_silenciar}</div>`);
-        divContent.push(`<div class="context-menu-item" data-action="${action_bloquear}">${texto_bloquear}</div>`);
+        const menu = document.createElement("div")
+        menu.className = "context-menu context-menu-participantes"
+        menu.innerHTML = items.join("")
+        document.body.appendChild(menu)
 
-        if (divContent.length > 0) {
-            html_contextMenu = html_contextMenu.replace('</div>\n`', `${divContent.join('')}\n</div>\n`);
-        }
+        const rect = menu.getBoundingClientRect()
+        menu.style.left = `${Math.min(e.clientX, window.innerWidth - rect.width - 8)}px`
+        menu.style.top = `${Math.min(e.clientY, window.innerHeight - rect.height - 8)}px`
 
-        const ventanaContenedor = document.querySelector(".info-chat-cuerpo")
-        ventanaContenedor.insertAdjacentHTML("beforeend", html_contextMenu)
-
-        const menu = ventanaContenedor.querySelector(".context-menu")
-        if (menu) {
-            menu.style.left = e.clientX + "px"
-            menu.style.top = e.clientY + "px"
-
-            // Cerrar al hacer click fuera
-            const cerrarMenuClickFuera = (event) => {
-                if (!menu.contains(event.target)) {
-                    menu.remove()
-                    document.removeEventListener("mousedown", cerrarMenuClickFuera)
-                }
+        const cerrarMenuClickFuera = (event) => {
+            if (!menu.contains(event.target)) {
+                menu.remove()
+                document.removeEventListener("mousedown", cerrarMenuClickFuera)
             }
-            document.addEventListener("mousedown", cerrarMenuClickFuera)
         }
+        document.addEventListener("mousedown", cerrarMenuClickFuera)
 
         menu.addEventListener("click", async (ev) => {
             const action = ev.target.dataset.action
+            menu.remove()
+            document.removeEventListener("mousedown", cerrarMenuClickFuera)
+
             if (action === "expulsar") {
                 const resultado = await window.chats.EXPULSAR_USUARIO_CHAT(id, id_chat)
                 if (resultado) {
-                    // actualizar seccion info chat
-                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
+                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true })
                 }
             }
             else if (action === "hacer-admin") {
                 const resultado = await window.chats.HACER_ADMIN_CHAT(id_chat, id);
                 if (resultado) {
-                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
+                    const adminsActuales = (info_chat.admins || []).map(a => normalizeIdHelper(a));
+                    const newAdmins = [...new Set([...adminsActuales, id])];
+                    window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ _id: id_chat, admins: newAdmins });
+                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true })
                 }
             }
             else if (action === "quitar-admin") {
                 const resultado = await window.chats.QUITAR_ADMIN_CHAT(id_chat, id);
                 if (resultado) {
-                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } })
+                    const newAdmins = (info_chat.admins || []).map(a => normalizeIdHelper(a)).filter(a => a !== id);
+                    window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ _id: id_chat, admins: newAdmins });
+                    mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true })
                 }
             }
             else if (action === "silenciar") {
                 await window.social_usuario.AÑADIR_USUARIO_SILENCIADOS(id, "");
-                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true });
             }
             else if (action === "desilenciar") {
                 await window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(id);
-                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true });
             }
             else if (action === "bloquear") {
                 await window.social_usuario.AÑADIR_USUARIO_BLOQUEADOS(id, "");
-                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true });
             }
             else if (action === "desbloquear") {
                 await window.social_usuario.ELIMINAR_USUARIO_BLOQUEADO(id);
-                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { } });
+                mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true });
             }
-            else if (action === "añadir-contacto") { //editar nombre/extension
-                //comprobar si ya es contacto
+            else if (action === "añadir-contacto") {
                 const es_contacto = await Es_Contacto_Usuario(id)
                 if (es_contacto) return;
-                const item = ev.target.closest(".info-chat-participante-item")
-                const id = item.dataset.id
-                const nombre = item.querySelector(".info-chat-participante-nombre").textContent
-                const idamigo = item.dataset.idamigo
-                // Comprobar si es valido el idamigo
-                if (await window.validadores.VALIDAR_IDAMIGO(idamigo)) {
-                    await window.social_usuario.AÑADIR_CONTACTO(id, nombre)
-                } else {
-                    window.pushNotificacion({ prioridad: 2, texto: "ID de amigo no válido", tipo: "info" })
+                const nombreLimpio = nombre.replace(/\(.*?\)/g, "").trim();
+                const overlay = document.createElement("div")
+                overlay.className = "overlay-ajustes-chat-full"
+                overlay.innerHTML = `
+                    <div class="menu-ajustes-chat-interior" style="max-width:380px;">
+                        <div style="font-size:16px;font-weight:600;color:#f1f5f9;margin-bottom:18px;">Añadir contacto</div>
+                        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:12px;">Nombre con el que aparecerá en tus contactos</div>
+                        <input id="input-nombre-contacto-nuevo" type="text" maxlength="40" placeholder="Nombre del contacto"
+                            style="width:100%;height:44px;background:rgba(255,255,255,0.05);color:#f1f5f9;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0 14px;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:18px;"
+                            value="${nombreLimpio}">
+                        <div style="display:flex;gap:10px;justify-content:flex-end;">
+                            <button id="bt-cancelar-añadir-contacto"
+                                style="padding:9px 18px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;">
+                                Cancelar
+                            </button>
+                            <button id="bt-confirmar-añadir-contacto"
+                                style="padding:9px 18px;border-radius:9px;border:none;background:#6366f1;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+                                Añadir
+                            </button>
+                        </div>
+                    </div>`
+                document.body.appendChild(overlay)
+
+                const inputNombre = overlay.querySelector("#input-nombre-contacto-nuevo")
+                inputNombre.focus()
+                inputNombre.select()
+
+                const cerrarOverlay = () => overlay.remove()
+
+                overlay.querySelector("#bt-cancelar-añadir-contacto").addEventListener("click", cerrarOverlay)
+                overlay.addEventListener("click", e => { if (e.target === overlay) cerrarOverlay() })
+
+                const confirmar = async () => {
+                    const nombreFinal = inputNombre.value.trim()
+                    cerrarOverlay()
+                    const resultado = await window.social_usuario.AÑADIR_CONTACTO(id, nombreFinal)
+                    if (resultado) {
+                        window.pushNotificacion({ prioridad: 1, texto: `${nombreFinal || "Contacto"} añadido`, tipo: "success" })
+                    } else {
+                        window.pushNotificacion({ prioridad: 2, texto: "No se pudo añadir el contacto", tipo: "error" })
+                    }
                 }
+
+                overlay.querySelector("#bt-confirmar-añadir-contacto").addEventListener("click", confirmar)
+                inputNombre.addEventListener("keydown", e => { if (e.key === "Enter") confirmar() })
             }
         })
     })
     //mostrar seccion + cambiar css secciones
 
-    if (infoSeccion) {
+    if (infoSeccion && !e.noToggle) {
         const ventanaArchivos = document.querySelector(".ventana-archivos-mensaje")
 
         // Si vamos a abrir info y archivos está abierto, cerramos archivos
@@ -1614,9 +1646,10 @@ export async function mostrar_datos_chat_usuarios(e) {
 }
 //COMPROBAR SI ES UN CONTACTO DEL USUARIO
 async function Es_Contacto_Usuario(usuario_comprobar) {
-    //obtener contactos usuario
     const contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()
-    return contactos.includes(usuario_comprobar)
+    return (contactos || []).some(c =>
+        (typeof c === "string" ? c : c?.id?.toString()) === usuario_comprobar?.toString()
+    )
 }
 //COMPROBAR SI ES EL USUARIO DE LA SESION
 export async function Es_usuario_Sesion(usuario_comprobar) {

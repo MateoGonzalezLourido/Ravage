@@ -271,6 +271,10 @@ async function registerAllHandlers(window, sock) {
         const { verificarContrasenaActual } = await import('./backend/services/sesionUsuario.js');
         return await verificarContrasenaActual(contraseña);
     });
+
+    ipcMain.handle("obtener-email-soporte", () => {
+        return process.env.BREVO_SENDER_EMAIL || null;
+    });
 }
 
 async function createMainWindowHome(AutoLogin = false) {

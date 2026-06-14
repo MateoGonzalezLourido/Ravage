@@ -124,10 +124,22 @@ async function cerrar_cuerpos_ajustes(no_cerrar) {
             el.classList.remove("ocultar-display");
             el.classList.add("flex-display");
             if (key === "cuenta") await actualizar_datos_cuenta();
+            if (key === "soporte") await _cargar_email_soporte();
         } else {
             el.classList.remove("flex-display");
             el.classList.add("ocultar-display");
         }
+    }
+}
+
+async function _cargar_email_soporte() {
+    const link = document.getElementById("link-soporte-correo");
+    if (!link || link.dataset.cargado) return;
+    const email = await window.ajustes_app.OBTENER_EMAIL_SOPORTE().catch(() => null);
+    if (email) {
+        link.textContent = email;
+        link.href = `mailto:${email}`;
+        link.dataset.cargado = "1";
     }
 }
 

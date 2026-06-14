@@ -30,5 +30,8 @@ module.exports = {
     },
     VERIFICAR_CONTRASENA_ACTUAL: (contraseña) => {
         return ipcRenderer.invoke("verificar-contraseña-actual", contraseña)
+    },
+    OBTENER_EMAIL_SOPORTE: () => {
+        return ipcRenderer.invoke("obtener-email-soporte")
     }
 };

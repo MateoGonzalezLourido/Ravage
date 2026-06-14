@@ -737,3 +737,36 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Sección soporte */
+.label-soporte-contacto {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.soporte-titulo {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e2e8f0 !important;
+}
+
+.bt-soporte-correo {
+    display: inline-block;
+    padding: 8px 16px;
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+    user-select: text;
+}
+
+.bt-soporte-correo:hover {
+    background: rgba(99, 102, 241, 0.25);
+    color: #c7d2fe;
+}
