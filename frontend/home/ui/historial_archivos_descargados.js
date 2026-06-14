@@ -2,6 +2,7 @@ import { Encontrar_Nombre_Chat_Usuario, Crear_chat_html } from './chat.js'
 import { ID_USUARIO_MONGO, DOM_CACHE } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { escapeHTML } from './seguridad_ui.js';
+import { abrir_chat_item } from './gestor_chats.js';
 
 
 let cache_grupos_historial = null
@@ -160,22 +161,17 @@ async function crear_eventos() {
         if (navChat && navChat.dataset.id === id_chat) {
             hacer_scroll_a_archivo(id_archivo)
         } else {
-            const [id_usuario, lista_chats] = await Promise.all([
-                ID_USUARIO_MONGO,
-                window.cuenta_usuario.getListaChats()
-            ])
+            const lista_chats = await window.cuenta_usuario.getListaChats()
 
             //se mira usando los chats del usuario y no los participantes del grupo porque si es expulsado del grupo el usuario puede seguir viendo el chat hasta ese momento
             const chat_encontrado = lista_chats.find(chat => chat.id_chat === id_chat)
             if (!chat_encontrado) return; //no redireccionar porque el usuario no pertenece a ese chat
 
-            const datos_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat)
+            // abrir_chat_item carga los mensajes, refresca DOM_CACHE y registra el scroll
+            await abrir_chat_item(id_chat)
 
-            if (!datos_chat?._id) return; //no redireccionar porque no existe
-
-            datos_chat._id = id_chat
-            chatUsuario.innerHTML = await Crear_chat_html(datos_chat, id_usuario)
-            hacer_scroll_a_archivo(id_archivo)
+            // Pequeño delay para que los mensajes se rendericen en el DOM antes de hacer scroll
+            setTimeout(() => hacer_scroll_a_archivo(id_archivo), 300)
         }
     })
 
