@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('archivo-ctrl');
-import { randomBytes, createCipheriv, createDecipheriv, fs, path, app, gzipSync, gunzipSync } from '../utils/libs.js';
+import { randomBytes, createCipheriv, createDecipheriv, createHash, fs, path, app, gzipSync, gunzipSync } from '../utils/libs.js';
 import { getSecretKEY } from '../STORAGE/Variables_sesion.js';
 import { ActualizarSecretKeyUsuario } from '../repositories/UserRepository.js';
 
@@ -87,11 +87,157 @@ async function saveDispositivoConfianzaFile({ username, token = "" }) {
     await guardarArchivoGenerico('dispositivoConfianza', { username, token }, 'global');
 }
 
-async function saveIdentityFile({ privateKey, publicKey }) {
-    const data = { privateKey, publicKey };
+function _fingerprint(pem) {
+    return createHash('sha256').update(pem.trim()).digest('hex').slice(0, 16);
+}
+
+/**
+ * Guarda la identidad. Acepta el nuevo formato {primary, supportKeys}
+ * o el antiguo {privateKey, publicKey} (lo migra automáticamente).
+ */
+async function saveIdentityFile(data) {
+    let identity;
+    if (data.primary) {
+        identity = data;
+    } else if (data.privateKey) {
+        // formato antiguo → migrar
+        identity = {
+            primary: {
+                id: _fingerprint(data.privateKey),
+                privateKey: data.privateKey,
+                publicKey: data.publicKey || '',
+                createdAt: Date.now()
+            },
+            supportKeys: []
+        };
+    } else {
+        throw new Error('saveIdentityFile: formato de datos inválido');
+    }
     const { setCachedIdentity } = await import('./cryptoService.js');
-    setCachedIdentity(data);
-    await guardarArchivoGenerico('identity', data, 'global');
+    setCachedIdentity(identity);
+    await guardarArchivoGenerico('identity', identity, 'global');
+}
+
+/** Lee y migra la identidad directamente desde disco, sin imports circulares */
+async function _leerIdentidadLocal() {
+    const raw = await readFileSession('identity');
+    if (!raw) return null;
+    if (raw.primary) return raw;
+    if (raw.privateKey) {
+        return {
+            primary: {
+                id: _fingerprint(raw.privateKey),
+                privateKey: raw.privateKey,
+                publicKey: raw.publicKey || '',
+                createdAt: Date.now()
+            },
+            supportKeys: []
+        };
+    }
+    return null;
+}
+
+async function importarClavePrivada(pemContent, label = '') {
+    try {
+        const pem = pemContent.trim();
+        // Validar que sea una clave privada válida usando Node crypto
+        const { createPrivateKey } = await import('node:crypto');
+        createPrivateKey(pem);
+
+        const id = _fingerprint(pem);
+        const current = await _leerIdentidadLocal();
+
+        if (!current) {
+            // Sin identidad previa → esta clave se convierte en la principal
+            const nuevo = { primary: { id, privateKey: pem, publicKey: '', createdAt: Date.now() }, supportKeys: [] };
+            await saveIdentityFile(nuevo);
+            return { ok: true, id, tipo: 'primary' };
+        }
+
+        if (current.primary?.id === id) return { ok: false, error: 'Esa clave ya es la clave principal' };
+        if ((current.supportKeys || []).some(k => k.id === id)) return { ok: false, error: 'Esa clave ya está en la lista de soporte' };
+
+        current.supportKeys = current.supportKeys || [];
+        current.supportKeys.push({ id, privateKey: pem, addedAt: Date.now(), label });
+        await saveIdentityFile(current);
+        return { ok: true, id, tipo: 'support' };
+    } catch (err) {
+        log.error({ err }, '[Identity] Error importando clave privada');
+        return { ok: false, error: err.message };
+    }
+}
+
+async function cambiarClavePrincipal(keyId) {
+    try {
+        const current = await _leerIdentidadLocal();
+        if (!current) return { ok: false, error: 'No hay identidad guardada' };
+
+        const idx = (current.supportKeys || []).findIndex(k => k.id === keyId);
+        if (idx === -1) return { ok: false, error: 'Clave no encontrada en el listado de soporte' };
+
+        const newPrimary = current.supportKeys[idx];
+        const oldPrimary = current.primary;
+
+        current.primary = {
+            id: newPrimary.id,
+            privateKey: newPrimary.privateKey,
+            publicKey: newPrimary.publicKey || '',
+            createdAt: newPrimary.addedAt || Date.now()
+        };
+        current.supportKeys.splice(idx, 1);
+        if (oldPrimary?.privateKey) {
+            current.supportKeys.unshift({
+                id: oldPrimary.id,
+                privateKey: oldPrimary.privateKey,
+                addedAt: oldPrimary.createdAt || Date.now(),
+                label: 'Antigua principal'
+            });
+        }
+
+        await saveIdentityFile(current);
+        // Invalidar la cache de cryptoService para que la próxima llamada recargue
+        const { clearCachedIdentity } = await import('./cryptoService.js');
+        clearCachedIdentity();
+        return { ok: true };
+    } catch (err) {
+        log.error({ err }, '[Identity] Error cambiando clave principal');
+        return { ok: false, error: err.message };
+    }
+}
+
+async function listarClavesIdentidad() {
+    try {
+        const current = await _leerIdentidadLocal();
+        if (!current) return [];
+        const lista = [];
+        if (current.primary) {
+            lista.push({ id: current.primary.id, tipo: 'primary', fecha: current.primary.createdAt });
+        }
+        for (const k of (current.supportKeys || [])) {
+            lista.push({ id: k.id, tipo: 'support', fecha: k.addedAt, label: k.label || '' });
+        }
+        return lista;
+    } catch (err) {
+        log.error({ err }, '[Identity] Error listando claves');
+        return [];
+    }
+}
+
+async function eliminarClaveSoporte(keyId) {
+    try {
+        const current = await _leerIdentidadLocal();
+        if (!current) return { ok: false, error: 'No hay identidad guardada' };
+
+        const idx = (current.supportKeys || []).findIndex(k => k.id === keyId);
+        if (idx === -1) return { ok: false, error: 'Clave no encontrada' };
+
+        current.supportKeys.splice(idx, 1);
+        await saveIdentityFile(current);
+        return { ok: true };
+    } catch (err) {
+        log.error({ err }, '[Identity] Error eliminando clave de soporte');
+        return { ok: false, error: err.message };
+    }
 }
 
 async function saveCacheArchivosDescargadosFile(data) {
@@ -291,16 +437,17 @@ async function CifrarDatosArchivos(data, especial) {
  */
 async function exportarClavePrivadaADescargas() {
     try {
-        const identidad = await readFileSession('identity');
-        if (!identidad?.privateKey) {
-            return { ok: false, error: 'No se encontró la clave privada en esta sesión' };
+        const identity = await _leerIdentidadLocal();
+        const pem = identity?.primary?.privateKey;
+        if (!pem) {
+            return { ok: false, error: 'No se encontró la clave privada principal. Asegúrate de haber iniciado sesión.' };
         }
 
         const downloadsDir = app.getPath('downloads');
         const destino = path.join(downloadsDir, 'ravage_private_key.pem');
 
-        await fs.promises.writeFile(destino, identidad.privateKey, { encoding: 'utf-8', mode: 0o600 });
-        log.info({ destino }, 'Clave privada exportada a Descargas');
+        await fs.promises.writeFile(destino, pem, { encoding: 'utf-8', mode: 0o600 });
+        log.info({ destino }, 'Clave privada principal exportada a Descargas');
         return { ok: true, ruta: destino };
     } catch (err) {
         log.error({ err }, 'Error exportando clave privada');
@@ -321,5 +468,9 @@ export {
     saveCacheArchivosDescargadosFile,
     saveCacheChatsFile,
     saveCacheHistorialBusquedasAñadirFile,
-    exportarClavePrivadaADescargas
+    exportarClavePrivadaADescargas,
+    importarClavePrivada,
+    cambiarClavePrincipal,
+    listarClavesIdentidad,
+    eliminarClaveSoporte
 };

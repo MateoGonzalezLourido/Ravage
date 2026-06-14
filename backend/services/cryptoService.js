@@ -23,6 +23,68 @@ let cachedIdentity = null;
 
 // Cache de KeyObjects parseados para evitar parsear PEM en cada operación RSA
 const _publicKeyCache = new Map();
+
+// ── Utilidades multi-clave ────────────────────────────────────────────────────
+
+/** Genera un ID corto para una clave privada (primeros 16 hex de su SHA-256) */
+export function keyFingerprint(privatePem) {
+    return createHash('sha256').update(privatePem.trim()).digest('hex').slice(0, 16);
+}
+
+/**
+ * Migra el formato antiguo {privateKey, publicKey} al nuevo {primary, supportKeys}.
+ * Devuelve null si los datos son inválidos.
+ */
+export function migrateIdentityIfNeeded(data) {
+    if (!data) return null;
+    if (data.primary) return data;
+    if (data.privateKey) {
+        return {
+            primary: {
+                id: keyFingerprint(data.privateKey),
+                privateKey: data.privateKey,
+                publicKey: data.publicKey || '',
+                createdAt: Date.now()
+            },
+            supportKeys: []
+        };
+    }
+    return null;
+}
+
+/**
+ * Devuelve todas las claves privadas en orden de prueba: [primary, ...support]
+ * @returns {{ id: string, privateKey: string, isPrimary: boolean }[]}
+ */
+export function getAllPrivateKeys(identityData) {
+    if (!identityData) return [];
+    const keys = [];
+    if (identityData.primary?.privateKey) {
+        keys.push({ id: identityData.primary.id, privateKey: identityData.primary.privateKey, isPrimary: true });
+    }
+    for (const k of (identityData.supportKeys || [])) {
+        if (k.privateKey) keys.push({ id: k.id, privateKey: k.privateKey, isPrimary: false });
+    }
+    return keys;
+}
+
+/**
+ * Intenta descifrar RSA con cada clave disponible en orden.
+ * @returns {{ result: string, keyId: string, isPrimary: boolean }}
+ * @throws si ninguna clave funciona
+ */
+export function descifrarConPrivadaMulti(datosHex, allKeys) {
+    let lastErr;
+    for (const keyInfo of allKeys) {
+        try {
+            const result = descifrarConPrivada(datosHex, keyInfo.privateKey);
+            return { result, keyId: keyInfo.id, isPrimary: keyInfo.isPrimary };
+        } catch (e) {
+            lastErr = e;
+        }
+    }
+    throw new Error(`No se pudo descifrar con ninguna clave privada. Último error: ${lastErr?.message}`);
+}
 const _privateKeyCache = new Map();
 
 function getSystemKey() {
@@ -40,10 +102,17 @@ function getSystemKey() {
  */
 export async function getIdentity() {
     if (cachedIdentity) return cachedIdentity;
-    const { readFileSession } = await import('./controladorArchivos.js');
-    const data = await readFileSession('identity');
-    if (data) {
-        cachedIdentity = data;
+    const { readFileSession, saveIdentityFile } = await import('./controladorArchivos.js');
+    const raw = await readFileSession('identity');
+    if (raw) {
+        const migrated = migrateIdentityIfNeeded(raw);
+        if (migrated) {
+            cachedIdentity = migrated;
+            // Persistir la migración si el formato era el antiguo
+            if (!raw.primary) {
+                saveIdentityFile(migrated).catch(e => log.warn({ err: e }, '[Identity] Fallo persistiendo migración'));
+            }
+        }
     }
     return cachedIdentity;
 }
@@ -52,7 +121,8 @@ export async function getIdentity() {
  * Actualiza la identidad en cache.
  */
 export function setCachedIdentity(data) {
-    cachedIdentity = data;
+    // Siempre guardar en nuevo formato
+    cachedIdentity = migrateIdentityIfNeeded(data) || data;
 }
 
 /**

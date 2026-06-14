@@ -82,10 +82,11 @@ const OPERACIONES = {
      * @param {number} datos.indiceInicio - Índice de inicio para recomponer
      * @param {Array} datos.ratchet_keys - Claves ratchet del chat
      * @param {string} datos.id_propio - ID del usuario local
-     * @param {string} datos.privateKey - Llave privada PEM del usuario
+     * @param {string} datos.privateKey - Llave privada PEM principal (compat)
+     * @param {string[]} [datos.privateKeys] - Array de claves privadas PEM a probar en orden
      * @param {string} [datos.systemKey] - Llave de sistema (hex) para fallback
      */
-    DESCIFRAR_BATCH_MENSAJES({ items, indiceInicio, ratchet_keys, id_propio, privateKey, systemKey }) {
+    DESCIFRAR_BATCH_MENSAJES({ items, indiceInicio, ratchet_keys, id_propio, privateKey, privateKeys, systemKey }) {
         // Cache de chain keys para este batch
         const cache_keys = {};
 
@@ -110,7 +111,12 @@ const OPERACIONES = {
 
                         let ck_hex;
                         try {
-                            ck_hex = _descifrarConPrivada(entry.clave_envuelta, privateKey);
+                            const keysToTry = (privateKeys && privateKeys.length > 0) ? privateKeys : (privateKey ? [privateKey] : []);
+                            let lastErr;
+                            for (const pk of keysToTry) {
+                                try { ck_hex = _descifrarConPrivada(entry.clave_envuelta, pk); break; } catch (e) { lastErr = e; }
+                            }
+                            if (ck_hex === undefined) throw lastErr || new Error('Sin claves disponibles');
                         } catch (rsaErr) {
                             throw new Error(`Error RSA: ${rsaErr.message}`);
                         }

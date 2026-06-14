@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('msg-crypto');
-import { descifrarContenido, descifrarConPrivada, ratchetChainKey, cifrarConPublica, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
+import { descifrarContenido, descifrarConPrivada, descifrarConPrivadaMulti, getAllPrivateKeys, ratchetChainKey, cifrarConPublica, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { getCryptoPool } from '../utils/workers/workerPool.js';
@@ -19,7 +19,8 @@ export async function descifrarListaMensajes(mensajes, chat) {
 
     const id_propio = getIDMongodbUsuario();
     const identity_data = await getIdentity();
-    if (!identity_data || !identity_data.privateKey || !id_propio) return mensajes;
+    const _primaryKey = identity_data?.primary?.privateKey;
+    if (!identity_data || !_primaryKey || !id_propio) return mensajes;
 
     // Contar mensajes que necesitan descifrado
     const mensajesEncriptados = mensajes.filter(m =>
@@ -68,7 +69,14 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
 
                     let ck_hex;
                     try {
-                        ck_hex = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
+                        const allKeys = getAllPrivateKeys(identity_data);
+                        const { result, isPrimary, keyId } = descifrarConPrivadaMulti(entry.clave_envuelta, allKeys);
+                        ck_hex = result;
+                        if (!isPrimary && identity_data.primary?.publicKey) {
+                            const ck_snapshot = ck_hex;
+                            const pubKey = identity_data.primary.publicKey;
+                            setImmediate(() => reWrapChainKey(chat._id, emisor_id, id_propio, ck_snapshot, pubKey, entry.counter).catch(() => {}));
+                        }
                     } catch (rsaErr) {
                         throw new Error(`Error RSA: Fallo al descifrar el eslabón de la cadena. ${rsaErr.message}`);
                     }
@@ -244,13 +252,15 @@ async function _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data)
     // Obtener systemKey para fallback de descifrado de sistema en workers
     const systemKey = process.env.INTERNAL_ENCRYPTION_KEY || null;
 
+    const allKeys = getAllPrivateKeys(identity_data);
     const resultados = await pool.ejecutarBatch(
         'DESCIFRAR_BATCH_MENSAJES',
         mensajesSerializados,
         {
             ratchet_keys,
             id_propio: id_propio.toString(),
-            privateKey: identity_data.privateKey,
+            privateKey: identity_data.primary?.privateKey,
+            privateKeys: allKeys.map(k => k.privateKey),
             systemKey
         }
     );
@@ -280,7 +290,7 @@ async function _persistirRatchetState(cache_keys, chat, identity_data) {
             { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": receptor_id },
             {
                 $set: {
-                    "ratchet_keys.$.clave_envuelta": cifrarConPublica(state.ck, identity_data.publicKey),
+                    "ratchet_keys.$.clave_envuelta": cifrarConPublica(state.ck, identity_data.primary?.publicKey || identity_data.publicKey),
                     "ratchet_keys.$.counter": state.counter
                 }
             }
@@ -313,7 +323,8 @@ async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, ident
         if (!entry) continue;
 
         try {
-            let ck = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
+            const allKeys = getAllPrivateKeys(identity_data);
+            let ck = descifrarConPrivadaMulti(entry.clave_envuelta, allKeys).result;
             let counter = entry.counter;
 
             let iterations_safety = 0;
@@ -331,7 +342,7 @@ async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, ident
                 { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": id_propio },
                 {
                     $set: {
-                        "ratchet_keys.$.clave_envuelta": cifrarConPublica(ck, identity_data.publicKey),
+                        "ratchet_keys.$.clave_envuelta": cifrarConPublica(ck, identity_data.primary?.publicKey || identity_data.publicKey),
                         "ratchet_keys.$.counter": counter
                     }
                 }
@@ -349,8 +360,8 @@ async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, ident
 export async function getMessageKey(chat, emisor_id, iteration) {
     if (!chat || !chat.ratchet_keys) return null;
     const id_propio = getIDMongodbUsuario();
-    const identity_data = await readFileSession('identity');
-    if (!identity_data || !identity_data.privateKey) return null;
+    const identity_data = await getIdentity();
+    if (!identity_data || !identity_data.primary?.privateKey) return null;
 
     const entry = chat.ratchet_keys.find(k =>
         k.emisor_id.toString() === emisor_id.toString() &&
@@ -358,8 +369,8 @@ export async function getMessageKey(chat, emisor_id, iteration) {
     );
     if (!entry) return null;
 
-    const { descifrarConPrivada, ratchetChainKey } = await import('./cryptoService.js');
-    let ck = descifrarConPrivada(entry.clave_envuelta, identity_data.privateKey);
+    const allKeys = getAllPrivateKeys(identity_data);
+    let ck = descifrarConPrivadaMulti(entry.clave_envuelta, allKeys).result;
     let current_counter = entry.counter;
 
     // Si el counter de la DB ya fue avanzado más allá de la iteración solicitada,
@@ -385,5 +396,32 @@ export async function getMessageKey(chat, emisor_id, iteration) {
 
     const { messageKey } = ratchetChainKey(ck);
     return messageKey;
+}
+
+/**
+ * Re-envuelve la chain key con la clave pública principal actual y la persiste en MongoDB.
+ * Se llama de forma asíncrona cuando un mensaje se descifró con una clave de soporte,
+ * para migrar ese chat a la clave principal.
+ */
+async function reWrapChainKey(chatId, emisorId, receptorId, ck_hex, primaryPublicKey, counter) {
+    try {
+        const nuevaClave = cifrarConPublica(ck_hex, primaryPublicKey);
+        await ChatsRavage.updateOne(
+            {
+                _id: chatId,
+                "ratchet_keys.emisor_id": emisorId,
+                "ratchet_keys.receptor_id": receptorId
+            },
+            {
+                $set: {
+                    "ratchet_keys.$.clave_envuelta": nuevaClave,
+                    "ratchet_keys.$.counter": counter
+                }
+            }
+        );
+        log.info({ chatId, emisorId }, '[E2EE] Chain key re-wrapped con clave principal');
+    } catch (err) {
+        log.warn({ err, chatId, emisorId }, '[E2EE] Fallo re-wrapping chain key');
+    }
 }
 

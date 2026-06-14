@@ -36,8 +36,9 @@ app.commandLine.appendSwitch('disable-component-update');
 app.commandLine.appendSwitch('metrics-recording-only');
 app.commandLine.appendSwitch('no-pings');
 
-import { app, ipcMain, path } from './backend/utils/libs.js';
+import { app, ipcMain, path, dialog, fs } from './backend/utils/libs.js';
 import { fileURLToPath } from 'url';
+const fs_promises = fs.promises;
 
 if (process.env.MODO_DEBUG === "true") {
     const HEAP_WARN_THRESHOLD = HEAP_LIMIT_MB * 0.8; // alerta al 80%
@@ -221,16 +222,52 @@ async function registerAllHandlers(window, sock) {
     } else console.error('[IPC] Fallo escaneres_app_ipc:', escaneresRes.reason);
 
     if (controladorRes.status === 'fulfilled') {
-        const { getAjustesAppFile, saveAjustesAppFile } = controladorRes.value;
+        const {
+            getAjustesAppFile, saveAjustesAppFile,
+            exportarClavePrivadaADescargas,
+            importarClavePrivada, cambiarClavePrincipal,
+            listarClavesIdentidad, eliminarClaveSoporte
+        } = controladorRes.value;
         ipcMain.handle("obtener-ajustes-app", async (_, nombre) => {
             return await getAjustesAppFile(nombre);
         });
         ipcMain.handle("guardar-ajustes-app", async (_, data) => {
             return await saveAjustesAppFile({ data, create: false });
         });
+        ipcMain.handle("exportar-clave-privada", async () => {
+            return await exportarClavePrivadaADescargas();
+        });
+        ipcMain.handle("identity-importar-clave", async (_, { pemContent, label }) => {
+            return await importarClavePrivada(pemContent, label || '');
+        });
+        ipcMain.handle("identity-importar-clave-archivo", async () => {
+            const { canceled, filePaths } = await dialog.showOpenDialog({
+                title: 'Seleccionar clave privada',
+                filters: [{ name: 'PEM Key', extensions: ['pem', 'key', 'txt'] }],
+                properties: ['openFile']
+            });
+            if (canceled || !filePaths[0]) return { ok: false, error: 'Cancelado' };
+            const pemContent = await fs_promises.readFile(filePaths[0], 'utf-8');
+            return await importarClavePrivada(pemContent.trim(), '');
+        });
+        ipcMain.handle("identity-listar-claves", async () => {
+            return await listarClavesIdentidad();
+        });
+        ipcMain.handle("identity-cambiar-principal", async (_, keyId) => {
+            return await cambiarClavePrincipal(keyId);
+        });
+        ipcMain.handle("identity-eliminar-soporte", async (_, keyId) => {
+            return await eliminarClaveSoporte(keyId);
+        });
     } else {
         console.error('[IPC] Fallo controladorArchivos:', controladorRes.reason);
     }
+
+    // Verificación de contraseña para gestión de claves
+    ipcMain.handle("verificar-contraseña-actual", async (_, contraseña) => {
+        const { verificarContrasenaActual } = await import('./backend/services/sesionUsuario.js');
+        return await verificarContrasenaActual(contraseña);
+    });
 }
 
 async function createMainWindowHome(AutoLogin = false) {

@@ -322,3 +322,337 @@
     border-radius: 5px;
     z-index: 100;
 }
+
+/* Bloque de clave privada — usa .label base + overrides */
+.label-clave-privada {
+    background: rgba(239, 68, 68, 0.04) !important;
+    border-color: rgba(239, 68, 68, 0.2) !important;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+}
+
+.label-clave-privada-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.label-clave-privada-texto > span:first-child {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fca5a5 !important;
+}
+
+.label-clave-privada-desc {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+#bt-descargar-clave-privada {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #fca5a5 !important;
+    border: 1px solid rgba(239, 68, 68, 0.35) !important;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: 0;
+}
+
+#bt-descargar-clave-privada:hover {
+    background: rgba(239, 68, 68, 0.28) !important;
+    transform: translateY(-1px);
+}
+
+#bt-descargar-clave-privada:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#bt-descargar-clave-privada img {
+    width: 13px;
+    height: 13px;
+    filter: invert(0.8) sepia(1) hue-rotate(300deg) saturate(2);
+    flex-shrink: 0;
+}
+
+.label-clave-privada-botones {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#bt-cargar-clave-privada {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(99, 102, 241, 0.12) !important;
+    color: #a5b4fc !important;
+    border: 1px solid rgba(99, 102, 241, 0.3) !important;
+    white-space: nowrap;
+    margin-left: 0;
+}
+
+#bt-cargar-clave-privada:hover {
+    background: rgba(99, 102, 241, 0.25) !important;
+    transform: translateY(-1px);
+}
+
+#bt-cargar-clave-privada:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#bt-cargar-clave-privada img {
+    width: 13px;
+    height: 13px;
+    filter: invert(0.7) sepia(1) hue-rotate(200deg) saturate(2);
+    flex-shrink: 0;
+    transform: scaleY(-1);
+}
+
+.label-gestionar-claves {
+    background: rgba(99, 102, 241, 0.03) !important;
+    border-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+#bt-gestionar-claves {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Modal de claves */
+.modal-claves-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-claves-caja {
+    background: #12131a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 32px;
+    width: 380px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+}
+
+.modal-claves-caja-lista {
+    width: 460px;
+}
+
+.modal-claves-cerrar {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    color: #94a3b8;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+}
+
+.modal-claves-cerrar:hover {
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+
+.modal-claves-caja h3 {
+    margin: 0;
+    font-size: 17px;
+    color: #e2e8f0;
+}
+
+.modal-claves-desc {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.modal-claves-caja input[type="password"] {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+}
+
+.modal-claves-caja input[type="password"]:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.modal-claves-error {
+    font-size: 12px;
+    color: #f87171;
+    min-height: 16px;
+}
+
+.modal-claves-bt-confirmar {
+    background: #6366f1;
+    color: white;
+    border: none;
+    padding: 10px 0;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.modal-claves-bt-confirmar:hover {
+    background: #4f46e5;
+}
+
+.modal-claves-bt-confirmar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Lista de claves en el modal */
+.lista-claves-identidad {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.clave-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+}
+
+.clave-item.es-principal {
+    border-color: rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.06);
+}
+
+.clave-item-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.clave-item.es-principal .clave-item-badge {
+    background: rgba(99,102,241,0.2);
+    color: #a5b4fc;
+}
+
+.clave-item:not(.es-principal) .clave-item-badge {
+    background: rgba(100,116,139,0.2);
+    color: #94a3b8;
+}
+
+.clave-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.clave-item-id {
+    font-size: 13px;
+    font-family: monospace;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.clave-item-label {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.clave-item-acciones {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.bt-hacer-principal {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(99,102,241,0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.bt-hacer-principal:hover {
+    background: rgba(99,102,241,0.3);
+}
+
+.bt-eliminar-soporte {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(239,68,68,0.1);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.bt-eliminar-soporte:hover {
+    background: rgba(239,68,68,0.25);
+}
+
+.modal-claves-bt-añadir {
+    background: rgba(255,255,255,0.05);
+    color: #94a3b8;
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 0;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin: 0;
+}
+
+.modal-claves-bt-añadir:hover {
+    background: rgba(255,255,255,0.09);
+    color: #e2e8f0;
+}

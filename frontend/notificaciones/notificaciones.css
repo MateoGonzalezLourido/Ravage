@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
 * {
     animation-play-state: var(--animate, running) !important;
     user-select: none;
@@ -11,8 +13,6 @@ input, textarea, [contenteditable="true"] {
 /* ===========================
    NOTIFICACIONES - Ravage Premium Design
    =========================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
 /* Contenedor fijo en la esquina inferior derecha */
 #notificaciones-contenedor {

@@ -7,8 +7,25 @@ module.exports = {
     GUARDAR_AJUSTES_APP: (data) => {
         return ipcRenderer.invoke("guardar-ajustes-app", data)
     },
-    // Exporta los .env cifrados del baúl a la carpeta Descargas del usuario
     EXPORTAR_ENV_A_DESCARGAS: () => {
         return ipcRenderer.invoke("vault:exportar-env")
+    },
+    EXPORTAR_CLAVE_PRIVADA: () => {
+        return ipcRenderer.invoke("exportar-clave-privada")
+    },
+    IMPORTAR_CLAVE_PRIVADA_ARCHIVO: () => {
+        return ipcRenderer.invoke("identity-importar-clave-archivo")
+    },
+    LISTAR_CLAVES_IDENTIDAD: () => {
+        return ipcRenderer.invoke("identity-listar-claves")
+    },
+    CAMBIAR_CLAVE_PRINCIPAL: (keyId) => {
+        return ipcRenderer.invoke("identity-cambiar-principal", keyId)
+    },
+    ELIMINAR_CLAVE_SOPORTE: (keyId) => {
+        return ipcRenderer.invoke("identity-eliminar-soporte", keyId)
+    },
+    VERIFICAR_CONTRASENA_ACTUAL: (contraseña) => {
+        return ipcRenderer.invoke("verificar-contraseña-actual", contraseña)
     }
 };

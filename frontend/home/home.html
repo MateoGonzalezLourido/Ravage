@@ -71,6 +71,53 @@
                     <span>Chats bloqueados: </span>
                     <button id="bt-ver-chats-bloqueados">Ver</button>
                 </div>
+                <span class="titulo-ajustes">Privacidad y cifrado</span>
+                <div class="label label-clave-privada">
+                    <div class="label-clave-privada-texto">
+                        <span>Clave privada de cifrado</span>
+                        <span class="label-clave-privada-desc">Descifra tus mensajes. Sin ella no podrás leer chats anteriores al cambiar de dispositivo o cerrar sesión.</span>
+                    </div>
+                    <div class="label-clave-privada-botones">
+                        <button id="bt-descargar-clave-privada">
+                            <img src="../recursos/descargar.png" alt="" draggable="false" loading="lazy" decoding="async">
+                            Descargar
+                        </button>
+                        <button id="bt-cargar-clave-privada">
+                            <img src="../recursos/descargar.png" alt="" draggable="false" loading="lazy" decoding="async">
+                            Cargar
+                        </button>
+                    </div>
+                </div>
+                <div class="label label-gestionar-claves">
+                    <div class="label-clave-privada-texto">
+                        <span>Gestionar claves</span>
+                        <span class="label-clave-privada-desc">Ver y cambiar cuál clave es la principal. Requiere contraseña.</span>
+                    </div>
+                    <button id="bt-gestionar-claves">Gestionar</button>
+                </div>
+            </div>
+
+            <!-- Modal verificar contraseña antes de gestionar claves -->
+            <div id="modal-verificar-pass-claves" class="modal-claves-overlay" style="display:none;">
+                <div class="modal-claves-caja">
+                    <button class="modal-claves-cerrar" id="bt-cerrar-modal-pass-claves">✕</button>
+                    <h3>Verificar identidad</h3>
+                    <p class="modal-claves-desc">Introduce tu contraseña para ver las claves privadas.</p>
+                    <input type="password" id="input-pass-verificar-claves" placeholder="Contraseña actual" autocomplete="current-password">
+                    <span id="error-pass-verificar-claves" class="modal-claves-error"></span>
+                    <button id="bt-confirmar-pass-claves" class="modal-claves-bt-confirmar">Verificar</button>
+                </div>
+            </div>
+
+            <!-- Modal gestión de claves -->
+            <div id="modal-gestionar-claves" class="modal-claves-overlay" style="display:none;">
+                <div class="modal-claves-caja modal-claves-caja-lista">
+                    <button class="modal-claves-cerrar" id="bt-cerrar-modal-claves">✕</button>
+                    <h3>Claves privadas</h3>
+                    <p class="modal-claves-desc">La clave principal descifra nuevos mensajes. Las de soporte son de respaldo.</p>
+                    <div id="lista-claves-identidad" class="lista-claves-identidad"></div>
+                    <button id="bt-añadir-clave-soporte" class="modal-claves-bt-añadir">+ Añadir clave desde archivo</button>
+                </div>
             </div>
             <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-general">
                 <div>

@@ -21,7 +21,7 @@ import {
 } from './MENSAJERIA/Estructuras_correos.js';
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
-import { hash, createHash, machineIdSync } from '../utils/libs.js';
+import { hash, compare, createHash, machineIdSync } from '../utils/libs.js';
 import { generarLlavesRSA, hashDatosSistema } from './cryptoService.js';
 
 import { clearCacheUsuarios, setUsuarioEnCache } from '../repositories/UserRepository.js';
@@ -478,6 +478,24 @@ async function REGENERAR_IDENTIDAD_USUARIO() {
 }
 
 
+/**
+ * Verifica que la contraseña suministrada coincide con la del usuario en sesión.
+ * @returns {{ ok: boolean, error?: string }}
+ */
+async function verificarContrasenaActual(contraseña) {
+    try {
+        const userId = storage.getIDMongodbUsuario?.();
+        if (!userId) return { ok: false, error: 'No hay sesión activa' };
+        const user = await User.findById(userId).select('contrasena').lean();
+        if (!user) return { ok: false, error: 'Usuario no encontrado' };
+        const match = await compare(contraseña, user.contrasena);
+        return { ok: match, error: match ? undefined : 'Contraseña incorrecta' };
+    } catch (err) {
+        log.error({ err }, '[Auth] Error verificando contraseña actual');
+        return { ok: false, error: err.message };
+    }
+}
+
 export {
     registerUsuario,
     loginUsuario,
@@ -485,5 +503,6 @@ export {
     cerrarSesionUsuario,
     ValidarCodeRegistroUsuario,
     ValidarCodeLogin,
-    REGENERAR_IDENTIDAD_USUARIO
+    REGENERAR_IDENTIDAD_USUARIO,
+    verificarContrasenaActual
 };

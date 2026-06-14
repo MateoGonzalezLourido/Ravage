@@ -64,8 +64,6 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
         });
     });
 
-    ajustesEventosInicializados = true;
-
     document.getElementById("bt-cerrar-menu-ajustes").addEventListener("click", cerrar_ajustes_pagina);
     document.getElementById("bt-cerrar-sesion").addEventListener("click", cerrar_sesion_bt);
     document.getElementById("bt-cambiar-contraseña").addEventListener("click", funcion_cambiar_contraseña);
@@ -73,10 +71,22 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.getElementById("bt-cambiar-correo").addEventListener("click", funcion_cambiar_correo);
     document.getElementById("bt-ver-chats-silenciados").addEventListener("click", ver_chats_silenciados);
     document.getElementById("bt-ver-chats-bloqueados").addEventListener("click", ver_chats_bloqueados);
-
-    // INICIAR CACHE SETTINGS
-    await cargar_ajustes_cache();
-    setup_cache_listeners();
+    document.getElementById("bt-descargar-clave-privada").addEventListener("click", descargar_clave_privada);
+    document.getElementById("bt-cargar-clave-privada").addEventListener("click", cargar_clave_privada);
+    document.getElementById("bt-gestionar-claves").addEventListener("click", gestionar_claves);
+    document.getElementById("bt-cerrar-modal-pass-claves").addEventListener("click", () => {
+        document.getElementById("modal-verificar-pass-claves").style.display = "none";
+        document.getElementById("input-pass-verificar-claves").value = "";
+        document.getElementById("error-pass-verificar-claves").textContent = "";
+    });
+    document.getElementById("bt-confirmar-pass-claves").addEventListener("click", confirmar_pass_claves);
+    document.getElementById("input-pass-verificar-claves").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") confirmar_pass_claves();
+    });
+    document.getElementById("bt-cerrar-modal-claves").addEventListener("click", () => {
+        document.getElementById("modal-gestionar-claves").style.display = "none";
+    });
+    document.getElementById("bt-añadir-clave-soporte").addEventListener("click", añadir_clave_soporte);
     document.getElementById("bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
         e.preventDefault();
         const menuCambio = DOM_CACHE.menu_cambiar_datos_cuenta;
@@ -85,6 +95,13 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
         document.getElementById("cambio-pass").value = "";
         document.getElementById("cambio-pass-confirm").value = "";
     });
+
+    // INICIAR CACHE SETTINGS
+    await cargar_ajustes_cache();
+    setup_cache_listeners();
+
+    // Marcar inicializado solo si todo fue bien
+    ajustesEventosInicializados = true;
 }
 
 // --- UI Management ---
@@ -440,6 +457,161 @@ export async function ver_chats_bloqueados(e) {
     document.getElementById("bt-cerrar-menu-lista-bloqueados").onclick = () => {
         DOM_CACHE.lista_bloqueados?.classList.replace("flex-display", "ocultar-display");
     };
+}
+
+async function descargar_clave_privada(e) {
+    if (e) e.preventDefault();
+    const btn = document.getElementById("bt-descargar-clave-privada");
+    const textoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<img src="../recursos/descargar.png" alt="" draggable="false" loading="lazy" decoding="async"> Descargando...`;
+    try {
+        const resultado = await window.ajustes_app.EXPORTAR_CLAVE_PRIVADA();
+        if (resultado?.ok) {
+            window.pushNotificacion({ prioridad: 1, texto: `Clave privada guardada en Descargas`, tipo: "exito" });
+        } else {
+            window.pushNotificacion({ prioridad: 3, texto: resultado?.error || "Error al exportar la clave privada", tipo: "error" });
+        }
+    } catch(err) {
+        window.pushNotificacion({ prioridad: 3, texto: err?.message || "Error inesperado al exportar la clave privada", tipo: "error" });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+    }
+}
+
+async function cargar_clave_privada(e) {
+    if (e) e.preventDefault();
+    const btn = document.getElementById("bt-cargar-clave-privada");
+    btn.disabled = true;
+    try {
+        const resultado = await window.ajustes_app.IMPORTAR_CLAVE_PRIVADA_ARCHIVO();
+        if (resultado?.ok) {
+            window.pushNotificacion({ prioridad: 1, texto: `Clave de soporte añadida (id: ${resultado.id})`, tipo: "exito" });
+        } else if (resultado?.error !== 'Cancelado') {
+            window.pushNotificacion({ prioridad: 3, texto: resultado?.error || "Error al importar clave", tipo: "error" });
+        }
+    } catch(err) {
+        window.pushNotificacion({ prioridad: 3, texto: err?.message || "Error inesperado al importar la clave", tipo: "error" });
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function gestionar_claves(e) {
+    if (e) e.preventDefault();
+    document.getElementById("error-pass-verificar-claves").textContent = "";
+    document.getElementById("input-pass-verificar-claves").value = "";
+    document.getElementById("modal-verificar-pass-claves").style.display = "flex";
+    setTimeout(() => document.getElementById("input-pass-verificar-claves")?.focus(), 80);
+}
+
+async function confirmar_pass_claves() {
+    const input = document.getElementById("input-pass-verificar-claves");
+    const errorEl = document.getElementById("error-pass-verificar-claves");
+    const btn = document.getElementById("bt-confirmar-pass-claves");
+    const contraseña = input.value;
+    if (!contraseña) { errorEl.textContent = "Introduce tu contraseña"; return; }
+    btn.disabled = true;
+    errorEl.textContent = "";
+    try {
+        const res = await window.ajustes_app.VERIFICAR_CONTRASENA_ACTUAL(contraseña);
+        if (!res?.ok) {
+            errorEl.textContent = res?.error || "Contraseña incorrecta";
+            return;
+        }
+        document.getElementById("modal-verificar-pass-claves").style.display = "none";
+        input.value = "";
+        await mostrar_modal_claves();
+    } catch(err) {
+        errorEl.textContent = err?.message || "Error al verificar la contraseña";
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function mostrar_modal_claves() {
+    const container = document.getElementById("lista-claves-identidad");
+    container.innerHTML = '<span style="color:#64748b;font-size:13px">Cargando...</span>';
+    document.getElementById("modal-gestionar-claves").style.display = "flex";
+    try {
+        const claves = await window.ajustes_app.LISTAR_CLAVES_IDENTIDAD();
+        _renderizar_lista_claves(claves);
+    } catch {
+        container.innerHTML = '<span style="color:#f87171;font-size:13px">Error cargando claves</span>';
+    }
+}
+
+function _renderizar_lista_claves(claves) {
+    const container = document.getElementById("lista-claves-identidad");
+    if (!claves || claves.length === 0) {
+        container.innerHTML = '<span style="color:#64748b;font-size:13px">No hay claves guardadas.</span>';
+        return;
+    }
+    container.innerHTML = '';
+    for (const c of claves) {
+        const esPrincipal = c.tipo === 'primary';
+        const fecha = c.fecha ? new Date(c.fecha).toLocaleDateString('es-ES') : '';
+        const item = document.createElement('div');
+        item.className = 'clave-item' + (esPrincipal ? ' es-principal' : '');
+        item.innerHTML = `
+            <span class="clave-item-badge">${esPrincipal ? 'Principal' : 'Soporte'}</span>
+            <div class="clave-item-info">
+                <span class="clave-item-id">${c.id}</span>
+                <span class="clave-item-label">${c.label || (esPrincipal ? 'Clave principal' : 'Clave de soporte')}${fecha ? ' · ' + fecha : ''}</span>
+            </div>
+            <div class="clave-item-acciones">
+                ${!esPrincipal ? `<button class="bt-hacer-principal" data-id="${c.id}">Hacer principal</button>` : ''}
+                ${!esPrincipal ? `<button class="bt-eliminar-soporte" data-id="${c.id}">Eliminar</button>` : ''}
+            </div>`;
+        container.appendChild(item);
+    }
+    container.querySelectorAll('.bt-hacer-principal').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            const res = await window.ajustes_app.CAMBIAR_CLAVE_PRINCIPAL(btn.dataset.id).catch(() => ({ ok: false, error: 'Error' }));
+            if (res?.ok) {
+                window.pushNotificacion({ prioridad: 1, texto: 'Clave principal actualizada', tipo: "exito" });
+                const claves = await window.ajustes_app.LISTAR_CLAVES_IDENTIDAD().catch(() => []);
+                _renderizar_lista_claves(claves);
+            } else {
+                window.pushNotificacion({ prioridad: 3, texto: res?.error || 'Error al cambiar clave', tipo: "error" });
+                btn.disabled = false;
+            }
+        });
+    });
+    container.querySelectorAll('.bt-eliminar-soporte').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            const res = await window.ajustes_app.ELIMINAR_CLAVE_SOPORTE(btn.dataset.id).catch(() => ({ ok: false, error: 'Error' }));
+            if (res?.ok) {
+                btn.closest('.clave-item').remove();
+                window.pushNotificacion({ prioridad: 1, texto: 'Clave de soporte eliminada', tipo: "exito" });
+            } else {
+                window.pushNotificacion({ prioridad: 3, texto: res?.error || 'Error al eliminar', tipo: "error" });
+                btn.disabled = false;
+            }
+        });
+    });
+}
+
+async function añadir_clave_soporte() {
+    const btn = document.getElementById("bt-añadir-clave-soporte");
+    btn.disabled = true;
+    try {
+        const resultado = await window.ajustes_app.IMPORTAR_CLAVE_PRIVADA_ARCHIVO();
+        if (resultado?.ok) {
+            window.pushNotificacion({ prioridad: 1, texto: `Clave de soporte añadida`, tipo: "exito" });
+            const claves = await window.ajustes_app.LISTAR_CLAVES_IDENTIDAD().catch(() => []);
+            _renderizar_lista_claves(claves);
+        } else if (resultado?.error !== 'Cancelado') {
+            window.pushNotificacion({ prioridad: 3, texto: resultado?.error || "Error al importar clave", tipo: "error" });
+        }
+    } catch {
+        window.pushNotificacion({ prioridad: 3, texto: "Error inesperado", tipo: "error" });
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 async function cargar_ajustes_cache() {
