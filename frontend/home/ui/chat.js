@@ -1441,8 +1441,99 @@ export async function mostrar_datos_chat_usuarios(e) {
         // TODO: Contenido del menú...
     })
 
-    document.getElementById("bt-ver-archivos-chat")?.addEventListener("click", () => {
-        // TODO: Implementar el menú de archivos mandados
+    document.getElementById("bt-ver-archivos-chat")?.addEventListener("click", async () => {
+        infoSeccion.classList.remove("abierto")
+        const cuerpoChat = document.querySelector(".seccion-cuerpo-chat")
+
+        document.querySelector(".ventana-archivos-mensaje")?.remove()
+
+        const cache_archivos = await window.cache_archivos_descargados.getCacheArchivosDescargados()
+        const archivos_raw = (cache_archivos || []).filter(a => a.id_chat === id_chat)
+
+        // Deduplicar por id_archivo contando descargas
+        const archivos_map = new Map()
+        for (const a of archivos_raw) {
+            if (!archivos_map.has(a.id_archivo)) {
+                archivos_map.set(a.id_archivo, { ...a, descargas: 1 })
+            } else {
+                archivos_map.get(a.id_archivo).descargas++
+            }
+        }
+        const archivos = [...archivos_map.values()]
+
+        let contenido_html
+        if (archivos.length === 0) {
+            contenido_html = `<div style="color:rgba(255,255,255,0.4);font-size:13px;text-align:center;padding:32px 16px;">No hay archivos descargados en este chat</div>`
+        } else {
+            const items = []
+            for (const archivo of archivos) {
+                const ext = archivo.nombre?.includes(".") ? archivo.nombre.split(".").pop() : "txt"
+                const [url_img] = await url_icono_extension_img(ext)
+                items.push(`
+                    <div class="info-chat-participante-item" style="gap:10px;cursor:pointer;"
+                        data-id-archivo="${escapeHTML(String(archivo.id_archivo))}">
+                        <img src="${url_img}" style="width:30px;height:30px;object-fit:contain;flex-shrink:0;" loading="lazy" decoding="async">
+                        <div class="info-chat-participante-info">
+                            <span class="info-chat-participante-nombre">${escapeHTML(archivo.nombre)}</span>
+                            <span class="info-chat-participante-correo">${archivo.descargas > 1 ? `Descargado ${archivo.descargas} veces` : 'Descargado una vez'}</span>
+                        </div>
+                    </div>`)
+            }
+            contenido_html = `
+                <div class="info-chat-lista-participantes">
+                    <div class="info-chat-lista-titulo">Archivos (${archivos.length})</div>
+                    <div class="info-chat-lista-items">${items.join('')}</div>
+                </div>`
+        }
+
+        const ventana = document.createElement("div")
+        ventana.className = "ventana-archivos-mensaje panel-lateral-ajustable"
+        ventana.innerHTML = `
+            <div class="info-chat-contenedor-fijo">
+                <div class="info-chat-header">
+                    <button class="bt-accion-archivos" id="bt-cerrar-ventana-archivos">
+                        <img src="../recursos/cruz.png" alt="cerrar" loading="lazy" decoding="async">
+                    </button>
+                    <div><span>Archivos del chat</span></div>
+                </div>
+                <div class="info-chat-cuerpo">${contenido_html}</div>
+            </div>`
+
+        infoSeccion.insertAdjacentElement("afterend", ventana)
+
+        const chatUsuario = document.getElementById("chat-usuario")
+        if (chatUsuario) {
+            chatUsuario.style.width = Math.max(chatUsuario.offsetWidth - 350, 0) + 'px'
+            chatUsuario.style.flexGrow = '0'
+            setTimeout(() => { chatUsuario.style.width = ''; chatUsuario.style.flexGrow = '' }, 310)
+        }
+
+        requestAnimationFrame(() => {
+            ventana.classList.add("abierto")
+            if (cuerpoChat) cuerpoChat.classList.add("panel-lateral-abierto")
+        })
+
+        ventana.querySelector("#bt-cerrar-ventana-archivos").addEventListener("click", () => {
+            ventana.classList.remove("abierto")
+            setTimeout(() => {
+                ventana.remove()
+                if (cuerpoChat && !infoSeccion.classList.contains("abierto")) {
+                    cuerpoChat.classList.remove("panel-lateral-abierto")
+                }
+            }, 300)
+        })
+
+        ventana.querySelector(".info-chat-cuerpo").addEventListener("click", e => {
+            const item = e.target.closest("[data-id-archivo]")
+            if (!item) return
+            const id_archivo = item.dataset.idArchivo
+            const el_archivo = document.querySelector(`.archivo-mensaje-div-archivos[data-id="${id_archivo}"]`)
+            if (!el_archivo) return
+            el_archivo.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            el_archivo.style.transition = 'background-color 0.4s'
+            el_archivo.style.backgroundColor = 'rgba(99, 102, 241, 0.25)'
+            setTimeout(() => { el_archivo.style.backgroundColor = '' }, 2000)
+        })
     })
 
     document.getElementById("bt-anadir-participante-chat")?.addEventListener("click", (e) => {
