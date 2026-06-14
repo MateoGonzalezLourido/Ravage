@@ -405,9 +405,16 @@ const sanitizarTexto = (texto) =>
 
 const parsearURLs = (texto) => {
     const urlRegex = /https?:\/\/[^\s<>"']+/g;
-    return texto.replace(urlRegex, (url) =>
-        `<span class="url-mensaje" data-url="${escapeHTML(url)}">${escapeHTML(url)}</span>`
-    );
+    let resultado = '';
+    let ultimo = 0;
+    let match;
+    while ((match = urlRegex.exec(texto)) !== null) {
+        resultado += escapeHTML(texto.slice(ultimo, match.index));
+        resultado += `<span class="url-mensaje" data-url="${escapeHTML(match[0])}">${escapeHTML(match[0])}</span>`;
+        ultimo = match.index + match[0].length;
+    }
+    resultado += escapeHTML(texto.slice(ultimo));
+    return resultado;
 };
 // Post-proceso para forzar seguridad en links
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
