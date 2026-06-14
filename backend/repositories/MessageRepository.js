@@ -43,7 +43,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 
         // E2EE: Obtener identidad una sola vez y reutilizarla en todo el flujo
         const identity_data = await getIdentity();
-        if (!identity_data || !identity_data.privateKey) {
+        if (!identity_data || !identity_data.primary?.privateKey) {
             log.error("No se encontró la llave privada local para E2EE");
             return false;
         }
@@ -65,8 +65,8 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
 
         // Recibe identity_data como parámetro para no volver a pedirla
         async function intentarDescifrado(ent, id_data) {
-            if (!id_data || !id_data.privateKey) throw new Error("No Identity keys found locally.");
-            return descifrarConPrivada(ent.clave_envuelta, id_data.privateKey);
+            if (!id_data || !id_data.primary?.privateKey) throw new Error("No Identity keys found locally.");
+            return descifrarConPrivada(ent.clave_envuelta, id_data.primary.privateKey);
         }
 
         try {
