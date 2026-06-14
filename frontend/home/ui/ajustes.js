@@ -258,6 +258,9 @@ function cerrar_ajustes_pagina(e) {
     menuAjustes?.classList.remove("flex-display");
     menuAjustes?.classList.add("ocultar-display");
 
+    DOM_CACHE.lista_bloqueados?.classList.replace("flex-display", "ocultar-display");
+    DOM_CACHE.lista_silenciados?.classList.replace("flex-display", "ocultar-display");
+
     // Reset state if necessary
     bloquear_span_cambio_contraseña = true; // Match renderer.js behavior
 }
@@ -474,38 +477,22 @@ async function funcion_cambiar_correo(e) {
 export async function ver_chats_silenciados(e) {
     if (e) e.stopPropagation();
     const container = document.getElementById("principal-lista-usuarios-silenciados");
+    container.innerHTML = "<span class='text-info-no-chats'>*CARGANDO...*</span>";
+
     const [contactos, silenciados] = await Promise.all([
         window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
         window.social_usuario.OBTENER_USUARIOS_SILENCIADOS()
     ]);
-    console.log(contactos,silenciados)
-    //dividir cuales estan en contactos y cuales no
-    const contactos_silenciados = contactos.filter(c => silenciados.includes(c.id));
-    const no_contactos_silenciados = silenciados.filter(c => {
-        const contacto = contactos.find(d => d.id === c);
-        return !contacto || contacto.apodo === "";
-    });
-    console.log(no_contactos_silenciados)
-    //buscar en db apodo de los que no estan en contactos
-    let no_contactos_silenciados_apodos = [];
-    let no_contactos_silenciados_con_apodo = [];
-    if (no_contactos_silenciados.length > 0) {
-        no_contactos_silenciados_apodos = await window.social_usuario.OBTENER_VARIOS_DATOS_USUARIOS_EXTERNOS(no_contactos_silenciados, "apodo");
-        //todo: esto no devuelve bien el apodo o nombre de chat
-        no_contactos_silenciados_con_apodo = no_contactos_silenciados.map(id => {
-            const data = no_contactos_silenciados_apodos.find(a => a._id=== id);
-            return {
-                id,
-                apodo: data?.apodo || data?.nombre || "Usuario desconocido"
-            }
-        });
-    }
 
-    const silenciados_final = [...contactos_silenciados, ...no_contactos_silenciados_con_apodo];
-    console.log(silenciados_final)
-    if (!silenciados_final || silenciados_final.length === 0) {
+    if (!silenciados || silenciados.length === 0) {
         container.innerHTML = "<span class='text-info-no-chats'>*SIN USUARIOS*</span>";
     } else {
+        const { Encontrar_Nombre_Chat_Usuario } = await import('./chat.js');
+        const silenciados_final = await Promise.all(silenciados.map(async id => {
+            const apodo = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id, grupal: false, contactos });
+            return { id, apodo };
+        }));
+
         container.innerHTML = silenciados_final.map(u => `
             <div class="lista-item-ajustes">
                 <span>${escapeHTML(u.apodo)}</span>
@@ -531,16 +518,27 @@ export async function ver_chats_silenciados(e) {
 export async function ver_chats_bloqueados(e) {
     if (e) e.stopPropagation();
     const container = document.getElementById("principal-lista-usuarios-bloqueados");
-    container.innerHTML = "*CARGANDO...*";
+    container.innerHTML = "<span class='text-info-no-chats'>*CARGANDO...*</span>";
 
-    const users = await window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS();
-    if (!users || users.length === 0) {
-        container.innerHTML = "*SIN USUARIOS*";
+    const [contactos, users_raw] = await Promise.all([
+        window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
+        window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
+    ]);
+
+    if (!users_raw || users_raw.length === 0) {
+        container.innerHTML = "<span class='text-info-no-chats'>*SIN USUARIOS*</span>";
     } else {
+        const { Encontrar_Nombre_Chat_Usuario } = await import('./chat.js');
+        const users = await Promise.all(users_raw.map(async item => {
+            const id = typeof item === 'string' ? item : (item.id || item._id);
+            const apodo = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id, grupal: false, contactos });
+            return { id, apodo };
+        }));
+
         container.innerHTML = users.map(u => `
             <div class="lista-item-ajustes">
                 <span>${escapeHTML(u.apodo)}</span>
-                <button class="bt-desbloquear" data-id="${u.id || u._id}">Desbloquear</button>
+                <button class="bt-desbloquear" data-id="${u.id}">Desbloquear</button>
             </div>
         `).join("");
 

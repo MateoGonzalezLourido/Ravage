@@ -293,34 +293,127 @@
     overflow-x: auto;
 }
 
-#principal-lista-usuarios-bloqueados,
-#principal-lista-usuarios-silenciados {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+/* Modales de listas de usuarios (Bloqueados / Silenciados) */
+.lista-bloqueados {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    max-width: 90vw;
+    max-height: 80vh;
+    background: var(--glass-bg, rgba(18, 19, 26, 0.95));
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+    box-shadow: var(--glass-shadow, 0 10px 30px rgba(0, 0, 0, 0.5));
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: left;
-    overflow-y: auto;
-    z-index: 100;
+    padding: 32px;
+    border-radius: 20px;
+    z-index: 2000 !important;
 }
 
-#principal-lista-usuarios-bloqueados .usuario-bloqueado,
-#principal-lista-usuarios-silenciados .usuario-silenciado {
-    width: 95%;
-    height: 50px;
+.lista-bloqueados.flex-display {
+    display: flex !important;
+}
+
+.lista-bloqueados h2 {
+    width: 100%;
+    text-align: center;
+    font-size: 17px;
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #e2e8f0;
+}
+
+#bt-cerrar-menu-lista-bloqueados,
+#bt-cerrar-menu-lista-silenciados {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    color: #94a3b8;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
     display: flex;
-    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+#bt-cerrar-menu-lista-bloqueados:hover,
+#bt-cerrar-menu-lista-silenciados:hover {
+    background: rgba(255,255,255,0.12);
+}
+
+#bt-cerrar-menu-lista-bloqueados img,
+#bt-cerrar-menu-lista-silenciados img {
+    width: 14px;
+    height: 14px;
+    filter: invert(0.6);
+}
+
+#bt-cerrar-menu-lista-bloqueados:hover img,
+#bt-cerrar-menu-lista-silenciados:hover img {
+    filter: invert(1);
+}
+
+#principal-lista-usuarios-bloqueados,
+#principal-lista-usuarios-silenciados {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    overflow-y: auto;
+    gap: 10px;
+    padding-right: 5px;
+    flex: 1;
+}
+
+.lista-item-ajustes {
+    display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 5px;
-    padding: 5px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    z-index: 100;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+}
+
+.lista-item-ajustes span {
+    font-size: 14px;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lista-item-ajustes button {
+    font-size: 12px;
+    padding: 6px 12px;
+    background: rgba(99,102,241,0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.lista-item-ajustes button:hover {
+    background: rgba(99,102,241,0.3);
+}
+
+.text-info-no-chats {
+    color: #64748b;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 20px;
 }
 
 /* Bloque de clave privada — usa .label base + overrides */
