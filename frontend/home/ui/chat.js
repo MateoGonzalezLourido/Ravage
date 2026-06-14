@@ -309,6 +309,44 @@ export const texto_mostrar_fecha_mensajes_bloque = (fecha_param) => {
     else return fecha_param_usar_string
 }
 
+export const formatear_fecha_chat_lista = (fechaParam) => {
+    if (!fechaParam) return "";
+    
+    const fecha = new Date(fechaParam);
+    const ahora = new Date();
+
+    const hora = fecha.toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    });
+
+    // 🔹 Normalizamos fechas a medianoche para comparar días
+    const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const fechaComparar = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+
+    const diferenciaDias = (hoy - fechaComparar) / (1000 * 60 * 60 * 24);
+
+    let resultado;
+
+    if (diferenciaDias === 0) {
+        resultado = `Hoy, ${hora}`;
+    }
+    else if (diferenciaDias === 1) {
+        resultado = `Ayer, ${hora}`;
+    }
+    else {
+        const dia = fecha.getDate();
+        const mes = fecha.toLocaleString("es-ES", {
+            month: "short"
+        }).replace(".", "");
+
+        resultado = `${hora}, ${dia} ${mes}`;
+    }
+
+    return resultado;
+}
+
 export const chat_componente_lista_estructura_html = (datos_usar) => {
     //recuperar nombre del chat
     const nombre = (datos_usar) => { return escapeHTML(datos_usar?.nombre) || `Chat sin nombre` }
@@ -316,39 +354,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
     //recuperar ultima vez
     const ultima_vez = (datos_usar) => {
         if (datos_usar.usuarios.length <= 2 && datos_usar.ultimoCambio) {
-
-            const fecha = new Date(datos_usar.ultimoCambio);
-            const ahora = new Date();
-
-            const hora = fecha.toLocaleTimeString("es-ES", {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: false
-            });
-
-            // 🔹 Normalizamos fechas a medianoche para comparar días
-            const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-            const fechaComparar = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-
-            const diferenciaDias = (hoy - fechaComparar) / (1000 * 60 * 60 * 24);
-
-            let resultado;
-
-            if (diferenciaDias === 0) {
-                resultado = `Hoy, ${hora}`;
-            }
-            else if (diferenciaDias === 1) {
-                resultado = `Ayer, ${hora}`;
-            }
-            else {
-                const dia = fecha.getDate();
-                const mes = fecha.toLocaleString("es-ES", {
-                    month: "short"
-                }).replace(".", "");
-
-                resultado = `${hora}, ${dia} ${mes}`;
-            }
-
+            const resultado = formatear_fecha_chat_lista(datos_usar.ultimoCambio);
             return `<div class="fecha-chat-lista"><span>${resultado}</span></div>`;
         }
         else {

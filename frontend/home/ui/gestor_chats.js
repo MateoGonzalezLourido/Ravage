@@ -8,6 +8,7 @@ import {
     crear_mensaje_html,
     aplicar_escaneres_asincronos,
     texto_mostrar_fecha_mensajes_bloque,
+    formatear_fecha_chat_lista,
     obtener_estado_virtualizacion,
     destruir_virtualizacion,
     cargar_bloque_arriba,
@@ -582,7 +583,7 @@ export async function cambiar_datos_componente_lista_chats({ id_chat, data, noti
         const fecha = data?.fecha || data?.data?.data || data?.data;
         if (fecha) {
             const elFecha = componente_lista.querySelector(".fecha-chat-lista span");
-            if (elFecha) elFecha.innerHTML = escapeHTML(texto_mostrar_fecha_mensajes_bloque(fecha));
+            if (elFecha) elFecha.innerHTML = escapeHTML(formatear_fecha_chat_lista(fecha));
         }
 
         // Reordenar: mover al principio de la lista
