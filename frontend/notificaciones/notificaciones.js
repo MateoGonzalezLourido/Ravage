@@ -1,14 +1,7 @@
-/*ESTE CODIGO PRIMERAMENTE FUE HECHO POR MI, PERO AL QUERER HACER UNA COSA PARA UN SLEEP CANCELABLE ME PUSE CON CHATGPT PARA VER COMO SE HACIA BIEN Y DESPUES DE MANDARLE SUS PROPIOS CODIGOS 10VECES HASTA QUE EL DECIDIERA QUE LOS HIZO BIEN ACABO RESULTANDO EN ESTO. LA COSA ES QUE ESTE CODIGO NO LO VOY A REVISAR QUE ES TARDE YA. SI VEO QUE NO FUNCIONA ENTRARÉ A CAMBIARLO Y QUITARE ESTE TEXTACO.
-FECHA:05/02/2026. BY:MATEO WITH CHATGPT *^____^*
-*/
-/*Como generar una notificacion-> 
+/* =========================================================================
+   SISTEMA DE NOTIFICACIONES RAVAGE - GESTIÓN SECUENCIAL Y DISEÑO PREMIUM
+   ========================================================================= */
 
-window.pushNotificacion({
-    prioridad: 0, // menor número = más importante
-    texto: `Nuevo mensaje de ${nombre}`,
-    tipo: "info" // "info", "error", "success"
-})
-*/
 // ── Iconos por tipo ──────────────────────────────────────────────────────────
 const NOTI_ICONOS = {
     error: '✕',
@@ -20,9 +13,9 @@ const NOTI_ICONOS = {
 
 const NOTI_TITULOS = {
     error: 'Error',
-    info: 'Info',
-    success: 'Listo',
-    warning: 'Aviso',
+    info: 'Información',
+    success: 'Éxito',
+    warning: 'Advertencia',
     default: 'Aviso'
 }
 
@@ -40,7 +33,7 @@ function obtenerContenedor() {
 // ── Función de cierre (con animación de salida) ──────────────────────────────
 function cerrarNotificacion(div) {
     div.classList.add('noti-salir')
-    setTimeout(() => div.remove(), 420)
+    setTimeout(() => div.remove(), 400) // tiempo de transición de CSS
 }
 
 // ── Constructora de elemento notificación ────────────────────────────────────
@@ -52,9 +45,12 @@ function crearElementoNoti(texto, tipo, duracion) {
     div.style.setProperty('--noti-duracion', `${duracion}ms`)
 
     // Icono
+    const iconoWrapper = document.createElement('div')
+    iconoWrapper.className = 'noti-icono-wrapper'
     const icono = document.createElement('span')
     icono.className = 'noti-icono'
     icono.textContent = NOTI_ICONOS[tipoValido]
+    iconoWrapper.appendChild(icono)
 
     // Cuerpo
     const cuerpo = document.createElement('div')
@@ -72,40 +68,32 @@ function crearElementoNoti(texto, tipo, duracion) {
     cuerpo.appendChild(span)
 
     // Botón cerrar
-    const cerrarBtn = document.createElement('span')
+    const cerrarBtn = document.createElement('button')
     cerrarBtn.className = 'noti-cerrar'
-    cerrarBtn.textContent = '✕'
+    cerrarBtn.innerHTML = '&times;'
 
-    div.appendChild(icono)
+    div.appendChild(iconoWrapper)
     div.appendChild(cuerpo)
     div.appendChild(cerrarBtn)
 
     return div
 }
 
-// ── pushNotificacion ─────────────────────────────────────────────────────────
-// Notificaciones independientes (pueden apilarse, no bloquean entre sí)
-window.pushNotificacion = function (data) {
-    const duracion = data.duracion ?? 5000
-    const contenedor = obtenerContenedor()
-    const div = crearElementoNoti(data.texto, data.tipo, duracion)
-
-    const cerrar = () => cerrarNotificacion(div)
-
-    div.querySelector('.noti-cerrar').addEventListener('click', (e) => {
-        e.stopPropagation()
-        cerrar()
-    })
-    div.addEventListener('click', cerrar)
-
-    contenedor.appendChild(div)
-    setTimeout(cerrar, duracion)
-}
-
-
-// ── Sistema con cola (notificaciones secuenciales) ───────────────────────────
+// ── Sistema con cola (notificaciones secuenciales - 1 a la vez) ──────────────
 let cola_notificaciones = []
 let mostrando = false
+
+window.pushNotificacion = function (data) {
+    // Añadimos a la cola
+    cola_notificaciones.push({
+        texto: data.texto || data.text || 'Sin mensaje', // Compatibilidad
+        tipo: data.tipo,
+        duracion: data.duracion ?? 4000
+    });
+    
+    // Intentamos mostrar si no hay ninguna activa
+    mostrarNotificacion();
+}
 
 function mostrarNotificacion() {
     if (mostrando || cola_notificaciones.length === 0) return
@@ -118,21 +106,37 @@ function mostrarNotificacion() {
         }
 
         const noti = cola_notificaciones.shift()
-        const duracion = noti.duracion ?? 2500
+        const duracion = noti.duracion
         const token = { cancelled: false }
         const contenedor = obtenerContenedor()
-        const div = crearElementoNoti(noti.text, noti.tipo, duracion)
+        
+        // Limpiamos el contenedor por si acaso quedara algo "colgado", 
+        // asegurando estrictamente 1 notificación.
+        contenedor.innerHTML = '';
 
-        const clickHandler = () => token.cancel && token.cancel()
+        const div = crearElementoNoti(noti.texto, noti.tipo, duracion)
+
+        const clickHandler = () => {
+            if (token.cancel) token.cancel()
+        }
+        
         div.querySelector('.noti-cerrar').addEventListener('click', (e) => {
             e.stopPropagation()
             clickHandler()
         })
-        div.addEventListener('click', clickHandler, { once: true })
+        
+        div.addEventListener('click', (e) => {
+            // Permitir cerrar también haciendo clic en la notificación
+            if(e.target.className !== 'noti-cerrar') {
+                clickHandler()
+            }
+        }, { once: true })
 
         contenedor.appendChild(div)
 
+        // Usamos nuestro sleep cancelable para esperar
         sleep(duracion, token, div).then(() => {
+            // Una vez terminada, vamos a la siguiente en la cola
             procesarSiguiente()
         })
     }
@@ -145,7 +149,7 @@ function sleep(ms, token, div) {
         const timeoutId = setTimeout(() => {
             if (!token.cancelled) {
                 cerrarNotificacion(div)
-                setTimeout(resolve, 420)
+                setTimeout(resolve, 400) // Esperamos a que termine la animación css
             }
         }, ms)
 
@@ -153,7 +157,7 @@ function sleep(ms, token, div) {
             clearTimeout(timeoutId)
             token.cancelled = true
             cerrarNotificacion(div)
-            setTimeout(resolve, 420)
+            setTimeout(resolve, 400) // Esperamos a que termine la animación css
         }
     })
 }
