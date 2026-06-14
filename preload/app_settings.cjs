@@ -25,6 +25,9 @@ module.exports = {
     ELIMINAR_CLAVE_SOPORTE: (keyId) => {
         return ipcRenderer.invoke("identity-eliminar-soporte", keyId)
     },
+    EXPORTAR_CLAVE_POR_ID: (keyId) => {
+        return ipcRenderer.invoke("identity-exportar-clave", keyId)
+    },
     VERIFICAR_CONTRASENA_ACTUAL: (contraseña) => {
         return ipcRenderer.invoke("verificar-contraseña-actual", contraseña)
     }

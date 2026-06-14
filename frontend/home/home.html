@@ -116,7 +116,19 @@
                     <h3>Claves privadas</h3>
                     <p class="modal-claves-desc">La clave principal descifra nuevos mensajes. Las de soporte son de respaldo.</p>
                     <div id="lista-claves-identidad" class="lista-claves-identidad"></div>
-                    <button id="bt-añadir-clave-soporte" class="modal-claves-bt-añadir">+ Añadir clave desde archivo</button>
+                    <button id="bt-añadir-clave-soporte" class="modal-claves-bt-añadir">+ Instalar clave desde archivo</button>
+                </div>
+            </div>
+
+            <!-- Modal confirmación eliminar clave -->
+            <div id="modal-confirmar-eliminar-clave" class="modal-claves-overlay" style="display:none;">
+                <div class="modal-claves-caja modal-confirmar-eliminar-caja">
+                    <h3>¿Eliminar clave?</h3>
+                    <p class="modal-claves-desc" id="modal-confirmar-eliminar-desc">Esta acción no se puede deshacer.</p>
+                    <div class="modal-confirmar-eliminar-acciones">
+                        <button id="bt-confirmar-eliminar-clave-no" class="modal-confirmar-bt-no">No, cancelar</button>
+                        <button id="bt-confirmar-eliminar-clave-si" class="modal-confirmar-bt-si">Sí, eliminar</button>
+                    </div>
                 </div>
             </div>
             <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-general">

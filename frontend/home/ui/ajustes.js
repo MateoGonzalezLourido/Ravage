@@ -86,6 +86,9 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.getElementById("bt-cerrar-modal-claves").addEventListener("click", () => {
         document.getElementById("modal-gestionar-claves").style.display = "none";
     });
+    document.getElementById("bt-confirmar-eliminar-clave-no").addEventListener("click", () => {
+        document.getElementById("modal-confirmar-eliminar-clave").style.display = "none";
+    });
     document.getElementById("bt-añadir-clave-soporte").addEventListener("click", añadir_clave_soporte);
     document.getElementById("bt-cerrar-menu-cambio-data").addEventListener("click", (e) => {
         e.preventDefault();
@@ -561,11 +564,27 @@ function _renderizar_lista_claves(claves) {
                 <span class="clave-item-label">${c.label || (esPrincipal ? 'Clave principal' : 'Clave de soporte')}${fecha ? ' · ' + fecha : ''}</span>
             </div>
             <div class="clave-item-acciones">
+                <button class="bt-descargar-clave-individual" data-id="${c.id}" title="Descargar clave como archivo .pem">↓</button>
                 ${!esPrincipal ? `<button class="bt-hacer-principal" data-id="${c.id}">Hacer principal</button>` : ''}
                 ${!esPrincipal ? `<button class="bt-eliminar-soporte" data-id="${c.id}">Eliminar</button>` : ''}
             </div>`;
         container.appendChild(item);
     }
+    container.querySelectorAll('.bt-descargar-clave-individual').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            const textoOriginal = btn.textContent;
+            btn.textContent = '...';
+            const res = await window.ajustes_app.EXPORTAR_CLAVE_POR_ID(btn.dataset.id).catch(() => ({ ok: false, error: 'Error' }));
+            if (res?.ok) {
+                window.pushNotificacion({ prioridad: 1, texto: 'Clave guardada en Descargas', tipo: "exito" });
+            } else {
+                window.pushNotificacion({ prioridad: 3, texto: res?.error || 'Error al descargar clave', tipo: "error" });
+            }
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
+        });
+    });
     container.querySelectorAll('.bt-hacer-principal').forEach(btn => {
         btn.addEventListener('click', async () => {
             btn.disabled = true;
@@ -581,18 +600,38 @@ function _renderizar_lista_claves(claves) {
         });
     });
     container.querySelectorAll('.bt-eliminar-soporte').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            btn.disabled = true;
-            const res = await window.ajustes_app.ELIMINAR_CLAVE_SOPORTE(btn.dataset.id).catch(() => ({ ok: false, error: 'Error' }));
-            if (res?.ok) {
-                btn.closest('.clave-item').remove();
-                window.pushNotificacion({ prioridad: 1, texto: 'Clave de soporte eliminada', tipo: "exito" });
-            } else {
-                window.pushNotificacion({ prioridad: 3, texto: res?.error || 'Error al eliminar', tipo: "error" });
-                btn.disabled = false;
-            }
+        btn.addEventListener('click', () => {
+            _confirmar_eliminar_clave(btn.dataset.id, btn);
         });
     });
+}
+
+function _confirmar_eliminar_clave(keyId, btnOrigen) {
+    const modal = document.getElementById("modal-confirmar-eliminar-clave");
+    const desc = document.getElementById("modal-confirmar-eliminar-desc");
+    const btSi = document.getElementById("bt-confirmar-eliminar-clave-si");
+    const btNo = document.getElementById("bt-confirmar-eliminar-clave-no");
+
+    desc.textContent = `Clave: ${keyId}. Esta acción no se puede deshacer.`;
+    modal.style.display = "flex";
+
+    const limpiar = () => { modal.style.display = "none"; btSi.onclick = null; btNo.onclick = null; };
+
+    btNo.onclick = limpiar;
+    btSi.onclick = async () => {
+        btSi.disabled = true;
+        btNo.disabled = true;
+        const res = await window.ajustes_app.ELIMINAR_CLAVE_SOPORTE(keyId).catch(() => ({ ok: false, error: 'Error' }));
+        if (res?.ok) {
+            btnOrigen.closest('.clave-item').remove();
+            window.pushNotificacion({ prioridad: 1, texto: 'Clave eliminada', tipo: "exito" });
+        } else {
+            window.pushNotificacion({ prioridad: 3, texto: res?.error || 'Error al eliminar', tipo: "error" });
+        }
+        btSi.disabled = false;
+        btNo.disabled = false;
+        limpiar();
+    };
 }
 
 async function añadir_clave_soporte() {

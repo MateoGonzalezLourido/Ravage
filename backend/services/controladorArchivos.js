@@ -455,6 +455,35 @@ async function exportarClavePrivadaADescargas() {
     }
 }
 
+async function exportarClavePorId(keyId) {
+    try {
+        const identity = await _leerIdentidadLocal();
+        if (!identity) return { ok: false, error: 'No hay identidad guardada' };
+
+        let pem = null;
+        let nombreArchivo = `ravage_key_${keyId.slice(0, 8)}.pem`;
+
+        if (identity.primary?.id === keyId) {
+            pem = identity.primary.privateKey;
+            nombreArchivo = 'ravage_private_key.pem';
+        } else {
+            const soporte = (identity.supportKeys || []).find(k => k.id === keyId);
+            if (soporte) pem = soporte.privateKey;
+        }
+
+        if (!pem) return { ok: false, error: 'Clave no encontrada' };
+
+        const downloadsDir = app.getPath('downloads');
+        const destino = path.join(downloadsDir, nombreArchivo);
+        await fs.promises.writeFile(destino, pem, { encoding: 'utf-8', mode: 0o600 });
+        log.info({ destino }, '[Identity] Clave exportada individualmente');
+        return { ok: true, ruta: destino };
+    } catch (err) {
+        log.error({ err }, '[Identity] Error exportando clave por id');
+        return { ok: false, error: err.message };
+    }
+}
+
 export {
     saveSessionFile,
     clearFileSession,
@@ -469,6 +498,7 @@ export {
     saveCacheChatsFile,
     saveCacheHistorialBusquedasAñadirFile,
     exportarClavePrivadaADescargas,
+    exportarClavePorId,
     importarClavePrivada,
     cambiarClavePrincipal,
     listarClavesIdentidad,

@@ -656,3 +656,84 @@
     background: rgba(255,255,255,0.09);
     color: #e2e8f0;
 }
+
+.bt-descargar-clave-individual {
+    font-size: 13px;
+    font-weight: 700;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(100,116,139,0.1);
+    color: #94a3b8;
+    border: 1px solid rgba(100,116,139,0.25);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.bt-descargar-clave-individual:hover {
+    background: rgba(100,116,139,0.25);
+    color: #e2e8f0;
+}
+
+.bt-descargar-clave-individual:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Modal confirmación eliminar clave */
+.modal-confirmar-eliminar-caja {
+    width: 360px;
+    gap: 16px;
+}
+
+.modal-confirmar-eliminar-acciones {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.modal-confirmar-bt-no {
+    flex: 1;
+    padding: 9px 0;
+    background: rgba(255,255,255,0.05);
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.modal-confirmar-bt-no:hover {
+    background: rgba(255,255,255,0.1);
+    color: #e2e8f0;
+}
+
+.modal-confirmar-bt-si {
+    flex: 1;
+    padding: 9px 0;
+    background: rgba(239,68,68,0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.35);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.modal-confirmar-bt-si:hover {
+    background: rgba(239,68,68,0.3);
+}
+
+.modal-confirmar-bt-si:disabled,
+.modal-confirmar-bt-no:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

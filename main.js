@@ -224,7 +224,7 @@ async function registerAllHandlers(window, sock) {
     if (controladorRes.status === 'fulfilled') {
         const {
             getAjustesAppFile, saveAjustesAppFile,
-            exportarClavePrivadaADescargas,
+            exportarClavePrivadaADescargas, exportarClavePorId,
             importarClavePrivada, cambiarClavePrincipal,
             listarClavesIdentidad, eliminarClaveSoporte
         } = controladorRes.value;
@@ -258,6 +258,9 @@ async function registerAllHandlers(window, sock) {
         });
         ipcMain.handle("identity-eliminar-soporte", async (_, keyId) => {
             return await eliminarClaveSoporte(keyId);
+        });
+        ipcMain.handle("identity-exportar-clave", async (_, keyId) => {
+            return await exportarClavePorId(keyId);
         });
     } else {
         console.error('[IPC] Fallo controladorArchivos:', controladorRes.reason);
