@@ -472,17 +472,66 @@ async function funcion_cambiar_correo(e) {
     }
 }
 
-// --- Muted & Blocked Users ---
+const normalizeId = (id) => {
+    if (!id) return String(id);
+    if (typeof id === 'string' && id !== "[object Object]") return id;
+    if (typeof id === 'object') {
+        if (id.buffer && typeof id.buffer === 'object') {
+            const vals = Object.values(id.buffer);
+            if (vals.length === 12) return vals.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        if (id._id) return normalizeId(id._id);
+        if (id.id) return normalizeId(id.id);
+        if (id['0'] !== undefined && id['11'] !== undefined) {
+            const vals = Object.values(id);
+            if (vals.length === 12) return vals.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+    }
+    return String(id);
+};
+
+/**
+ * Tras bloquear/silenciar/desbloquear/desilenciar un usuario:
+ * - Refresca la lista de chats (iconos, estado bloqueado/silenciado).
+ * - Si el chat actualmente abierto es con ese usuario, lo cierra/recarga.
+ */
+async function _refrescar_chats_tras_accion(id_usuario) {
+    try {
+        const { ACTUALIZAR_LISTAS_CHAT, abrir_chat_item } = await import('./gestor_chats.js');
+
+        // Buscar si el chat abierto corresponde al usuario afectado
+        const navChat = document.querySelector('#nav-principal-chat-usuario');
+        const id_chat_abierto = navChat?.dataset.id;
+        if (id_chat_abierto) {
+            const cache = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat_abierto).catch(() => null);
+            const usuarios_chat = (cache?.usuarios || []).map(u => normalizeId(u));
+            if (usuarios_chat.includes(id_usuario)) {
+                // Recargar el chat para reflejar el nuevo estado (bloqueado/desbloqueado)
+                await abrir_chat_item(id_chat_abierto, true);
+            }
+        }
+
+        // Refrescar todos los componentes de la lista
+        await ACTUALIZAR_LISTAS_CHAT();
+    } catch (e) {
+        console.error('[ajustes] Error al refrescar chats tras acción:', e);
+    }
+}
 
 export async function ver_chats_silenciados(e) {
     if (e) e.stopPropagation();
     const container = document.getElementById("principal-lista-usuarios-silenciados");
     container.innerHTML = "<span class='text-info-no-chats'>*CARGANDO...*</span>";
 
-    const [contactos, silenciados] = await Promise.all([
+    const [contactos, silenciados_raw, bloqueados_raw] = await Promise.all([
         window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
-        window.social_usuario.OBTENER_USUARIOS_SILENCIADOS()
+        window.social_usuario.OBTENER_USUARIOS_SILENCIADOS(),
+        window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
     ]);
+
+    // Un usuario bloqueado no debe aparecer en la lista de silenciados
+    const ids_bloqueados = new Set((bloqueados_raw || []).map(b => normalizeId(b)));
+    const silenciados = (silenciados_raw || []).map(id => normalizeId(id)).filter(id => !ids_bloqueados.has(id));
 
     if (!silenciados || silenciados.length === 0) {
         container.innerHTML = "<span class='text-info-no-chats'>*SIN USUARIOS*</span>";
@@ -502,8 +551,13 @@ export async function ver_chats_silenciados(e) {
 
         container.querySelectorAll(".bt-desilenciar").forEach(btn => {
             btn.addEventListener("click", async () => {
-                const ok = await window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(btn.dataset.id);
-                if (ok) btn.closest("div").remove();
+                const id_usuario = btn.dataset.id;
+                const ok = await window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(id_usuario);
+                if (ok) {
+                    btn.closest("div").remove();
+                    _refrescar_chats_tras_accion(id_usuario);
+                    window.pushNotificacion({ prioridad: 1, texto: "Usuario desilenciado correctamente", tipo: "exito" });
+                }
                 else window.pushNotificacion({ prioridad: 3, texto: "Fallo al desilenciar usuario", tipo: "error" });
             });
         });
@@ -520,33 +574,71 @@ export async function ver_chats_bloqueados(e) {
     const container = document.getElementById("principal-lista-usuarios-bloqueados");
     container.innerHTML = "<span class='text-info-no-chats'>*CARGANDO...*</span>";
 
-    const [contactos, users_raw] = await Promise.all([
+    const [contactos, users_raw, lista_chats] = await Promise.all([
         window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
-        window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS()
+        window.social_usuario.OBTENER_USUARIOS_BLOQUEADOS(),
+        window.chats.OBTENER_CHATS_USUARIO()
     ]);
 
     if (!users_raw || users_raw.length === 0) {
         container.innerHTML = "<span class='text-info-no-chats'>*SIN USUARIOS*</span>";
     } else {
+        // Determinar si un ID bloqueado es un chat o un usuario
+        const ids_chats = new Set((lista_chats || []).map(c => String(c.id || c._id)));
+
         const { Encontrar_Nombre_Chat_Usuario } = await import('./chat.js');
         const users = await Promise.all(users_raw.map(async item => {
-            const id = typeof item === 'string' ? item : (item.id || item._id);
-            const apodo = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id, grupal: false, contactos });
-            return { id, apodo };
+            const id = normalizeId(item);
+            const es_chat = ids_chats.has(id);
+            const apodo = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id, grupal: es_chat, contactos });
+            return { id, apodo, es_chat };
         }));
+
+        // Mapa de estado silenciado por id de chat
+        const mapa_silenciado = {};
+        for (const c of (lista_chats || [])) {
+            mapa_silenciado[String(c.id || c._id)] = c.silenciado || false;
+        }
 
         container.innerHTML = users.map(u => `
             <div class="lista-item-ajustes">
                 <span>${escapeHTML(u.apodo)}</span>
-                <button class="bt-desbloquear" data-id="${u.id}">Desbloquear</button>
+                <button class="bt-desbloquear" data-id="${u.id}" data-tipo="${u.es_chat ? 'chat' : 'usuario'}" data-silenciado="${mapa_silenciado[u.id] ? '1' : '0'}">Desbloquear</button>
             </div>
         `).join("");
 
         container.querySelectorAll(".bt-desbloquear").forEach(btn => {
             btn.addEventListener("click", async () => {
-                const ok = await window.social_usuario.ELIMINAR_USUARIO_BLOQUEADO(btn.dataset.id);
-                if (ok) btn.closest("div").remove();
-                else window.pushNotificacion({ prioridad: 3, texto: "Fallo al desbloquear usuario", tipo: "error" });
+                const id = btn.dataset.id;
+                const es_chat = btn.dataset.tipo === 'chat';
+                let ok = false;
+
+                if (es_chat) {
+                    // El bloqueo es a nivel de chat: usar el toggle (BLOQUEAR_CHAT)
+                    const res = await window.chats.BLOQUEAR_CHAT(id);
+                    ok = res?.success === true;
+                    if (ok) {
+                        // Solo desilenciar si el chat estaba silenciado (evitar toggle accidental)
+                        if (btn.dataset.silenciado === '1') {
+                            await window.chats.SILENCIAR_CHAT(id).catch(() => {});
+                        }
+                        window.pushNotificacion({ prioridad: 1, texto: "Chat desbloqueado correctamente", tipo: "exito" });
+                    }
+                } else {
+                    // El bloqueo es a nivel de usuario
+                    ok = await window.social_usuario.ELIMINAR_USUARIO_BLOQUEADO(id);
+                    if (ok) {
+                        await window.social_usuario.ELIMINAR_USUARIO_SILENCIADOS(id);
+                        window.pushNotificacion({ prioridad: 1, texto: "Usuario desbloqueado correctamente", tipo: "exito" });
+                    }
+                }
+
+                if (ok) {
+                    btn.closest("div").remove();
+                    _refrescar_chats_tras_accion(id);
+                } else {
+                    window.pushNotificacion({ prioridad: 3, texto: "Fallo al desbloquear", tipo: "error" });
+                }
             });
         });
     }
