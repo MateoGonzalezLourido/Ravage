@@ -283,6 +283,31 @@ async function CifrarDatosArchivos(data, especial) {
     };
 }
 
+/**
+ * Descifra el archivo de identidad y escribe la clave privada RSA en texto plano
+ * en la carpeta Descargas del usuario como "ravage_private_key.pem".
+ * Se exporta en PEM limpio para que sea portable entre instalaciones.
+ * @returns {{ ok: boolean, ruta?: string, error?: string }}
+ */
+async function exportarClavePrivadaADescargas() {
+    try {
+        const identidad = await readFileSession('identity');
+        if (!identidad?.privateKey) {
+            return { ok: false, error: 'No se encontró la clave privada en esta sesión' };
+        }
+
+        const downloadsDir = app.getPath('downloads');
+        const destino = path.join(downloadsDir, 'ravage_private_key.pem');
+
+        await fs.promises.writeFile(destino, identidad.privateKey, { encoding: 'utf-8', mode: 0o600 });
+        log.info({ destino }, 'Clave privada exportada a Descargas');
+        return { ok: true, ruta: destino };
+    } catch (err) {
+        log.error({ err }, 'Error exportando clave privada');
+        return { ok: false, error: err.message };
+    }
+}
+
 export {
     saveSessionFile,
     clearFileSession,
@@ -295,5 +320,6 @@ export {
     saveIdentityFile,
     saveCacheArchivosDescargadosFile,
     saveCacheChatsFile,
-    saveCacheHistorialBusquedasAñadirFile
+    saveCacheHistorialBusquedasAñadirFile,
+    exportarClavePrivadaADescargas
 };

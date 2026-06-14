@@ -121,6 +121,7 @@ export const Tray = createElectronProxy('Tray');
 export const Menu = createElectronProxy('Menu');
 export const nativeImage = createElectronProxy('nativeImage');
 export const ElectronNotification = createElectronProxy('Notification');
+export const safeStorage = createElectronProxy('safeStorage');
 
 // ==========================================
 // 4. EXTERNAL LIBRARIES (¡Perezosas!)

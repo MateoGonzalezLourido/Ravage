@@ -6,5 +6,9 @@ module.exports = {
     },
     GUARDAR_AJUSTES_APP: (data) => {
         return ipcRenderer.invoke("guardar-ajustes-app", data)
+    },
+    // Exporta los .env cifrados del baúl a la carpeta Descargas del usuario
+    EXPORTAR_ENV_A_DESCARGAS: () => {
+        return ipcRenderer.invoke("vault:exportar-env")
     }
 };
