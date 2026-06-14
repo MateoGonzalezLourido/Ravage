@@ -254,6 +254,56 @@ document.addEventListener("DOMContentLoaded", async () => {
         establecer_apodo_usuario(apodo);
         establecer_correo_usuario(correo);
 
+        // --- CHECK SECURITY PIN ---
+        console.log("[Renderer] Verificando PIN de seguridad...");
+        const hasPin = await window.ajustes_app.TIENE_PIN();
+        if (hasPin) {
+            const overlay = document.getElementById("overlay-pin-arranque");
+            if (overlay) {
+                overlay.style.display = "flex";
+                const inputPin = document.getElementById("input-pin-arranque");
+                const btnPin = document.getElementById("bt-verificar-pin-arranque");
+                const errorPin = document.getElementById("error-pin-arranque");
+                inputPin.focus();
+
+                await new Promise((resolve) => {
+                    const checkPin = async () => {
+                        const val = inputPin.value;
+                        if (!val) return;
+                        btnPin.disabled = true;
+                        errorPin.textContent = "Verificando...";
+                        errorPin.style.color = "#a855f7";
+                        
+                        try {
+                            const res = await window.ajustes_app.VERIFICAR_PIN(val);
+                            if (res.ok) {
+                                overlay.style.display = "none";
+                                resolve();
+                            } else {
+                                errorPin.textContent = res.error || "PIN incorrecto";
+                                errorPin.style.color = "#ef4444";
+                                btnPin.disabled = false;
+                                inputPin.value = "";
+                                inputPin.focus();
+                            }
+                        } catch (err) {
+                            errorPin.textContent = "Error inesperado";
+                            errorPin.style.color = "#ef4444";
+                            btnPin.disabled = false;
+                        }
+                    };
+                    btnPin.addEventListener("click", checkPin);
+                    inputPin.addEventListener("keydown", (e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            checkPin();
+                        }
+                    });
+                });
+            }
+        }
+        // --- END CHECK ---
+
         // 1.1 Cargar ajustes visuales
         const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
         aplicar_ajuste_hilos(ajustes.DESACTIVAR_HILOS_VISUALES || false);

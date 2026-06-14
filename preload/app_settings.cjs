@@ -33,5 +33,14 @@ module.exports = {
     },
     OBTENER_EMAIL_SOPORTE: () => {
         return ipcRenderer.invoke("obtener-email-soporte")
+    },
+    CONFIGURAR_PIN: (oldPin, newPin) => {
+        return ipcRenderer.invoke("configurar-pin-seguridad", oldPin, newPin)
+    },
+    VERIFICAR_PIN: (pinAttempt) => {
+        return ipcRenderer.invoke("verificar-pin-seguridad", pinAttempt)
+    },
+    TIENE_PIN: () => {
+        return ipcRenderer.invoke("tiene-pin-seguridad")
     }
 };

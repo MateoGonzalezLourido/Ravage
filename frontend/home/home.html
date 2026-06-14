@@ -28,6 +28,14 @@
 </head>
 
 <body>
+    <!-- OVERLAY PIN DE SEGURIDAD ARRANQUE -->
+    <div id="overlay-pin-arranque" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #1a1a1a; z-index: 10000; align-items: center; justify-content: center; flex-direction: column;">
+        <h2 style="color: #a855f7; margin-bottom: 20px; font-family: 'Inter', sans-serif;">🔒 PIN de Seguridad</h2>
+        <input type="password" id="input-pin-arranque" placeholder="Introduce tu PIN" maxlength="20" style="padding: 10px 15px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; outline: none; font-size: 16px; margin-bottom: 10px; text-align: center; width: 250px;">
+        <span id="error-pin-arranque" style="color: #ef4444; font-size: 14px; min-height: 20px; margin-bottom: 15px;"></span>
+        <button id="bt-verificar-pin-arranque" style="padding: 10px 20px; background-color: #a855f7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; width: 250px; transition: background-color 0.2s;">Desbloquear</button>
+    </div>
+
     <!--MENU INICIO-->
 
     <div class="ocultar-display" id="seccion-menu-cuenta-ajustes">
@@ -131,6 +139,23 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Modal configurar PIN -->
+            <div id="modal-configurar-pin" class="modal-claves-overlay" style="display:none; z-index: 9999;">
+                <div class="modal-claves-caja">
+                    <button class="modal-claves-cerrar" id="bt-cerrar-modal-pin">✕</button>
+                    <h3 style="color: #a855f7;">Configurar PIN</h3>
+                    <p class="modal-claves-desc">Añade o cambia el PIN de seguridad. Déjalo en blanco para eliminarlo.</p>
+                    <input type="password" id="input-pin-actual" placeholder="PIN actual (si tienes)" maxlength="20" style="margin-bottom: 10px; width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
+                    <input type="password" id="input-pin-nuevo" placeholder="Nuevo PIN" maxlength="20" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #222; color: #fff;">
+                    <span id="error-configurar-pin" class="modal-claves-error" style="display: block; margin-top: 10px;"></span>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button id="bt-borrar-pin" class="modal-claves-bt-confirmar" style="background: #ef4444; color: white; flex: 1; display: none;">Borrar PIN</button>
+                        <button id="bt-guardar-pin" class="modal-claves-bt-confirmar" style="background: #a855f7; color: white; flex: 1;">Guardar PIN</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-general">
                 <div>
                     <span class="titulo-ajustes">Datos del dispotivo (actuales):</span>
@@ -145,6 +170,13 @@
                         <span>Mostrarse conectado:</span>
                         <input type="checkbox" id="" checked>
                     </label>
+                </div>
+                <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
+                    <span class="titulo-ajustes" style="color: #a855f7;">Seguridad:</span>
+                    <div class="label-ajuste-inline">
+                        <span>Bloqueo de App (Autologin):</span>
+                        <button id="bt-configurar-pin-general" style="background: #a855f7; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">Configurar PIN</button>
+                    </div>
                 </div>
                 <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
                     <span class="titulo-ajustes">Caché de Datos:</span>

@@ -99,6 +99,91 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
         document.getElementById("cambio-pass-confirm").value = "";
     });
 
+    document.getElementById("bt-configurar-pin-general")?.addEventListener("click", async (e) => {
+        e.preventDefault();
+        document.getElementById("modal-configurar-pin").style.display = "flex";
+        
+        const inputActual = document.getElementById("input-pin-actual");
+        const inputNuevo = document.getElementById("input-pin-nuevo");
+        const btnBorrar = document.getElementById("bt-borrar-pin");
+        const hasPin = await window.ajustes_app.TIENE_PIN();
+        
+        if (hasPin) {
+            inputActual.style.display = "block";
+            btnBorrar.style.display = "block";
+            inputActual.value = "";
+            inputActual.focus();
+        } else {
+            inputActual.style.display = "none";
+            btnBorrar.style.display = "none";
+            inputActual.value = "";
+            inputNuevo.focus();
+        }
+        
+        inputNuevo.value = "";
+        document.getElementById("error-configurar-pin").textContent = "";
+    });
+
+    document.getElementById("bt-cerrar-modal-pin")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        document.getElementById("modal-configurar-pin").style.display = "none";
+    });
+
+    document.getElementById("bt-guardar-pin")?.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const btnGuardar = document.getElementById("bt-guardar-pin");
+        const oldPin = document.getElementById("input-pin-actual").value;
+        const newPin = document.getElementById("input-pin-nuevo").value;
+        const errorSpan = document.getElementById("error-configurar-pin");
+
+        btnGuardar.disabled = true;
+        errorSpan.textContent = "Guardando...";
+        errorSpan.style.color = "#a855f7";
+
+        try {
+            const res = await window.ajustes_app.CONFIGURAR_PIN(oldPin, newPin);
+            if (res.ok) {
+                document.getElementById("modal-configurar-pin").style.display = "none";
+                window.pushNotificacion({ prioridad: 1, texto: newPin ? "PIN de seguridad configurado" : "PIN eliminado", tipo: "exito" });
+            } else {
+                errorSpan.textContent = res.error || "Error al configurar el PIN";
+                errorSpan.style.color = "#ef4444";
+            }
+        } catch (err) {
+            errorSpan.textContent = "Error inesperado";
+            errorSpan.style.color = "#ef4444";
+        } finally {
+            btnGuardar.disabled = false;
+        }
+    });
+
+    document.getElementById("bt-borrar-pin")?.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const btnBorrar = document.getElementById("bt-borrar-pin");
+        const oldPin = document.getElementById("input-pin-actual").value;
+        const errorSpan = document.getElementById("error-configurar-pin");
+
+        btnBorrar.disabled = true;
+        errorSpan.textContent = "Borrando...";
+        errorSpan.style.color = "#a855f7";
+
+        try {
+            const res = await window.ajustes_app.CONFIGURAR_PIN(oldPin, "");
+            if (res.ok) {
+                document.getElementById("modal-configurar-pin").style.display = "none";
+                window.pushNotificacion({ prioridad: 1, texto: "PIN de seguridad eliminado", tipo: "exito" });
+            } else {
+                errorSpan.textContent = res.error || "Error al borrar el PIN";
+                errorSpan.style.color = "#ef4444";
+            }
+        } catch (err) {
+            errorSpan.textContent = "Error inesperado";
+            errorSpan.style.color = "#ef4444";
+        } finally {
+            btnBorrar.disabled = false;
+        }
+    });
+
     // INICIAR CACHE SETTINGS
     await cargar_ajustes_cache();
     setup_cache_listeners();

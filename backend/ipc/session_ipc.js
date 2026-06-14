@@ -24,6 +24,8 @@ import {
     permitirCambioCorreoUsuario,
     permitirCambioApodoUsuario
 } from '../services/Usuario.js';
+import { saveSecurityPinFile, readFileSession, clearFileSession } from '../services/controladorArchivos.js';
+import { hash, compare } from '../utils/libs.js';
 
 export function registerSessionHandlers(mainWindow) {
     const machineId = machineIdSync();
@@ -188,4 +190,70 @@ export function registerSessionHandlers(mainWindow) {
     ipcMain.handle("obtener-mostrar-correo-usuario", () => {
         return getMostrarCorreoUsuario()
     })
+
+    // PIN DE SEGURIDAD
+    ipcMain.handle("configurar-pin-seguridad", async (_, oldPin, newPin) => {
+        try {
+            const correo = getCorreoSesion();
+            if (!correo) return { ok: false, error: "No hay sesión iniciada" };
+
+            const data = await readFileSession('securityPin');
+            
+            // Verificar PIN anterior si existe
+            if (data && data.correo === correo) {
+                if (!oldPin) return { ok: false, error: "Se requiere el PIN actual" };
+                const isMatch = await compare(oldPin, data.pinHash);
+                if (!isMatch) return { ok: false, error: "El PIN actual es incorrecto" };
+            }
+
+            // Guardar nuevo PIN
+            if (newPin) {
+                const pinHash = await hash(newPin, 10); // 10 salt rounds es suficiente para un PIN
+                await saveSecurityPinFile({ correo, pinHash });
+                return { ok: true };
+            } else {
+                // Si no hay newPin, lo borramos
+                await clearFileSession('securityPin');
+                return { ok: true };
+            }
+        } catch (err) {
+            return { ok: false, error: err.message };
+        }
+    });
+
+    ipcMain.handle("verificar-pin-seguridad", async (_, pinAttempt) => {
+        try {
+            const correo = getCorreoSesion();
+            if (!correo) return { ok: false, error: "No hay sesión iniciada" };
+
+            const data = await readFileSession('securityPin');
+            if (!data || data.correo !== correo) {
+                return { ok: true, noPin: true }; // Si no hay PIN o el correo no coincide, pasamos
+            }
+
+            const isMatch = await compare(pinAttempt, data.pinHash);
+            return { ok: isMatch };
+        } catch (err) {
+            return { ok: false, error: err.message };
+        }
+    });
+
+    ipcMain.handle("tiene-pin-seguridad", async () => {
+        try {
+            const correo = getCorreoSesion();
+            if (!correo) return false;
+
+            const data = await readFileSession('securityPin');
+            if (data && data.correo === correo) {
+                return true;
+            }
+            // Si hay un PIN de otro usuario, se limpia o se ignora
+            if (data && data.correo !== correo) {
+                await clearFileSession('securityPin');
+            }
+            return false;
+        } catch (err) {
+            return false;
+        }
+    });
 }
