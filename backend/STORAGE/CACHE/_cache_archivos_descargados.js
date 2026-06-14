@@ -75,7 +75,7 @@ export async function setCacheArchivosDescargados(cache = "c") {
     }
 
     const limite = await obtenerLimiteCacheArchivosDescargados();
-    const id = (cache.id || cache.ruta || Date.now()).toString();
+    const id = (cache.id_archivo || cache.id || cache.ruta || Date.now()).toString();
     
     // Comprimir y minificar (JSON.stringify sin espacios)
     const compressed = gzipSync(JSON.stringify(cache));
@@ -94,10 +94,15 @@ export async function setCacheArchivosDescargados(cache = "c") {
     }
 
     // Límite por RAM (estimación basada en los datos en la base de datos)
-    // Nota: Esto puede ser costoso si hay muchos datos, pero seguimos la lógica original
-    const allData = stmt_select_all.all().map(r => JSON.parse(r.data));
+    const allData = stmt_select_all.all().map(r => {
+        try {
+            return JSON.parse(gunzipSync(r.data).toString());
+        } catch (e) {
+            try { return JSON.parse(r.data); } catch { return null; }
+        }
+    }).filter(Boolean);
     let currentMB = _estimar_tamano_mb(allData);
-    
+
     while (currentMB > LIMITE_RAM_MB) {
         const oldest = stmt_get_oldest.get();
         if (oldest) {
@@ -105,7 +110,7 @@ export async function setCacheArchivosDescargados(cache = "c") {
             try {
                 data = JSON.parse(gunzipSync(oldest.data).toString());
             } catch (e) {
-                data = JSON.parse(oldest.data);
+                try { data = JSON.parse(oldest.data); } catch { data = {}; }
             }
             const itemSize = _estimar_tamano_mb(data);
             stmt_delete.run(oldest.id);
