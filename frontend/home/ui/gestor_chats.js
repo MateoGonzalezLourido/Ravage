@@ -13,7 +13,8 @@ import {
     destruir_virtualizacion,
     cargar_bloque_arriba,
     cargar_bloque_abajo,
-    cargar_preview_imagen
+    cargar_preview_imagen,
+    cargar_audio_mensaje
 } from './chat.js';
 import { HILOS_DESACTIVADOS } from './ajustes.js';
 import {
@@ -477,6 +478,8 @@ async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_m
     aplicar_escaneres_asincronos(nuevoMensajeEl, mensaje, escaneres_seguridad);
     nuevoMensajeEl.querySelectorAll('.archivo-imagen-preview[data-loaded="false"]')
         .forEach(el => cargar_preview_imagen(el));
+    nuevoMensajeEl.querySelectorAll('.archivo-audio-player[data-loaded="false"]')
+        .forEach(el => cargar_audio_mensaje(el));
     scroll_fin_chat();
 }
 

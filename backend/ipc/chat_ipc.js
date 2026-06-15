@@ -26,6 +26,7 @@ import {
     ENVIAR_MENSAJE,
     DESCARGAR_ARCHIVO,
     OBTENER_PREVIEW_IMAGEN,
+    OBTENER_AUDIO_MENSAJE,
     obtener_datos_mensaje,
     obtener_mensajes_paginados,
     ELIMINAR_MENSAJE,
@@ -110,6 +111,10 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("obtener-preview-imagen", async (_, id, nombre, iv, tag, id_chat, ratchet_info, emisor_id) => {
         return await OBTENER_PREVIEW_IMAGEN(id, nombre, iv, tag, id_chat, ratchet_info, emisor_id)
+    })
+
+    ipcMain.handle("obtener-audio-mensaje", async (_, id, nombre, iv, tag, id_chat, ratchet_info, emisor_id) => {
+        return await OBTENER_AUDIO_MENSAJE(id, nombre, iv, tag, id_chat, ratchet_info, emisor_id)
     })
 
     ipcMain.handle("revisar-buzon", async () => {

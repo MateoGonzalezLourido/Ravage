@@ -518,6 +518,138 @@ body.sin-hilos-chat .mensaje-chat::after {
     font-weight: 500;
 }
 
+/* ─── Player de audio en mensajes ───────────────────────────────────────── */
+.archivo-audio-player {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 8px 10px !important;
+    gap: 0;
+    min-width: 230px;
+    max-width: 320px;
+    border-radius: 14px;
+}
+
+.audio-shimmer-carga {
+    width: 100%;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(90deg,
+        rgba(255,255,255,0.06) 25%,
+        rgba(255,255,255,0.12) 50%,
+        rgba(255,255,255,0.06) 75%);
+    background-size: 200% 100%;
+    animation: shimmer-preview 1.4s infinite;
+}
+
+.archivo-audio-player .audio-player-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+}
+
+.archivo-audio-player .audio-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 2px 0 6px;
+}
+
+.archivo-audio-player .audio-btn-play {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    color: inherit;
+    padding: 0;
+}
+
+.archivo-audio-player .audio-btn-play:hover {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.archivo-audio-player .audio-btn-play svg {
+    width: 18px;
+    height: 18px;
+}
+
+.archivo-audio-player .audio-wave-wrap {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.archivo-audio-player .audio-wave-svg {
+    width: 100%;
+    height: 32px;
+    display: block;
+    overflow: visible;
+}
+
+.archivo-audio-player .bars-sin-reproducir rect {
+    fill: rgba(255, 255, 255, 0.28);
+}
+
+.archivo-audio-player .bars-reproducidos rect {
+    fill: rgba(255, 255, 255, 0.88);
+}
+
+.archivo-audio-player .audio-tiempo {
+    font-size: 11px !important;
+    opacity: 0.7;
+    min-width: 30px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    font-weight: 400 !important;
+    margin-left: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+
+.archivo-audio-player .audio-descarga-area {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 2px 2px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    min-width: 0;
+}
+
+.archivo-audio-player .audio-descarga-area:hover {
+    opacity: 0.75;
+}
+
+.archivo-audio-player .audio-icono-ext {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 3px;
+}
+
+.archivo-audio-player .audio-nombre-descarga {
+    font-size: 11px !important;
+    opacity: 0.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    font-weight: 400 !important;
+}
+
 /* ─── Mensajes especiales (sistema) ─────────────────────────────────────── */
 .mensaje-especial {
     align-self: center;

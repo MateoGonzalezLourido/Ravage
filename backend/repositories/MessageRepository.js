@@ -379,24 +379,26 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
 }
 
 const IMAGE_EXTENSIONS_PREVIEW = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'tiff', 'tif']);
-const MIME_MAP = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', ico: 'image/x-icon', avif: 'image/avif', tiff: 'image/tiff', tif: 'image/tiff' };
+const IMAGE_MIME_MAP = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', ico: 'image/x-icon', avif: 'image/avif', tiff: 'image/tiff', tif: 'image/tiff' };
 const MAX_PREVIEW_BYTES = 20 * 1024 * 1024;
 
-export async function OBTENER_PREVIEW_IMAGEN(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
+const AUDIO_EXTENSIONS_PREVIEW = new Set(['mp3', 'mp4', 'm4a', 'wav', 'ogg', 'aac', 'webm', 'flac', 'opus', 'oga', 'weba', 'aiff', 'aif']);
+const AUDIO_MIME_MAP = { mp3: 'audio/mpeg', mp4: 'audio/mp4', m4a: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg', aac: 'audio/aac', webm: 'audio/webm', flac: 'audio/flac', opus: 'audio/ogg', oga: 'audio/ogg', weba: 'audio/webm', aiff: 'audio/aiff', aif: 'audio/aiff' };
+const MAX_AUDIO_BYTES = 30 * 1024 * 1024;
+
+async function _obtener_archivo_base64(id, nombre, ivHex, tagHex, id_chat, ratchet_info, emisor_id, extSet, mimeMap, maxBytes, mimeDefault) {
     const ext = (nombre?.includes('.') ? nombre.split('.').pop() : '').toLowerCase();
-    if (!IMAGE_EXTENSIONS_PREVIEW.has(ext)) return null;
+    if (!extSet.has(ext)) return null;
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
 
     const bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "ArchivosChats" });
-
     const files = await bucket.find({ _id: new mongoose.Types.ObjectId(id) }).toArray();
-    if (!files.length || files[0].length > MAX_PREVIEW_BYTES) return null;
+    if (!files.length || files[0].length > maxBytes) return null;
 
     const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(id));
 
     return new Promise(async (resolve) => {
         let stream_final = downloadStream;
-
         if (ivHex && tagHex && id_chat && ratchet_info && emisor_id) {
             try {
                 const chat = await ChatsRavage.findById(id_chat).lean();
@@ -405,15 +407,19 @@ export async function OBTENER_PREVIEW_IMAGEN(id, nombre, ivHex = null, tagHex = 
                 stream_final = downloadStream.pipe(crearDecipherStream(messageKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex')));
             } catch { resolve(null); return; }
         }
-
         const chunks = [];
         stream_final.on('data', chunk => chunks.push(chunk));
-        stream_final.on('end', () => {
-            const base64 = Buffer.concat(chunks).toString('base64');
-            resolve({ base64, mimeType: MIME_MAP[ext] || 'image/jpeg' });
-        });
+        stream_final.on('end', () => resolve({ base64: Buffer.concat(chunks).toString('base64'), mimeType: mimeMap[ext] || mimeDefault }));
         stream_final.on('error', () => resolve(null));
     });
+}
+
+export async function OBTENER_PREVIEW_IMAGEN(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
+    return _obtener_archivo_base64(id, nombre, ivHex, tagHex, id_chat, ratchet_info, emisor_id, IMAGE_EXTENSIONS_PREVIEW, IMAGE_MIME_MAP, MAX_PREVIEW_BYTES, 'image/jpeg');
+}
+
+export async function OBTENER_AUDIO_MENSAJE(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
+    return _obtener_archivo_base64(id, nombre, ivHex, tagHex, id_chat, ratchet_info, emisor_id, AUDIO_EXTENSIONS_PREVIEW, AUDIO_MIME_MAP, MAX_AUDIO_BYTES, 'audio/mpeg');
 }
 
 export async function ELIMINAR_MENSAJE(id_chat, id_mensaje) {

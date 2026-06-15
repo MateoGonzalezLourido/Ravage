@@ -8,9 +8,13 @@ import { HILOS_DESACTIVADOS } from './ajustes.js';
 
 const nombre_defecto = "~no encontrado~"
 
-// ─── PREVIEW DE IMÁGENES ─────────────────────────────────────────────────────
+// ─── PREVIEW DE IMÁGENES Y AUDIO ─────────────────────────────────────────────
 const IMAGE_EXTENSIONS_PREVIEW = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'tiff', 'tif']);
-const _cache_previews = new Map(); // id_archivo -> data URL
+const AUDIO_EXTENSIONS_PREVIEW = new Set(['mp3', 'mp4', 'm4a', 'wav', 'ogg', 'aac', 'webm', 'flac', 'opus', 'oga', 'weba', 'aiff', 'aif']);
+const AUDIO_MIME_MAP_FRONT = { mp3: 'audio/mpeg', mp4: 'audio/mp4', m4a: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg', aac: 'audio/aac', webm: 'audio/webm', flac: 'audio/flac', opus: 'audio/ogg', oga: 'audio/ogg', weba: 'audio/webm', aiff: 'audio/aiff', aif: 'audio/aiff' };
+const _cache_previews = new Map();
+const _cache_audios = new Map();
+const AUDIO_NUM_BARS = 45;
 
 export async function cargar_preview_imagen(el) {
     const id = el.dataset.id;
@@ -58,6 +62,206 @@ async function _aplicar_fallback_preview(el) {
     contenedor.innerHTML = `<img src="${iconUrl}" class="img-preview-fallback-icono" loading="lazy" decoding="async"><span class="img-preview-nombre">${escapeHTML(nombre)}</span>`;
     el.classList.add('preview-fallback');
     el.dataset.loaded = 'true';
+}
+
+// ─── PLAYER DE AUDIO ─────────────────────────────────────────────────────────
+
+async function _aplicar_fallback_audio(el) {
+    const contenedor = el.querySelector('.audio-player-container');
+    if (!contenedor) return;
+    const nombre = el.dataset.nombre || '';
+    const ext = nombre.includes('.') ? nombre.split('.').pop().toLowerCase() : '';
+    const [iconUrl] = await url_icono_extension_img(ext);
+    contenedor.innerHTML = `<img src="${iconUrl}" class="audio-icono-ext" loading="lazy" decoding="async"><span class="audio-nombre-descarga">${escapeHTML(nombre)}</span>`;
+    el.dataset.loaded = 'true';
+}
+
+export async function cargar_audio_mensaje(el) {
+    const id = el.dataset.id;
+    if (!id) return;
+
+    try {
+        let audioData;
+        if (_cache_audios.has(id)) {
+            audioData = _cache_audios.get(id);
+        } else {
+            const id_chat = document.querySelector("#nav-principal-chat-usuario")?.dataset.id;
+            const ratchet_info = el.dataset.ratchet ? JSON.parse(decodeURIComponent(el.dataset.ratchet)) : null;
+
+            const resultado = await window.chats.OBTENER_AUDIO_MENSAJE?.(
+                id, el.dataset.nombre, el.dataset.iv || null, el.dataset.tag || null,
+                id_chat, ratchet_info, el.dataset.emisor || null
+            );
+
+            if (!resultado?.base64) { await _aplicar_fallback_audio(el); return; }
+
+            const ext = (el.dataset.nombre || '').split('.').pop().toLowerCase();
+            const mimeType = AUDIO_MIME_MAP_FRONT[ext] || 'audio/mpeg';
+            const binary = atob(resultado.base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: mimeType });
+            const audioUrl = URL.createObjectURL(blob);
+            const [waveform, [iconUrl]] = await Promise.all([
+                _generar_waveform(bytes.buffer),
+                url_icono_extension_img(ext)
+            ]);
+            audioData = { audioUrl, waveform, iconUrl };
+            _cache_audios.set(id, audioData);
+        }
+        _aplicar_player_audio(el, audioData);
+    } catch {
+        await _aplicar_fallback_audio(el);
+    }
+}
+
+async function _generar_waveform(buffer) {
+    try {
+        const audioCtx = new AudioContext();
+        const decoded = await audioCtx.decodeAudioData(buffer.slice(0));
+        audioCtx.close();
+
+        if (decoded.length > 12_000_000) return _waveform_sintetica();
+
+        const ch = decoded.getChannelData(0);
+        const block = Math.floor(ch.length / AUDIO_NUM_BARS);
+        const bars = [];
+        for (let i = 0; i < AUDIO_NUM_BARS; i++) {
+            let sum = 0;
+            for (let j = 0; j < block; j++) sum += Math.abs(ch[i * block + j]);
+            bars.push(sum / block);
+        }
+        const max = Math.max(...bars, 0.001);
+        return bars.map(v => Math.max(v / max, 0.06));
+    } catch {
+        return _waveform_sintetica();
+    }
+}
+
+function _waveform_sintetica() {
+    return Array.from({ length: AUDIO_NUM_BARS }, (_, i) =>
+        Math.max(0.06, Math.abs(Math.sin(i * 0.41)) * Math.abs(Math.sin(i * 0.17 + 1)) * 0.8 + 0.15)
+    );
+}
+
+function _aplicar_player_audio(el, { audioUrl, waveform, iconUrl }) {
+    const contenedor = el.querySelector('.audio-player-container');
+    if (!contenedor) return;
+
+    const id = el.dataset.id;
+    const nombre = el.dataset.nombre || '';
+    const clipId = `aclip-${id.slice(-10)}`;
+    const BAR_W = 3, BAR_GAP = 2, H = 32;
+    const W = AUDIO_NUM_BARS * (BAR_W + BAR_GAP) - BAR_GAP;
+
+    const barsSVG = waveform.map((amp, i) => {
+        const h = Math.max(3, Math.round(amp * H));
+        const x = i * (BAR_W + BAR_GAP);
+        const y = Math.round((H - h) / 2);
+        return `<rect x="${x}" y="${y}" width="${BAR_W}" height="${h}" rx="1.5"/>`;
+    }).join('');
+
+    contenedor.innerHTML = `
+        <audio class="audio-src" src="${audioUrl}" preload="metadata"></audio>
+        <div class="audio-controls-row">
+            <button class="audio-btn-play" aria-label="Reproducir">
+                <svg class="ico-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <svg class="ico-pause" viewBox="0 0 24 24" fill="currentColor" hidden><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+            <div class="audio-wave-wrap">
+                <svg class="audio-wave-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"
+                     data-total-w="${W}" data-total-h="${H}">
+                    <defs>
+                        <clipPath id="${clipId}">
+                            <rect class="clip-progress" x="0" y="0" width="0" height="${H}"/>
+                        </clipPath>
+                    </defs>
+                    <g class="bars-sin-reproducir">${barsSVG}</g>
+                    <g class="bars-reproducidos" clip-path="url(#${clipId})">${barsSVG}</g>
+                    <rect class="bars-zona-click" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+                </svg>
+            </div>
+            <span class="audio-tiempo">0:00</span>
+        </div>
+        <div class="audio-descarga-area">
+            <img src="${iconUrl}" class="audio-icono-ext" loading="lazy" decoding="async">
+            <span class="audio-nombre-descarga">${escapeHTML(nombre)}</span>
+        </div>`;
+
+    el.dataset.loaded = 'true';
+    _setup_audio_events(el);
+}
+
+function _fmt_tiempo(s) {
+    if (!isFinite(s) || s < 0) return '0:00';
+    const m = Math.floor(s / 60);
+    return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+}
+
+function _setup_audio_events(el) {
+    const audio = el.querySelector('.audio-src');
+    const btnPlay = el.querySelector('.audio-btn-play');
+    const icoPlay = el.querySelector('.ico-play');
+    const icoPause = el.querySelector('.ico-pause');
+    const tiempoEl = el.querySelector('.audio-tiempo');
+    const svg = el.querySelector('.audio-wave-svg');
+    const clipRect = svg.querySelector('.clip-progress');
+    const totalW = parseFloat(svg.dataset.totalW);
+
+    const _toggle_play = () => {
+        document.querySelectorAll('.archivo-audio-player .audio-src').forEach(a => {
+            if (a !== audio && !a.paused) {
+                a.pause();
+                const p = a.closest('.archivo-audio-player');
+                if (p) { p.querySelector('.ico-play').hidden = false; p.querySelector('.ico-pause').hidden = true; }
+            }
+        });
+        if (audio.paused) {
+            audio.play().catch(() => { icoPlay.hidden = false; icoPause.hidden = true; });
+            icoPlay.hidden = true;
+            icoPause.hidden = false;
+        } else {
+            audio.pause();
+            icoPlay.hidden = false;
+            icoPause.hidden = true;
+        }
+    };
+
+    el.querySelector('.audio-controls-row').addEventListener('click', e => {
+        e.stopPropagation();
+        if (!e.target.closest('.audio-btn-play') && !e.target.closest('.audio-wave-wrap')) {
+            _toggle_play();
+        }
+    });
+
+    const _actualizar_progreso = () => {
+        const p = audio.duration ? audio.currentTime / audio.duration : 0;
+        clipRect.setAttribute('width', p * totalW);
+        tiempoEl.textContent = _fmt_tiempo(audio.currentTime);
+    };
+
+    audio.addEventListener('loadedmetadata', () => {
+        tiempoEl.textContent = _fmt_tiempo(audio.duration);
+    });
+    audio.addEventListener('timeupdate', _actualizar_progreso);
+    audio.addEventListener('ended', () => {
+        icoPlay.hidden = false;
+        icoPause.hidden = true;
+        clipRect.setAttribute('width', '0');
+        tiempoEl.textContent = _fmt_tiempo(audio.duration);
+    });
+
+    btnPlay.addEventListener('click', e => {
+        e.stopPropagation();
+        _toggle_play();
+    });
+
+    svg.querySelector('.bars-zona-click').addEventListener('click', e => {
+        e.stopPropagation();
+        if (!audio.duration) { _toggle_play(); return; }
+        const rect = svg.getBoundingClientRect();
+        audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+    });
 }
 
 // ─── CONFIGURACIÓN DE VIRTUALIZACIÓN Y RENDIMIENTO ──────────────────────────
@@ -553,6 +757,7 @@ export const crear_mensaje_html = async ({
                 ?? archivo?.nombre?.split('.')?.pop()
                 ?? '').toLowerCase();
             const es_imagen = IMAGE_EXTENSIONS_PREVIEW.has(extension);
+            const es_audio = !es_imagen && AUDIO_EXTENSIONS_PREVIEW.has(extension);
             const emisor_id = escapeHTML(archivo?.emisor_id || '');
             const ratchet_json = archivo?.ratchet_info
                 ? encodeURIComponent(JSON.stringify(archivo?.ratchet_info))
@@ -571,6 +776,13 @@ export const crear_mensaje_html = async ({
           <div class="img-preview-container">
             <div class="img-preview-shimmer"></div>
             <span class="img-preview-nombre">${escapeHTML(archivo?.nombre || '')}</span>
+          </div>
+        </div>`);
+            } else if (es_audio) {
+                html.push(`
+        <div class="archivo-mensaje-div-archivos archivo-audio-player" data-loaded="false"${data_attrs}>
+          <div class="audio-player-container">
+            <div class="audio-shimmer-carga"></div>
           </div>
         </div>`);
             } else {
@@ -646,6 +858,8 @@ async function agregar_a_cache_activo(id, data) {
         }
     }
 }
+
+
 
 
 export function iniciar_limpieza_cache_activo(num_participantes) {
@@ -941,6 +1155,8 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
         aplicar_escaneres_asincronos(msgEl, txt, escaneres_seguridad);
         msgEl.querySelectorAll('.archivo-imagen-preview[data-loaded="false"]')
             .forEach(el => cargar_preview_imagen(el));
+        msgEl.querySelectorAll('.archivo-audio-player[data-loaded="false"]')
+            .forEach(el => cargar_audio_mensaje(el));
     }
 }
 
