@@ -49,7 +49,8 @@ const STEGO_PATTERNS = {
     zwc: /[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF\u{E0000}-\u{E007F}]/u,
     softHyphen: /\u00AD/,
     fullWidth: /[\uFF01-\uFF60]/,   // letras y símbolos full-width
-    homoglyph: /[\u0400-\u04FF\u0370-\u03FF]/,  // cirílico y griego mezclados con latín
+    // Cirílico/griego eliminados: pertenecen a ESCANER_HOMOGLIFOS, no a esteganografía.
+    // Tenerlos aquí destruía texto ruso/griego legítimo al borrar con nivel 3.
 };
 
 function detectSteganography(text) {
@@ -146,7 +147,7 @@ function detectarXSS(text) {
 }
 
 // Detecta patrones comunes de lenguajes de programacion (JS, PHP, Python) y SQL/NoSQL Injection basicos
-const codeRegex = /(?:function\s+\w*[\(]?|=>\s*{|import\s+.*?\s+from|const\s+.*?=\s*|var\s+.*?=\s*|let\s+.*?=\s*|console\.[a-z]+\(|document\.[a-z]+\(|SELECT\s+.*?\s+FROM|INSERT\s+INTO|UPDATE\s+.*?\s+SET|DELETE\s+FROM|DROP\s+TABLE|ALTER\s+TABLE|{\s*\$where\s*:|{\s*\$ne\s*:)/i;
+const codeRegex = /(?:function\s+\w*[\(]?|=>\s*{|import\s+.*?\s+from|const\s+.*?=\s*|var\s+.*?=\s*|let\s+.*?=\s*|console\.[a-z]+\(|document\.[a-z]+\(|\bSELECT\s+.*?\s+FROM\b|\bINSERT\s+INTO\b|\bUPDATE\s+.*?\s+SET\b|\bDELETE\s+FROM\b|\bDROP\s+TABLE\b|\bALTER\s+TABLE\b|{\s*\$where\s*:|{\s*\$ne\s*:)/i;
 function detectarCodigo(text) {
     return codeRegex.test(text);
 }
@@ -167,7 +168,7 @@ function removeZalgo(text) {
 
 // --- 5. DETECCION DE COMANDOS DE TERMINAL PELIGROSOS ---
 // Prevencion de comandos shell comunes (en caso de que el usuario intente engañar a otro para ejecutarlos)
-const terminalCommandRegex = /\b(?:sudo\s|rm\s+-rf|wget\s|curl\s|chmod\s|chown\s|bash\s+-c|sh\s+-c|powershell\s|cmd\.exe|format\s+[a-z]:)/i;
+const terminalCommandRegex = /\b(?:sudo\s|rm\s+-(?:[rf]{1,2}|r\s+-f|-f\s+-r|-recursive)|wget\s|curl\s|chmod\s|chown\s|bash\s+-c|sh\s+-c|powershell(?:\.exe)?\s|cmd\.exe|format\s+[a-z]:|mkfs\b|dd\s+if=|python\d?\s+-c|perl\s+-e|ruby\s+-e|nc\s+(?:-\w+\s+)*-e\s)/i;
 function detectarComandosTerminal(text) {
     return terminalCommandRegex.test(text);
 }
@@ -188,10 +189,14 @@ function detectarDireccionesIP(text) {
 }
 
 // --- 8. DETECCION DE HOMOGLIFOS (Ataques de suplantacion) ---
-// Busca la mezcla de letras latinas con letras cirilicas en la misma palabra
-const homoglyphRegex = /\b(?:[a-zA-Z]+[\u0400-\u04FF]+|[\u0400-\u04FF]+[a-zA-Z]+)\b/;
+// Detecta palabras que contienen caracteres de dos alfabetos distintos (Latín+Cirílico o Latín+Griego).
+// Comprueba cada palabra individualmente para detectar sustituciones entrelazadas (p.ej. "pаypal"
+// donde la "а" es U+0430 cirílico, no la "a" latina U+0061).
+const reLatin    = /[a-zA-Z]/;
+const reCyrGreek = /[\u0400-\u04FF\u0370-\u03FF]/u;
 function detectarHomoglifos(text) {
-    return homoglyphRegex.test(text);
+    if (!text) return false;
+    return text.split(/\s+/).some(word => reLatin.test(word) && reCyrGreek.test(word));
 }
 
 export {
