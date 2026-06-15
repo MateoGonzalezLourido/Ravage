@@ -8,6 +8,58 @@ import { HILOS_DESACTIVADOS } from './ajustes.js';
 
 const nombre_defecto = "~no encontrado~"
 
+// ─── PREVIEW DE IMÁGENES ─────────────────────────────────────────────────────
+const IMAGE_EXTENSIONS_PREVIEW = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'tiff', 'tif']);
+const _cache_previews = new Map(); // id_archivo -> data URL
+
+export async function cargar_preview_imagen(el) {
+    const id = el.dataset.id;
+    if (!id) return;
+
+    if (_cache_previews.has(id)) {
+        _aplicar_preview(el, _cache_previews.get(id));
+        return;
+    }
+
+    try {
+        const id_chat = document.querySelector("#nav-principal-chat-usuario")?.dataset.id;
+        const ratchet_info = el.dataset.ratchet ? JSON.parse(decodeURIComponent(el.dataset.ratchet)) : null;
+
+        const resultado = await window.chats.OBTENER_PREVIEW_IMAGEN?.(
+            id, el.dataset.nombre, el.dataset.iv || null, el.dataset.tag || null,
+            id_chat, ratchet_info, el.dataset.emisor || null
+        );
+
+        if (resultado?.base64) {
+            const dataUrl = `data:${resultado.mimeType};base64,${resultado.base64}`;
+            _cache_previews.set(id, dataUrl);
+            _aplicar_preview(el, dataUrl);
+        } else {
+            await _aplicar_fallback_preview(el);
+        }
+    } catch {
+        await _aplicar_fallback_preview(el);
+    }
+}
+
+function _aplicar_preview(el, dataUrl) {
+    const contenedor = el.querySelector('.img-preview-container');
+    if (!contenedor) return;
+    contenedor.innerHTML = `<img src="${dataUrl}" class="img-preview-img" loading="lazy" decoding="async"><span class="img-preview-nombre">${escapeHTML(el.dataset.nombre || '')}</span>`;
+    el.dataset.loaded = 'true';
+}
+
+async function _aplicar_fallback_preview(el) {
+    const contenedor = el.querySelector('.img-preview-container');
+    if (!contenedor) return;
+    const nombre = el.dataset.nombre || '';
+    const ext = nombre.includes('.') ? nombre.split('.').pop().toLowerCase() : '';
+    const [iconUrl] = await url_icono_extension_img(ext);
+    contenedor.innerHTML = `<img src="${iconUrl}" class="img-preview-fallback-icono" loading="lazy" decoding="async"><span class="img-preview-nombre">${escapeHTML(nombre)}</span>`;
+    el.classList.add('preview-fallback');
+    el.dataset.loaded = 'true';
+}
+
 // ─── CONFIGURACIÓN DE VIRTUALIZACIÓN Y RENDIMIENTO ──────────────────────────
 const BLOQUE_MENSAJES = 20;           // Cantidad de mensajes por bloque de carga
 const MAX_MENSAJES_DOM = BLOQUE_MENSAJES * 15;         // Máximo de mensajes permitidos en el DOM antes de reciclar
@@ -411,25 +463,38 @@ const sanitizarSVG = (svg) =>
 
 const sanitizarTexto = (texto) =>
     DOMPurify.sanitize(texto, {
-        ALLOWED_TAGS: ['b', 'i', 'u', 's', 'em', 'strong', 'br', 'span'],
+        ALLOWED_TAGS: [
+            'b', 'i', 'u', 's', 'em', 'strong', 'br', 'span',
+            'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'ul', 'ol', 'li', 'code', 'pre', 'blockquote', 'hr',
+            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        ],
         ALLOWED_ATTR: ['class', 'data-url'],
         FORCE_BODY: true,
         RETURN_DOM_FRAGMENT: false,
         FORBID_ATTR: ['style', 'onerror', 'onload'],
     });
 
-const parsearURLs = (texto) => {
-    const urlRegex = /https?:\/\/[^\s<>"']+/g;
-    let resultado = '';
-    let ultimo = 0;
-    let match;
-    while ((match = urlRegex.exec(texto)) !== null) {
-        resultado += escapeHTML(texto.slice(ultimo, match.index));
-        resultado += `<span class="url-mensaje" data-url="${escapeHTML(match[0])}">${escapeHTML(match[0])}</span>`;
-        ultimo = match.index + match[0].length;
+// Renderer personalizado: los links de markdown se convierten en <span class="url-mensaje">
+// para que el escáner de URLs siga detectándolos y pueda marcarlos como peligrosos.
+marked.use({
+    renderer: {
+        link({ href, tokens }) {
+            const text = this.parser.parseInline(tokens);
+            return `<span class="url-mensaje" data-url="${escapeHTML(href)}">${text || escapeHTML(href)}</span>`;
+        }
+    },
+    gfm: true,
+    breaks: true,
+    silent: true,
+});
+
+const parsearMarkdown = (texto) => {
+    try {
+        return marked.parse(texto);
+    } catch {
+        return escapeHTML(texto);
     }
-    resultado += escapeHTML(texto.slice(ultimo));
-    return resultado;
 };
 // Post-proceso para forzar seguridad en links
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
@@ -448,7 +513,6 @@ export const crear_mensaje_html = async ({
     tieneAbajo = false, id_emisor = "", borrado = false
 }) => {
 
-    //todo: añadir parse para urls (<span class="url">url</span>) y añadirle un evento con el previsualizador de urls
     const asunto_mensaje = (asunto, borrado) => {
         if (borrado) {
             return `<div class="asunto-mensaje-chat" style="font-style: italic; opacity: 0.7;">🚫 Este mensaje ha sido eliminado</div>`;
@@ -456,11 +520,11 @@ export const crear_mensaje_html = async ({
         const partes = asunto.split(/(<(?:\w+:)?svg[\s\S]*?<\/(?:\w+:)?svg>)/gi);
         const asuntoFormateado = partes.map(parte =>
             /^<(?:\w+:)?svg/i.test(parte)
-                ? `<div class="asunto-svg">${sanitizarSVG(parte)}</div>`
-                : `<span>${sanitizarTexto(parsearURLs(parte))}</span>`
+                ? `<div class="asunto-svg" title="Clic para copiar código SVG">${sanitizarSVG(parte)}</div>`
+                : sanitizarTexto(parsearMarkdown(parte))
         ).join('');
         return asuntoFormateado
-            ? `<div class="asunto-mensaje-chat">${asuntoFormateado}</div>`
+            ? `<div class="asunto-mensaje-chat markdown-content">${asuntoFormateado}</div>`
             : '';
     };
 
@@ -485,31 +549,44 @@ export const crear_mensaje_html = async ({
         if (!archivos || archivos?.length === 0) return '';
         const html = ['<div class="mensaje-div-archivos">'];
         for (const archivo of archivos) {
-            const extension = archivo?.extension
+            const extension = (archivo?.extension
                 ?? archivo?.nombre?.split('.')?.pop()
-                ?? null;
-            const [url, identificado] = await url_icono_extension_img(extension);
-            const nombre_mostrar = identificado
-                ? (archivo?.nombre?.includes('.')
-                    ? archivo?.nombre?.substring(0, archivo?.nombre.lastIndexOf('.'))
-                    : archivo?.nombre)
-                : (archivo?.extension && !archivo?.nombre?.includes('.')
-                    ? `${archivo?.nombre}.${archivo?.extension}`
-                    : archivo?.nombre);
+                ?? '').toLowerCase();
+            const es_imagen = IMAGE_EXTENSIONS_PREVIEW.has(extension);
             const emisor_id = escapeHTML(archivo?.emisor_id || '');
             const ratchet_json = archivo?.ratchet_info
                 ? encodeURIComponent(JSON.stringify(archivo?.ratchet_info))
                 : '';
-            html.push(`
-        <div class="archivo-mensaje-div-archivos"
+            const data_attrs = `
           data-id="${escapeHTML(String(archivo?.id || archivo?._id || ''))}"
           data-nombre="${escapeHTML(archivo?.nombre || '')}"
           data-iv="${escapeHTML(archivo?.iv || '')}"
           data-tag="${escapeHTML(archivo?.tag || '')}"
           data-emisor="${emisor_id}"
-          data-ratchet="${ratchet_json}">
+          data-ratchet="${ratchet_json}"`;
+
+            if (es_imagen) {
+                html.push(`
+        <div class="archivo-mensaje-div-archivos archivo-imagen-preview" data-loaded="false"${data_attrs}>
+          <div class="img-preview-container">
+            <div class="img-preview-shimmer"></div>
+            <span class="img-preview-nombre">${escapeHTML(archivo?.nombre || '')}</span>
+          </div>
+        </div>`);
+            } else {
+                const [url, identificado] = await url_icono_extension_img(extension);
+                const nombre_mostrar = identificado
+                    ? (archivo?.nombre?.includes('.')
+                        ? archivo?.nombre?.substring(0, archivo?.nombre.lastIndexOf('.'))
+                        : archivo?.nombre)
+                    : (archivo?.extension && !archivo?.nombre?.includes('.')
+                        ? `${archivo?.nombre}.${archivo?.extension}`
+                        : archivo?.nombre);
+                html.push(`
+        <div class="archivo-mensaje-div-archivos"${data_attrs}>
           <div><img src="${url}" loading="lazy" decoding="async"><span>${escapeHTML(nombre_mostrar)}</span></div>
         </div>`);
+            }
         }
         html.push('</div>');
         return html.join('');
@@ -862,6 +939,8 @@ async function _renderizar_bloque_en_dom(mensajes, opciones) {
         msgEl.classList.add("scanned");
         const txt = msgEl.querySelector(".asunto-mensaje-chat")?.textContent || "";
         aplicar_escaneres_asincronos(msgEl, txt, escaneres_seguridad);
+        msgEl.querySelectorAll('.archivo-imagen-preview[data-loaded="false"]')
+            .forEach(el => cargar_preview_imagen(el));
     }
 }
 
@@ -1111,6 +1190,18 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 
         const chatContainer = document.getElementById("cuerpo-mensajes-chat");
         if (!chatContainer) return;
+
+        if (!chatContainer.dataset.svgListenerAdded) {
+            chatContainer.addEventListener('click', (e) => {
+                const svgDiv = e.target.closest('.asunto-svg');
+                if (!svgDiv) return;
+                const svgCode = svgDiv.querySelector('svg')?.outerHTML || svgDiv.innerHTML;
+                navigator.clipboard.writeText(svgCode)
+                    .then(() => window.pushNotificacion?.({ prioridad: 1, texto: 'Código SVG copiado', tipo: 'success' }))
+                    .catch(() => {});
+            });
+            chatContainer.dataset.svgListenerAdded = '1';
+        }
 
         let mensajes = (datos.mensajes || []).filter(m => m && typeof m === 'object');
         let initial_paginacion_hay_mas = null;

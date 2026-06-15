@@ -378,6 +378,44 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
     });
 }
 
+const IMAGE_EXTENSIONS_PREVIEW = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'tiff', 'tif']);
+const MIME_MAP = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', ico: 'image/x-icon', avif: 'image/avif', tiff: 'image/tiff', tif: 'image/tiff' };
+const MAX_PREVIEW_BYTES = 20 * 1024 * 1024;
+
+export async function OBTENER_PREVIEW_IMAGEN(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
+    const ext = (nombre?.includes('.') ? nombre.split('.').pop() : '').toLowerCase();
+    if (!IMAGE_EXTENSIONS_PREVIEW.has(ext)) return null;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+
+    const bucket = new GridFSBucket(mongoose.connection.db, { bucketName: "ArchivosChats" });
+
+    const files = await bucket.find({ _id: new mongoose.Types.ObjectId(id) }).toArray();
+    if (!files.length || files[0].length > MAX_PREVIEW_BYTES) return null;
+
+    const downloadStream = bucket.openDownloadStream(new mongoose.Types.ObjectId(id));
+
+    return new Promise(async (resolve) => {
+        let stream_final = downloadStream;
+
+        if (ivHex && tagHex && id_chat && ratchet_info && emisor_id) {
+            try {
+                const chat = await ChatsRavage.findById(id_chat).lean();
+                const messageKey = await getMessageKey(chat, emisor_id, ratchet_info.iteration);
+                if (!messageKey) { resolve(null); return; }
+                stream_final = downloadStream.pipe(crearDecipherStream(messageKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex')));
+            } catch { resolve(null); return; }
+        }
+
+        const chunks = [];
+        stream_final.on('data', chunk => chunks.push(chunk));
+        stream_final.on('end', () => {
+            const base64 = Buffer.concat(chunks).toString('base64');
+            resolve({ base64, mimeType: MIME_MAP[ext] || 'image/jpeg' });
+        });
+        stream_final.on('error', () => resolve(null));
+    });
+}
+
 export async function ELIMINAR_MENSAJE(id_chat, id_mensaje) {
     try {
         const id_chat_str = normalizeId(id_chat);

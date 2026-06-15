@@ -7,16 +7,17 @@
  */
 
 import { parentPort } from 'node:worker_threads';
-import { 
-    generateKeyPair, 
-    publicEncrypt, 
-    privateDecrypt, 
-    createCipheriv, 
-    createDecipheriv, 
+import {
+    generateKeyPair,
+    publicEncrypt,
+    privateDecrypt,
+    createCipheriv,
+    createDecipheriv,
     createHmac,
-    constants 
+    constants
 } from 'node:crypto';
 import { promisify } from 'node:util';
+import { gunzipSync } from 'node:zlib';
 
 const generateKeyPairAsync = promisify(generateKeyPair);
 
@@ -237,10 +238,13 @@ function _descifrarConPrivada(datosHex, privateKey) {
 function _descifrarContenido(cifrado, key) {
     const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(cifrado.iv, 'hex'));
     decipher.setAuthTag(Buffer.from(cifrado.tag, 'hex'));
-    const decrypted = Buffer.concat([
+    let decrypted = Buffer.concat([
         decipher.update(Buffer.from(cifrado.data, 'hex')),
         decipher.final()
     ]);
+    if (cifrado.compressed) {
+        decrypted = gunzipSync(decrypted);
+    }
     return decrypted.toString('utf8');
 }
 
@@ -250,10 +254,13 @@ function _desencriptarDatosSistema(encriptado, systemKeyHex) {
         const key = Buffer.from(systemKeyHex, 'hex');
         const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(encriptado.iv, 'hex'));
         decipher.setAuthTag(Buffer.from(encriptado.tag, 'hex'));
-        const decrypted = Buffer.concat([
+        let decrypted = Buffer.concat([
             decipher.update(Buffer.from(encriptado.data, 'hex')),
             decipher.final()
         ]);
+        if (encriptado.compressed) {
+            decrypted = gunzipSync(decrypted);
+        }
         return decrypted.toString('utf8');
     } catch {
         return null;

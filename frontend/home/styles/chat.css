@@ -427,6 +427,97 @@ body.sin-hilos-chat .mensaje-chat::after {
     max-width: 220px;
 }
 
+/* ─── Preview de imágenes en mensajes ───────────────────────────────────── */
+.archivo-imagen-preview {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 10px;
+    max-width: 280px;
+}
+
+.archivo-imagen-preview:hover {
+    background: transparent;
+}
+
+.img-preview-container {
+    width: 100%;
+    position: relative;
+}
+
+.img-preview-shimmer {
+    width: 280px;
+    height: 180px;
+    border-radius: 10px;
+    background: linear-gradient(90deg,
+        rgba(255,255,255,0.06) 25%,
+        rgba(255,255,255,0.12) 50%,
+        rgba(255,255,255,0.06) 75%);
+    background-size: 200% 100%;
+    animation: shimmer-preview 1.4s infinite;
+}
+
+@keyframes shimmer-preview {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.archivo-imagen-preview .img-preview-img {
+    display: block;
+    width: 100%;
+    max-width: 280px;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 10px;
+    cursor: pointer;
+    height: auto;
+}
+
+.archivo-imagen-preview .img-preview-nombre {
+    display: block;
+    font-size: 12px;
+    opacity: 0.65;
+    padding: 4px 8px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+    font-weight: 400;
+    margin-left: 0;
+}
+
+.img-preview-fallback-icono {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+
+.archivo-imagen-preview.preview-fallback {
+    flex-direction: row;
+    align-items: center;
+    padding: 6px;
+}
+
+.archivo-imagen-preview.preview-fallback .img-preview-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.archivo-imagen-preview.preview-fallback .img-preview-shimmer {
+    display: none;
+}
+
+.archivo-imagen-preview.preview-fallback .img-preview-nombre {
+    padding: 0;
+    opacity: 1;
+    font-size: 14px;
+    font-weight: 500;
+}
+
 /* ─── Mensajes especiales (sistema) ─────────────────────────────────────── */
 .mensaje-especial {
     align-self: center;
@@ -2009,3 +2100,136 @@ body.sin-hilos-chat .mensaje-chat::after {
     font-size: 12px;
     text-align: center;
 }
+
+/* ─── SVG EN MENSAJES ───────────────────────────────────────────────────────── */
+.asunto-svg {
+    display: inline-block;
+    max-width: 100%;
+    margin: 4px 0;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    transition: opacity 0.15s ease, border-color 0.15s ease;
+    position: relative;
+}
+
+.asunto-svg:hover {
+    opacity: 0.88;
+    border-color: rgba(168, 85, 247, 0.5);
+}
+
+.asunto-svg::after {
+    content: '⎘';
+    position: absolute;
+    bottom: 5px;
+    right: 7px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+    line-height: 1;
+}
+
+.asunto-svg svg {
+    display: block;
+    max-width: 100%;
+    max-height: 280px;
+    width: auto;
+    height: auto;
+}
+
+/* ─── MARKDOWN EN MENSAJES ───────────────────────────────────────────────────── */
+.markdown-content {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.markdown-content p {
+    margin: 0 0 6px 0;
+}
+.markdown-content p:last-child {
+    margin-bottom: 0;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 8px 0 4px 0;
+}
+.markdown-content h1 { font-size: 1.4em; }
+.markdown-content h2 { font-size: 1.25em; }
+.markdown-content h3 { font-size: 1.1em; }
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 { font-size: 1em; }
+
+.markdown-content ul,
+.markdown-content ol {
+    margin: 4px 0 4px 0;
+    padding-left: 1.4em;
+}
+.markdown-content li {
+    margin: 2px 0;
+}
+
+.markdown-content code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.88em;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.markdown-content pre {
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 8px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    margin: 6px 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.markdown-content pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.85em;
+}
+
+.markdown-content blockquote {
+    border-left: 3px solid var(--primary, #a855f7);
+    margin: 4px 0;
+    padding: 2px 0 2px 10px;
+    opacity: 0.85;
+}
+
+.markdown-content hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    margin: 6px 0;
+}
+
+.markdown-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 6px 0;
+    font-size: 0.9em;
+}
+.markdown-content th,
+.markdown-content td {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 4px 8px;
+    text-align: left;
+}
+.markdown-content th {
+    background: rgba(168, 85, 247, 0.15);
+    font-weight: 600;
+}
+
+.markdown-content strong { font-weight: 700; }
+.markdown-content em { font-style: italic; }
+.markdown-content s { text-decoration: line-through; }

@@ -25,6 +25,7 @@ import {
 import {
     ENVIAR_MENSAJE,
     DESCARGAR_ARCHIVO,
+    OBTENER_PREVIEW_IMAGEN,
     obtener_datos_mensaje,
     obtener_mensajes_paginados,
     ELIMINAR_MENSAJE,
@@ -105,6 +106,10 @@ export function registerChatHandlers(mainWindow, socket) {
             mainWindow.webContents.send("notificar-render", { texto: `Descarga completa: ${nombre}`, tipo: "success" })
         }
         return result
+    })
+
+    ipcMain.handle("obtener-preview-imagen", async (_, id, nombre, iv, tag, id_chat, ratchet_info, emisor_id) => {
+        return await OBTENER_PREVIEW_IMAGEN(id, nombre, iv, tag, id_chat, ratchet_info, emisor_id)
     })
 
     ipcMain.handle("revisar-buzon", async () => {

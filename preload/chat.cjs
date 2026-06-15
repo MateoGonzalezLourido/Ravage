@@ -25,6 +25,9 @@ module.exports = {
     DESCARGAR_ARCHIVO: (id, nombre, iv = null, tag = null, id_chat = null, ratchet_info = null, emisor_id = null) => {
         return ipcRenderer.invoke("descargar-archivo", id, nombre, iv, tag, id_chat, ratchet_info, emisor_id)
     },
+    OBTENER_PREVIEW_IMAGEN: (id, nombre, iv = null, tag = null, id_chat = null, ratchet_info = null, emisor_id = null) => {
+        return ipcRenderer.invoke("obtener-preview-imagen", id, nombre, iv, tag, id_chat, ratchet_info, emisor_id)
+    },
     OBTENER_DATOS_MENSAJE: (id_chat, id_mensaje) => {
         return ipcRenderer.invoke("obtener-datos-mensaje", id_chat, id_mensaje)
     },
