@@ -17,6 +17,19 @@ function getSecretKeyCokkie() {
     }
     return _SECRET_KEY_COKKIE;
 }
+
+// Clave dedicada para cifrar la identidad (clave privada de mensajes E2EE)
+let _SECRET_KEY_PRIVATE;
+function getSecretKeyPrivate() {
+    if (!_SECRET_KEY_PRIVATE) {
+        if (!process.env.SECRET_KEY_PRIVATE) {
+            log.error("FALTA process.env.SECRET_KEY_PRIVATE. Asegúrate de que el .env esté cargado.");
+            throw new Error("SECRET_KEY_PRIVATE no definida");
+        }
+        _SECRET_KEY_PRIVATE = Buffer.from(process.env.SECRET_KEY_PRIVATE, 'hex');
+    }
+    return _SECRET_KEY_PRIVATE;
+}
 const algorithm = "aes-256-gcm";
 
 // Rutas estandarizadas
@@ -120,7 +133,7 @@ async function saveIdentityFile(data) {
     }
     const { setCachedIdentity } = await import('./cryptoService.js');
     setCachedIdentity(identity);
-    await guardarArchivoGenerico('identity', identity, 'global');
+    await guardarArchivoGenerico('identity', identity, 'identity');
 }
 
 /** Lee y migra la identidad directamente desde disco, sin imports circulares */
@@ -297,9 +310,11 @@ async function readFileSession(rutaKey, cifrado = true) {
 
         // Determinar la clave secreta a usar
         let secretKey;
-        const useGlobalKey = ['sessionFile', 'identity', 'cacheChatsFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile', 'cacheHistorialBusquedasAñadir', 'securityPin'].includes(rutaKey);
+        const useGlobalKey = ['sessionFile', 'cacheChatsFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile', 'cacheHistorialBusquedasAñadir', 'securityPin'].includes(rutaKey);
 
-        if (useGlobalKey) {
+        if (rutaKey === 'identity') {
+            secretKey = getSecretKeyPrivate();
+        } else if (useGlobalKey) {
             secretKey = getSecretKeyCokkie();
         } else {
             const currentKey = getSecretKEY();
@@ -407,7 +422,9 @@ async function limpiarArchivosCompleto() {
 
 async function CifrarDatosArchivos(data, especial) {
     let secretKey;
-    if (especial === 'global' || especial === 'sessionFile') {
+    if (especial === 'identity') {
+        secretKey = getSecretKeyPrivate();
+    } else if (especial === 'global' || especial === 'sessionFile') {
         secretKey = getSecretKeyCokkie();
     } else {
         secretKey = getSecretKEY() || await ActualizarSecretKeyUsuario();
