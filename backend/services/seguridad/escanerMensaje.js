@@ -35,7 +35,7 @@ async function escaneres_seguridad_mensaje_activados(id_chat = null) {
     if (chat && chat.escaneres_seguridad) {
         for (const key in chat.escaneres_seguridad) {
             if (chat.escaneres_seguridad[key] !== null && key in escaneres_seguridad) {
-                escaneres_seguridad[key] = chat.escaneres_seguridad[key];
+                escaneres_seguridad[key] = Math.max(escaneres_seguridad[key] ?? 0, chat.escaneres_seguridad[key] ?? 0);
             }
         }
     }

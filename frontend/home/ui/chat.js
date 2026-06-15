@@ -2181,6 +2181,10 @@ export function iniciar_sistema_hover_urls() {
         _manejar_hover_url(e);
     });
     document.addEventListener('mouseout', _manejar_mouseleave_url);
+    document.addEventListener('ravage:ajuste-previsualizacion', (e) => {
+        _previsualizacion_habilitada = e.detail.enabled;
+        if (!_previsualizacion_habilitada) _urlPreviewPopup?.classList.remove('visible');
+    });
 }
 
 //COMPROBAR SI ES UN CONTACTO DEL USUARIO

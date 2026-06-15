@@ -3,6 +3,18 @@ export let bloquear_span_cambio_apodo = false;
 export let bloquear_span_cambio_correo = false;
 export let HILOS_DESACTIVADOS = false;
 import { escapeHTML } from './seguridad_ui.js';
+
+const ESCANERES_UI_USUARIO = [
+    { key: "ESCANER_ZALGO",             label: "Zalgo",              desc: "Caracteres diacríticos excesivos que distorsionan el texto", sync: true  },
+    { key: "ESCANER_ESTEGANOGRAFIA",    label: "Esteganografía",     desc: "Caracteres invisibles para ocultar datos en el texto",      sync: true  },
+    { key: "ESCANER_URL_MALICIOSA",     label: "URLs maliciosas",    desc: "Comprueba URLs con Google Safe Browsing",                   sync: false },
+    { key: "ESCANER_XSS",               label: "XSS / Inyección",    desc: "Código HTML/JS inyectado en mensajes",                      sync: false },
+    { key: "ESCANER_CODIGO",            label: "Código fuente",      desc: "Fragmentos de código de programación",                     sync: false },
+    { key: "ESCANER_COMANDOS_TERMINAL", label: "Comandos shell",     desc: "Comandos peligrosos de terminal",                          sync: false },
+    { key: "ESCANER_CRYPTO_BILLETERAS", label: "Billeteras cripto",  desc: "Direcciones de criptomoneda (posible estafa)",             sync: false },
+    { key: "ESCANER_DIRECCIONES_IP",    label: "Direcciones IP",     desc: "Direcciones IP expuestas en mensajes",                     sync: false },
+    { key: "ESCANER_HOMOGLIFOS",        label: "Homoglifos",         desc: "Caracteres que se parecen a otros para engañar",           sync: false },
+];
 import { 
     APODO_USUARIO, 
     establecer_apodo_usuario, 
@@ -840,6 +852,36 @@ async function añadir_clave_soporte() {
     }
 }
 
+function _generar_ui_escaneres_usuario(ajustes) {
+    const contenedor = document.getElementById("ajustes-escaneres-usuario");
+    if (!contenedor) return;
+    contenedor.innerHTML = "";
+
+    const lista = document.createElement("div");
+    lista.className = "ajustes-escaneres-lista";
+
+    for (const esc of ESCANERES_UI_USUARIO) {
+        const nivel = ajustes?.[esc.key] ?? 0;
+        const syncClass = !esc.sync ? " escaner-solo-sync" : "";
+        const syncTitle = !esc.sync ? "El formateo solo está disponible para escáneres síncronos" : "Aviso y eliminar contenido peligroso";
+        lista.insertAdjacentHTML("beforeend", `
+            <div class="ajustes-escaner-fila">
+                <div class="ajustes-escaner-info">
+                    <span class="ajustes-escaner-nombre">${escapeHTML(esc.label)}</span>
+                    <span class="ajustes-escaner-desc">${escapeHTML(esc.desc)}</span>
+                </div>
+                <div class="ajustes-escaner-grupo">
+                    <button class="ajustes-escaner-btn${nivel === 0 ? " activo" : ""}" data-key="${esc.key}" data-val="0" title="Desactivado">Off</button>
+                    <button class="ajustes-escaner-btn${nivel === 1 ? " activo" : ""}" data-key="${esc.key}" data-val="1" title="Solo aviso">Aviso</button>
+                    <button class="ajustes-escaner-btn${nivel === 3 ? " activo" : ""}${syncClass}" data-key="${esc.key}" data-val="3" title="${syncTitle}">Formateo</button>
+                </div>
+            </div>
+        `);
+    }
+
+    contenedor.appendChild(lista);
+}
+
 async function cargar_ajustes_cache() {
     const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
 
@@ -871,6 +913,13 @@ async function cargar_ajustes_cache() {
         const el = document.getElementById(id);
         if (el) el.checked = ajustes[key] !== false; // true por defecto
     }
+
+    // Previsualizacion URL
+    const checkPreview = document.getElementById("check-previsualizacion-url");
+    if (checkPreview) checkPreview.checked = ajustes.PREVISUALIZACION_URL !== false;
+
+    // Escaneres de seguridad del usuario
+    _generar_ui_escaneres_usuario(ajustes);
 }
 
 export function aplicar_ajuste_hilos(desactivar) {
@@ -958,4 +1007,26 @@ function setup_cache_listeners() {
             await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
         });
     }
+
+    // Previsualizacion URL
+    document.getElementById("check-previsualizacion-url")?.addEventListener("change", async (e) => {
+        const val = e.target.checked;
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
+        ajustes.PREVISUALIZACION_URL = val;
+        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
+        document.dispatchEvent(new CustomEvent("ravage:ajuste-previsualizacion", { detail: { enabled: val } }));
+    });
+
+    // Escaneres de seguridad del usuario (delegacion)
+    document.getElementById("ajustes-escaneres-usuario")?.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".ajustes-escaner-btn[data-key]");
+        if (!btn || btn.classList.contains("escaner-solo-sync")) return;
+        const key = btn.dataset.key;
+        const val = parseInt(btn.dataset.val, 10);
+        btn.closest(".ajustes-escaner-grupo").querySelectorAll(".ajustes-escaner-btn").forEach(b => b.classList.remove("activo"));
+        btn.classList.add("activo");
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
+        ajustes[key] = val;
+        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
+    });
 }
