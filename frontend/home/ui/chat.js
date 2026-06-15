@@ -257,6 +257,14 @@ async function procesar_cola_escaneres_async() {
                     if (scanner.render && document.body.contains(item.mensajeElement)) {
                         item.contenedorIconos.insertAdjacentHTML("beforeend", scanner.render());
                     }
+
+                    if (id === 'ESCANER_URL_MALICIOSA' && result?.urlsPeligrosas?.length > 0 && document.body.contains(item.mensajeElement)) {
+                        item.mensajeElement.querySelectorAll('.url-mensaje').forEach(span => {
+                            if (result.urlsPeligrosas.includes(span.dataset.url)) {
+                                span.classList.add('url-peligrosa');
+                            }
+                        });
+                    }
                 }
             }
 
@@ -2067,6 +2075,114 @@ export async function mostrar_datos_chat_usuarios(e) {
         }
     }
 }
+// ─── SISTEMA DE HOVER / PREVIEW DE URLs ──────────────────────────────────────
+
+let _urlPreviewPopup = null;
+let _urlPreviewTimer = null;
+const _urlPreviewCache = new Map();
+let _urlPreviewUrlActual = null;
+let _hover_urls_iniciado = false;
+let _previsualizacion_habilitada = true;
+
+function _obtener_popup_url() {
+    if (!_urlPreviewPopup) {
+        _urlPreviewPopup = document.createElement('div');
+        _urlPreviewPopup.className = 'url-preview-popup';
+        document.body.appendChild(_urlPreviewPopup);
+        _urlPreviewPopup.addEventListener('mouseleave', () => {
+            _urlPreviewPopup.classList.remove('visible');
+            _urlPreviewUrlActual = null;
+        });
+    }
+    return _urlPreviewPopup;
+}
+
+function _posicionar_popup_url(popup, mouseX, mouseY) {
+    const mW = 320, mH = 220, offset = 14;
+    let top = mouseY - mH - offset;
+    let left = mouseX - mW / 2;
+    if (top < 8) top = mouseY + offset;
+    if (left + mW > window.innerWidth - 8) left = window.innerWidth - mW - 8;
+    if (left < 8) left = 8;
+    popup.style.top = `${top}px`;
+    popup.style.left = `${left}px`;
+}
+
+function _render_url_preview(preview, esPeligrosa, url) {
+    const dominio = (() => { try { return new URL(url).hostname; } catch { return url; } })();
+    const danger = esPeligrosa
+        ? `<div class="url-preview-alerta"><img src="../recursos/seguridad/url_peligro.svg" class="url-preview-alerta-icono" alt=""> URL potencialmente maliciosa</div>`
+        : '';
+    const img = preview?.imagen
+        ? `<img class="url-preview-img" src="${escapeHTML(preview.imagen)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`
+        : '';
+    const titulo = preview?.titulo ? `<div class="url-preview-titulo">${escapeHTML(preview.titulo)}</div>` : '';
+    const desc = preview?.descripcion ? `<div class="url-preview-desc">${escapeHTML(preview.descripcion)}</div>` : '';
+    return `${danger}<div class="url-preview-inner${esPeligrosa ? ' peligrosa' : ''}">${img}<div class="url-preview-contenido">${titulo}${desc}<div class="url-preview-dominio">${escapeHTML(dominio)}</div></div></div>`;
+}
+
+async function _manejar_hover_url(e) {
+    const span = e.target.closest?.('.url-mensaje');
+    if (!span) return;
+    const url = span.dataset.url;
+    if (!url) return;
+
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    _urlPreviewUrlActual = url;
+    clearTimeout(_urlPreviewTimer);
+
+    _urlPreviewTimer = setTimeout(async () => {
+        if (_urlPreviewUrlActual !== url) return;
+
+        const popup = _obtener_popup_url();
+        _posicionar_popup_url(popup, mouseX, mouseY);
+        popup.innerHTML = `<div class="url-preview-cargando">Cargando vista previa...</div>`;
+        popup.classList.add('visible');
+
+        const esPeligrosa = span.classList.contains('url-peligrosa');
+
+        let preview;
+        if (_urlPreviewCache.has(url)) {
+            preview = _urlPreviewCache.get(url);
+        } else {
+            try {
+                preview = await window.utilidades_app.obtener_previsualizacion_url(url);
+            } catch {
+                preview = null;
+            }
+            _urlPreviewCache.set(url, preview);
+        }
+
+        if (_urlPreviewUrlActual !== url) return;
+        popup.innerHTML = _render_url_preview(preview, esPeligrosa, url);
+    }, 400);
+}
+
+function _manejar_mouseleave_url(e) {
+    const span = e.target.closest?.('.url-mensaje');
+    if (!span) return;
+    if (e.relatedTarget && _urlPreviewPopup?.contains(e.relatedTarget)) return;
+    _urlPreviewUrlActual = null;
+    clearTimeout(_urlPreviewTimer);
+    _urlPreviewPopup?.classList.remove('visible');
+}
+
+export function iniciar_sistema_hover_urls() {
+    if (_hover_urls_iniciado) return;
+    _hover_urls_iniciado = true;
+
+    window.ajustes_app.OBTENER_AJUSTES_APP()
+        .then(aj => { _previsualizacion_habilitada = aj?.PREVISUALIZACION_URL !== false; })
+        .catch(() => {});
+
+    document.addEventListener('mouseover', (e) => {
+        if (!_previsualizacion_habilitada) return;
+        _manejar_hover_url(e);
+    });
+    document.addEventListener('mouseout', _manejar_mouseleave_url);
+}
+
 //COMPROBAR SI ES UN CONTACTO DEL USUARIO
 async function Es_Contacto_Usuario(usuario_comprobar) {
     const contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO()

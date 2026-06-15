@@ -1884,3 +1884,128 @@ body.sin-hilos-chat .mensaje-chat::after {
     z-index: 10000;
     filter: blur(5px);
 }
+
+/* ─── URLs EN MENSAJES ─────────────────────────────────────────────────────── */
+.url-mensaje {
+    color: var(--wa-primary, #4fc3f7);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.15s;
+}
+
+.url-mensaje:hover {
+    background: rgba(79, 195, 247, 0.12);
+}
+
+.url-peligrosa {
+    color: #ef5350 !important;
+    text-decoration-color: #ef5350 !important;
+    background: rgba(239, 83, 80, 0.08);
+    border-radius: 2px;
+}
+
+.url-peligrosa:hover {
+    background: rgba(239, 83, 80, 0.16) !important;
+}
+
+/* ─── POPUP DE PREVIEW DE URL ──────────────────────────────────────────────── */
+.url-preview-popup {
+    position: fixed;
+    z-index: 9999;
+    width: 320px;
+    max-width: calc(100vw - 24px);
+    background: var(--menu-bg, #1e2026);
+    border: 1px solid var(--border-color, #2e3035);
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.url-preview-popup.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.url-preview-alerta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: rgba(239, 83, 80, 0.15);
+    color: #ef9a9a;
+    font-size: 12px;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(239, 83, 80, 0.25);
+}
+
+.url-preview-alerta-icono {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    filter: invert(45%) sepia(80%) saturate(600%) hue-rotate(320deg);
+}
+
+.url-preview-inner {
+    display: flex;
+    flex-direction: column;
+}
+
+.url-preview-img {
+    width: 100%;
+    max-height: 140px;
+    object-fit: cover;
+    display: block;
+    border-bottom: 1px solid var(--border-color, #2e3035);
+}
+
+.url-preview-contenido {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.url-preview-titulo {
+    font-weight: 600;
+    color: var(--text-primary, #e0e0e0);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.url-preview-desc {
+    color: var(--text-secondary, #9e9e9e);
+    font-size: 12px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.url-preview-dominio {
+    color: var(--wa-primary, #4fc3f7);
+    font-size: 11px;
+    margin-top: 2px;
+    opacity: 0.85;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.url-preview-cargando {
+    padding: 16px 14px;
+    color: var(--text-secondary, #9e9e9e);
+    font-size: 12px;
+    text-align: center;
+}

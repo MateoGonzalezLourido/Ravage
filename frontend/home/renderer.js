@@ -3,7 +3,7 @@ import { optimizar_ventana } from '../global/optimizar_ventana.js';
 optimizar_ventana()
 // ─── IMPORTS DE COMPONENTES Y UTILIDADES ──────────────────────────────────
 import { desplegar_menu_añadir_chat, set_callback_actualizar_listas } from './ui/añadir_chats_usuarios.js'
-import { mostrar_datos_chat_usuarios } from './ui/chat.js'
+import { mostrar_datos_chat_usuarios, iniciar_sistema_hover_urls } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes, aplicar_ajuste_hilos } from './ui/ajustes.js'
 
 // ─── IMPORTS DE MÓDULOS REFACTORIZADOS (NUEVA ARQUITECTURA) ───────────────
@@ -383,6 +383,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         console.log("[Renderer] Cargando lista de chats inicial...");
         await INICIO_CHAT_MENU_PRINCIPAL()
+        iniciar_sistema_hover_urls()
         console.log("[Renderer] Lista de chats inicial cargada.");
 
         // 2. Preparar el entorno
