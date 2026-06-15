@@ -126,11 +126,10 @@ function mostrarVentana() {
 async function limpiarRecursosSegundoPlano() {
     console.log('[Cleanup] Liberando recursos para liberar RAM...');
     try {
-        const [poolRes, cacheChatRes, cacheArchivosRes, cacheHistorialRes] = await Promise.allSettled([
+        const [poolRes, cacheChatRes, cacheArchivosRes] = await Promise.allSettled([
             import('./backend/utils/workers/workerPool.js'),
             import('./backend/STORAGE/CACHE/_cache_chat_activo.js'),
-            import('./backend/STORAGE/CACHE/_cache_archivos_descargados.js'),
-            import('./backend/STORAGE/CACHE/_cache_historial_busquedas_añadir_usuario.js')
+            import('./backend/STORAGE/CACHE/_cache_archivos_descargados.js')
         ]);
 
         if (poolRes.status === 'fulfilled') {
@@ -142,9 +141,6 @@ async function limpiarRecursosSegundoPlano() {
         }
         if (cacheArchivosRes.status === 'fulfilled') {
             await cacheArchivosRes.value.clearCacheArchivosDescargados();
-        }
-        if (cacheHistorialRes.status === 'fulfilled') {
-            await cacheHistorialRes.value.limpiar_historial_completo();
         }
 
         // Notificar al Frontend para limpiar sus caches de RAM

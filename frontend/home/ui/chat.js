@@ -1434,9 +1434,12 @@ export async function mostrar_datos_chat_usuarios(e) {
                 let participantes_ids = [...new Set(info_chat.usuarios.map(u => normalizeIdHelper(u)))]// normalizar a string y quitar repetidos
                 participantes_ids = participantes_ids.filter(id => id && id !== id_mio?.toString())//quitar el id propio
 
-                // Obtener datos de todos los participantes en paralelo
-                const participantes_promesas = participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id).catch(() => null))
-                const participantes_datos = await Promise.all(participantes_promesas)
+                // Obtener datos de todos los participantes y contactos en paralelo
+                const [participantes_datos, contactos_lista] = await Promise.all([
+                    Promise.all(participantes_ids.map(id => window.social_usuario.OBTENER_DATOS_USUARIO_EXTERNO(id).catch(() => null))),
+                    window.social_usuario.OBTENER_CONTACTOS_USUARIO().catch(() => [])
+                ])
+                const map_contactos = Object.fromEntries((contactos_lista || []).map(c => [c.id, c.apodo]))
 
                 let lista_html = `
                     <div class="info-chat-lista-participantes">
@@ -1451,10 +1454,10 @@ export async function mostrar_datos_chat_usuarios(e) {
                     `
                 participantes_datos.forEach((p, index) => {
                     const originalId = participantes_ids[index];
-                    const nombre = escapeHTML(p?.apodo || "Usuario Ravage");
+                    const idStr = normalizeIdHelper(originalId);
+                    const nombre = escapeHTML(map_contactos[idStr] || p?.apodo || "Usuario Ravage");
                     const correo = escapeHTML(p?.correo || "");
 
-                    const idStr = normalizeIdHelper(originalId);
                     const esAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === idStr);
                     const estaBloqueado = ids_bloqueados.includes(idStr);
                     const estaSilenciado = ids_silenciados.includes(idStr);
@@ -1825,7 +1828,7 @@ export async function mostrar_datos_chat_usuarios(e) {
                         if (chat_id_vinculado && nombreFinal) {
                             // Actualizar caché activa para que Encontrar_Nombre_Chat_Usuario devuelva el nuevo nombre
                             const cache_actual = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(chat_id_vinculado)
-                            window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ ...(cache_actual || {}), _id: chat_id_vinculado, nombre: nombreFinal })
+                             window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ ...(cache_actual || {}), _id: chat_id_vinculado, nombre: nombreFinal })
                             // Si ese chat está abierto, actualizar el header directamente
                             const chat_abierto_id = document.querySelector("#nav-principal-chat-usuario")?.dataset.id
                             if (chat_abierto_id === chat_id_vinculado) {

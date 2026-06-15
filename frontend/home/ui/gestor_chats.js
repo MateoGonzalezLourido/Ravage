@@ -120,7 +120,7 @@ export async function INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, incremento = 1)
         const cache = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat);
         if (cache) {
             const nuevo_total = (Number(cache.nmensajes) || 0) + incremento;
-            await window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
+             window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
                 _id: id_chat,
                 nmensajes: nuevo_total
             });
@@ -169,14 +169,12 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
             })
             : lista_chats_ordenada
 
-        const html = lista_filtrada
-            .map(c => {
-                const chatEx = map_grupales[c.id] || {}
-                const nombre = chatEx.nombre || "Chat sin nombre"
-                const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre: nombre, ultimomensaje: c.ultimomensaje, silenciado: c.silenciado || false, bloqueado: c.bloqueado || false }
-                return chat_componente_lista_estructura_html(datos_usar)
-            })
-            .join("")
+        const html = (await Promise.all(lista_filtrada.map(async c => {
+            const chatEx = map_grupales[c.id] || {}
+            const nombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: c.id, grupal: true, contactos })
+            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre, ultimomensaje: c.ultimomensaje, silenciado: c.silenciado || false, bloqueado: c.bloqueado || false }
+            return chat_componente_lista_estructura_html(datos_usar)
+        }))).join("")
 
         document.getElementById("lista-chats-componentes").innerHTML = html
     }

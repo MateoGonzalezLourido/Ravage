@@ -10,96 +10,101 @@ export function set_callback_actualizar_listas(cb) {
 }
 
 
+// Handlers a nivel de módulo para que removeEventListener funcione con la misma referencia
+function _evento_cerrar_menu() {
+    desplegar_menu_añadir_chat({ mostrar: false })
+}
+
+async function _anadir_chat_buscar_usuario(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        await buscar_usuario_añadir_chat(e)
+    }
+}
+
+function _mostrar_sugerencias_historial(sugerencias) {
+    const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
+    $resultados.classList.remove("empty-state");
+
+    let html = '<div class="sugerencias-historial-container">';
+    html += '<span class="sugerencias-titulo">Sugerencias del historial:</span>';
+    sugerencias.forEach(s => {
+        html += `<div class="sugerencia-item" data-dato="${escapeHTML(s.datoUsadoBuscar)}">
+                    <img src="../recursos/reciente.png" class="sugerencia-icon" alt="reciente">
+                    <span>${escapeHTML(s.datoUsadoBuscar)}</span>
+                 </div>`;
+    });
+    html += '</div>';
+
+    $resultados.innerHTML = html;
+
+    $resultados.querySelectorAll(".sugerencia-item").forEach(item => {
+        item.addEventListener("click", async (e) => {
+            const dato = e.currentTarget.dataset.dato;
+            const $inputBuscar = DOM_CACHE.input_buscar_usuario_añadir;
+            if ($inputBuscar) {
+                $inputBuscar.value = dato;
+                await buscar_usuario_añadir_chat({ key: "Enter", preventDefault: () => { } })
+            }
+        });
+    });
+}
+
+async function _manejar_input_sugerencias(e) {
+    const texto = e.target.value.trim().toLowerCase();
+    const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
+
+    if (texto.length < 2) {
+        $resultados.innerHTML = "<span>* Sin resultados</span>";
+        $resultados.classList.add("empty-state");
+        return;
+    }
+
+    try {
+        const history = await window.cache_persistente.obtenerHistorialBusquedas();
+        if (history && history.datos) {
+            const filtrados = history.datos.filter(d =>
+                d.datoUsadoBuscar.toLowerCase().includes(texto)
+            ).slice(0, 5);
+
+            if (filtrados.length > 0) {
+                _mostrar_sugerencias_historial(filtrados);
+            } else {
+                $resultados.innerHTML = "<span>* Sin resultados</span>";
+                $resultados.classList.add("empty-state");
+            }
+        }
+    } catch (err) {
+        console.error("Error al obtener sugerencias:", err);
+    }
+}
+
+function _activar_eventos_menu() {
+    const $btnCerrar = document.getElementById("bt-cerrar-menu-añadir-chats");
+    const $inputBuscar = DOM_CACHE.input_buscar_usuario_añadir;
+    const $btnAgregar = DOM_CACHE.btn_crear_chat_nuevo;
+    $btnCerrar?.addEventListener("click", _evento_cerrar_menu)
+    $inputBuscar?.addEventListener("keydown", _anadir_chat_buscar_usuario)
+    $inputBuscar?.addEventListener("input", _manejar_input_sugerencias)
+    $btnAgregar?.addEventListener("click", crear_chat_nuevo)
+}
+
+function _desactivar_eventos_menu() {
+    const $btnCerrar = document.getElementById("bt-cerrar-menu-añadir-chats");
+    const $inputBuscar = DOM_CACHE.input_buscar_usuario_añadir;
+    const $btnAgregar = DOM_CACHE.btn_crear_chat_nuevo;
+    $btnCerrar?.removeEventListener("click", _evento_cerrar_menu)
+    $inputBuscar?.removeEventListener("keydown", _anadir_chat_buscar_usuario)
+    $inputBuscar?.removeEventListener("input", _manejar_input_sugerencias)
+    $btnAgregar?.removeEventListener("click", crear_chat_nuevo)
+}
+
 export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat = "" }) {
     if (e) e.preventDefault()
 
-    //ELEMENTOS DOOM (Cacheados)
-    const $btnCerrar = document.getElementById("bt-cerrar-menu-añadir-chats");
-    const $inputBuscar = DOM_CACHE.input_buscar_usuario_añadir;
-    const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
-    const $contactosGrupo = DOM_CACHE.lista_contactos_añadir_grupo;
     const menu_añadir_chat = DOM_CACHE.menu_añadir_chat;
     const $btnAgregar = DOM_CACHE.btn_crear_chat_nuevo;
 
-    //eventos
-    async function anadir_chat_buscar_usuario(e) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-
-            await buscar_usuario_añadir_chat(e)
-        }
-    }
-
-    async function manejar_input_sugerencias(e) {
-        const texto = e.target.value.trim().toLowerCase();
-        const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
-
-        if (texto.length < 2) {
-            $resultados.innerHTML = "<span>* Sin resultados</span>";
-            $resultados.classList.add("empty-state");
-            return;
-        }
-
-        try {
-            const history = await window.cache_persistente.obtenerHistorialBusquedas();
-            if (history && history.datos) {
-                const filtrados = history.datos.filter(d =>
-                    d.datoUsadoBuscar.toLowerCase().includes(texto)
-                ).slice(0, 5);
-
-                if (filtrados.length > 0) {
-                    mostrar_sugerencias_historial(filtrados);
-                } else {
-                    $resultados.innerHTML = "<span>* Sin resultados</span>";
-                    $resultados.classList.add("empty-state");
-                }
-            }
-        } catch (err) {
-            console.error("Error al obtener sugerencias:", err);
-        }
-    }
-
-    function mostrar_sugerencias_historial(sugerencias) {
-        const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
-        $resultados.classList.remove("empty-state");
-
-        let html = '<div class="sugerencias-historial-container">';
-        html += '<span class="sugerencias-titulo">Sugerencias del historial:</span>';
-        sugerencias.forEach(s => {
-            html += `<div class="sugerencia-item" data-dato="${escapeHTML(s.datoUsadoBuscar)}">
-                        <img src="../recursos/reciente.png" class="sugerencia-icon" alt="reciente">
-                        <span>${escapeHTML(s.datoUsadoBuscar)}</span>
-                     </div>`;
-        });
-        html += '</div>';
-
-        $resultados.innerHTML = html;
-
-        $resultados.querySelectorAll(".sugerencia-item").forEach(item => {
-            item.addEventListener("click", async (e) => {
-                const dato = e.currentTarget.dataset.dato;
-                if ($inputBuscar) {
-                    $inputBuscar.value = dato;
-                    await buscar_usuario_añadir_chat({ key: "Enter", preventDefault: () => { } })
-                }
-            });
-        });
-    }
-    const evento_cerrar_menu_añadir_chat = () => {
-        desplegar_menu_añadir_chat({ mostrar: false })
-    }
-    function activar_eventos_menu_añadir_chat() {
-        $btnCerrar?.addEventListener("click", evento_cerrar_menu_añadir_chat)
-        $inputBuscar?.addEventListener("keydown", anadir_chat_buscar_usuario)
-        $inputBuscar?.addEventListener("input", manejar_input_sugerencias)
-        $btnAgregar?.addEventListener("click", crear_chat_nuevo)
-    }
-    function desactivar_eventos_menu_añadir_chat() {
-        $btnCerrar?.removeEventListener("click", evento_cerrar_menu_añadir_chat)
-        $inputBuscar?.removeEventListener("keydown", anadir_chat_buscar_usuario)
-        $inputBuscar?.removeEventListener("input", manejar_input_sugerencias)
-        $btnAgregar?.removeEventListener("click", crear_chat_nuevo)
-    }
     if (mostrar) {
         //cancelar limpiar cache historial busquedas
         window.cache_persistente.cancelarLimpiezaVariableCacheHistorial().catch(e => console.error(e));
@@ -109,15 +114,20 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
             menu_añadir_chat.classList.add("flex-display")
         }
 
-        $inputBuscar?.focus()
-        //crear eventos
-        activar_eventos_menu_añadir_chat()
+        if ($btnAgregar) $btnAgregar.dataset.id_chat = id_chat || ""
+
+        DOM_CACHE.input_buscar_usuario_añadir?.focus()
+        _activar_eventos_menu()
     }
     else {
         if (menu_añadir_chat) {
             menu_añadir_chat.classList.remove("flex-display")
             menu_añadir_chat.classList.add("ocultar-display")
         }
+
+        const $inputBuscar = DOM_CACHE.input_buscar_usuario_añadir;
+        const $resultados = DOM_CACHE.resultados_busqueda_usuarios;
+        const $contactosGrupo = DOM_CACHE.lista_contactos_añadir_grupo;
 
         //limpiar datos y html
         actualizar_lista_usuarios_añadir({ clean: true })
@@ -127,7 +137,7 @@ export function desplegar_menu_añadir_chat({ e = null, mostrar = true, id_chat 
         if (DOM_CACHE.input_nombre_chat_nuevo) DOM_CACHE.input_nombre_chat_nuevo.value = ""
 
         //limpiar eventos
-        desactivar_eventos_menu_añadir_chat()
+        _desactivar_eventos_menu()
         //limpiar cache
         actualizar_cache_listas_usuarios_añadir(null, true)
         window.cache_persistente.limpiarVariableCacheHistorial().catch(e => console.error(e))
@@ -283,7 +293,7 @@ async function buscar_usuario_añadir_chat(e) {
 
     //excluir usuarios ya existentes si es añadir usuario a un chat existente
     const id_chat = DOM_CACHE.btn_crear_chat_nuevo?.dataset.id_chat || null
-    if (id_chat) {
+    if (id_chat && resultado) {
         const info_chat = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, "usuarios")
         if (info_chat?.usuarios?.includes(resultado.id)) resultado = null
     }

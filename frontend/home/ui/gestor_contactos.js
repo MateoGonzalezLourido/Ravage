@@ -2,13 +2,13 @@ import { abrir_chat_item, ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js';
 import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
 import { chat_componente_lista_estructura_html } from './chat.js';
 
-function _componente_con_chat(chat_id, apodo, contacto_id, chat_raw, chat_ext) {
+function _componente_con_chat(chat_id, apodo, contacto_id, chat_raw) {
     const datos = {
         id: chat_id,
-        nombre: chat_ext?.nombre || apodo || "Sin nombre",
+        nombre: apodo || "Sin nombre",
         ultimoCambio: chat_raw.ultimoCambio,
         ultimomensaje: chat_raw.ultimomensaje,
-        usuarios: chat_ext?.usuarios || [null, null],
+        usuarios: [null, null],
         silenciado: chat_raw.silenciado || false,
         bloqueado: chat_raw.bloqueado || false,
     };
@@ -35,73 +35,40 @@ export async function CARGAR_LISTA_CONTACTOS(filtro = "") {
     if (!contenedor) return;
 
     try {
-        const [contactos, lista_chats_raw, historial] = await Promise.all([
+        const [contactos, lista_chats, historial] = await Promise.all([
             window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
             window.chats.OBTENER_CHATS_USUARIO(),
             window.social_usuario.OBTENER_HIST_CHATS_CONTACTOS()
         ]);
 
         const lista_contactos = Array.isArray(contactos) ? contactos : [];
-        const lista_chats = Array.isArray(lista_chats_raw) ? lista_chats_raw : [];
+        const lista_chats_arr = Array.isArray(lista_chats) ? lista_chats : [];
         const hist = Array.isArray(historial) ? historial : [];
 
-        // Obtener ids de contactos actuales para saber cuáles son ex-contactos
         const ids_contactos_actuales = new Set(lista_contactos.map(c => c.id));
+        const ex_contactos = hist.filter(h => h.chat_id && !ids_contactos_actuales.has(h.usuario_id));
 
-        // Ex-contactos: entradas del historial que ya no están en contactos
-        const ex_contactos = hist.filter(h =>
-            h.chat_id && !ids_contactos_actuales.has(h.usuario_id)
-        );
-
-        // Recoger todos los chat_ids que necesitamos para la llamada a OBTENER_DATOS_CHATS_GRUPALES
-        const chat_ids_a_pedir = [];
-        for (const c of lista_contactos) {
-            if (c.chat_id) chat_ids_a_pedir.push({ id: c.chat_id });
-        }
-        for (const ex of ex_contactos) {
-            if (ex.chat_id) chat_ids_a_pedir.push({ id: ex.chat_id });
-        }
-
-        let datos_grupales_map = {};
-        if (chat_ids_a_pedir.length > 0) {
-            const datos_grupales = await window.chats.OBTENER_DATOS_CHATS_GRUPALES({
-                data: chat_ids_a_pedir,
-                grupales: null,
-                mensajes: false
-            });
-            if (Array.isArray(datos_grupales)) {
-                datos_grupales.forEach(chat => {
-                    if (chat) datos_grupales_map[chat.id || chat._id] = chat;
-                });
-            }
-        }
-
-        // Filtrar contactos
-        let lista_filtrada = filtro
+        const lista_filtrada = filtro
             ? lista_contactos.filter(c => (c.apodo || "").toLowerCase().includes(filtro.toLowerCase()))
             : lista_contactos;
 
-        // Construir HTML de contactos actuales
         const html_contactos = lista_filtrada.map(c => {
             if (c.chat_id) {
-                const chat_raw = lista_chats.find(ch => ch.id === c.chat_id);
-                if (chat_raw) {
-                    return _componente_con_chat(c.chat_id, c.apodo, c.id, chat_raw, datos_grupales_map[c.chat_id]);
-                }
+                const chat_raw = lista_chats_arr.find(ch => ch.id === c.chat_id);
+                if (chat_raw) return _componente_con_chat(c.chat_id, c.apodo, c.id, chat_raw);
             }
             return _componente_sin_chat(c.id, c.apodo);
         });
 
-        // Construir HTML de ex-contactos (filtrar también por apodo si hay filtro)
         const ex_filtrados = filtro
             ? ex_contactos.filter(ex => (ex.apodo || "").toLowerCase().includes(filtro.toLowerCase()))
             : ex_contactos;
 
         const html_ex = ex_filtrados
-            .filter(ex => lista_chats.some(ch => ch.id === ex.chat_id)) // Solo los que el usuario aún tiene en su lista
+            .filter(ex => lista_chats_arr.some(ch => ch.id === ex.chat_id))
             .map(ex => {
-                const chat_raw = lista_chats.find(ch => ch.id === ex.chat_id);
-                return _componente_con_chat(ex.chat_id, ex.apodo, "", chat_raw, datos_grupales_map[ex.chat_id]);
+                const chat_raw = lista_chats_arr.find(ch => ch.id === ex.chat_id);
+                return _componente_con_chat(ex.chat_id, ex.apodo, "", chat_raw);
             });
 
         const todo = [...html_contactos, ...html_ex].join("");
@@ -214,7 +181,6 @@ export function mostrar_menu_contextual_contacto(e, id_contacto, chat_id) {
                 window.pushNotificacion({ prioridad: 1, texto: "Chat limpiado", tipo: "success" });
                 await ACTUALIZAR_LISTAS_CHAT();
                 await CARGAR_LISTA_CONTACTOS();
-                // Si el chat está abierto, recargarlo vacío
                 if (document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(chat_id)}`)) {
                     await abrir_chat_item(chat_id, true);
                 }
