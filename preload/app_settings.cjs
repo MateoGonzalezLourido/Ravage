@@ -42,5 +42,11 @@ module.exports = {
     },
     TIENE_PIN: () => {
         return ipcRenderer.invoke("tiene-pin-seguridad")
+    },
+    OBTENER_NUM_CPUS: () => {
+        return ipcRenderer.invoke("obtener-num-cpus")
+    },
+    SET_NUM_WORKERS: (n) => {
+        return ipcRenderer.invoke("ajustes:set-num-workers", n)
     }
 };

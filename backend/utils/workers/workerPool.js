@@ -10,8 +10,27 @@ const __dirname = path.dirname(__filename);
 const MAX_WORKERS_CRYPTO = 4;
 const MAX_WORKERS_ESCANER = 2;
 
+let _userWorkersOverride = 0;
+
+export function setNumWorkersOverride(n) {
+    const cpus = os.cpus().length;
+    const parsed = parseInt(n, 10);
+    if (!parsed || parsed < 1) {
+        _userWorkersOverride = 0;
+    } else {
+        _userWorkersOverride = Math.min(parsed, cpus);
+    }
+}
+
 function calcularNumeroWorkers(max) {
     const cpusReales = os.cpus().length;
+
+    if (_userWorkersOverride >= 1) {
+        const resultado = Math.min(max, _userWorkersOverride);
+        log.info(`Workers (usuario): ${resultado} de ${cpusReales} CPUs`);
+        return resultado;
+    }
+
     const envVal = process.env.MAX_CPU_CORES_PARALEL;
 
     if (!envVal || envVal.toLowerCase() === 'none') {
@@ -335,4 +354,9 @@ export async function terminarEscanerPool() {
         await escanerInstanciaPool.terminar();
         escanerInstanciaPool = null;
     }
+}
+
+export async function aplicarNuevoNumWorkers(n) {
+    setNumWorkersOverride(n);
+    await Promise.allSettled([terminarCryptoPool(), terminarEscanerPool()]);
 }

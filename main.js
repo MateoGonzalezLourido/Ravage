@@ -271,6 +271,16 @@ async function registerAllHandlers(window, sock) {
     ipcMain.handle("obtener-email-soporte", () => {
         return process.env.BREVO_SENDER_EMAIL || null;
     });
+
+    ipcMain.handle("obtener-num-cpus", async () => {
+        const { os } = await import('./backend/utils/libs.js');
+        return os.cpus().length;
+    });
+
+    ipcMain.handle("ajustes:set-num-workers", async (_, n) => {
+        const { aplicarNuevoNumWorkers } = await import('./backend/utils/workers/workerPool.js');
+        await aplicarNuevoNumWorkers(n);
+    });
 }
 
 async function createMainWindowHome(AutoLogin = false) {
@@ -365,6 +375,14 @@ if (!gotTheLock) {
         const AutoLogin = await autoLoginUsuario();
         await createMainWindowHome(AutoLogin?.success || false);
         setMainWindow(mainWindow);
+
+        // Aplicar preferencia de workers guardada por el usuario
+        try {
+            const { getAjustesAppFile } = await import('./backend/services/controladorArchivos.js');
+            const { setNumWorkersOverride } = await import('./backend/utils/workers/workerPool.js');
+            const ajustes = await getAjustesAppFile();
+            if (ajustes?.NUM_WORKERS > 0) setNumWorkersOverride(ajustes.NUM_WORKERS);
+        } catch (_) {}
     });
 }
 

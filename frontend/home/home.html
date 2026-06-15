@@ -237,6 +237,12 @@
                         <span>Desactivar modo segundo plano al cerrar la app:</span>
                         <input type="checkbox" id="check-desactivar-segundo-plano">
                     </label>
+                    <div class="label-ajuste-inline" style="margin-top: 10px;">
+                        <span>Número de workers paralelos:</span>
+                        <input type="number" id="input-num-workers" min="1"
+                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
+                    </div>
+                    <span style="font-size: 11px; color: #666; margin-top: 4px; display: block;">0 o vacío = automático. Los cambios se aplican al reiniciar los pools (tras inactividad).</span>
                 </div>
             </div>
             <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-noti">

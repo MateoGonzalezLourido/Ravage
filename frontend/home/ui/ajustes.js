@@ -920,6 +920,18 @@ async function cargar_ajustes_cache() {
 
     // Escaneres de seguridad del usuario
     _generar_ui_escaneres_usuario(ajustes);
+
+    // Workers
+    const inputWorkers = document.getElementById("input-num-workers");
+    if (inputWorkers) {
+        const numCpus = await window.ajustes_app.OBTENER_NUM_CPUS().catch(() => null);
+        if (numCpus) {
+            inputWorkers.max = numCpus;
+            inputWorkers.placeholder = numCpus;
+        }
+        const savedWorkers = ajustes.NUM_WORKERS || 0;
+        inputWorkers.value = savedWorkers > 0 ? savedWorkers : "";
+    }
 }
 
 export function aplicar_ajuste_hilos(desactivar) {
@@ -1015,6 +1027,19 @@ function setup_cache_listeners() {
         ajustes.PREVISUALIZACION_URL = val;
         await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
         document.dispatchEvent(new CustomEvent("ravage:ajuste-previsualizacion", { detail: { enabled: val } }));
+    });
+
+    // Workers paralelos
+    document.getElementById("input-num-workers")?.addEventListener("change", async (e) => {
+        const raw = parseInt(e.target.value, 10);
+        const val = isNaN(raw) || raw < 1 ? 0 : raw;
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
+        ajustes.NUM_WORKERS = val;
+        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
+        await window.ajustes_app.SET_NUM_WORKERS(val);
+        if (val === 0) {
+            e.target.value = "";
+        }
     });
 
     // Escaneres de seguridad del usuario (delegacion)
