@@ -16,7 +16,7 @@ import {
     cargar_preview_imagen,
     cargar_audio_mensaje
 } from './chat.js';
-import { HILOS_DESACTIVADOS } from './ajustes.js';
+import { HILOS_DESACTIVADOS, OCULTAR_MENSAJES_ERROR_DESCIFRADO } from './ajustes.js';
 import {
     manejar_input_escribiendo,
     manejar_solicitud_chat
@@ -418,6 +418,10 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
     const esAdmin = info_chat?.usuarios?.length > 2 && info_chat?.admins?.some(a => a.toString() === id_emisor);
     const escaneres_seguridad = result_seguridad?.escaneres_seguridad || result_seguridad;
 
+    if (OCULTAR_MENSAJES_ERROR_DESCIFRADO && typeof mensaje === 'string' && mensaje.startsWith('[Error al descifrar')) {
+        return { html: '', fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad };
+    }
+
     const html = await crear_mensaje_html({
         fecha,
         asunto: mensaje,
@@ -438,6 +442,7 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
 const _temp_msg_container = document.createElement("div");
 
 async function _insertar_mensaje_dom({ html, fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad }) {
+    if (!html) return;
     if (DOM_CACHE.nav_principal_chat_usuario?.dataset.id !== id_chat_str) return;
 
     const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;

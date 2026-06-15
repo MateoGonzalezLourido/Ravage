@@ -4,7 +4,7 @@ import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat, ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js'
 import { CARGAR_LISTA_CONTACTOS } from './gestor_contactos.js'
 import { safeIdSelector } from './seguridad_ui.js';
-import { HILOS_DESACTIVADOS, PREVISUALIZACION_IMAGENES } from './ajustes.js';
+import { HILOS_DESACTIVADOS, PREVISUALIZACION_IMAGENES, OCULTAR_MENSAJES_ERROR_DESCIFRADO } from './ajustes.js';
 
 const nombre_defecto = "~no encontrado~"
 
@@ -962,6 +962,8 @@ async function _construir_html_mensajes(mensajesConEstado, opciones) {
         if (!m) return "";
         const id_emisor = m.id_emisor || undefined;
         if (!id_emisor) return "";
+        const asunto_raw = m.contenido[0]?.asunto;
+        if (OCULTAR_MENSAJES_ERROR_DESCIFRADO && typeof asunto_raw === 'string' && asunto_raw.startsWith('[Error al descifrar')) return "";
         const propio = id_emisor === id_propio;
         const esAdmin = SuperaMin && datos_chat.admins.includes(id_emisor);
         const nombre = map_nombres[id_emisor] || nombre_defecto;

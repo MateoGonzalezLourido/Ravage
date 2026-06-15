@@ -3,6 +3,7 @@ export let bloquear_span_cambio_apodo = false;
 export let bloquear_span_cambio_correo = false;
 export let HILOS_DESACTIVADOS = false;
 export let PREVISUALIZACION_IMAGENES = true;
+export let OCULTAR_MENSAJES_ERROR_DESCIFRADO = false;
 import { escapeHTML } from './seguridad_ui.js';
 
 const ESCANERES_UI_USUARIO = [
@@ -926,6 +927,13 @@ async function cargar_ajustes_cache() {
         PREVISUALIZACION_IMAGENES = checkPrevImg.checked;
     }
 
+    // Ocultar mensajes con error de descifrado
+    const checkOcultarError = document.getElementById("check-ocultar-error-descifrado");
+    if (checkOcultarError) {
+        checkOcultarError.checked = ajustes.OCULTAR_MENSAJES_ERROR_DESCIFRADO || false;
+        OCULTAR_MENSAJES_ERROR_DESCIFRADO = checkOcultarError.checked;
+    }
+
     // Escaneres de seguridad del usuario
     _generar_ui_escaneres_usuario(ajustes);
 
@@ -1043,6 +1051,15 @@ function setup_cache_listeners() {
         PREVISUALIZACION_IMAGENES = val;
         const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
         ajustes.PREVISUALIZACION_IMAGENES = val;
+        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
+    });
+
+    // Ocultar mensajes con error de descifrado
+    document.getElementById("check-ocultar-error-descifrado")?.addEventListener("change", async (e) => {
+        const val = e.target.checked;
+        OCULTAR_MENSAJES_ERROR_DESCIFRADO = val;
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
+        ajustes.OCULTAR_MENSAJES_ERROR_DESCIFRADO = val;
         await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
     });
 
