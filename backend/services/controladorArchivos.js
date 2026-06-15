@@ -297,36 +297,61 @@ async function saveAjustesAppFile({ data = {}, create = false }) {
     }
 }
 
+/**
+ * Intenta descifrar un objeto {iv, tag, data, compressed} con la clave dada.
+ * Devuelve el objeto parseado o null si falla.
+ */
+function _tryDecryptRaw(raw, key) {
+    try {
+        if (!raw?.iv || !raw?.tag || !raw?.data) return null;
+        const finalKey = Buffer.isBuffer(key) ? key : Buffer.from(key, 'hex');
+        const decipher = createDecipheriv(algorithm, finalKey, Buffer.from(raw.iv, 'hex'));
+        decipher.setAuthTag(Buffer.from(raw.tag, 'hex'));
+        let decrypted = Buffer.concat([decipher.update(Buffer.from(raw.data, 'hex')), decipher.final()]);
+        if (raw.compressed) decrypted = gunzipSync(decrypted);
+        return JSON.parse(decrypted.toString());
+    } catch {
+        return null;
+    }
+}
+
 async function readFileSession(rutaKey, cifrado = true) {
     const filePath = RTDF[rutaKey];
     if (!filePath || !fs.existsSync(filePath)) return null;
 
+    // Separar lectura de disco del descifrado para poder hacer migración sin borrar el archivo
+    let raw;
     try {
         const rawstr = await fs.promises.readFile(filePath, { encoding: "utf8" });
         if (!rawstr) return null;
+        raw = JSON.parse(rawstr);
+    } catch (e) {
+        log.error({ err: e }, `Error al leer archivo ${rutaKey}`);
+        await clearFileSession(rutaKey);
+        return null;
+    }
 
-        const raw = JSON.parse(rawstr);
-        if (!cifrado) return raw;
+    if (!cifrado) return raw;
 
-        // Determinar la clave secreta a usar
-        let secretKey;
-        const useGlobalKey = ['sessionFile', 'cacheChatsFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile', 'cacheHistorialBusquedasAñadir', 'securityPin'].includes(rutaKey);
+    // Determinar la clave secreta a usar
+    let secretKey;
+    const useGlobalKey = ['sessionFile', 'cacheChatsFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile', 'cacheHistorialBusquedasAñadir', 'securityPin'].includes(rutaKey);
 
-        if (rutaKey === 'identity') {
-            secretKey = getSecretKeyPrivate();
-        } else if (useGlobalKey) {
-            secretKey = getSecretKeyCokkie();
-        } else {
-            const currentKey = getSecretKEY();
-            if (!currentKey) {
-                await ActualizarSecretKeyUsuario();
-                return null;
-            }
-            secretKey = currentKey;
+    if (rutaKey === 'identity') {
+        secretKey = getSecretKeyPrivate();
+    } else if (useGlobalKey) {
+        secretKey = getSecretKeyCokkie();
+    } else {
+        const currentKey = getSecretKEY();
+        if (!currentKey) {
+            await ActualizarSecretKeyUsuario();
+            return null;
         }
+        secretKey = currentKey;
+    }
 
+    try {
         const finalKey = Buffer.isBuffer(secretKey) ? secretKey : Buffer.from(secretKey, "hex");
-
         const decipher = createDecipheriv(algorithm, finalKey, Buffer.from(raw.iv, "hex"));
         decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
 
@@ -341,8 +366,19 @@ async function readFileSession(rutaKey, cifrado = true) {
 
         return JSON.parse(decrypted.toString());
     } catch (e) {
+        // Migración: si el archivo de identidad fue cifrado con la clave antigua (SECRET_KEY_COKKIE),
+        // intentar descifrarlo con ella y re-guardarlo con SECRET_KEY_PRIVATE
+        if (rutaKey === 'identity') {
+            const parsed = _tryDecryptRaw(raw, getSecretKeyCokkie());
+            if (parsed !== null) {
+                log.info('[Identity] Migrando identidad de SECRET_KEY_COKKIE a SECRET_KEY_PRIVATE');
+                guardarArchivoGenerico('identity', parsed, 'identity').catch(err =>
+                    log.warn({ err }, '[Identity] Fallo al re-guardar identidad con nueva clave')
+                );
+                return parsed;
+            }
+        }
         log.error({ err: e }, `Error al leer archivo ${rutaKey}`);
-        // Si el archivo está corrupto o la clave es incorrecta, lo eliminamos para que no cause errores persistentes
         await clearFileSession(rutaKey);
         return null;
     }
