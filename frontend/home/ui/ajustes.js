@@ -2,6 +2,7 @@ export let bloquear_span_cambio_contraseña = false;
 export let bloquear_span_cambio_apodo = false;
 export let bloquear_span_cambio_correo = false;
 export let HILOS_DESACTIVADOS = false;
+export let PREVISUALIZACION_IMAGENES = true;
 import { escapeHTML } from './seguridad_ui.js';
 
 const ESCANERES_UI_USUARIO = [
@@ -918,6 +919,13 @@ async function cargar_ajustes_cache() {
     const checkPreview = document.getElementById("check-previsualizacion-url");
     if (checkPreview) checkPreview.checked = ajustes.PREVISUALIZACION_URL !== false;
 
+    // Previsualizacion imagenes
+    const checkPrevImg = document.getElementById("check-previsualizacion-imagenes");
+    if (checkPrevImg) {
+        checkPrevImg.checked = ajustes.PREVISUALIZACION_IMAGENES !== false;
+        PREVISUALIZACION_IMAGENES = checkPrevImg.checked;
+    }
+
     // Escaneres de seguridad del usuario
     _generar_ui_escaneres_usuario(ajustes);
 
@@ -1027,6 +1035,15 @@ function setup_cache_listeners() {
         ajustes.PREVISUALIZACION_URL = val;
         await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
         document.dispatchEvent(new CustomEvent("ravage:ajuste-previsualizacion", { detail: { enabled: val } }));
+    });
+
+    // Previsualizacion imagenes
+    document.getElementById("check-previsualizacion-imagenes")?.addEventListener("change", async (e) => {
+        const val = e.target.checked;
+        PREVISUALIZACION_IMAGENES = val;
+        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
+        ajustes.PREVISUALIZACION_IMAGENES = val;
+        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
     });
 
     // Workers paralelos

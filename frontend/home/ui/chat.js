@@ -4,7 +4,7 @@ import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat, ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js'
 import { CARGAR_LISTA_CONTACTOS } from './gestor_contactos.js'
 import { safeIdSelector } from './seguridad_ui.js';
-import { HILOS_DESACTIVADOS } from './ajustes.js';
+import { HILOS_DESACTIVADOS, PREVISUALIZACION_IMAGENES } from './ajustes.js';
 
 const nombre_defecto = "~no encontrado~"
 
@@ -19,6 +19,8 @@ const AUDIO_NUM_BARS = 45;
 export async function cargar_preview_imagen(el) {
     const id = el.dataset.id;
     if (!id) return;
+
+    if (!PREVISUALIZACION_IMAGENES) { await _aplicar_fallback_preview(el); return; }
 
     if (_cache_previews.has(id)) {
         _aplicar_preview(el, _cache_previews.get(id));
