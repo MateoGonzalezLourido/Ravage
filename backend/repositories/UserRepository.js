@@ -9,7 +9,8 @@ import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } fro
 import {
     getCorreoSesion, getUsuariosBloqueados, getUsuariosSilence, setUsuariosBloqueados, setUsuariosSilence,
     setFechaBloqueoContraseña, setFechaBloqueoCorreo, setFechaBloqueoApodo, setApodoSesion, setCorreoSesion,
-    getIDMongodbUsuario, getInvisibleUsuario, setInvisibleUsuario, getMostrarCorreoUsuario, setMostrarCorreoUsuario
+    getIDMongodbUsuario, getInvisibleUsuario, setInvisibleUsuario, getMostrarCorreoUsuario, setMostrarCorreoUsuario,
+    getListaContactos, setListaContactos
 } from '../STORAGE/Variables_sesion.js';
 import { convertirObjectId } from '../utils/conversores.js';
 
@@ -62,7 +63,8 @@ export function procesarUsuario(usuario) {
         result.contactos = result.contactos.map(c => ({
             ...c,
             id: c.id ? c.id.toString() : (c._id ? c._id.toString() : null),
-            apodo: (c.apodo && typeof c.apodo === 'object') ? desencriptarDatosSistema(c.apodo) : (c.apodo || "")
+            apodo: (c.apodo && typeof c.apodo === 'object') ? desencriptarDatosSistema(c.apodo) : (c.apodo || ""),
+            chat_id: c.chat_id ? c.chat_id.toString() : null
         }));
     }
 
@@ -75,7 +77,7 @@ export function procesarUsuario(usuario) {
 
 export async function LoginUsuarioDB({ correo = null, contrasena = null, token = null, id_dp = null, bloqueada = false }) {
     // Campos mínimos necesarios para el login y la inicialización de la sesión según sesionUsuario.js
-    const LOGIN_FIELDS = "_id apodo correo createdAt exp_bloq_apodo exp_bloq_correo exp_bloq_contrasena users_silence users_bloq secretKey chats.id chats.ultimoCambio contactos.id contactos.apodo idamigo visible invisible mostrarCorreo";
+    const LOGIN_FIELDS = "_id apodo correo createdAt exp_bloq_apodo exp_bloq_correo exp_bloq_contrasena users_silence users_bloq secretKey chats.id chats.ultimoCambio contactos.id contactos.apodo contactos.chat_id idamigo visible invisible mostrarCorreo";
 
     try {
         if (token && correo && id_dp) {
@@ -568,6 +570,56 @@ export async function encontrar_usuario(texto, correo = false) {
 }
 
 
+export async function VINCULAR_CHAT_CONTACTO(contacto_id, chat_id) {
+    try {
+        const idStr = _getID(contacto_id);
+        const chatIdStr = chat_id?.toString();
+        if (!idStr || !chatIdStr) return false;
+
+        const id_propio = getIDMongodbUsuario();
+
+        // Actualizar el chat_id del contacto en el array contactos
+        const r = await User.updateOne(
+            { _id: id_propio, "contactos.id": idStr },
+            { $set: { "contactos.$.chat_id": chatIdStr } }
+        );
+
+        if (r.modifiedCount > 0) {
+            // Actualizar en memoria
+            const lista = getListaContactos();
+            const entry = lista.find(c => c.id === idStr);
+            if (entry) entry.chat_id = chatIdStr;
+
+            // Guardar en historial permanente (persiste aunque se elimine el contacto)
+            const histExiste = await User.findOne(
+                { _id: id_propio, "chats_contactos_hist.u": idStr },
+                { "chats_contactos_hist.$": 1 }
+            ).lean();
+
+            // Obtener apodo del contacto para guardarlo en el historial
+            const apodo_contacto = getListaContactos().find(c => c.id === idStr)?.apodo || "";
+
+            if (histExiste) {
+                await User.updateOne(
+                    { _id: id_propio, "chats_contactos_hist.u": idStr },
+                    { $set: { "chats_contactos_hist.$.c": chatIdStr, "chats_contactos_hist.$.apodo": apodo_contacto } }
+                );
+            } else {
+                await User.updateOne(
+                    { _id: id_propio },
+                    { $push: { chats_contactos_hist: { u: idStr, c: chatIdStr, apodo: apodo_contacto } } }
+                );
+            }
+
+            return true;
+        }
+        return false;
+    } catch (e) {
+        log.error(e);
+        return false;
+    }
+}
+
 export async function AÑADIR_CONTACTO(id, nombre) {
     try {
         const idStr = _getID(id);
@@ -586,7 +638,60 @@ export async function AÑADIR_CONTACTO(id, nombre) {
             { $push: { contactos: { id: idStr, apodo: encriptarDatosSistema(nombre) } } }
         );
         if (r.modifiedCount > 0) {
+            let chat_id_recuperado = null;
+
+            // Buscar en historial si ya hubo un chat dedicado con este contacto
+            const histEntry = await User.findOne(
+                { _id: id_propio, "chats_contactos_hist.u": idStr },
+                { "chats_contactos_hist.$": 1 }
+            ).lean();
+
+            if (histEntry?.chats_contactos_hist?.[0]?.c) {
+                chat_id_recuperado = histEntry.chats_contactos_hist[0].c.toString();
+                // Vincular el chat al nuevo contacto en BD
+                await User.updateOne(
+                    { _id: id_propio, "contactos.id": idStr },
+                    { $set: { "contactos.$.chat_id": chat_id_recuperado } }
+                );
+            }
+
+            // Actualizar ListaContactos en memoria
+            const lista = getListaContactos();
+            lista.push({ id: idStr, apodo: nombre || "", chat_id: chat_id_recuperado });
+
             await _syncCache(hashDatosSistema(getCorreoSesion()));
+            return { success: true, chat_id: chat_id_recuperado };
+        }
+        return false;
+    } catch (e) {
+        log.error(e);
+        return false;
+    }
+}
+
+export async function ELIMINAR_CONTACTO(id) {
+    try {
+        const idStr = _getID(id);
+        if (!idStr) return false;
+
+        const id_propio = getIDMongodbUsuario();
+
+        // Guardar apodo actual en el historial antes de eliminar el contacto
+        const apodo_actual = getListaContactos().find(c => c.id === idStr)?.apodo || "";
+        if (apodo_actual) {
+            await User.updateOne(
+                { _id: id_propio, "chats_contactos_hist.u": idStr },
+                { $set: { "chats_contactos_hist.$.apodo": apodo_actual } }
+            );
+        }
+
+        const r = await User.updateOne(
+            { _id: id_propio },
+            { $pull: { contactos: { id: idStr } } }
+        );
+
+        if (r.modifiedCount > 0) {
+            setListaContactos(getListaContactos().filter(c => c.id !== idStr));
             return true;
         }
         return false;
@@ -596,9 +701,68 @@ export async function AÑADIR_CONTACTO(id, nombre) {
     }
 }
 
+export async function OBTENER_HIST_CHATS_CONTACTOS() {
+    try {
+        const id_propio = getIDMongodbUsuario();
+        if (!id_propio) return [];
+        const user = await User.findById(id_propio, "chats_contactos_hist").lean();
+        return (user?.chats_contactos_hist || []).map(e => ({
+            usuario_id: e.u?.toString() || "",
+            chat_id: e.c?.toString() || "",
+            apodo: e.apodo || ""
+        }));
+    } catch (e) {
+        log.error(e);
+        return [];
+    }
+}
 
-export const añadirUsuariosSilenciados = (id) => _toggleArrayUsuario(id, 'silence', true);
-export const eliminarUsuariosSilenciados = (id) => _toggleArrayUsuario(id, 'silence', false);
+
+async function _sincronizar_silencio_chat_contacto(idStr, silenciar) {
+    try {
+        const contacto = getListaContactos().find(c => c.id === idStr);
+        if (!contacto?.chat_id) return;
+        const chat_id_str = contacto.chat_id.toString();
+        const id_propio = getIDMongodbUsuario();
+
+        const lista = getUsuariosSilence();
+        const yaEsta = lista.includes(chat_id_str);
+        let nueva_lista;
+        if (silenciar && !yaEsta) {
+            nueva_lista = [...lista, chat_id_str];
+        } else if (!silenciar && yaEsta) {
+            nueva_lista = lista.filter(c => c !== chat_id_str);
+        } else {
+            return;
+        }
+        setUsuariosSilence(nueva_lista);
+
+        await User.updateOne(
+            { _id: id_propio },
+            {
+                $set: {
+                    "chats.$[chat].silenciado": silenciar,
+                    users_silence: nueva_lista
+                }
+            },
+            { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(chat_id_str) }] }
+        );
+    } catch (e) {
+        log.error(e, "Error al sincronizar silencio del chat de contacto");
+    }
+}
+
+export async function añadirUsuariosSilenciados(id) {
+    const ok = await _toggleArrayUsuario(id, 'silence', true);
+    if (ok) await _sincronizar_silencio_chat_contacto(_getID(id), true);
+    return ok;
+}
+
+export async function eliminarUsuariosSilenciados(id) {
+    const ok = await _toggleArrayUsuario(id, 'silence', false);
+    if (ok) await _sincronizar_silencio_chat_contacto(_getID(id), false);
+    return ok;
+}
 
 
 async function _toggleBoolean(field, getter, setter) {

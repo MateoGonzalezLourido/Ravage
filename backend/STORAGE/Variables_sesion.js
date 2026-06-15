@@ -129,11 +129,11 @@ export const setListaChats = (lista) => {
 export const getListaChats = () => ListaChats;
 export const setListaContactos = (lista) => {
     if (!lista) { ListaContactos = []; return; }
-    const contactos = lista.map(c => ({
-        id: c.id.toString(),
+    ListaContactos = lista.map(c => ({
+        id: c.id ? c.id.toString() : (c._id ? c._id.toString() : null),
         apodo: c.apodo || "",
-    }))
-    ListaContactos = contactos;
+        chat_id: c.chat_id ? c.chat_id.toString() : null,
+    }));
 }
 export const getListaContactos = () => ListaContactos;
 export const setVisibleUsuario = (bool) => VisibleUsuario = bool;

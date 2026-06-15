@@ -229,6 +229,8 @@ export function limpiar_cache_virtualizacion_segundo_plano() {
 export const DOM_CACHE = {
     // Estáticos (No cambian durante la sesión)
     lista_chats_componentes: null,
+    lista_contactos_componentes: null,
+    btn_añadir_chat: null,
     chat_usuario: null,
     input_buscar_chat: null,
     info_chat_seccion: null,
@@ -263,6 +265,8 @@ export const DOM_CACHE = {
     inicializar_estaticos() {
         // Básicos
         this.lista_chats_componentes = document.getElementById("lista-chats-componentes");
+        this.lista_contactos_componentes = document.getElementById("lista-contactos-componentes");
+        this.btn_añadir_chat = document.getElementById("bt-añadir-chat");
         this.chat_usuario = document.getElementById("chat-usuario");
         this.input_buscar_chat = document.getElementById("input-buscar-chat");
         this.info_chat_seccion = document.getElementById("info-chat-seccion");

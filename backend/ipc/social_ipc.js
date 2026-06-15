@@ -8,10 +8,14 @@ import {
     añadirUsuariosSilenciados,
     eliminarUsuariosSilenciados,
     AÑADIR_CONTACTO,
+    ELIMINAR_CONTACTO,
+    OBTENER_HIST_CHATS_CONTACTOS,
+    VINCULAR_CHAT_CONTACTO,
     toggleInvisibleUsuario,
     toggleMostrarCorreoUsuario,
     GUARDAR_USUARIOS_EN_PERSISTENTE
 } from '../repositories/UserRepository.js';
+
 import {
     getListaContactos,
     getUsuariosBloqueados,
@@ -61,6 +65,18 @@ export function registerSocialHandlers() {
 
     ipcMain.handle("añadir-contacto", async (_, id, nombre) => {
         return await AÑADIR_CONTACTO(id, nombre)
+    })
+
+    ipcMain.handle("eliminar-contacto", async (_, id) => {
+        return await ELIMINAR_CONTACTO(id)
+    })
+
+    ipcMain.handle("obtener-hist-chats-contactos", async () => {
+        return await OBTENER_HIST_CHATS_CONTACTOS()
+    })
+
+    ipcMain.handle("vincular-chat-contacto", async (_, contacto_id, chat_id) => {
+        return await VINCULAR_CHAT_CONTACTO(contacto_id, chat_id)
     })
 
     ipcMain.handle("toggle-invisible-usuario", async () => {

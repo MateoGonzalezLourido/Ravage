@@ -871,6 +871,64 @@ body.sin-hilos-chat .mensaje-chat::after {
 }
 
 /* =========================================
+   SELECTOR DE VISTA (Chats / Contactos)
+   ========================================= */
+.selector-vista-panel {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 3px;
+}
+
+.selector-vista-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.45);
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.45);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, -webkit-text-fill-color 0.2s ease;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.selector-vista-btn.activo {
+    background: rgba(147, 51, 234, 0.25);
+    color: #e0c6ff;
+    -webkit-text-fill-color: #e0c6ff;
+    box-shadow: 0 1px 4px rgba(147, 51, 234, 0.2);
+}
+
+.selector-vista-btn:hover:not(.activo) {
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.75);
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.75);
+}
+
+/* =========================================
+   LISTA DE CONTACTOS
+   ========================================= */
+#lista-contactos-componentes {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px 0;
+}
+
+.contactos-lista-vacia {
+    padding: 24px 20px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 13px;
+    text-align: center;
+    font-style: italic;
+}
+
+/* =========================================
    CABECERA DEL CHAT (Nav Principal)
    ========================================= */
 #nav-principal-chat-usuario {

@@ -598,26 +598,32 @@ async function resolverNombresChats(chats) {
             chat.nombre = nombreDec || "Grupo sin nombre (Cifrado)";
         }
 
-        if (!chat.nombre) {
-            const hasUsuarios = Array.isArray(chat.usuarios);
-            if (hasUsuarios && chat.usuarios.length === 2) {
-                const id_mio_norm = id_propio.toString();
-                const id_otro = chat.usuarios.find(u => normalizeId(u) !== id_mio_norm);
-                if (id_otro) {
-                    const id_otro_str = id_otro.toString();
-                    const contacto = (usuario_actual.contactos || []).find(c => c.id && c.id.toString() === id_otro_str);
+        const hasUsuarios = Array.isArray(chat.usuarios);
+        const is_1on1 = hasUsuarios && chat.usuarios.length === 2;
 
-                    if (contacto && contacto.apodo) {
-                        chat.nombre = contacto.apodo;
-                    } else if (globales[id_otro_str]) {
-                        chat.nombre = "~" + globales[id_otro_str];
-                    } else {
-                        chat.nombre = "Usuario Ravage";
-                    }
+        if (is_1on1) {
+            // Siempre resolver desde contactos para chats 1-a-1 (el apodo puede haber cambiado)
+            const id_mio_norm = id_propio.toString();
+            const id_otro = chat.usuarios.find(u => normalizeId(u) !== id_mio_norm);
+            if (id_otro) {
+                const id_otro_str = id_otro.toString();
+                const contacto = (usuario_actual.contactos || []).find(c => c.id && c.id.toString() === id_otro_str);
+
+                if (contacto && contacto.apodo) {
+                    const apodo_dec = typeof contacto.apodo === 'object'
+                        ? desencriptarDatosSistema(contacto.apodo)
+                        : contacto.apodo;
+                    chat.nombre = apodo_dec || ("~" + globales[id_otro_str]) || "Usuario Ravage";
+                } else if (globales[id_otro_str]) {
+                    chat.nombre = "~" + globales[id_otro_str];
                 } else {
-                    chat.nombre = "Chat vacío";
+                    chat.nombre = "Usuario Ravage";
                 }
-            } else if (hasUsuarios && chat.usuarios.length > 2) {
+            } else {
+                chat.nombre = "Chat vacío";
+            }
+        } else if (!chat.nombre) {
+            if (hasUsuarios && chat.usuarios.length > 2) {
                 chat.nombre = "Grupo sin nombre";
             } else if (hasUsuarios) {
                 chat.nombre = "Chat personal";
@@ -852,6 +858,82 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
 /**
  * Helper para forzar la actualización de los datos propios en la caché.
  */
+export async function LIMPIAR_MENSAJES_CHAT(id_chat) {
+    try {
+        const id_chat_str = normalizeId(id_chat);
+        if (!id_chat_str) return false;
+
+        const id_propio = getIDMongodbUsuario();
+
+        // Verificar que el usuario es participante del chat
+        const chat = await ChatsRavage.findById(id_chat_str, "usuarios").lean();
+        if (!chat || !chat.usuarios.some(u => u.toString() === id_propio.toString())) return false;
+
+        // Borrar todos los mensajes del chat
+        await MessagesRavage.deleteMany({ id_chat: new mongoose.Types.ObjectId(id_chat_str) });
+
+        // Limpiar msfijado en el chat
+        await ChatsRavage.updateOne(
+            { _id: id_chat_str },
+            { $set: { msfijado: null } }
+        );
+
+        // Resetear ultimoCambio y ultimomensaje en la entrada del usuario
+        await User.updateOne(
+            { _id: id_propio },
+            {
+                $set: {
+                    "chats.$[c].ultimomensaje": null,
+                    "chats.$[c].ultimoCambio": new Date()
+                }
+            },
+            { arrayFilters: [{ "c.id": new mongoose.Types.ObjectId(id_chat_str) }] }
+        );
+
+        await actualizarCacheUsuarioPropio();
+        return true;
+    } catch (e) {
+        log.error(e);
+        return false;
+    }
+}
+
+export async function GESTIONAR_ELIMINAR_CHAT(id_chat) {
+    try {
+        const id_chat_str = normalizeId(id_chat);
+        if (!id_chat_str) return false;
+
+        const id_propio = getIDMongodbUsuario();
+        const chat = await ChatsRavage.findById(id_chat_str, "usuarios").lean();
+        if (!chat || !chat.usuarios.some(u => u.toString() === id_propio.toString())) return false;
+
+        // Comprobar si alguno de los otros participantes es contacto del usuario
+        const { getListaContactos } = await import('../STORAGE/Variables_sesion.js');
+        const contactos = getListaContactos();
+        const otros = chat.usuarios.filter(u => u.toString() !== id_propio.toString()).map(u => u.toString());
+        const otro_es_contacto = otros.some(uid => contactos.some(c => c.id === uid));
+
+        if (otro_es_contacto) {
+            const ok = await LIMPIAR_MENSAJES_CHAT(id_chat_str);
+            return ok ? { success: true, tipo: "limpiar" } : false;
+        }
+
+        // Borrar completamente: mensajes, chat y entrada en el usuario
+        await MessagesRavage.deleteMany({ id_chat: new mongoose.Types.ObjectId(id_chat_str) });
+        await ChatsRavage.deleteOne({ _id: id_chat_str });
+        await User.updateOne(
+            { _id: id_propio },
+            { $pull: { chats: { id: new mongoose.Types.ObjectId(id_chat_str) } } }
+        );
+
+        await actualizarCacheUsuarioPropio();
+        return { success: true, tipo: "eliminar" };
+    } catch (e) {
+        log.error(e);
+        return false;
+    }
+}
+
 async function actualizarCacheUsuarioPropio() {
     const id_propio = getIDMongodbUsuario();
     if (!id_propio) return;

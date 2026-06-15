@@ -36,6 +36,7 @@ import {
 
 import { manejar_descarga_archivo } from './ui/descarga_archivos.js'
 import { toggle_historial_descargas, mensaje_bienvenida_usuario } from './ui/navegacion_vistas.js'
+import { CARGAR_LISTA_CONTACTOS, abrir_chat_por_contacto, mostrar_menu_contextual_contacto } from './ui/gestor_contactos.js'
 import { manejar_ui_cierre_sesion } from './ui/servicios_sesion.js'
 import { limpiar_cache_iconos } from './ui/url_icono_extensiones_archivos.js'
 import {
@@ -52,6 +53,46 @@ import {
 set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
 
 // ==========================================
+// SELECTOR DE VISTA (Chats / Contactos)
+// ==========================================
+let vista_actual = "chats";
+
+function inicializar_selector_vista() {
+    const selector = document.getElementById("selector-vista-panel");
+    const lista_chats = document.getElementById("lista-chats-componentes");
+    const lista_contactos = document.getElementById("lista-contactos-componentes");
+    const btn_añadir = document.getElementById("bt-añadir-chat");
+    const input_buscar = document.getElementById("input-buscar-chat");
+    if (!selector || !lista_chats || !lista_contactos) return;
+
+    selector.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".selector-vista-btn");
+        if (!btn) return;
+
+        const nueva_vista = btn.dataset.vista;
+        if (nueva_vista === vista_actual) return;
+
+        vista_actual = nueva_vista;
+
+        selector.querySelectorAll(".selector-vista-btn").forEach(b => b.classList.remove("activo"));
+        btn.classList.add("activo");
+
+        if (nueva_vista === "chats") {
+            lista_chats.classList.remove("ocultar-display");
+            lista_contactos.classList.add("ocultar-display");
+            if (btn_añadir) btn_añadir.style.display = "";
+            if (input_buscar) input_buscar.placeholder = "Buscar chat...";
+        } else {
+            lista_chats.classList.add("ocultar-display");
+            lista_contactos.classList.remove("ocultar-display");
+            if (btn_añadir) btn_añadir.style.display = "none";
+            if (input_buscar) input_buscar.placeholder = "Buscar contacto...";
+            await CARGAR_LISTA_CONTACTOS(input_buscar?.value.trim() || "");
+        }
+    });
+}
+
+// ==========================================
 // DELEGACIÓN GLOBAL DE EVENTOS (HUB PRINCIPAL)
 // ==========================================
 function inicializar_eventos_globales() {
@@ -64,6 +105,23 @@ function inicializar_eventos_globales() {
     DOM_CACHE.lista_chats_componentes?.addEventListener("contextmenu", (e) => {
         const componente = e.target.closest('.chat-componente-lista-chats')
         if (componente) { e.preventDefault(); mostrar_menu_contextual_lista_chats(e, componente.dataset.id) }
+    })
+
+    // Eventos panel de Contactos
+    DOM_CACHE.lista_contactos_componentes?.addEventListener("click", (e) => {
+        const componente = e.target.closest(".chat-componente-lista-chats");
+        if (componente) {
+            e.preventDefault();
+            abrir_chat_por_contacto(componente.dataset.contactoId, componente.dataset.apodo, componente.dataset.id || "");
+        }
+    })
+
+    DOM_CACHE.lista_contactos_componentes?.addEventListener("contextmenu", (e) => {
+        const componente = e.target.closest(".chat-componente-lista-chats");
+        if (componente) {
+            e.preventDefault();
+            mostrar_menu_contextual_contacto(e, componente.dataset.contactoId, componente.dataset.id || "");
+        }
     })
 
     DOM_CACHE.chat_usuario?.addEventListener("contextmenu", (e) => {
@@ -182,6 +240,7 @@ function inicializar_escritura_automatica() {
 // ==========================================
 async function preparar_interfaz_y_servicios() {
     // 1. Registro de eventos permanentes
+    inicializar_selector_vista()
     inicializar_eventos_globales()
     inicializar_escritura_automatica()
 
@@ -195,7 +254,9 @@ async function preparar_interfaz_y_servicios() {
     input_buscar_chat?.addEventListener("keyup", (e) => {
         e.preventDefault()
         const valor = input_buscar_chat.value.trim()
-        if (valor !== cache_input_buscar_chat_ultimo) {
+        if (vista_actual === "contactos") {
+            CARGAR_LISTA_CONTACTOS(valor);
+        } else if (valor !== cache_input_buscar_chat_ultimo) {
             ACTUALIZAR_LISTAS_CHAT(valor)
             establecer_cache_busqueda_chat(valor)
         }

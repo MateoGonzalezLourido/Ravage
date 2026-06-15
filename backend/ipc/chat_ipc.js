@@ -14,7 +14,9 @@ import {
     HACER_ADMIN_CHAT,
     QUITAR_ADMIN_CHAT,
     SILENCIAR_CHAT_USUARIO,
-    BLOQUEAR_CHAT_USUARIO
+    BLOQUEAR_CHAT_USUARIO,
+    LIMPIAR_MENSAJES_CHAT,
+    GESTIONAR_ELIMINAR_CHAT
 } from '../repositories/ChatRepository.js';
 import {
     obtenerChatsUsuarioDB
@@ -163,5 +165,13 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("desfijar-mensaje", async (_, id_chat) => {
         return await DESFIJAR_MENSAJE(id_chat)
+    })
+
+    ipcMain.handle("limpiar-mensajes-chat", async (_, id_chat) => {
+        return await LIMPIAR_MENSAJES_CHAT(id_chat)
+    })
+
+    ipcMain.handle("gestionar-eliminar-chat", async (_, id_chat) => {
+        return await GESTIONAR_ELIMINAR_CHAT(id_chat)
     })
 }

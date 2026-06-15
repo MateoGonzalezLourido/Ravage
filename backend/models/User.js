@@ -22,7 +22,14 @@ const ChatUsuarioSchema = new mongoose.Schema({
 
 const ContactoUsuarioSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
-    apodo: { type: EncryptedDataSchema, default: null }
+    apodo: { type: EncryptedDataSchema, default: null },
+    chat_id: { type: mongoose.Schema.Types.ObjectId, default: null }
+}, { _id: false });
+
+const HistChatContactoSchema = new mongoose.Schema({
+    u: { type: mongoose.Schema.Types.ObjectId, required: true }, // usuario_id del contacto
+    c: { type: mongoose.Schema.Types.ObjectId, required: true }, // chat_id dedicado
+    apodo: { type: String, default: "" }
 }, { _id: false });
 
 const UserSchema = new mongoose.Schema({
@@ -68,6 +75,10 @@ const UserSchema = new mongoose.Schema({
     },
     contactos: {
         type: [ContactoUsuarioSchema],
+        default: []
+    },
+    chats_contactos_hist: {
+        type: [HistChatContactoSchema],
         default: []
     },
     chats: {

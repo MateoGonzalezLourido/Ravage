@@ -1,7 +1,8 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario, DOM_CACHE, guardar_cache_virtualizacion, obtener_cache_virtualizacion } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
-import { scroll_fin_chat } from './gestor_chats.js'
+import { scroll_fin_chat, ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js'
+import { CARGAR_LISTA_CONTACTOS } from './gestor_contactos.js'
 import { safeIdSelector } from './seguridad_ui.js';
 import { HILOS_DESACTIVADOS } from './ajustes.js';
 
@@ -1692,12 +1693,16 @@ export async function mostrar_datos_chat_usuarios(e) {
         const targetEsAdmin = info_chat.admins?.some(a => normalizeIdHelper(a) === id) || false;
 
         const items = [];
+        const es_contacto = await Es_Contacto_Usuario(id);
 
-        if (!(await Es_Contacto_Usuario(id))) {
+        if (!es_contacto) {
             items.push(`<div class="context-menu-item" data-action="añadir-contacto">Añadir Contacto</div>`);
+        } else {
+            items.push(`<div class="context-menu-item" data-action="eliminar-contacto" style="color:#f87171;">Eliminar Contacto</div>`);
         }
 
-        if (soyAdmin) {
+        const es_grupal = (info_chat.usuarios?.length ?? 0) > 2;
+        if (soyAdmin && es_grupal) {
             items.push(`<div class="context-menu-item" data-action="expulsar">Expulsar</div>`);
             if (targetEsAdmin) {
                 items.push(`<div class="context-menu-item" data-action="quitar-admin">Quitar Admin</div>`);
@@ -1816,6 +1821,23 @@ export async function mostrar_datos_chat_usuarios(e) {
                     const resultado = await window.social_usuario.AÑADIR_CONTACTO(id, nombreFinal)
                     if (resultado) {
                         window.pushNotificacion({ prioridad: 1, texto: `${nombreFinal || "Contacto"} añadido`, tipo: "success" })
+                        const chat_id_vinculado = resultado.chat_id
+                        if (chat_id_vinculado && nombreFinal) {
+                            // Actualizar caché activa para que Encontrar_Nombre_Chat_Usuario devuelva el nuevo nombre
+                            const cache_actual = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(chat_id_vinculado)
+                            window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ ...(cache_actual || {}), _id: chat_id_vinculado, nombre: nombreFinal })
+                            // Si ese chat está abierto, actualizar el header directamente
+                            const chat_abierto_id = document.querySelector("#nav-principal-chat-usuario")?.dataset.id
+                            if (chat_abierto_id === chat_id_vinculado) {
+                                const headerNombre = document.querySelector("#nombre-chat-nav span")
+                                if (headerNombre) headerNombre.textContent = nombreFinal
+                            }
+                        }
+                        await Promise.all([
+                            ACTUALIZAR_LISTAS_CHAT(),
+                            CARGAR_LISTA_CONTACTOS(),
+                            mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true })
+                        ])
                     } else {
                         window.pushNotificacion({ prioridad: 2, texto: "No se pudo añadir el contacto", tipo: "error" })
                     }
@@ -1823,6 +1845,19 @@ export async function mostrar_datos_chat_usuarios(e) {
 
                 overlay.querySelector("#bt-confirmar-añadir-contacto").addEventListener("click", confirmar)
                 inputNombre.addEventListener("keydown", e => { if (e.key === "Enter") confirmar() })
+            }
+            else if (action === "eliminar-contacto") {
+                const ok = await window.social_usuario.ELIMINAR_CONTACTO(id);
+                if (ok) {
+                    window.pushNotificacion({ prioridad: 1, texto: "Contacto eliminado", tipo: "success" });
+                    await Promise.all([
+                        ACTUALIZAR_LISTAS_CHAT(),
+                        CARGAR_LISTA_CONTACTOS(),
+                        mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true })
+                    ]);
+                } else {
+                    window.pushNotificacion({ prioridad: 2, texto: "No se pudo eliminar el contacto", tipo: "error" });
+                }
             }
         })
     })

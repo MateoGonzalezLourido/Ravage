@@ -134,8 +134,17 @@ export async function INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, incremento = 1)
 export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
     try {
         console.log("[Renderer] ACTUALIZAR_LISTAS_CHAT: Solicitando lista de chats...");
-        const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
+        const [lista_chats, contactos, historial] = await Promise.all([
+            window.chats.OBTENER_CHATS_USUARIO(),
+            window.social_usuario.OBTENER_CONTACTOS_USUARIO(),
+            window.social_usuario.OBTENER_HIST_CHATS_CONTACTOS()
+        ])
         console.log(`[Renderer] Recibidos ${lista_chats.length} chats básicos.`);
+
+        const chat_ids_contacto = new Set([
+            ...(contactos || []).filter(c => c.chat_id).map(c => c.chat_id),
+            ...(historial || []).filter(h => h.chat_id).map(h => h.chat_id)
+        ])
 
         console.log("[Renderer] ACTUALIZAR_LISTAS_CHAT: Solicitando metadatos de grupos...");
         const datos_chats_grupales = await window.chats.OBTENER_DATOS_CHATS_GRUPALES({ data: lista_chats, grupales: null, mensajes: false })
@@ -148,9 +157,9 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
             })
         }
 
-        const lista_chats_ordenada = [...lista_chats].sort((a, b) => {
-            return new Date(b.ultimoCambio) - new Date(a.ultimoCambio)
-        })
+        const lista_chats_ordenada = [...lista_chats]
+            .filter(c => !chat_ids_contacto.has(c.id))
+            .sort((a, b) => new Date(b.ultimoCambio) - new Date(a.ultimoCambio))
 
         const lista_filtrada = filtro
             ? lista_chats_ordenada.filter(c => {
@@ -252,16 +261,22 @@ export async function abrir_chat_item(id_chat, force = false) {
 export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
     document.querySelector(".context-menu-chat")?.remove()
 
-    const lista_chats = await window.chats.OBTENER_CHATS_USUARIO()
+    const [lista_chats, contactos] = await Promise.all([
+        window.chats.OBTENER_CHATS_USUARIO(),
+        window.social_usuario.OBTENER_CONTACTOS_USUARIO()
+    ])
     const chatInfo = lista_chats.find(c => (c.id || c._id) === id_chat)
 
     const texto_silenciar = chatInfo?.silenciado ? "Desilenciar" : "Silenciar"
     const texto_bloquear = chatInfo?.bloqueado ? "Desbloquear" : "Bloquear"
+    const es_chat_contacto = (contactos || []).some(c => c.chat_id === id_chat)
+    const texto_eliminar = es_chat_contacto ? "Limpiar Chat" : "Eliminar Chat"
 
     const html = `
         <div class="context-menu context-menu-chat" style="position: fixed; z-index: 1000;">
             <div class="context-menu-item" data-action="silenciar">${texto_silenciar}</div>
             <div class="context-menu-item" data-action="bloquear">${texto_bloquear}</div>
+            <div class="context-menu-item" data-action="eliminar" style="color:#f87171;">${texto_eliminar}</div>
         </div>
     `
     document.body.insertAdjacentHTML("beforeend", html)
@@ -284,6 +299,23 @@ export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
                 if (res?.success) {
                     window.pushNotificacion({ prioridad: 1, texto: "Bloqueo alterado", tipo: "success" })
                     if (document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(id_chat)}`)) await abrir_chat_item(id_chat, true)
+                }
+            } else if (action === "eliminar") {
+                const res = await window.chats.GESTIONAR_ELIMINAR_CHAT(id_chat)
+                if (res?.success) {
+                    if (res.tipo === "limpiar") {
+                        window.pushNotificacion({ prioridad: 1, texto: "Chat limpiado", tipo: "success" })
+                        // Recargar el chat si está abierto para que se vea vacío
+                        if (document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(id_chat)}`)) {
+                            await abrir_chat_item(id_chat, true)
+                        }
+                    } else {
+                        window.pushNotificacion({ prioridad: 1, texto: "Chat eliminado", tipo: "success" })
+                        // Cerrar el panel si el chat estaba abierto
+                        document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(id_chat)}`)?.remove()
+                    }
+                } else {
+                    window.pushNotificacion({ prioridad: 2, texto: "No se pudo eliminar el chat", tipo: "error" })
                 }
             }
             await ACTUALIZAR_LISTAS_CHAT()
@@ -571,34 +603,30 @@ export async function INICIO_CHAT_MENU_PRINCIPAL() {
 
 export async function cambiar_datos_componente_lista_chats({ id_chat, data, notificacion = false }) {
     const id_chat_str = String(id_chat);
-    const componente_lista = document.querySelector(`#lista-chats-componentes ${safeIdSelector(id_chat_str)}`)
-    
+
+    let componente_lista = document.querySelector(`#lista-chats-componentes ${safeIdSelector(id_chat_str)}`)
+    let lista_contenedor = DOM_CACHE.lista_chats_componentes;
+
+    if (!componente_lista) {
+        componente_lista = document.querySelector(`#lista-contactos-componentes ${safeIdSelector(id_chat_str)}`)
+        lista_contenedor = document.getElementById("lista-contactos-componentes");
+    }
+
     if (componente_lista) {
-        // Actualizar último mensaje si viene en la data
         const asunto = data?.asunto || data?.data?.asunto || (typeof data === 'string' ? data : "");
         if (asunto) {
             const elMsg = componente_lista.querySelector(".ultimo-mensaje-chat-lista span");
             if (elMsg) elMsg.innerHTML = escapeHTML(asunto);
         }
 
-        // Actualizar fecha si viene
         const fecha = data?.fecha || data?.data?.data || data?.data;
         if (fecha) {
             const elFecha = componente_lista.querySelector(".fecha-chat-lista span");
             if (elFecha) elFecha.innerHTML = escapeHTML(formatear_fecha_chat_lista(fecha));
         }
 
-        // Reordenar: mover al principio de la lista
-        const lista_contenedor = DOM_CACHE.lista_chats_componentes;
-        if (lista_contenedor) {
-            // Solo movemos si no hay un filtro de búsqueda activo que pueda verse afectado
-            // o si simplemente queremos que el más reciente esté arriba siempre.
-            // Para Ravage, el comportamiento esperado es que suba al tope.
-            lista_contenedor.prepend(componente_lista);
-        }
+        if (lista_contenedor) lista_contenedor.prepend(componente_lista);
 
-        if (notificacion) {
-            componente_lista.classList.add("nuevo-mensaje-notificacion")
-        }
+        if (notificacion) componente_lista.classList.add("nuevo-mensaje-notificacion")
     }
 }

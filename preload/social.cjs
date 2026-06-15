@@ -22,6 +22,15 @@ module.exports = {
     AÑADIR_CONTACTO: (id, apodo) => {
         return ipcRenderer.invoke("añadir-contacto", id, apodo)
     },
+    ELIMINAR_CONTACTO: (id) => {
+        return ipcRenderer.invoke("eliminar-contacto", id)
+    },
+    OBTENER_HIST_CHATS_CONTACTOS: () => {
+        return ipcRenderer.invoke("obtener-hist-chats-contactos")
+    },
+    VINCULAR_CHAT_CONTACTO: (contacto_id, chat_id) => {
+        return ipcRenderer.invoke("vincular-chat-contacto", contacto_id, chat_id)
+    },
     AÑADIR_USUARIO_BLOQUEADOS: (id, apodo) => {
         return ipcRenderer.invoke("añadir-usuarios-bloqueados", id, apodo)
     },

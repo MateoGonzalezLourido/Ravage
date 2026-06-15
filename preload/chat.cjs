@@ -60,5 +60,11 @@ module.exports = {
     },
     DESFIJAR_MENSAJE: (id_chat) => {
         return ipcRenderer.invoke("desfijar-mensaje", id_chat)
+    },
+    LIMPIAR_MENSAJES_CHAT: (id_chat) => {
+        return ipcRenderer.invoke("limpiar-mensajes-chat", id_chat)
+    },
+    GESTIONAR_ELIMINAR_CHAT: (id_chat) => {
+        return ipcRenderer.invoke("gestionar-eliminar-chat", id_chat)
     }
 };

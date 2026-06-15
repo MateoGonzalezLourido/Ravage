@@ -363,7 +363,12 @@
     <div id="menu-chats-inicio">
         <div id="lista-chats">
             <div class="titulo-lista-chats-principal">
-                <div class="text-titulo-lista-chats"><span>Chats</span></div>
+                <div class="text-titulo-lista-chats">
+                    <div class="selector-vista-panel" id="selector-vista-panel">
+                        <button class="selector-vista-btn activo" data-vista="chats">Chats</button>
+                        <button class="selector-vista-btn" data-vista="contactos">Contactos</button>
+                    </div>
+                </div>
                 <div class="seccion-acciones-principales-lista-chat">
                     <div id="bt-añadir-chat">
                         <img draggable="false" src="../recursos/suma.png" alt="" loading="lazy" decoding="async">
@@ -373,9 +378,8 @@
             <div class="seccion-buscar-chat-lista">
                 <input type="text" id="input-buscar-chat" placeholder="Buscar chat..." maxlength="50">
             </div>
-            <div id="lista-chats-componentes">
-
-            </div>
+            <div id="lista-chats-componentes"></div>
+            <div id="lista-contactos-componentes" class="ocultar-display"></div>
         </div>
         <div class="division-2">
             <!--navegacion de menu inicio-->
