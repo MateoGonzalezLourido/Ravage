@@ -162,7 +162,7 @@ function detectarZalgo(text) {
 function removeZalgo(text) {
     const logitudOriginal = text.length;
     const nuevo = text.replace(zalgoRegex, '');
-    return { texto: nuevo, cambios: nuevo.length !== logitudOriginal };
+    return { text: nuevo, cambios: nuevo.length !== logitudOriginal };
 }
 
 // --- 5. DETECCION DE COMANDOS DE TERMINAL PELIGROSOS ---

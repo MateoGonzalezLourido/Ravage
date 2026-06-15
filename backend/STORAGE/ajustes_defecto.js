@@ -21,9 +21,8 @@ export const AJUSTES_APP_DEFAULT = {
     NOTI_OS_DESCARGA_INDIVIDUAL: true,
     NOTI_OS_DESCARGA_GRUPAL: true,
 
-    // Configuración por defecto de Escáneres de Seguridad(0:desactivado,1:escanear,2:borrar peligro)
+    // Configuración por defecto de Escáneres de Seguridad(0:desactivado,1:aviso,3:aviso+formateo)
     ESCANER_ESTEGANOGRAFIA: 1,
-    ESCANER_URL: 0,
     ESCANER_URL_MALICIOSA: 1,
     ESCANER_XSS: 0,
     ESCANER_CODIGO: 0,

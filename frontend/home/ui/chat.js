@@ -387,13 +387,19 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
 * @function: crear el html de un mensaje, las partes estan fuera y dentro de la funcion principal
  */
 
-const escapeHTML = (str) => str.replace(/[&<>"'`]/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;',
-    '"': '&quot;', "'": '&#39;', '`': '&#96;'
-})[c]);
+const escapeHTML = (str) => {
+    if (str == null) return '';
+    return String(str).replace(/[&<>"'`]/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;',
+        '"': '&quot;', "'": '&#39;', '`': '&#96;'
+    })[c]);
+};
 
 const sanitizarSVG = (svg) =>
-    DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true } });
+    DOMPurify.sanitize(svg, {
+        USE_PROFILES: { svg: true },
+        FORBID_ATTR: ['onload', 'onerror', 'onclick', 'onmouseover']
+    });
 
 const sanitizarTexto = (texto) =>
     DOMPurify.sanitize(texto, {
@@ -1500,8 +1506,45 @@ export async function mostrar_datos_chat_usuarios(e) {
     })
 
     document.getElementById("bt-abrir-ajustes-chat")?.addEventListener("click", async () => {
-        const datos_actuales = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, "nombre descripcion");
+        const datos_actuales = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, "nombre descripcion escaneres_seguridad");
         const descripcion_actual = datos_actuales?.descripcion || "";
+        const escaneres_actual = datos_actuales?.escaneres_seguridad || {};
+
+        const ESCANERES_UI = [
+            { key: "ESCANER_ZALGO",             label: "Zalgo",              desc: "Sobrecarga de diacríticos que rompe la UI",       sync: true  },
+            { key: "ESCANER_ESTEGANOGRAFIA",    label: "Esteganografía",     desc: "Caracteres invisibles y homoglifos Unicode",      sync: true  },
+            { key: "ESCANER_URL_MALICIOSA",     label: "URLs maliciosas",    desc: "Comprueba URLs con Google Safe Browsing",         sync: false },
+            { key: "ESCANER_XSS",               label: "XSS / Inyección",    desc: "Scripts, iframes y código HTML peligroso",        sync: false },
+            { key: "ESCANER_CODIGO",            label: "Código fuente",      desc: "JS, SQL, PHP y comandos de consola",              sync: false },
+            { key: "ESCANER_COMANDOS_TERMINAL", label: "Comandos shell",     desc: "rm -rf, sudo, wget y similares",                  sync: false },
+            { key: "ESCANER_CRYPTO_BILLETERAS", label: "Billeteras cripto",  desc: "Direcciones BTC, ETH y similares",                sync: false },
+            { key: "ESCANER_DIRECCIONES_IP",    label: "Direcciones IP",     desc: "IPs públicas (riesgo de privacidad)",             sync: false },
+            { key: "ESCANER_HOMOGLIFOS",        label: "Homoglifos",         desc: "Mezcla de cirílico/griego con letras latinas",    sync: false },
+        ];
+        const DEFAULTS_ESCANER = {
+            ESCANER_ESTEGANOGRAFIA: 1, ESCANER_URL_MALICIOSA: 1, ESCANER_XSS: 0,
+            ESCANER_CODIGO: 0, ESCANER_ZALGO: 1, ESCANER_COMANDOS_TERMINAL: 1,
+            ESCANER_CRYPTO_BILLETERAS: 1, ESCANER_DIRECCIONES_IP: 0, ESCANER_HOMOGLIFOS: 1
+        };
+
+        const filasEscaneres = ESCANERES_UI.map(({ key, label, desc, sync }) => {
+            const nivel = escaneres_actual[key] ?? DEFAULTS_ESCANER[key] ?? 1;
+            const tituloFormateo = sync
+                ? "Aviso + elimina el contenido peligroso"
+                : "Solo aviso (formateo no soportado por este escáner)";
+            return `
+                <div class="ajustes-escaner-fila">
+                    <div class="ajustes-escaner-info">
+                        <span class="ajustes-escaner-nombre">${label}</span>
+                        <span class="ajustes-escaner-desc">${desc}</span>
+                    </div>
+                    <div class="ajustes-escaner-grupo" data-key="${key}">
+                        <button class="ajustes-escaner-btn${nivel === 0 ? ' activo' : ''}" data-valor="0" title="Desactivado">Off</button>
+                        <button class="ajustes-escaner-btn${nivel === 1 ? ' activo' : ''}" data-valor="1" title="Muestra un icono de aviso">Aviso</button>
+                        <button class="ajustes-escaner-btn${nivel === 3 ? ' activo' : ''}${!sync ? ' escaner-solo-sync' : ''}" data-valor="3" title="${tituloFormateo}">Formateo</button>
+                    </div>
+                </div>`;
+        }).join('');
 
         const overlay = document.createElement("div");
         overlay.className = "overlay-ajustes-chat-full";
@@ -1524,6 +1567,14 @@ export async function mostrar_datos_chat_usuarios(e) {
                     <label class="ajustes-chat-label">Descripción <span class="ajustes-chat-contador" id="ajustes-desc-contador">${descripcion_actual.length}/100</span></label>
                     <textarea class="ajustes-chat-textarea" id="ajustes-chat-descripcion" maxlength="100" placeholder="Añade una descripción...">${escapeHTML(descripcion_actual)}</textarea>
                 </div>
+                <div class="ajustes-chat-separador"></div>
+                <div class="ajustes-chat-campo">
+                    <label class="ajustes-chat-label">Escaneres de seguridad</label>
+                    <p class="ajustes-chat-sublabel">Formateo elimina el contenido peligroso del mensaje. Solo disponible en escaneres síncronos (Zalgo, Esteganografía).</p>
+                    <div class="ajustes-escaneres-lista">
+                        ${filasEscaneres}
+                    </div>
+                </div>
             </div>
             <div class="ajustes-chat-acciones">
                 <button class="ajustes-chat-btn ajustes-chat-btn-cancelar" id="ajustes-chat-cancelar">Cancelar</button>
@@ -1540,6 +1591,15 @@ export async function mostrar_datos_chat_usuarios(e) {
             contador.textContent = `${textareaDesc.value.length}/100`;
         });
 
+        menuInterior.querySelectorAll(".ajustes-escaner-grupo").forEach(grupo => {
+            grupo.querySelectorAll(".ajustes-escaner-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    grupo.querySelectorAll(".ajustes-escaner-btn").forEach(b => b.classList.remove("activo"));
+                    btn.classList.add("activo");
+                });
+            });
+        });
+
         const cerrar = () => overlay.remove();
 
         overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrar(); });
@@ -1550,6 +1610,13 @@ export async function mostrar_datos_chat_usuarios(e) {
             const nuevoNombre = menuInterior.querySelector("#ajustes-chat-nombre").value.trim();
             const nuevaDescripcion = textareaDesc.value.trim();
 
+            const nuevos_escaneres = {};
+            menuInterior.querySelectorAll(".ajustes-escaner-grupo").forEach(grupo => {
+                const key = grupo.dataset.key;
+                const activo = grupo.querySelector(".ajustes-escaner-btn.activo");
+                if (activo) nuevos_escaneres[key] = parseInt(activo.dataset.valor);
+            });
+
             const btn = menuInterior.querySelector("#ajustes-chat-guardar");
             btn.disabled = true;
             btn.textContent = "Guardando...";
@@ -1557,19 +1624,17 @@ export async function mostrar_datos_chat_usuarios(e) {
             try {
                 const res = await window.chats.ACTUALIZAR_DATOS_CHAT(id_chat, {
                     nombre: nuevoNombre || null,
-                    descripcion: nuevaDescripcion || null
+                    descripcion: nuevaDescripcion || null,
+                    escaneres_seguridad: nuevos_escaneres
                 });
 
                 if (res?.success) {
                     window.pushNotificacion({ prioridad: 1, texto: "Ajustes guardados", tipo: "success" });
                     if (nuevoNombre) {
-                        // Header del chat abierto
                         const nombreNav = document.querySelector("#nombre-chat-nav span");
                         if (nombreNav) nombreNav.textContent = nuevoNombre;
-                        // Panel de info
                         const nombreInfo = document.querySelector(".info-chat-nombre span");
                         if (nombreInfo) nombreInfo.textContent = nuevoNombre;
-                        // Item en lista de chats y lista de contactos
                         for (const listaId of ["lista-chats-componentes", "lista-contactos-componentes"]) {
                             const item = document.querySelector(`#${listaId} [data-id="${id_chat}"]`);
                             if (item) {
@@ -1577,11 +1642,9 @@ export async function mostrar_datos_chat_usuarios(e) {
                                 if (span) span.textContent = nuevoNombre;
                             }
                         }
-                        // Actualizar caché activa del chat
                         window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ _id: id_chat, nombre: nuevoNombre });
                     }
                     info_chat.descripcion = nuevaDescripcion || null;
-                    // Actualizar descripción en el panel de info si está abierto
                     const elDesc = document.getElementById("info-chat-descripcion-texto");
                     if (elDesc) {
                         if (nuevaDescripcion) {
@@ -1591,6 +1654,11 @@ export async function mostrar_datos_chat_usuarios(e) {
                             elDesc.innerHTML = "";
                             elDesc.style.display = "none";
                         }
+                    }
+                    // Propagar config de escaneres: caché backend + virtualización activa
+                    window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ _id: id_chat, seguridad: nuevos_escaneres });
+                    if (_virt && _virt.id_chat === id_chat) {
+                        _virt.escaneres_seguridad = nuevos_escaneres;
                     }
                     cerrar();
                 } else {

@@ -939,7 +939,7 @@ export async function GESTIONAR_ELIMINAR_CHAT(id_chat) {
     }
 }
 
-export async function ACTUALIZAR_DATOS_CHAT(id_chat, { nombre, descripcion }) {
+export async function ACTUALIZAR_DATOS_CHAT(id_chat, { nombre, descripcion, escaneres_seguridad }) {
     try {
         const id_chat_str = normalizeId(id_chat);
         if (!id_chat_str) return { success: false };
@@ -958,6 +958,9 @@ export async function ACTUALIZAR_DATOS_CHAT(id_chat, { nombre, descripcion }) {
         }
         if (descripcion !== undefined) {
             update.descripcion = descripcion && descripcion.trim() ? encriptarDatosSistema(descripcion.trim()) : null;
+        }
+        if (escaneres_seguridad !== undefined && escaneres_seguridad !== null) {
+            update.escaneres_seguridad = escaneres_seguridad;
         }
 
         if (Object.keys(update).length === 0) return { success: true };

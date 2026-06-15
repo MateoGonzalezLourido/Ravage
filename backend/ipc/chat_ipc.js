@@ -185,6 +185,19 @@ export function registerChatHandlers(mainWindow, socket) {
             if (!check.success) throw new Error("Descripción no válida");
             if (datos.descripcion.length > 100) throw new Error("Descripción demasiado larga (máximo 100 caracteres)");
         }
+        if (datos.escaneres_seguridad != null) {
+            const claves_validas = new Set([
+                'ESCANER_ESTEGANOGRAFIA', 'ESCANER_URL_MALICIOSA', 'ESCANER_XSS',
+                'ESCANER_CODIGO', 'ESCANER_ZALGO', 'ESCANER_COMANDOS_TERMINAL',
+                'ESCANER_CRYPTO_BILLETERAS', 'ESCANER_DIRECCIONES_IP', 'ESCANER_HOMOGLIFOS'
+            ]);
+            const valores_validos = new Set([0, 1, 3]);
+            for (const [k, v] of Object.entries(datos.escaneres_seguridad)) {
+                if (!claves_validas.has(k) || !valores_validos.has(v)) {
+                    throw new Error(`Valor de escáner no válido: ${k}=${v}`);
+                }
+            }
+        }
         return await ACTUALIZAR_DATOS_CHAT(id_chat, datos);
     })
 }

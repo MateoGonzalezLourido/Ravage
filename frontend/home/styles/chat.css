@@ -562,6 +562,9 @@ body.sin-hilos-chat .mensaje-chat::after {
     min-width: 400px;
     max-width: 550px;
     width: 90%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.1);
     animation: slideUpMenu 0.3s cubic-bezier(0.25, 1, 0.5, 1);
@@ -624,13 +627,6 @@ body.sin-hilos-chat .mensaje-chat::after {
 .ajustes-chat-cerrar img {
     width: 14px;
     filter: invert(1);
-}
-
-.ajustes-chat-cuerpo {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 22px;
 }
 
 .ajustes-chat-campo {
@@ -719,6 +715,112 @@ body.sin-hilos-chat .mensaje-chat::after {
 
 .ajustes-chat-btn-guardar:hover:not(:disabled) {
     opacity: 0.85;
+}
+
+.ajustes-chat-separador {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.07);
+    margin: 4px 0;
+}
+
+.ajustes-chat-sublabel {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+    margin: 0 0 10px 0;
+    line-height: 1.5;
+}
+
+/* ─── Lista de escaneres ──────────────────────────────────────────── */
+.ajustes-escaneres-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ajustes-escaner-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ajustes-escaner-fila:last-child {
+    border-bottom: none;
+}
+
+.ajustes-escaner-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.ajustes-escaner-nombre {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ajustes-escaner-desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ajustes-escaner-grupo {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.ajustes-escaner-btn {
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.4);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.ajustes-escaner-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.ajustes-escaner-btn.activo {
+    background: rgba(168, 85, 247, 0.25);
+    border-color: rgba(168, 85, 247, 0.5);
+    color: var(--primary);
+}
+
+.ajustes-escaner-btn.escaner-solo-sync {
+    opacity: 0.55;
+}
+
+.ajustes-escaner-btn.escaner-solo-sync.activo {
+    opacity: 1;
+}
+
+.ajustes-chat-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 4px;
+    overflow-y: auto;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(168, 85, 247, 0.3) transparent;
 }
 
 /* ─── Escáneres de Seguridad ─────────────────────────────────────────── */
