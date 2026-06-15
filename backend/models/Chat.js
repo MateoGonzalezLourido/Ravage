@@ -42,6 +42,10 @@ const ChatSchema = new mongoose.Schema({
             ESCANER_HOMOGLIFOS: 1
         }
     },
+    descripcion: {
+        type: EncryptedDataSchema,
+        default: null
+    },
     fecha_creacion: { type: Date, default: Date.now },
     msfijado: { type: mongoose.Schema.Types.ObjectId, default: null }
 });

@@ -120,7 +120,7 @@ export async function INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, incremento = 1)
         const cache = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(id_chat);
         if (cache) {
             const nuevo_total = (Number(cache.nmensajes) || 0) + incremento;
-             window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
+            window.chats.GUARDAR_CACHE_CHAT_ACTIVO({
                 _id: id_chat,
                 nmensajes: nuevo_total
             });

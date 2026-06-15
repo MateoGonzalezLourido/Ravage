@@ -1338,7 +1338,7 @@ export async function mostrar_datos_chat_usuarios(e) {
     let info_chat = { ...(cache_activo || {}) }
 
     // Campos necesarios para la vista de info
-    const campos_necesarios = ["usuarios", "admins", "fecha_creacion", "nmensajes"]
+    const campos_necesarios = ["usuarios", "admins", "fecha_creacion", "nmensajes", "descripcion"]
     const faltantes = campos_necesarios.filter(f => info_chat[f] === undefined)
 
     // Si no tenemos n_mensajes ni el array de mensajes, pedirlo
@@ -1406,6 +1406,10 @@ export async function mostrar_datos_chat_usuarios(e) {
                 <div class="info-chat-subtitulo">
                     ${integrantes_chat()}
                 </div>
+                ${info_chat?.descripcion ? `
+                <div class="info-chat-descripcion" id="info-chat-descripcion-texto">
+                    <span>${escapeHTML(info_chat.descripcion)}</span>
+                </div>` : `<div class="info-chat-descripcion" id="info-chat-descripcion-texto" style="display:none;"></div>`}
             </div>
 
             <div class="info-chat-detalles">
@@ -1495,24 +1499,111 @@ export async function mostrar_datos_chat_usuarios(e) {
         if (cuerpoChat) cuerpoChat.classList.remove("panel-lateral-abierto")
     })
 
-    document.getElementById("bt-abrir-ajustes-chat")?.addEventListener("click", () => {
-        // Crear el overlay y el contenedor usando las clases de chat.css
+    document.getElementById("bt-abrir-ajustes-chat")?.addEventListener("click", async () => {
+        const datos_actuales = await window.chats.OBTENER_DATOS_CHAT_UNICO(id_chat, "nombre descripcion");
+        const descripcion_actual = datos_actuales?.descripcion || "";
+
         const overlay = document.createElement("div");
         overlay.className = "overlay-ajustes-chat-full";
 
         const menuInterior = document.createElement("div");
         menuInterior.className = "menu-ajustes-chat-interior";
+        menuInterior.innerHTML = `
+            <div class="ajustes-chat-header">
+                <span>Ajustes del chat</span>
+                <div class="ajustes-chat-cerrar" id="bt-cerrar-ajustes-chat">
+                    <img src="../recursos/cruz.png" alt="cerrar" loading="lazy" decoding="async">
+                </div>
+            </div>
+            <div class="ajustes-chat-cuerpo">
+                <div class="ajustes-chat-campo">
+                    <label class="ajustes-chat-label">Nombre del chat</label>
+                    <input class="ajustes-chat-input" id="ajustes-chat-nombre" type="text" maxlength="100" value="${escapeHTML(nombre_chat)}" placeholder="Nombre del chat">
+                </div>
+                <div class="ajustes-chat-campo">
+                    <label class="ajustes-chat-label">Descripción <span class="ajustes-chat-contador" id="ajustes-desc-contador">${descripcion_actual.length}/100</span></label>
+                    <textarea class="ajustes-chat-textarea" id="ajustes-chat-descripcion" maxlength="100" placeholder="Añade una descripción...">${escapeHTML(descripcion_actual)}</textarea>
+                </div>
+            </div>
+            <div class="ajustes-chat-acciones">
+                <button class="ajustes-chat-btn ajustes-chat-btn-cancelar" id="ajustes-chat-cancelar">Cancelar</button>
+                <button class="ajustes-chat-btn ajustes-chat-btn-guardar" id="ajustes-chat-guardar">Guardar</button>
+            </div>
+        `;
 
-        // Inyectar el menú en el overlay y el overlay en el body
         overlay.appendChild(menuInterior);
         document.body.appendChild(overlay);
 
-        // Cerrar al hacer clic en el fondo (fuera del menú)
-        overlay.addEventListener("click", (e) => {
-            if (e.target === overlay) overlay.remove();
+        const textareaDesc = menuInterior.querySelector("#ajustes-chat-descripcion");
+        const contador = menuInterior.querySelector("#ajustes-desc-contador");
+        textareaDesc.addEventListener("input", () => {
+            contador.textContent = `${textareaDesc.value.length}/100`;
         });
 
-        // TODO: Contenido del menú...
+        const cerrar = () => overlay.remove();
+
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) cerrar(); });
+        menuInterior.querySelector("#bt-cerrar-ajustes-chat")?.addEventListener("click", cerrar);
+        menuInterior.querySelector("#ajustes-chat-cancelar")?.addEventListener("click", cerrar);
+
+        menuInterior.querySelector("#ajustes-chat-guardar")?.addEventListener("click", async () => {
+            const nuevoNombre = menuInterior.querySelector("#ajustes-chat-nombre").value.trim();
+            const nuevaDescripcion = textareaDesc.value.trim();
+
+            const btn = menuInterior.querySelector("#ajustes-chat-guardar");
+            btn.disabled = true;
+            btn.textContent = "Guardando...";
+
+            try {
+                const res = await window.chats.ACTUALIZAR_DATOS_CHAT(id_chat, {
+                    nombre: nuevoNombre || null,
+                    descripcion: nuevaDescripcion || null
+                });
+
+                if (res?.success) {
+                    window.pushNotificacion({ prioridad: 1, texto: "Ajustes guardados", tipo: "success" });
+                    if (nuevoNombre) {
+                        // Header del chat abierto
+                        const nombreNav = document.querySelector("#nombre-chat-nav span");
+                        if (nombreNav) nombreNav.textContent = nuevoNombre;
+                        // Panel de info
+                        const nombreInfo = document.querySelector(".info-chat-nombre span");
+                        if (nombreInfo) nombreInfo.textContent = nuevoNombre;
+                        // Item en lista de chats y lista de contactos
+                        for (const listaId of ["lista-chats-componentes", "lista-contactos-componentes"]) {
+                            const item = document.querySelector(`#${listaId} [data-id="${id_chat}"]`);
+                            if (item) {
+                                const span = item.querySelector(".nombre-texto");
+                                if (span) span.textContent = nuevoNombre;
+                            }
+                        }
+                        // Actualizar caché activa del chat
+                        window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ _id: id_chat, nombre: nuevoNombre });
+                    }
+                    info_chat.descripcion = nuevaDescripcion || null;
+                    // Actualizar descripción en el panel de info si está abierto
+                    const elDesc = document.getElementById("info-chat-descripcion-texto");
+                    if (elDesc) {
+                        if (nuevaDescripcion) {
+                            elDesc.innerHTML = `<span>${escapeHTML(nuevaDescripcion)}</span>`;
+                            elDesc.style.display = "";
+                        } else {
+                            elDesc.innerHTML = "";
+                            elDesc.style.display = "none";
+                        }
+                    }
+                    cerrar();
+                } else {
+                    window.pushNotificacion({ prioridad: 0, texto: "Error al guardar ajustes", tipo: "error" });
+                    btn.disabled = false;
+                    btn.textContent = "Guardar";
+                }
+            } catch {
+                window.pushNotificacion({ prioridad: 0, texto: "Error al guardar ajustes", tipo: "error" });
+                btn.disabled = false;
+                btn.textContent = "Guardar";
+            }
+        });
     })
 
     document.getElementById("bt-ver-archivos-chat")?.addEventListener("click", async () => {

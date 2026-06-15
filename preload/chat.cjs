@@ -66,5 +66,8 @@ module.exports = {
     },
     GESTIONAR_ELIMINAR_CHAT: (id_chat) => {
         return ipcRenderer.invoke("gestionar-eliminar-chat", id_chat)
+    },
+    ACTUALIZAR_DATOS_CHAT: (id_chat, datos) => {
+        return ipcRenderer.invoke("actualizar-datos-chat", id_chat, datos)
     }
 };

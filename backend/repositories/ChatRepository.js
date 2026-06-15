@@ -598,6 +598,11 @@ async function resolverNombresChats(chats) {
             chat.nombre = nombreDec || "Grupo sin nombre (Cifrado)";
         }
 
+        // Desencriptar la descripción si existe
+        if (chat.descripcion && typeof chat.descripcion === 'object' && chat.descripcion.data) {
+            chat.descripcion = desencriptarDatosSistema(chat.descripcion) || null;
+        }
+
         const hasUsuarios = Array.isArray(chat.usuarios);
         const is_1on1 = hasUsuarios && chat.usuarios.length === 2;
 
@@ -931,6 +936,41 @@ export async function GESTIONAR_ELIMINAR_CHAT(id_chat) {
     } catch (e) {
         log.error(e);
         return false;
+    }
+}
+
+export async function ACTUALIZAR_DATOS_CHAT(id_chat, { nombre, descripcion }) {
+    try {
+        const id_chat_str = normalizeId(id_chat);
+        if (!id_chat_str) return { success: false };
+
+        const id_propio = getIDMongodbUsuario();
+        const chat = await ChatsRavage.findById(id_chat_str, "admins").lean();
+        if (!chat) return { success: false };
+
+        if (!chat.admins.some(a => a.toString() === id_propio.toString())) {
+            return { success: false, error: "no_admin" };
+        }
+
+        const update = {};
+        if (nombre !== undefined) {
+            update.nombre = nombre && nombre.trim() ? encriptarDatosSistema(nombre.trim()) : null;
+        }
+        if (descripcion !== undefined) {
+            update.descripcion = descripcion && descripcion.trim() ? encriptarDatosSistema(descripcion.trim()) : null;
+        }
+
+        if (Object.keys(update).length === 0) return { success: true };
+
+        await ChatsRavage.updateOne({ _id: id_chat_str }, { $set: update });
+
+        const updatedChat = await ChatsRavage.findById(id_chat_str).lean();
+        if (updatedChat) await setChatEnCacheRaw(updatedChat);
+
+        return { success: true };
+    } catch (e) {
+        log.error(e);
+        return { success: false };
     }
 }
 

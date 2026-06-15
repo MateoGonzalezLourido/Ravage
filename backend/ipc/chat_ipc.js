@@ -16,7 +16,8 @@ import {
     SILENCIAR_CHAT_USUARIO,
     BLOQUEAR_CHAT_USUARIO,
     LIMPIAR_MENSAJES_CHAT,
-    GESTIONAR_ELIMINAR_CHAT
+    GESTIONAR_ELIMINAR_CHAT,
+    ACTUALIZAR_DATOS_CHAT
 } from '../repositories/ChatRepository.js';
 import {
     obtenerChatsUsuarioDB
@@ -173,5 +174,17 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.handle("gestionar-eliminar-chat", async (_, id_chat) => {
         return await GESTIONAR_ELIMINAR_CHAT(id_chat)
+    })
+
+    ipcMain.handle("actualizar-datos-chat", async (_, id_chat, datos) => {
+        if (datos.nombre && !comprobar_nombre_archivo(datos.nombre).success) {
+            throw new Error("Nombre de chat no válido");
+        }
+        if (datos.descripcion) {
+            const check = comprobar_mensaje(datos.descripcion);
+            if (!check.success) throw new Error("Descripción no válida");
+            if (datos.descripcion.length > 100) throw new Error("Descripción demasiado larga (máximo 100 caracteres)");
+        }
+        return await ACTUALIZAR_DATOS_CHAT(id_chat, datos);
     })
 }

@@ -590,6 +590,137 @@ body.sin-hilos-chat .mensaje-chat::after {
     }
 }
 
+/* ─── Contenido del menú de ajustes del chat ────────────────────────── */
+.ajustes-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.ajustes-chat-header > span {
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.ajustes-chat-cerrar {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.15s, background 0.15s;
+}
+
+.ajustes-chat-cerrar:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.ajustes-chat-cerrar img {
+    width: 14px;
+    filter: invert(1);
+}
+
+.ajustes-chat-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.ajustes-chat-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ajustes-chat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ajustes-chat-contador {
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.ajustes-chat-input,
+.ajustes-chat-textarea {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+    resize: none;
+}
+
+.ajustes-chat-input:focus,
+.ajustes-chat-textarea:focus {
+    border-color: var(--primary);
+}
+
+.ajustes-chat-textarea {
+    min-height: 80px;
+    max-height: 120px;
+}
+
+.ajustes-chat-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.ajustes-chat-btn {
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s, background 0.15s;
+}
+
+.ajustes-chat-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ajustes-chat-btn-cancelar {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.ajustes-chat-btn-cancelar:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.13);
+}
+
+.ajustes-chat-btn-guardar {
+    background: var(--primary);
+    color: #fff;
+}
+
+.ajustes-chat-btn-guardar:hover:not(:disabled) {
+    opacity: 0.85;
+}
+
 /* ─── Escáneres de Seguridad ─────────────────────────────────────────── */
 .contenedor-iconos-seguridad {
     display: flex;
@@ -1302,6 +1433,15 @@ body.sin-hilos-chat .mensaje-chat::after {
 .info-chat-subtitulo {
     font-size: 14px;
     color: var(--wa-text-secondary);
+}
+
+.info-chat-descripcion {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 8px;
+    padding: 0 8px;
+    line-height: 1.5;
+    word-break: break-word;
 }
 
 .info-chat-detalles {
