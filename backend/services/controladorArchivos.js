@@ -308,8 +308,7 @@ async function saveAjustesAppFile({ data = {}, create = false }) {
 function _tryDecryptRaw(raw, key) {
     try {
         if (!raw?.iv || !raw?.tag || !raw?.data) return null;
-        const finalKey = Buffer.isBuffer(key) ? key : Buffer.from(key, 'hex');
-        const decipher = createDecipheriv(algorithm, finalKey, Buffer.from(raw.iv, 'hex'));
+        const decipher = createDecipheriv(algorithm, key, Buffer.from(raw.iv, 'hex'));
         decipher.setAuthTag(Buffer.from(raw.tag, 'hex'));
         let decrypted = Buffer.concat([decipher.update(Buffer.from(raw.data, 'hex')), decipher.final()]);
         if (raw.compressed) decrypted = gunzipSync(decrypted);
@@ -363,8 +362,7 @@ async function readFileSession(rutaKey, cifrado = true) {
     }
 
     try {
-        const finalKey = Buffer.isBuffer(secretKey) ? secretKey : Buffer.from(secretKey, "hex");
-        const decipher = createDecipheriv(algorithm, finalKey, Buffer.from(raw.iv, "hex"));
+        const decipher = createDecipheriv(algorithm, secretKey, Buffer.from(raw.iv, "hex"));
         decipher.setAuthTag(Buffer.from(raw.tag, "hex"));
 
         let decrypted = Buffer.concat([
@@ -507,9 +505,8 @@ async function CifrarDatosArchivos(data, especial) {
 
     if (!secretKey) throw new Error("No se pudo obtener la clave secreta para el cifrado.");
 
-    const finalKey = Buffer.isBuffer(secretKey) ? secretKey : Buffer.from(secretKey, "hex");
     const iv = randomBytes(12);
-    const cipher = createCipheriv(algorithm, finalKey, iv);
+    const cipher = createCipheriv(algorithm, secretKey, iv);
 
     const compressedData = gzipSync(JSON.stringify(data));
 

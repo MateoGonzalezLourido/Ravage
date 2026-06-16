@@ -116,8 +116,7 @@ const UserSchema = new mongoose.Schema({
         index: true
     },
     secretKey: {
-        type: String,
-        default: ""
+        type: Buffer
     },
     publicKey: {
         type: String,

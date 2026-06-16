@@ -129,7 +129,7 @@ export async function LoginUsuarioDB({ correo = null, contrasena = null, token =
 
 export async function InsertarUsuario({ apodo = "Usuario", contrasena, correo, secretKey, idamigo, publicKey = "" }) {
     try {
-        const sKey = secretKey || randomBytes(32).toString("hex");
+        const sKey = secretKey || randomBytes(32);
         const idAmigo = idamigo || randomBytes(5).toString("hex").toUpperCase();
 
         const correoHash = hashDatosSistema(correo);
@@ -348,7 +348,7 @@ function _faltan_datos(procesado, datos_usar) {
 }
 
 export async function ActualizarSecretKeyUsuario(actualizar = true) {
-    const key = randomBytes(32).toString("hex");
+    const key = randomBytes(32);
     if (!actualizar) return key;
     try {
         const correoHash = hashDatosSistema(getCorreoSesion());
