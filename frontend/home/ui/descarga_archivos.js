@@ -1,9 +1,19 @@
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { invalidar_cache_historial } from './historial_archivos_descargados.js'
 
+const COOLDOWN_DESCARGA_MS = 1000;
+let _ultimo_inicio_descarga = 0;
+
 export async function manejar_descarga_archivo(e) {
     const el = e.target.closest(".archivo-mensaje-div-archivos")
     if (!el) return
+
+    const ahora = Date.now();
+    if (ahora - _ultimo_inicio_descarga < COOLDOWN_DESCARGA_MS) {
+        window.pushNotificacion({ prioridad: 2, texto: 'Espera un momento antes de descargar otro archivo', tipo: 'warning' });
+        return;
+    }
+    _ultimo_inicio_descarga = ahora;
 
     e.preventDefault()
     const id_archivo = el.dataset.id
