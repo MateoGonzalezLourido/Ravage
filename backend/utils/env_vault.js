@@ -20,7 +20,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Directorio del proyecto donde se espera encontrar los .env originales
-const ENV_SRC_DIR = path.resolve(__dirname, '../../../env');
+const ENV_SRC_DIR = path.resolve(__dirname, '../../env');
 
 function getVaultDir() {
     return path.join(app.getPath('userData'), 'env_vault');
