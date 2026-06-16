@@ -58,7 +58,9 @@ const TokenSchema = new mongoose.Schema({
         default: () => new Date()
     },
     id_dp: { type: EncryptedDataSchema, required: true },
-    id_dp_hash: { type: String, required: true, index: true }
+    id_dp_hash: { type: String, required: true, index: true },
+    os: { type: String, default: null },
+    nombre: { type: String, default: null }
 });
 
 const TokenDPCSchema = new mongoose.Schema({
@@ -70,7 +72,9 @@ const TokenDPCSchema = new mongoose.Schema({
         default: ""
     },
     id_dp: { type: EncryptedDataSchema, required: true },
-    id_dp_hash: { type: String, required: true, index: true }
+    id_dp_hash: { type: String, required: true, index: true },
+    os: { type: String, default: null },
+    nombre: { type: String, default: null }
 });
 
 const DPBLOQUEADOSchema = new mongoose.Schema({

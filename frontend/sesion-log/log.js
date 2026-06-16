@@ -6,6 +6,7 @@ let elements;
 // --- State and Config ---
 let intentos = 5;
 let username_g;
+let dpConfianzaListenersAdded = false;
 
 // --- Initialization ---
 async function preload_pag() {
@@ -40,6 +41,10 @@ async function preload_pag() {
             btnCambiarLogValidation: document.getElementById('bt-cambiar-login-validation-code'),
             btnVolverLogin: document.getElementById('bt-volver-login-confirmacion-cuenta'),
 
+            seccionDpConfianza: document.getElementById('seccion-dispositivo-confianza'),
+            btnConfirmarDpConfianza: document.getElementById('bt-confirmar-dp-confianza'),
+            btnRechazarDpConfianza: document.getElementById('bt-rechazar-dp-confianza'),
+
             syncBar: document.getElementById('sync-mailbox-bar'),
             spanRepetirPass: document.getElementById('span-repetir-contraseña')
         };
@@ -50,7 +55,7 @@ async function preload_pag() {
 // --- Menu Controls ---
 function mostrarSeccion(seccionActiva) {
     // Esconder todas las secciones principales
-    [elements.seccionLogin, elements.seccionRegistro, elements.seccionValidacion, elements.seccionConfirmacion]
+    [elements.seccionLogin, elements.seccionRegistro, elements.seccionValidacion, elements.seccionConfirmacion, elements.seccionDpConfianza]
         .forEach(s => {
             s.classList.add('ocultar-display');
             s.classList.remove('flex-display');
@@ -101,7 +106,20 @@ async function handleValidacionCode(e) {
 
     if (result.success) {
         if (isLogin) {
-            await window.paginas_app.CAMBIAR_PAGINA_HOME();
+            mostrarSeccion(elements.seccionDpConfianza);
+            elements.btnConfirmarDpConfianza.focus();
+            if (!dpConfianzaListenersAdded) {
+                dpConfianzaListenersAdded = true;
+                elements.btnConfirmarDpConfianza.addEventListener('click', async () => {
+                    elements.btnConfirmarDpConfianza.disabled = true;
+                    elements.btnRechazarDpConfianza.disabled = true;
+                    await window.sesion_usuario.MARCAR_DISPOSITIVO_CONFIANZA().catch(() => {});
+                    await window.paginas_app.CAMBIAR_PAGINA_HOME();
+                });
+                elements.btnRechazarDpConfianza.addEventListener('click', async () => {
+                    await window.paginas_app.CAMBIAR_PAGINA_HOME();
+                });
+            }
         } else {
             mostrarSeccion(elements.seccionConfirmacion);
             elements.btnVolverLogin.focus();

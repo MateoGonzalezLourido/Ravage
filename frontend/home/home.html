@@ -79,6 +79,21 @@
                     <span>Chats bloqueados: </span>
                     <button id="bt-ver-chats-bloqueados">Ver</button>
                 </div>
+                <div class="label" id="label-dispositivo-confianza">
+                    <div class="label-clave-privada-texto">
+                        <span>Este dispositivo</span>
+                        <span class="label-clave-privada-desc" id="text-estado-dispositivo-confianza">Verificando...</span>
+                    </div>
+                    <button id="bt-revocar-dispositivo-confianza" style="display:none;">Revocar confianza</button>
+                    <button id="bt-marcar-dispositivo-confianza" style="display:none;">Marcar como de confianza</button>
+                </div>
+                <div class="label label-gestionar-claves">
+                    <div class="label-clave-privada-texto">
+                        <span>Sesiones y dispositivos</span>
+                        <span class="label-clave-privada-desc">Ver y gestionar quién tiene acceso a tu cuenta desde otros dispositivos.</span>
+                    </div>
+                    <button id="bt-gestionar-dispositivos">Gestionar</button>
+                </div>
                 <span class="titulo-ajustes">Privacidad y cifrado</span>
                 <div class="label label-clave-privada">
                     <div class="label-clave-privada-texto">
@@ -136,6 +151,18 @@
                     <div class="modal-confirmar-eliminar-acciones">
                         <button id="bt-confirmar-eliminar-clave-no" class="modal-confirmar-bt-no">No, cancelar</button>
                         <button id="bt-confirmar-eliminar-clave-si" class="modal-confirmar-bt-si">Sí, eliminar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal gestión de sesiones y dispositivos -->
+            <div id="modal-gestion-dispositivos" class="modal-claves-overlay" style="display:none;">
+                <div class="modal-claves-caja modal-gestion-dp-caja">
+                    <button class="modal-claves-cerrar" id="bt-cerrar-modal-gestion-dispositivos">✕</button>
+                    <h3>Sesiones y dispositivos</h3>
+                    <p class="modal-claves-desc">Gestiona quién tiene acceso a tu cuenta. Si ves un dispositivo que no reconoces, cierra su sesión y revoca su confianza.</p>
+                    <div id="gestion-dispositivos-contenido" class="gestion-dp-contenido">
+                        <span style="color:#64748b;font-size:13px">Cargando...</span>
                     </div>
                 </div>
             </div>

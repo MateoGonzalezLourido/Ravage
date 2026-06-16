@@ -7,7 +7,8 @@ const SECRET_KEY_JWT = process.env.SECRET_KEY_JWT;//codigo para crear jwt (un va
 export async function generarteToken(duracion = "cuenta") {
     const duraciones = {
         sesion: '7d',
-        cuenta: '90m'
+        cuenta: '90m',
+        confianza: '365d'
     }
     // 1. Identificador único del dispositivo
     const deviceId = String(machineIdSync());

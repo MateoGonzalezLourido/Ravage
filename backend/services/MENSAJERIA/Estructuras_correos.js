@@ -269,6 +269,93 @@ const ConfirmacionCambioCorreo = ({ apodo }) => {
     return { asunto, htmlContenido };
 }
 
+const _bloqueInfoDispositivo = (nombre, sistemaOperativo, fecha) => `
+<table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 18px 0; background-color: #0b1120; border: 1px solid #1e293b; border-radius: 10px;">
+    <tr>
+        <td style="padding: 16px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                ${nombre ? `<tr><td style="padding: 4px 0; border-bottom: 1px solid #1e293b;"><span style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Dispositivo</span><br><strong style="color:#e2e8f0;font-size:14px;">${nombre}</strong></td></tr>` : ''}
+                ${sistemaOperativo ? `<tr><td style="padding: 4px 0; border-bottom: 1px solid #1e293b;"><span style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Sistema operativo</span><br><strong style="color:#e2e8f0;font-size:14px;">${sistemaOperativo}</strong></td></tr>` : ''}
+                <tr><td style="padding: 4px 0;"><span style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Fecha y hora</span><br><strong style="color:#e2e8f0;font-size:14px;">${fecha}</strong></td></tr>
+            </table>
+        </td>
+    </tr>
+</table>`;
+
+const AvisoDispositivoConfianzaAnadido = ({ apodo, nombre, sistemaOperativo, fecha }) => {
+    const asunto = "Nuevo dispositivo de confianza añadido";
+    const htmlContenido = BaseEmailWrapper(`
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px; background-color: #052e16; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0;">
+            <tr>
+                <td style="padding: 14px 18px;">
+                    <h2 style="color: #22c55e; font-size: 17px; margin: 0 0 5px 0; font-weight: 700;">Dispositivo de confianza a&ntilde;adido</h2>
+                    <p style="margin: 0; color: #e2e8f0; font-size: 14px;">Un nuevo dispositivo ya puede iniciar sesi&oacute;n sin verificaci&oacute;n.</p>
+                </td>
+            </tr>
+        </table>
+
+        <p style="margin: 0 0 6px 0; font-size: 15px;">Hola, <strong style="color: #f8fafc;">${apodo}</strong>.</p>
+        <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8;">El siguiente dispositivo ha sido marcado como de confianza en tu cuenta:</p>
+
+        ${_bloqueInfoDispositivo(nombre, sistemaOperativo, fecha)}
+
+        <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin: 0;">
+            <strong style="color: #ef4444;">¿No has sido t&uacute;?</strong> Accede a los ajustes de la aplicaci&oacute;n, revoca la confianza de ese dispositivo y cambia tu contrase&ntilde;a de inmediato.
+        </p>
+    `);
+    return { asunto, htmlContenido };
+};
+
+const AvisoDispositivoConfianzaRevocado = ({ apodo, nombre, sistemaOperativo, fecha }) => {
+    const asunto = "Dispositivo de confianza eliminado";
+    const htmlContenido = BaseEmailWrapper(`
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px; background-color: #2c1502; border-left: 4px solid #f97316; border-radius: 0 8px 8px 0;">
+            <tr>
+                <td style="padding: 14px 18px;">
+                    <h2 style="color: #f97316; font-size: 17px; margin: 0 0 5px 0; font-weight: 700;">Confianza de dispositivo revocada</h2>
+                    <p style="margin: 0; color: #e2e8f0; font-size: 14px;">Un dispositivo ya no puede iniciar sesi&oacute;n sin verificaci&oacute;n.</p>
+                </td>
+            </tr>
+        </table>
+
+        <p style="margin: 0 0 6px 0; font-size: 15px;">Hola, <strong style="color: #f8fafc;">${apodo}</strong>.</p>
+        <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8;">El siguiente dispositivo necesitar&aacute; verificaci&oacute;n por correo en su pr&oacute;ximo inicio de sesi&oacute;n:</p>
+
+        ${_bloqueInfoDispositivo(nombre, sistemaOperativo, fecha)}
+
+        <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin: 0;">
+            Si has sido t&uacute;, puedes ignorar este mensaje.
+            <strong style="color: #ef4444;">Si no reconoces esta acci&oacute;n</strong>, alguien tiene acceso a tu cuenta — cambia tu contrase&ntilde;a inmediatamente.
+        </p>
+    `);
+    return { asunto, htmlContenido };
+};
+
+const AvisoSesionCerrada = ({ apodo, nombre, sistemaOperativo, fecha }) => {
+    const asunto = "Sesión de dispositivo cerrada";
+    const htmlContenido = BaseEmailWrapper(`
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px; background-color: #1c0a2e; border-left: 4px solid #a855f7; border-radius: 0 8px 8px 0;">
+            <tr>
+                <td style="padding: 14px 18px;">
+                    <h2 style="color: #a855f7; font-size: 17px; margin: 0 0 5px 0; font-weight: 700;">Sesi&oacute;n cerrada remotamente</h2>
+                    <p style="margin: 0; color: #e2e8f0; font-size: 14px;">El acceso autom&aacute;tico de un dispositivo ha sido eliminado.</p>
+                </td>
+            </tr>
+        </table>
+
+        <p style="margin: 0 0 6px 0; font-size: 15px;">Hola, <strong style="color: #f8fafc;">${apodo}</strong>.</p>
+        <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8;">La sesi&oacute;n guardada del siguiente dispositivo ha sido eliminada. Necesitar&aacute; credenciales completas para volver a entrar:</p>
+
+        ${_bloqueInfoDispositivo(nombre, sistemaOperativo, fecha)}
+
+        <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin: 0;">
+            Si has sido t&uacute;, puedes ignorar este mensaje.
+            <strong style="color: #ef4444;">Si no reconoces esta acci&oacute;n</strong>, cambia tu contrase&ntilde;a inmediatamente.
+        </p>
+    `);
+    return { asunto, htmlContenido };
+};
+
 const ConfirmacionCambioApodo = ({ apodo }) => {
     const asunto = "Apodo Actualizado"
     const htmlContenido = BaseEmailWrapper(`
@@ -293,5 +380,8 @@ export {
     CodigoCambiarDatosCuenta,
     ConfirmacionCambioContraseña,
     ConfirmacionCambioCorreo,
-    ConfirmacionCambioApodo
+    ConfirmacionCambioApodo,
+    AvisoDispositivoConfianzaAnadido,
+    AvisoDispositivoConfianzaRevocado,
+    AvisoSesionCerrada
 };

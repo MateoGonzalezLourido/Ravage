@@ -1,5 +1,5 @@
 import { ipcMain, app } from '../utils/libs.js';
-import { loginUsuario, registerUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario } from '../services/sesionUsuario.js';
+import { loginUsuario, registerUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, marcarDispositivoConfianza, revocarDispositivoConfianza, estadoDispositivoConfianza, obtenerGestionDispositivos, revocarSesionDispositivo, revocarConfianzaDispositivo } from '../services/sesionUsuario.js';
 import { comprobaciones_Correo, comprobarContrasenaValidaciones, comprobar_apodo, comprobar_codigo_verificacion, comprobar_contraseña_cuenta } from '../services/validadores.js';
 import { BorrarVC, BorrarCuentaVC } from '../repositories/SecurityRepository.js';
 import { machineIdSync } from '../utils/libs.js';
@@ -255,5 +255,42 @@ export function registerSessionHandlers(mainWindow) {
         } catch (err) {
             return false;
         }
+    });
+
+    // DISPOSITIVO DE CONFIANZA
+    ipcMain.handle('marcar-dispositivo-confianza', async () => {
+        const correo = getCorreoSesion();
+        if (!correo) return { success: false };
+        return await marcarDispositivoConfianza(correo);
+    });
+
+    ipcMain.handle('revocar-dispositivo-confianza', async () => {
+        const correo = getCorreoSesion();
+        if (!correo) return { success: false };
+        return await revocarDispositivoConfianza(correo);
+    });
+
+    ipcMain.handle('estado-dispositivo-confianza', async () => {
+        const correo = getCorreoSesion();
+        if (!correo) return false;
+        return await estadoDispositivoConfianza(correo);
+    });
+
+    ipcMain.handle('obtener-gestion-dispositivos', async () => {
+        const correo = getCorreoSesion();
+        if (!correo) return null;
+        return await obtenerGestionDispositivos(correo);
+    });
+
+    ipcMain.handle('revocar-sesion-dispositivo', async (_, id_dp_hash) => {
+        const correo = getCorreoSesion();
+        if (!correo || typeof id_dp_hash !== 'string' || !/^[a-f0-9]{64}$/.test(id_dp_hash)) return { success: false };
+        return await revocarSesionDispositivo(correo, id_dp_hash);
+    });
+
+    ipcMain.handle('revocar-confianza-dispositivo', async (_, id_dp_hash) => {
+        const correo = getCorreoSesion();
+        if (!correo || typeof id_dp_hash !== 'string' || !/^[a-f0-9]{64}$/.test(id_dp_hash)) return { success: false };
+        return await revocarConfianzaDispositivo(correo, id_dp_hash);
     });
 }

@@ -88,6 +88,12 @@ export async function Todos_Los_Eventos_Funciones_Ajustes(e) {
     document.getElementById("bt-descargar-clave-privada").addEventListener("click", descargar_clave_privada);
     document.getElementById("bt-cargar-clave-privada").addEventListener("click", cargar_clave_privada);
     document.getElementById("bt-gestionar-claves").addEventListener("click", gestionar_claves);
+    document.getElementById("bt-revocar-dispositivo-confianza").addEventListener("click", revocar_dispositivo_confianza);
+    document.getElementById("bt-marcar-dispositivo-confianza").addEventListener("click", marcar_dispositivo_confianza);
+    document.getElementById("bt-gestionar-dispositivos").addEventListener("click", abrir_gestion_dispositivos);
+    document.getElementById("bt-cerrar-modal-gestion-dispositivos").addEventListener("click", () => {
+        document.getElementById("modal-gestion-dispositivos").style.display = "none";
+    });
     document.getElementById("bt-cerrar-modal-pass-claves").addEventListener("click", () => {
         document.getElementById("modal-verificar-pass-claves").style.display = "none";
         document.getElementById("input-pass-verificar-claves").value = "";
@@ -243,11 +249,12 @@ async function _cargar_email_soporte() {
 }
 
 async function actualizar_datos_cuenta() {
-    const [fecha_creacion, fecha_bloqueo_apodo, fecha_bloqueo_correo, fecha_bloqueo_contraseña] = await Promise.all([
+    const [fecha_creacion, fecha_bloqueo_apodo, fecha_bloqueo_correo, fecha_bloqueo_contraseña, es_de_confianza] = await Promise.all([
         window.cuenta_usuario.OBTENER_FECHA_CREACION_CUENTA(),
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_APODO(),
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CORREO(),
-        window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA()
+        window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA(),
+        window.sesion_usuario.ESTADO_DISPOSITIVO_CONFIANZA().catch(() => false)
     ]);
     const apodo = await obtener_apodo_usuario();
     const correo = CORREO_USUARIO;
@@ -255,6 +262,8 @@ async function actualizar_datos_cuenta() {
     document.getElementById("text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${escapeHTML(apodo)}</font>`;
     document.getElementById("text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${escapeHTML(correo)}</font>`;
     document.getElementById("text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${escapeHTML(fecha_creacion)}`;
+
+    _actualizar_ui_dispositivo_confianza(es_de_confianza);
 
     const setLockText = (id, date) => {
         const el = document.querySelector(id);
@@ -956,6 +965,186 @@ export function aplicar_ajuste_hilos(desactivar) {
         document.body.classList.add("sin-hilos-chat");
     } else {
         document.body.classList.remove("sin-hilos-chat");
+    }
+}
+
+// --- Dispositivo de confianza ---
+
+function _actualizar_ui_dispositivo_confianza(esConfianza) {
+    const texto = document.getElementById("text-estado-dispositivo-confianza");
+    const btRevocar = document.getElementById("bt-revocar-dispositivo-confianza");
+    const btMarcar = document.getElementById("bt-marcar-dispositivo-confianza");
+    if (!texto || !btRevocar || !btMarcar) return;
+    if (esConfianza) {
+        texto.textContent = "Este dispositivo es de confianza. No se pedirá verificación por correo al iniciar sesión.";
+        texto.style.color = "#4ade80";
+        btRevocar.style.display = "";
+        btMarcar.style.display = "none";
+    } else {
+        texto.textContent = "Este dispositivo no es de confianza. Se requerirá verificación por correo al iniciar sesión.";
+        texto.style.color = "#94a3b8";
+        btRevocar.style.display = "none";
+        btMarcar.style.display = "";
+    }
+}
+
+async function abrir_gestion_dispositivos(e) {
+    if (e) e.preventDefault();
+    document.getElementById("modal-gestion-dispositivos").style.display = "flex";
+    const contenedor = document.getElementById("gestion-dispositivos-contenido");
+    contenedor.innerHTML = '<span style="color:#64748b;font-size:13px">Cargando...</span>';
+    try {
+        const data = await window.sesion_usuario.OBTENER_GESTION_DISPOSITIVOS();
+        if (!data) { contenedor.innerHTML = '<span style="color:#f87171;font-size:13px">Error al cargar</span>'; return; }
+        _renderizar_gestion_dispositivos(data, contenedor);
+    } catch {
+        contenedor.innerHTML = '<span style="color:#f87171;font-size:13px">Error inesperado</span>';
+    }
+}
+
+function _renderizar_gestion_dispositivos({ sesiones, confianzas }, contenedor) {
+    const fmt = (iso) => iso ? new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
+    // Unificar por hash: mismo dispositivo puede tener sesión activa Y confianza
+    const mapaHash = new Map();
+    for (const s of sesiones) {
+        mapaHash.set(s.id_dp_hash, { ...s, tieneSesion: true, tieneConfianza: false });
+    }
+    for (const c of confianzas) {
+        if (mapaHash.has(c.id_dp_hash)) {
+            mapaHash.get(c.id_dp_hash).tieneConfianza = true;
+        } else {
+            mapaHash.set(c.id_dp_hash, { ...c, tieneSesion: false, tieneConfianza: true });
+        }
+    }
+
+    if (mapaHash.size === 0) {
+        contenedor.innerHTML = '<span class="gestion-dp-vacio">No hay sesiones ni dispositivos de confianza registrados.</span>';
+        return;
+    }
+
+    let html = '<div class="gestion-dp-lista">';
+    for (const d of mapaHash.values()) {
+        const badgeEste = d.esteDispositivo ? '<span class="gestion-dp-badge-este">Este dispositivo</span>' : '';
+        const claseItem = d.esteDispositivo ? 'gestion-dp-item es-este-dispositivo' : 'gestion-dp-item';
+
+        // SO como identificador principal — siempre disponible en registros nuevos
+        const osLine = d.os
+            ? `<div class="gestion-dp-nombre">${escapeHTML(d.os)} ${badgeEste}</div>`
+            : `<div class="gestion-dp-nombre gestion-dp-desconocido">Sistema desconocido ${badgeEste}</div>`;
+
+        // Hardware (fabricante/modelo o CPU) — opcional
+        const hwLine = d.nombre
+            ? `<div class="gestion-dp-hw">${escapeHTML(d.nombre)}</div>`
+            : '';
+
+        // Fechas
+        const partesFecha = [];
+        if (d.tieneSesion) partesFecha.push(`Sesión desde ${fmt(d.creadoEn)}`);
+        if (d.tieneConfianza) partesFecha.push(`De confianza desde ${fmt(d.creadoEn)}`);
+        const fechaLine = partesFecha.length
+            ? `<div class="gestion-dp-meta">${partesFecha.join(' · ')}</div>`
+            : '';
+
+        const btSesion = d.tieneSesion
+            ? `<button class="gestion-dp-bt gestion-dp-bt-sesion" data-tipo="sesion" data-hash="${d.id_dp_hash}" data-este="${d.esteDispositivo ? '1' : '0'}">Cerrar sesión</button>`
+            : '';
+        const btConfianza = d.tieneConfianza
+            ? `<button class="gestion-dp-bt gestion-dp-bt-confianza" data-tipo="confianza" data-hash="${d.id_dp_hash}" data-este="${d.esteDispositivo ? '1' : '0'}">Revocar confianza</button>`
+            : '';
+
+        html += `
+        <div class="${claseItem}" data-hash="${d.id_dp_hash}">
+            <div class="gestion-dp-info">
+                ${osLine}
+                ${hwLine}
+                ${fechaLine}
+            </div>
+            <div class="gestion-dp-acciones">${btSesion}${btConfianza}</div>
+        </div>`;
+    }
+    html += '</div>';
+    contenedor.innerHTML = html;
+
+    contenedor.querySelectorAll('.gestion-dp-bt').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const tipo = btn.dataset.tipo;
+            const hash = btn.dataset.hash;
+            const esteDispositivo = btn.dataset.este === '1';
+            btn.disabled = true;
+            const textoOriginal = btn.textContent;
+            btn.textContent = '...';
+
+            try {
+                let res;
+                if (tipo === 'sesion') {
+                    res = await window.sesion_usuario.REVOCAR_SESION_DISPOSITIVO(hash);
+                } else {
+                    res = await window.sesion_usuario.REVOCAR_CONFIANZA_DISPOSITIVO(hash);
+                }
+
+                if (res?.success) {
+                    btn.remove();
+                    // Si ya no quedan botones en el item, verificar si el item tiene algo
+                    const item = contenedor.querySelector(`[data-hash="${hash}"]`);
+                    const btsRestantes = item?.querySelectorAll('.gestion-dp-bt');
+                    if (!btsRestantes || btsRestantes.length === 0) item?.remove();
+
+                    if (tipo === 'sesion') {
+                        window.pushNotificacion({ prioridad: 1, texto: 'Sesión cerrada correctamente', tipo: 'exito' });
+                    } else {
+                        window.pushNotificacion({ prioridad: 1, texto: 'Confianza revocada correctamente', tipo: 'exito' });
+                        if (esteDispositivo) _actualizar_ui_dispositivo_confianza(false);
+                    }
+                } else {
+                    window.pushNotificacion({ prioridad: 3, texto: 'Error al revocar', tipo: 'error' });
+                    btn.disabled = false;
+                    btn.textContent = textoOriginal;
+                }
+            } catch {
+                window.pushNotificacion({ prioridad: 3, texto: 'Error inesperado', tipo: 'error' });
+                btn.disabled = false;
+                btn.textContent = textoOriginal;
+            }
+        });
+    });
+}
+
+async function revocar_dispositivo_confianza(e) {
+    if (e) e.preventDefault();
+    const btn = document.getElementById("bt-revocar-dispositivo-confianza");
+    btn.disabled = true;
+    try {
+        const res = await window.sesion_usuario.REVOCAR_DISPOSITIVO_CONFIANZA();
+        if (res?.success) {
+            _actualizar_ui_dispositivo_confianza(false);
+            window.pushNotificacion({ prioridad: 1, texto: "Confianza revocada. Se pedirá verificación en el próximo login.", tipo: "exito" });
+        } else {
+            window.pushNotificacion({ prioridad: 3, texto: "Error al revocar la confianza", tipo: "error" });
+            btn.disabled = false;
+        }
+    } catch {
+        window.pushNotificacion({ prioridad: 3, texto: "Error inesperado", tipo: "error" });
+        btn.disabled = false;
+    }
+}
+
+async function marcar_dispositivo_confianza(e) {
+    if (e) e.preventDefault();
+    const btn = document.getElementById("bt-marcar-dispositivo-confianza");
+    btn.disabled = true;
+    try {
+        const res = await window.sesion_usuario.MARCAR_DISPOSITIVO_CONFIANZA();
+        if (res?.success) {
+            _actualizar_ui_dispositivo_confianza(true);
+            window.pushNotificacion({ prioridad: 1, texto: "Dispositivo marcado como de confianza", tipo: "exito" });
+        } else {
+            window.pushNotificacion({ prioridad: 3, texto: "Error al marcar el dispositivo", tipo: "error" });
+            btn.disabled = false;
+        }
+    } catch {
+        window.pushNotificacion({ prioridad: 3, texto: "Error inesperado", tipo: "error" });
+        btn.disabled = false;
     }
 }
 

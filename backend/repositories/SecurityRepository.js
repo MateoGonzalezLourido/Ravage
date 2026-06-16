@@ -109,7 +109,7 @@ export async function BuscarCuentaVC(correo, code, id_dp) {
 // ... more security helpers
 
 /*TOKENS JWT */
-export async function AñadirJWTUsuario(correo, token = "") {
+export async function AñadirJWTUsuario(correo, token = "", info = {}) {
     const tokenhash = createHash("sha256").update(token).digest("hex");
     const deviceId = getIdDispositivo();
     const correoHash = hashDatosSistema(correo);
@@ -121,7 +121,9 @@ export async function AñadirJWTUsuario(correo, token = "") {
         token: tokenhash,
         expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000))),
         id_dp: encriptarDatosSistema(deviceId),
-        id_dp_hash: idHash
+        id_dp_hash: idHash,
+        os: info.os || null,
+        nombre: info.nombre || null
     });
 }
 export async function AñadirJWTUsuarioVC(correo, token = "") {
@@ -139,7 +141,7 @@ export async function AñadirJWTUsuarioVC(correo, token = "") {
         id_dp_hash: idHash
     });
 }
-export async function AñadirJWTDPConfianza(correo, token = "") {
+export async function AñadirJWTDPConfianza(correo, token = "", info = {}) {
     const tokenhash = createHash("sha256").update(token).digest("hex");
     const deviceId = getIdDispositivo();
     const correoHash = hashDatosSistema(correo);
@@ -150,8 +152,26 @@ export async function AñadirJWTDPConfianza(correo, token = "") {
         correo_hash: correoHash,
         token: tokenhash,
         id_dp: encriptarDatosSistema(deviceId),
-        id_dp_hash: idHash
+        id_dp_hash: idHash,
+        os: info.os || null,
+        nombre: info.nombre || null
     });
+}
+
+export async function ObtenerSesionesPorCorreo(correo_hash) {
+    return await TokenSession.find({ correo_hash }).lean();
+}
+
+export async function ObtenerDPConfianzasPorCorreo(correo_hash) {
+    return await TokenDPC.find({ correo_hash }).lean();
+}
+
+export async function RevocarSesionPorDispositivo(correo_hash, id_dp_hash) {
+    await TokenSession.deleteMany({ correo_hash, id_dp_hash });
+}
+
+export async function RevocarDPConfianzaPorDispositivo(correo_hash, id_dp_hash) {
+    await TokenDPC.deleteMany({ correo_hash, id_dp_hash });
 }
 
 
@@ -167,4 +187,19 @@ export async function LimpiarJWTUsuarioVC(correo, token = null) {
         query.token = createHash("sha256").update(token).digest("hex");
     }
     await TokenVC.deleteMany(query);
+}
+
+export async function LimpiarJWTDPConfianza(correo) {
+    const correoHash = hashDatosSistema(correo);
+    const deviceId = getIdDispositivo();
+    const idHash = hashDatosSistema(deviceId);
+    await TokenDPC.deleteMany({ correo_hash: correoHash, id_dp_hash: idHash });
+}
+
+export async function ObtenerInfoSesionDispositivo(correo_hash, id_dp_hash) {
+    return await TokenSession.findOne({ correo_hash, id_dp_hash }, { os: 1, nombre: 1 }).lean();
+}
+
+export async function ObtenerInfoDPConfianzaDispositivo(correo_hash, id_dp_hash) {
+    return await TokenDPC.findOne({ correo_hash, id_dp_hash }, { os: 1, nombre: 1 }).lean();
 }

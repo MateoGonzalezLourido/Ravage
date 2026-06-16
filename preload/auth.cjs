@@ -21,5 +21,23 @@ module.exports = {
     },
     CERRAR_SESION: () => {
         return ipcRenderer.invoke('cerrar-sesion-usuario')
+    },
+    MARCAR_DISPOSITIVO_CONFIANZA: () => {
+        return ipcRenderer.invoke('marcar-dispositivo-confianza')
+    },
+    REVOCAR_DISPOSITIVO_CONFIANZA: () => {
+        return ipcRenderer.invoke('revocar-dispositivo-confianza')
+    },
+    ESTADO_DISPOSITIVO_CONFIANZA: () => {
+        return ipcRenderer.invoke('estado-dispositivo-confianza')
+    },
+    OBTENER_GESTION_DISPOSITIVOS: () => {
+        return ipcRenderer.invoke('obtener-gestion-dispositivos')
+    },
+    REVOCAR_SESION_DISPOSITIVO: (id_dp_hash) => {
+        return ipcRenderer.invoke('revocar-sesion-dispositivo', id_dp_hash)
+    },
+    REVOCAR_CONFIANZA_DISPOSITIVO: (id_dp_hash) => {
+        return ipcRenderer.invoke('revocar-confianza-dispositivo', id_dp_hash)
     }
 };

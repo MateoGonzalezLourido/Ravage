@@ -3,11 +3,12 @@ const log = createLogger('session');
 import { User } from '../models/User.js';
 import { ValidationCode, TokenVC, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
 import { LoginUsuarioDB, InsertarUsuario, procesarUsuario } from '../repositories/UserRepository.js';
-import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, BuscarVC, BuscarCuentaVC } from '../repositories/SecurityRepository.js';
+import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, BuscarVC, BuscarCuentaVC, AñadirJWTDPConfianza, LimpiarJWTDPConfianza, ObtenerSesionesPorCorreo, ObtenerDPConfianzasPorCorreo, RevocarSesionPorDispositivo, RevocarDPConfianzaPorDispositivo, ObtenerInfoSesionDispositivo, ObtenerInfoDPConfianzaDispositivo } from '../repositories/SecurityRepository.js';
 import {
     saveSessionFile,
     clearFileSession,
     saveOmitirVerificacionCuentaFile,
+    saveDispositivoConfianzaFile,
     readFileSession,
     limpiarArchivosCompleto,
     saveIdentityFile
@@ -17,11 +18,14 @@ import {
     ValidarCorreoEstructura,
     ConfirmacionCuentaCreadaEstructura,
     ValidarCuentaUsuario,
-    ConfirmacionInicioSesion
+    ConfirmacionInicioSesion,
+    AvisoDispositivoConfianzaAnadido,
+    AvisoDispositivoConfianzaRevocado,
+    AvisoSesionCerrada
 } from './MENSAJERIA/Estructuras_correos.js';
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
-import { hash, compare, createHash, machineIdSync } from '../utils/libs.js';
+import { hash, compare, createHash, machineIdSync, os, si } from '../utils/libs.js';
 import { generarLlavesRSA, hashDatosSistema, getIdentity } from './cryptoService.js';
 
 import { clearCacheUsuarios, setUsuarioEnCache } from '../repositories/UserRepository.js';
@@ -34,7 +38,39 @@ import {
     comprobar_codigo_verificacion
 } from './validadores.js'
 const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
-//vairables de usuario de sesion
+
+async function infoDispositivo() {
+    try {
+        const [sysInfo, osInfo, cpuInfo] = await Promise.all([si.system(), si.osInfo(), si.cpu()]);
+
+        // SO: distro real + arquitectura (siempre disponible y útil)
+        let osStr = (osInfo.distro || '').trim();
+        if (!osStr) {
+            const labels = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' };
+            osStr = labels[os.platform()] || os.platform();
+        }
+        if (os.platform() === 'darwin' && osInfo.codename) osStr = `macOS ${osInfo.codename}`;
+        const arch = osInfo.arch || process.arch;
+        if (arch) osStr += ` · ${arch}`;
+
+        // Nombre del dispositivo: fabricante+modelo primero, CPU como fallback
+        const util = (s) => s && s.trim() &&
+            !s.toLowerCase().includes('o.e.m') &&
+            !s.toLowerCase().includes('to be filled') &&
+            s !== 'System Product Name' && s !== 'None' && s !== '0';
+        const mfr   = util(sysInfo.manufacturer) ? sysInfo.manufacturer.trim() : '';
+        const model = util(sysInfo.model)         ? sysInfo.model.trim()         : '';
+        let nombre = [mfr, model].filter(Boolean).join(' ');
+        if (!nombre && cpuInfo?.brand) nombre = cpuInfo.brand.trim();
+
+        return { os: osStr, nombre: nombre || null };
+    } catch {
+        const labels = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' };
+        return { os: labels[os.platform()] || os.platform(), nombre: null };
+    }
+}
+
+//variables de usuario de sesion
 function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false, id_maquina = null }) {
     //cambiar nombre variables muy repetidas
     const lp = !limpiar
@@ -326,10 +362,10 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
         // JWT, mantener sesion iniciada en cache (ejecutado en background)
         if (mantener_sesion_iniciada) {
             (async () => {
-                const token = await generarteToken('sesion');
+                const [token, info] = await Promise.all([generarteToken('sesion'), infoDispositivo()]);
                 await Promise.all([
-                    saveSessionFile({ username: usuario_data.data.correo, token: token }),
-                    AñadirJWTUsuario(usuario_data.data.correo, token)
+                    saveSessionFile({ username: usuario_data.data.correo, token }),
+                    AñadirJWTUsuario(usuario_data.data.correo, token, info)
                 ]);
             })().catch(e => log.error(e));
         }
@@ -388,10 +424,10 @@ async function ValidarCodeLogin({ correo, code }) {
 
     //JWT , mantener sesion iniciada en cache
     if (mantenerSesion) {
-        const token = await generarteToken('sesion');
+        const [token, info] = await Promise.all([generarteToken('sesion'), infoDispositivo()]);
         await Promise.all([
-            saveSessionFile({ username: correo, token: token }),
-            AñadirJWTUsuario(correo, token)
+            saveSessionFile({ username: correo, token }),
+            AñadirJWTUsuario(correo, token, info)
         ]);
     }
 
@@ -523,6 +559,125 @@ async function verificarContrasenaActual(contraseña) {
     }
 }
 
+async function marcarDispositivoConfianza(correo) {
+    const [token, info] = await Promise.all([generarteToken('confianza'), infoDispositivo()]);
+    await Promise.all([
+        saveDispositivoConfianzaFile({ username: correo, token }),
+        AñadirJWTDPConfianza(correo, token, info)
+    ]);
+    ;(async () => {
+        const apodo = storage.getApodoSesion();
+        const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
+        const { asunto, htmlContenido } = AvisoDispositivoConfianzaAnadido({ apodo, nombre: info.nombre, sistemaOperativo: info.os, fecha });
+        enviarEmail({ correoDestino: correo, asunto, htmlContenido });
+    })();
+    return { success: true };
+}
+
+async function revocarDispositivoConfianza(correo) {
+    const [info] = await Promise.all([
+        infoDispositivo(),
+        LimpiarJWTDPConfianza(correo),
+        clearFileSession('dispositivoConfianza')
+    ]);
+    ;(async () => {
+        const apodo = storage.getApodoSesion();
+        const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
+        const { asunto, htmlContenido } = AvisoDispositivoConfianzaRevocado({ apodo, nombre: info.nombre, sistemaOperativo: info.os, fecha });
+        enviarEmail({ correoDestino: correo, asunto, htmlContenido });
+    })();
+    return { success: true };
+}
+
+async function obtenerGestionDispositivos(correo) {
+    const correoHash = hashDatosSistema(correo);
+    const deviceId = String(machineIdSync());
+    const deviceHash = hashDatosSistema(deviceId);
+
+    const [sesiones, confianzas] = await Promise.all([
+        ObtenerSesionesPorCorreo(correoHash),
+        ObtenerDPConfianzasPorCorreo(correoHash)
+    ]);
+
+    const mapear = (doc) => {
+        const ts = doc._id.getTimestamp ? doc._id.getTimestamp() : new Date(parseInt(doc._id.toString().slice(0, 8), 16) * 1000);
+        return {
+            id_dp_hash: doc.id_dp_hash,
+            corto: doc.id_dp_hash.slice(-8).toUpperCase(),
+            esteDispositivo: doc.id_dp_hash === deviceHash,
+            os: doc.os || null,
+            nombre: doc.nombre || null,
+            creadoEn: ts.toISOString(),
+            expira: doc.expira ? new Date(doc.expira).toISOString() : null
+        };
+    };
+
+    return {
+        sesiones: sesiones.map(mapear),
+        confianzas: confianzas.map(mapear),
+        deviceHash
+    };
+}
+
+async function revocarSesionDispositivo(correo, id_dp_hash) {
+    const correoHash = hashDatosSistema(correo);
+    const [docInfo] = await Promise.all([
+        ObtenerInfoSesionDispositivo(correoHash, id_dp_hash),
+        RevocarSesionPorDispositivo(correoHash, id_dp_hash)
+    ]);
+    const deviceId = String(machineIdSync());
+    if (id_dp_hash === hashDatosSistema(deviceId)) {
+        await clearFileSession('sessionFile').catch(() => {});
+    }
+    ;(async () => {
+        const apodo = storage.getApodoSesion();
+        const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
+        const { asunto, htmlContenido } = AvisoSesionCerrada({ apodo, nombre: docInfo?.nombre || null, sistemaOperativo: docInfo?.os || null, fecha });
+        enviarEmail({ correoDestino: correo, asunto, htmlContenido });
+    })();
+    return { success: true };
+}
+
+async function revocarConfianzaDispositivo(correo, id_dp_hash) {
+    const correoHash = hashDatosSistema(correo);
+    const [docInfo] = await Promise.all([
+        ObtenerInfoDPConfianzaDispositivo(correoHash, id_dp_hash),
+        RevocarDPConfianzaPorDispositivo(correoHash, id_dp_hash)
+    ]);
+    const deviceId = String(machineIdSync());
+    if (id_dp_hash === hashDatosSistema(deviceId)) {
+        await clearFileSession('dispositivoConfianza').catch(() => {});
+    }
+    ;(async () => {
+        const apodo = storage.getApodoSesion();
+        const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
+        const { asunto, htmlContenido } = AvisoDispositivoConfianzaRevocado({ apodo, nombre: docInfo?.nombre || null, sistemaOperativo: docInfo?.os || null, fecha });
+        enviarEmail({ correoDestino: correo, asunto, htmlContenido });
+    })();
+    return { success: true };
+}
+
+async function estadoDispositivoConfianza(correo) {
+    try {
+        const data = await readFileSession('dispositivoConfianza').catch(() => null);
+        if (!data?.token) return false;
+        if (!validateToken(data.token)) {
+            clearFileSession('dispositivoConfianza').catch(() => {});
+            return false;
+        }
+        const deviceId = String(machineIdSync());
+        const tokenhash = createHash("sha256").update(data.token).digest("hex");
+        const existe = await TokenDPC.exists({
+            correo_hash: hashDatosSistema(correo),
+            token: tokenhash,
+            id_dp_hash: hashDatosSistema(deviceId)
+        });
+        return !!existe;
+    } catch {
+        return false;
+    }
+}
+
 export {
     registerUsuario,
     loginUsuario,
@@ -531,5 +686,11 @@ export {
     ValidarCodeRegistroUsuario,
     ValidarCodeLogin,
     REGENERAR_IDENTIDAD_USUARIO,
-    verificarContrasenaActual
+    verificarContrasenaActual,
+    marcarDispositivoConfianza,
+    revocarDispositivoConfianza,
+    estadoDispositivoConfianza,
+    obtenerGestionDispositivos,
+    revocarSesionDispositivo,
+    revocarConfianzaDispositivo
 };
