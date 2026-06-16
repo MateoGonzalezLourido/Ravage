@@ -1038,6 +1038,13 @@ function _renderizar_gestion_dispositivos({ sesiones, confianzas, bloqueados = [
                 ? `<div class="gestion-dp-nombre">${escapeHTML(d.os)} ${badgeEste}</div>`
                 : `<div class="gestion-dp-nombre gestion-dp-desconocido">Sistema desconocido ${badgeEste}</div>`;
             const hwLine = d.nombre ? `<div class="gestion-dp-hw">${escapeHTML(d.nombre)}</div>` : '';
+            const hashLine = d.esteDispositivo ? `
+                <div class="gestion-dp-hash-linea">
+                    <span class="gestion-dp-hash-label">Hash dispositivo</span>
+                    <button class="gestion-dp-bt-copiar-hash" data-hash="${d.id_dp_hash}" title="Copiar hash al portapapeles">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>` : '';
 
             const partesFecha = [];
             if (d.tieneSesion) partesFecha.push(`Sesión desde ${fmt(d.creadoEn)}`);
@@ -1057,7 +1064,7 @@ function _renderizar_gestion_dispositivos({ sesiones, confianzas, bloqueados = [
             html += `
             <div class="${claseItem}" data-hash="${d.id_dp_hash}">
                 <div class="gestion-dp-info">
-                    ${osLine}${hwLine}${fechaLine}
+                    ${osLine}${hwLine}${hashLine}${fechaLine}
                 </div>
                 <div class="gestion-dp-acciones">${btSesion}${btConfianza}${btBloquear}</div>
             </div>`;
@@ -1089,6 +1096,16 @@ function _renderizar_gestion_dispositivos({ sesiones, confianzas, bloqueados = [
     }
 
     contenedor.innerHTML = html;
+
+    contenedor.querySelectorAll('.gestion-dp-bt-copiar-hash').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            await navigator.clipboard.writeText(btn.dataset.hash);
+            const svg = btn.innerHTML;
+            btn.textContent = '✓';
+            btn.style.color = '#4ade80';
+            setTimeout(() => { btn.innerHTML = svg; btn.style.color = ''; }, 1500);
+        });
+    });
 
     contenedor.querySelectorAll('.gestion-dp-bt').forEach(btn => {
         btn.addEventListener('click', async () => {

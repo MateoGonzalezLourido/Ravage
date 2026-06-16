@@ -1048,6 +1048,35 @@
     background: rgba(6, 182, 212, 0.18);
 }
 
+.gestion-dp-hash-linea {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 2px;
+}
+
+.gestion-dp-hash-label {
+    font-size: 11px;
+    color: #475569;
+}
+
+.gestion-dp-bt-copiar-hash {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    cursor: pointer;
+    color: #475569;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+}
+
+.gestion-dp-bt-copiar-hash:hover {
+    color: #94a3b8;
+}
+
 .gestion-dp-seccion-titulo {
     font-size: 11px;
     font-weight: 600;
