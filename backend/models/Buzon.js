@@ -16,17 +16,12 @@ const MAX_ENTRADAS = 200;
 
 const BuzonSchema = new mongoose.Schema({
     entrada: [EntradaSchema],
-    createdAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now }
 });
 
-BuzonSchema.pre('save', function (next) {
-    if (this.entrada.length > MAX_ENTRADAS) {
-        this.entrada = this.entrada.slice(-MAX_ENTRADAS);
-    }
-    next();
-});
-
-BuzonSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
+// TTL sobre updatedAt: elimina documentos de cuentas inactivas (sin actividad en 90 días).
+// updatedAt se actualiza manualmente en cada escritura del repositorio.
+BuzonSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
 
 const BuzonUsuarios = mongoose.model("BuzonUsuarios", BuzonSchema, "buzon");
 

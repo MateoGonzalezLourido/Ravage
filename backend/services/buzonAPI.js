@@ -1,4 +1,4 @@
-import { BuzonUsuarios } from '../models/Buzon.js';
+import { BuzonUsuarios, MAX_ENTRADAS } from '../models/Buzon.js';
 import { getIDMongodbUsuario, getListaChats, getUsuariosSilence, getUsuariosBloqueados } from '../STORAGE/Variables_sesion.js';
 import { desencriptarDatosSistema } from '../services/cryptoService.js';
 import { createLogger } from '../utils/logger.js';
@@ -36,8 +36,8 @@ export async function iniciarBuzon(io, mainWindow) {
 
         if (nuevasEntradas.length === 0) return;
 
-        // Limpiar Set periódicamente para evitar crecimiento infinito (aunque el buzón es pequeño)
-        if (sentIds.size > 500) {
+        // Limpiar Set periódicamente: el límite es MAX_ENTRADAS*2 porque la BD no puede tener más
+        if (sentIds.size > MAX_ENTRADAS * 2) {
             const currentIds = new Set(doc.entrada.map(e => e._id?.toString()).filter(Boolean));
             for (const id of sentIds) {
                 if (!currentIds.has(id)) sentIds.delete(id);
@@ -69,9 +69,18 @@ export async function iniciarBuzon(io, mainWindow) {
 
         if (docFiltrado && docFiltrado.entrada && docFiltrado.entrada.length > 0) {
             io.to(myUserId.toString()).emit("nueva-notificacion", docFiltrado);
-            mainWindow.webContents.send("nueva-notificacion", docFiltrado);
 
-            // Notificaciones nativas del OS — async fire-and-forget (no bloqueamos el stream)
+            // IPC al renderer — no-fatal: si el webContents no está disponible
+            // (ventana oculta, navegando, renderer caído) no debe bloquear las OS
+            if (!mainWindow.isDestroyed()) {
+                try {
+                    mainWindow.webContents.send("nueva-notificacion", docFiltrado);
+                } catch (err) {
+                    log.warn({ err }, 'IPC renderer no disponible, omitiendo nueva-notificacion');
+                }
+            }
+
+            // Notificaciones nativas del OS — siempre se ejecuta, independiente del estado del renderer
             (async () => {
                 try {
                     const ajustesOS = await getAjustesAppFile();

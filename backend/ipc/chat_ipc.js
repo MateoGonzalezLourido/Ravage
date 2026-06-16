@@ -133,10 +133,8 @@ export function registerChatHandlers(mainWindow, socket) {
 
     ipcMain.on("iniciar-buzon", async () => {
         log.info("IPC: iniciar-buzon solicitado - Iniciando sincronización");
-        const userId = getIDMongodbUsuario()
         const entradas = await Revisar_Buzon_Usuario()
         log.info({ count: entradas?.length }, "IPC: Sincronización de buzón inicial completada");
-        socket.emit("identificar", userId);
         await iniciarBuzon(socket, mainWindow);
     })
 

@@ -52,6 +52,7 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
         if (ids_filtrados.length === 0) return;
 
         const dataEncriptada = encriptarDatosSistema(data);
+        const ahora = new Date();
         const operations = ids_filtrados.map(id => ({
             updateOne: {
                 filter: { _id: id },
@@ -61,7 +62,8 @@ export async function Añadir_Entrada_Buzon_Usuario({ ids = [], tipo = 0, data =
                             $each: [{ tipo, data: dataEncriptada }],
                             $slice: -MAX_ENTRADAS
                         }
-                    }
+                    },
+                    $set: { updatedAt: ahora }
                 },
                 upsert: true
             }
@@ -78,7 +80,7 @@ export async function Revisar_Buzon_Usuario() {
     try {
         const buzon = await BuzonUsuarios.findByIdAndUpdate(
             userId,
-            { $set: { entrada: [] } },
+            { $set: { entrada: [], updatedAt: new Date() } },
             { new: false, lean: true }
         );
 
