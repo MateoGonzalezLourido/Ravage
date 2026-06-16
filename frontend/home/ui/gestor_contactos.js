@@ -1,4 +1,4 @@
-import { abrir_chat_item, ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js';
+import { abrir_chat_item, ACTUALIZAR_LISTAS_CHAT, marcar_chat_activo, resolver_menciones_previews } from './gestor_chats.js';
 import { escapeHTML, safeIdSelector } from './seguridad_ui.js';
 import { chat_componente_lista_estructura_html } from './chat.js';
 
@@ -79,6 +79,8 @@ export async function CARGAR_LISTA_CONTACTOS(filtro = "") {
         }
 
         contenedor.innerHTML = todo;
+        marcar_chat_activo();
+        await resolver_menciones_previews(contenedor);
     } catch (e) {
         console.error("[Contactos] Error al cargar:", e);
     }
@@ -96,7 +98,11 @@ export async function abrir_chat_por_contacto(id_contacto, apodo, chat_id_guarda
         if (result && (result.id || result._id)) {
             const id_nuevo = (result.id || result._id)?.toString();
 
-            window.social_usuario.VINCULAR_CHAT_CONTACTO(id_contacto, id_nuevo).catch(e =>
+            // Vincular ANTES de refrescar listas: así el chat queda marcado como
+            // chat de contacto y ACTUALIZAR_LISTAS_CHAT lo excluye de "chats"
+            // (solo debe aparecer en contactos). Si no se espera, la lista se
+            // reconstruye antes del vínculo y el chat se cuela en "chats".
+            await window.social_usuario.VINCULAR_CHAT_CONTACTO(id_contacto, id_nuevo).catch(e =>
                 console.error("[Contactos] Error al vincular chat:", e)
             );
 

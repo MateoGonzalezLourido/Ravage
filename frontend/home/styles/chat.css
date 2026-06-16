@@ -1121,6 +1121,16 @@ body.sin-hilos-chat .mensaje-chat::after {
     transition: 0.1s;
 }
 
+/* Chat abierto: se mantiene resaltado en morado para indicar cuál está activo */
+.chat-componente-lista-chats.chat-activo {
+    background: rgba(147, 51, 234, 0.18);
+    border-color: rgba(147, 51, 234, 0.5);
+}
+
+.chat-componente-lista-chats.chat-activo:hover {
+    background: rgba(147, 51, 234, 0.22);
+}
+
 .nombre-chat-lista-componente {
     font-size: 16px;
     font-weight: 600;
@@ -2365,3 +2375,62 @@ body.sin-hilos-chat .mensaje-chat::after {
 .markdown-content strong { font-weight: 700; }
 .markdown-content em { font-style: italic; }
 .markdown-content s { text-decoration: line-through; }
+
+/* ─── MENCIONES ─────────────────────────────────────────────────────────────── */
+.mencion-usuario {
+    color: #60a5fa;
+    font-weight: 600;
+    border-radius: 3px;
+    padding: 0 2px;
+    cursor: pointer;
+}
+
+.mencion-usuario:hover {
+    text-decoration: underline;
+    background: rgba(96, 165, 250, 0.12);
+}
+
+.soy-emisor .mencion-usuario {
+    color: #bfdbfe;
+}
+
+/* ─── DROPDOWN AUTOCOMPLETE DE MENCIONES ──────────────────────────────────── */
+#dropdown-menciones {
+    position: fixed;
+    z-index: 9999;
+    background: #1e1e2e;
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    border-radius: 10px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    max-height: 220px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px 0;
+}
+
+#dropdown-menciones::-webkit-scrollbar {
+    width: 4px;
+}
+
+#dropdown-menciones::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.4);
+    border-radius: 4px;
+}
+
+.dropdown-menciones-item {
+    padding: 8px 14px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.1s ease;
+    user-select: none;
+}
+
+.dropdown-menciones-item:hover,
+.dropdown-menciones-item.seleccionado {
+    background: rgba(168, 85, 247, 0.2);
+    color: #ffffff;
+}

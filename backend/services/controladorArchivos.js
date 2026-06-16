@@ -83,7 +83,11 @@ async function guardarArchivoGenerico(rutaKey, data, especial = false) {
         log.error({ err }, `Error al guardar en ${rutaKey}`);
         // Solo limpiar si es un error crítico de corrupción (archivo ilegible),
         // pero no por errores temporales de permisos.
-        if (err.code !== 'EACCES') await clearFileSession(rutaKey);
+        if (err.code !== 'EACCES') {
+            // La identidad E2EE se respalda en vez de borrarse para no perder la clave privada.
+            if (especial === 'identity') await backupFileSession(rutaKey);
+            else await clearFileSession(rutaKey);
+        }
     }
 }
 
@@ -327,7 +331,9 @@ async function readFileSession(rutaKey, cifrado = true) {
         raw = JSON.parse(rawstr);
     } catch (e) {
         log.error({ err: e }, `Error al leer archivo ${rutaKey}`);
-        await clearFileSession(rutaKey);
+        // La identidad E2EE no se borra de forma destructiva: se respalda por si es recuperable
+        if (rutaKey === 'identity') await backupFileSession(rutaKey);
+        else await clearFileSession(rutaKey);
         return null;
     }
 
@@ -338,6 +344,12 @@ async function readFileSession(rutaKey, cifrado = true) {
     const useGlobalKey = ['sessionFile', 'cacheChatsFrecuentes', 'cacheArchivosDescargados', 'dispositivoConfianza', 'omitirVerificacionCuentaFile', 'cacheHistorialBusquedasAñadir', 'securityPin'].includes(rutaKey);
 
     if (rutaKey === 'identity') {
+        // Si falta la clave de entorno, NO es corrupción del archivo: conservarlo intacto
+        // y devolver null para que la capa superior avise (al fijar la env se recupera).
+        if (!process.env.SECRET_KEY_PRIVATE) {
+            log.error("FALTA process.env.SECRET_KEY_PRIVATE; no se puede leer la identidad (archivo conservado, no borrado)");
+            return null;
+        }
         secretKey = getSecretKeyPrivate();
     } else if (useGlobalKey) {
         secretKey = getSecretKeyCokkie();
@@ -377,6 +389,11 @@ async function readFileSession(rutaKey, cifrado = true) {
                 );
                 return parsed;
             }
+            // No se pudo descifrar con ninguna clave conocida: respaldar (NO borrar) para no
+            // destruir una clave privada E2EE potencialmente recuperable (p.ej. env mal puesta).
+            log.error({ err: e }, 'No se pudo descifrar la identidad E2EE; se respalda el archivo sin borrarlo');
+            await backupFileSession('identity');
+            return null;
         }
         log.error({ err: e }, `Error al leer archivo ${rutaKey}`);
         await clearFileSession(rutaKey);
@@ -444,6 +461,28 @@ async function clearFileSession(rutaKey) {
         }
     } catch (e) {
         log.error({ err: e }, `No se pudo eliminar el archivo ${rutaKey}`);
+    }
+}
+
+/**
+ * Respalda (renombra) un archivo ilegible en lugar de borrarlo. Pensado para datos
+ * irrecuperables como la identidad E2EE: si el fallo de descifrado se debe a una clave
+ * de entorno mal configurada (y no a corrupción real), el respaldo permite recuperar la
+ * clave privada más adelante, mientras la app puede regenerar una identidad nueva y
+ * seguir funcionando.
+ * @returns {Promise<string|null>} ruta del respaldo, o null si no se pudo respaldar
+ */
+async function backupFileSession(rutaKey) {
+    const filePath = RTDF[rutaKey];
+    if (!filePath || !fs.existsSync(filePath)) return null;
+    const destino = `${filePath}.corrupt-${Date.now()}`;
+    try {
+        await fs.promises.rename(filePath, destino);
+        log.warn({ destino }, `Archivo '${rutaKey}' ilegible: respaldado (no borrado) para evitar pérdida de datos`);
+        return destino;
+    } catch (e) {
+        log.error({ err: e }, `No se pudo respaldar el archivo '${rutaKey}'`);
+        return null;
     }
 }
 

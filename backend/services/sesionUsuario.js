@@ -22,7 +22,7 @@ import {
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, compare, createHash, machineIdSync } from '../utils/libs.js';
-import { generarLlavesRSA, hashDatosSistema } from './cryptoService.js';
+import { generarLlavesRSA, hashDatosSistema, getIdentity } from './cryptoService.js';
 
 import { clearCacheUsuarios, setUsuarioEnCache } from '../repositories/UserRepository.js';
 import { clearCacheArchivosDescargados } from '../STORAGE/CACHE/_cache_archivos_descargados.js';
@@ -89,6 +89,7 @@ async function autoLoginUsuario() {
 
     if (usuario_datos.success && usuario_datos.data) {
         ACTUALIZAR_DATOS_LOGIN({ data: usuario_datos.data, id_maquina: deviceId });
+        await asegurarIdentidadLocal();
         log.info("Autologin completado correctamente");
         return { success: true };
     } else {
@@ -332,6 +333,7 @@ async function loginUsuario(mainWindow, { username, contraseña, mantener_sesion
                 ]);
             })().catch(e => log.error(e));
         }
+        await asegurarIdentidadLocal();
         log.info("Autoverificacion de cuenta completada");
     } else {
         ; (async () => {
@@ -402,6 +404,7 @@ async function ValidarCodeLogin({ correo, code }) {
         BorrarCuentaVC(correo)
     ]);
 
+    await asegurarIdentidadLocal();
 
     ; (async () => {
         //mandar correo confirmando inicio de sesion (no bloqueante)
@@ -449,6 +452,30 @@ async function cerrarSesionUsuario(correo) {
     return true;
 }
 
+
+/**
+ * Garantiza que exista una identidad E2EE local. Si no hay clave privada local
+ * (p.ej. el registro no llegó a persistirla por un fallo previo), la regenera
+ * automáticamente. Requiere que el ID de usuario ya esté establecido en sesión.
+ * @returns {Promise<boolean>} true si la identidad ya existía o se regeneró con éxito
+ */
+async function asegurarIdentidadLocal() {
+    try {
+        const identidad = await getIdentity();
+        if (identidad?.primary?.privateKey) return true;
+
+        if (!storage.getIDMongodbUsuario()) {
+            log.warn('[Identity] No hay identidad local pero tampoco sesión activa; se omite regeneración');
+            return false;
+        }
+
+        log.warn('[Identity] No se encontró identidad E2EE local; regenerando automáticamente...');
+        return await REGENERAR_IDENTIDAD_USUARIO();
+    } catch (e) {
+        log.error({ err: e }, '[Identity] Error asegurando la identidad local');
+        return false;
+    }
+}
 
 async function REGENERAR_IDENTIDAD_USUARIO() {
     try {

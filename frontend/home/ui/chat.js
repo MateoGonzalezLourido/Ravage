@@ -2,7 +2,8 @@ import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
 import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario, DOM_CACHE, guardar_cache_virtualizacion, obtener_cache_virtualizacion } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat, ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js'
-import { CARGAR_LISTA_CONTACTOS } from './gestor_contactos.js'
+import { CARGAR_LISTA_CONTACTOS, abrir_chat_por_contacto } from './gestor_contactos.js'
+import { cambiar_vista_panel } from './navegacion_vistas.js'
 import { safeIdSelector } from './seguridad_ui.js';
 import { HILOS_DESACTIVADOS, PREVISUALIZACION_IMAGENES, OCULTAR_MENSAJES_ERROR_DESCIFRADO } from './ajustes.js';
 
@@ -661,6 +662,65 @@ const escapeHTML = (str) => {
     })[c]);
 };
 
+// Token canónico de una mención dentro de un mensaje almacenado/transmitido.
+// El id NUNCA se muestra al usuario: siempre se resuelve al apodo correspondiente.
+const RE_MENCION = /@\{([0-9a-f]{24})\}/g;
+const MENCION_PLACEHOLDER = 'usuario';
+
+/**
+ * Sustituye los tokens @{id} por el apodo que el usuario actual tiene de ese
+ * participante. El id solo sirve para saber a quién pertenece la mención; nunca
+ * se renderiza. Si el nombre aún no está resuelto, se muestra un placeholder
+ * (no el id). Para tener los nombres disponibles, pre-resuélvelos con
+ * resolverMencionesAsync / _resolver_ids_menciones antes de llamar aquí.
+ * @param {object} [opciones]
+ * @param {boolean} [opciones.plano] si true, devuelve texto plano "@nombre" en
+ *        vez de un <span> (para previsualizaciones y banners de texto).
+ */
+export function resolverMenciones(texto, mapNombres, { plano = false } = {}) {
+    if (!texto || typeof texto !== 'string') return texto || '';
+    RE_MENCION.lastIndex = 0;
+    if (!RE_MENCION.test(texto)) return texto;
+    return texto.replace(RE_MENCION, (_, userId) => {
+        const nombre = mapNombres?.[userId];
+        const visible = (nombre && nombre !== nombre_defecto) ? nombre : MENCION_PLACEHOLDER;
+        // data-mencion-id guarda a quién pertenece la mención (para el clic); el id
+        // nunca se muestra. Se permite explícitamente en sanitizarTexto (DOMPurify).
+        return plano
+            ? '@' + visible
+            : `<span class="mencion-usuario" data-mencion-id="${userId}">@${escapeHTML(visible)}</span>`;
+    });
+}
+
+// Resuelve hacia mapNombres los nombres de los ids indicados que aún falten,
+// reutilizando la función de nombres ya existente. Marca con nombre_defecto los
+// que no se encuentren para no volver a pedirlos en cada render.
+async function _resolver_ids_menciones(ids, mapNombres, contactos = null) {
+    if (!mapNombres || !ids?.length) return;
+    const faltantes = [...new Set(ids)].filter(id => mapNombres[id] === undefined);
+    if (faltantes.length === 0) return;
+    const cont = contactos || await window.social_usuario.OBTENER_CONTACTOS_USUARIO().catch(() => []);
+    await Promise.all(faltantes.map(async (id) => {
+        try {
+            const nombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id, grupal: false, contactos: cont });
+            mapNombres[id] = nombre || nombre_defecto;
+        } catch {
+            mapNombres[id] = nombre_defecto;
+        }
+    }));
+}
+
+// Variante asíncrona: resuelve los nombres que falten antes de sustituir, de modo
+// que nunca quede un @{id} visible aunque ese participante no haya enviado
+// mensajes en el chat (y por tanto no esté todavía en mapNombres).
+export async function resolverMencionesAsync(texto, mapNombres, contactos = null, opciones = {}) {
+    if (!texto || typeof texto !== 'string') return texto || '';
+    const ids = [...texto.matchAll(RE_MENCION)].map(m => m[1]);
+    if (ids.length === 0) return texto;
+    await _resolver_ids_menciones(ids, mapNombres, contactos);
+    return resolverMenciones(texto, mapNombres, opciones);
+}
+
 const sanitizarSVG = (svg) =>
     DOMPurify.sanitize(svg, {
         USE_PROFILES: { svg: true },
@@ -675,7 +735,7 @@ const sanitizarTexto = (texto) =>
             'ul', 'ol', 'li', 'code', 'pre', 'blockquote', 'hr',
             'table', 'thead', 'tbody', 'tr', 'th', 'td',
         ],
-        ALLOWED_ATTR: ['class', 'data-url'],
+        ALLOWED_ATTR: ['class', 'data-url', 'data-mencion-id'],
         FORCE_BODY: true,
         RETURN_DOM_FRAGMENT: false,
         FORBID_ATTR: ['style', 'onerror', 'onload'],
@@ -910,6 +970,7 @@ export async function limpiar_cache_activo(ids_nuevos = []) {
 // ─── VIRTUALIZACIÓN DE MENSAJES ──────────────────────────────────────────────
 
 let _virt = null;
+window.__ravage_get_virt = () => _virt;
 
 export function obtener_estado_virtualizacion() {
     return _virt;
@@ -958,6 +1019,17 @@ async function _construir_html_mensajes(mensajesConEstado, opciones) {
     const SuperaMin = datos_chat.usuarios?.length > 2;
     if (!datos_chat.admins) datos_chat.admins = [];
 
+    // Pre-resolver los nombres de todas las menciones del bloque (en una sola
+    // tanda) para que resolverMenciones no deje ningún @{id} a la vista.
+    const ids_menciones = [];
+    for (const m of mensajesConEstado) {
+        const a = m?.contenido?.[0]?.asunto;
+        if (typeof a === 'string') {
+            for (const match of a.matchAll(RE_MENCION)) ids_menciones.push(match[1]);
+        }
+    }
+    if (ids_menciones.length) await _resolver_ids_menciones(ids_menciones, map_nombres);
+
     return Promise.all(mensajesConEstado.map(async (m) => {
         if (!m) return "";
         const id_emisor = m.id_emisor || undefined;
@@ -967,8 +1039,9 @@ async function _construir_html_mensajes(mensajesConEstado, opciones) {
         const propio = id_emisor === id_propio;
         const esAdmin = SuperaMin && datos_chat.admins.includes(id_emisor);
         const nombre = map_nombres[id_emisor] || nombre_defecto;
+        const asunto_resuelto = resolverMenciones(asunto_raw || "", map_nombres);
         return crear_mensaje_html({
-            id_mensaje: m.id || m._id, fecha: m.data, asunto: m.contenido[0]?.asunto || "",
+            id_mensaje: m.id || m._id, fecha: m.data, asunto: asunto_resuelto,
             archivos: m.contenido[0]?.archivos || [], propio,
             nombre_emisor: nombre, esAdmin, escaneres_seguridad,
             tieneArriba: m.tieneArriba, tieneAbajo: m.tieneAbajo,
@@ -1494,7 +1567,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
 
         // Cargar datos del mensaje fijado si existe
         if (datos.msfijado) {
-            window.chats.OBTENER_DATOS_MENSAJE(datos._id, datos.msfijado).then(res => {
+            window.chats.OBTENER_DATOS_MENSAJE(datos._id, datos.msfijado).then(async res => {
                 if (res && controller && !controller.abort) {
                     const txtNode = document.getElementById("texto-mensaje-fijado");
                     if (txtNode) {
@@ -1502,7 +1575,7 @@ async function renderizar_chat_progresivo_plano(datos, id_propio, contactos) {
                             txtNode.innerText = "🚫 Este mensaje ha sido eliminado";
                         } else {
                             const txt = res.contenido?.[0]?.asunto || (res.contenido?.[0]?.archivos?.length ? '📎 Archivo adjunto' : 'Mensaje vacío');
-                            txtNode.innerText = txt;
+                            txtNode.innerText = await resolverMencionesAsync(txt, map_nombres, null, { plano: true });
                             txtNode.style.fontStyle = "normal";
                         }
                     }
@@ -2264,49 +2337,15 @@ export async function mostrar_datos_chat_usuarios(e) {
             else if (action === "añadir-contacto") {
                 const es_contacto = await Es_Contacto_Usuario(id)
                 if (es_contacto) return;
-                const nombreLimpio = nombre.replace(/\(.*?\)/g, "").trim();
-                const overlay = document.createElement("div")
-                overlay.className = "overlay-ajustes-chat-full"
-                overlay.innerHTML = `
-                    <div class="menu-ajustes-chat-interior" style="max-width:380px;">
-                        <div style="font-size:16px;font-weight:600;color:#f1f5f9;margin-bottom:18px;">Añadir contacto</div>
-                        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:12px;">Nombre con el que aparecerá en tus contactos</div>
-                        <input id="input-nombre-contacto-nuevo" type="text" maxlength="40" placeholder="Nombre del contacto"
-                            style="width:100%;height:44px;background:rgba(255,255,255,0.05);color:#f1f5f9;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0 14px;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:18px;"
-                            value="${nombreLimpio}">
-                        <div style="display:flex;gap:10px;justify-content:flex-end;">
-                            <button id="bt-cancelar-añadir-contacto"
-                                style="padding:9px 18px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;">
-                                Cancelar
-                            </button>
-                            <button id="bt-confirmar-añadir-contacto"
-                                style="padding:9px 18px;border-radius:9px;border:none;background:#6366f1;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
-                                Añadir
-                            </button>
-                        </div>
-                    </div>`
-                document.body.appendChild(overlay)
-
-                const inputNombre = overlay.querySelector("#input-nombre-contacto-nuevo")
-                inputNombre.focus()
-                inputNombre.select()
-
-                const cerrarOverlay = () => overlay.remove()
-
-                overlay.querySelector("#bt-cancelar-añadir-contacto").addEventListener("click", cerrarOverlay)
-                overlay.addEventListener("click", e => { if (e.target === overlay) cerrarOverlay() })
-
-                const confirmar = async () => {
-                    const nombreFinal = inputNombre.value.trim()
-                    cerrarOverlay()
-                    const resultado = await window.social_usuario.AÑADIR_CONTACTO(id, nombreFinal)
-                    if (resultado) {
-                        window.pushNotificacion({ prioridad: 1, texto: `${nombreFinal || "Contacto"} añadido`, tipo: "success" })
+                abrir_dialogo_anadir_contacto({
+                    id,
+                    nombre,
+                    onAdded: async (resultado, nombreFinal) => {
                         const chat_id_vinculado = resultado.chat_id
                         if (chat_id_vinculado && nombreFinal) {
                             // Actualizar caché activa para que Encontrar_Nombre_Chat_Usuario devuelva el nuevo nombre
                             const cache_actual = await window.chats.OBTENER_CACHE_CHAT_ACTIVO(chat_id_vinculado)
-                             window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ ...(cache_actual || {}), _id: chat_id_vinculado, nombre: nombreFinal })
+                            window.chats.GUARDAR_CACHE_CHAT_ACTIVO({ ...(cache_actual || {}), _id: chat_id_vinculado, nombre: nombreFinal })
                             // Si ese chat está abierto, actualizar el header directamente
                             const chat_abierto_id = document.querySelector("#nav-principal-chat-usuario")?.dataset.id
                             if (chat_abierto_id === chat_id_vinculado) {
@@ -2314,18 +2353,9 @@ export async function mostrar_datos_chat_usuarios(e) {
                                 if (headerNombre) headerNombre.textContent = nombreFinal
                             }
                         }
-                        await Promise.all([
-                            ACTUALIZAR_LISTAS_CHAT(),
-                            CARGAR_LISTA_CONTACTOS(),
-                            mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true })
-                        ])
-                    } else {
-                        window.pushNotificacion({ prioridad: 2, texto: "No se pudo añadir el contacto", tipo: "error" })
+                        await mostrar_datos_chat_usuarios({ currentTarget: { dataset: { id: id_chat } }, preventDefault: () => { }, noToggle: true })
                     }
-                }
-
-                overlay.querySelector("#bt-confirmar-añadir-contacto").addEventListener("click", confirmar)
-                inputNombre.addEventListener("keydown", e => { if (e.key === "Enter") confirmar() })
+                })
             }
             else if (action === "eliminar-contacto") {
                 const ok = await window.social_usuario.ELIMINAR_CONTACTO(id);
@@ -2509,4 +2539,123 @@ async function Es_Contacto_Usuario(usuario_comprobar) {
 export async function Es_usuario_Sesion(usuario_comprobar) {
     const id_mio = ID_USUARIO_MONGO
     return usuario_comprobar === id_mio
+}
+
+// ─── MENCIONES: clic sobre @usuario ──────────────────────────────────────────
+
+/**
+ * Diálogo reutilizable para añadir un usuario a contactos.
+ * @param {object} opciones
+ * @param {string} opciones.id - id del usuario a añadir.
+ * @param {string} [opciones.nombre] - nombre sugerido para el input.
+ * @param {function} [opciones.onAdded] - callback async tras añadir (resultado, nombreFinal).
+ */
+function abrir_dialogo_anadir_contacto({ id, nombre = "", onAdded = null }) {
+    const nombreLimpio = (nombre || "").replace(/\(.*?\)/g, "").trim();
+    const overlay = document.createElement("div");
+    overlay.className = "overlay-ajustes-chat-full";
+    overlay.innerHTML = `
+        <div class="menu-ajustes-chat-interior" style="max-width:380px;">
+            <div style="font-size:16px;font-weight:600;color:#f1f5f9;margin-bottom:18px;">Añadir contacto</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:12px;">Nombre con el que aparecerá en tus contactos</div>
+            <input id="input-nombre-contacto-nuevo" type="text" maxlength="40" placeholder="Nombre del contacto"
+                style="width:100%;height:44px;background:rgba(255,255,255,0.05);color:#f1f5f9;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0 14px;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:18px;"
+                value="${escapeHTML(nombreLimpio)}">
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button id="bt-cancelar-añadir-contacto"
+                    style="padding:9px 18px;border-radius:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;">
+                    Cancelar
+                </button>
+                <button id="bt-confirmar-añadir-contacto"
+                    style="padding:9px 18px;border-radius:9px;border:none;background:#6366f1;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+                    Añadir
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const inputNombre = overlay.querySelector("#input-nombre-contacto-nuevo");
+    inputNombre.focus();
+    inputNombre.select();
+
+    const cerrarOverlay = () => overlay.remove();
+    overlay.querySelector("#bt-cancelar-añadir-contacto").addEventListener("click", cerrarOverlay);
+    overlay.addEventListener("click", e => { if (e.target === overlay) cerrarOverlay(); });
+
+    const confirmar = async () => {
+        const nombreFinal = inputNombre.value.trim();
+        cerrarOverlay();
+        const resultado = await window.social_usuario.AÑADIR_CONTACTO(id, nombreFinal);
+        if (resultado) {
+            window.pushNotificacion({ prioridad: 1, texto: `${nombreFinal || "Contacto"} añadido`, tipo: "success" });
+            await Promise.all([ACTUALIZAR_LISTAS_CHAT(), CARGAR_LISTA_CONTACTOS()]);
+            if (onAdded) await onAdded(resultado, nombreFinal);
+        } else {
+            window.pushNotificacion({ prioridad: 2, texto: "No se pudo añadir el contacto", tipo: "error" });
+        }
+    };
+    overlay.querySelector("#bt-confirmar-añadir-contacto").addEventListener("click", confirmar);
+    inputNombre.addEventListener("keydown", e => { if (e.key === "Enter") confirmar(); });
+}
+
+// Opción flotante "Añadir contacto" al pulsar la mención de alguien que no es contacto.
+function mostrar_opcion_anadir_contacto(ev, id, nombre) {
+    document.querySelector(".context-menu-mencion")?.remove();
+
+    const menu = document.createElement("div");
+    menu.className = "context-menu context-menu-mencion";
+    menu.style.cssText = "position:fixed;z-index:1000;";
+    menu.innerHTML = `<div class="context-menu-item" data-action="anadir-contacto">Añadir contacto</div>`;
+    document.body.appendChild(menu);
+
+    const r = menu.getBoundingClientRect();
+    let x = ev.clientX, y = ev.clientY;
+    if (x + r.width > window.innerWidth) x = window.innerWidth - r.width - 5;
+    if (y + r.height > window.innerHeight) y = window.innerHeight - r.height - 5;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+
+    const cerrar = () => { menu.remove(); document.removeEventListener("click", cerrar); };
+    setTimeout(() => document.addEventListener("click", cerrar), 0);
+
+    menu.querySelector(".context-menu-item").addEventListener("click", (e) => {
+        e.stopPropagation();
+        cerrar();
+        abrir_dialogo_anadir_contacto({
+            id,
+            nombre,
+            onAdded: async (_resultado, nombreFinal) => {
+                // Reflejar el nuevo apodo en las menciones ya pintadas y en la caché del chat.
+                if (_virt?.map_nombres) _virt.map_nombres[id] = nombreFinal || nombre_defecto;
+                document.querySelectorAll(`#cuerpo-mensajes-chat .mencion-usuario[data-mencion-id="${id}"]`)
+                    .forEach(span => { span.textContent = "@" + (nombreFinal || MENCION_PLACEHOLDER); });
+            }
+        });
+    });
+}
+
+/**
+ * Acción al pulsar una mención dentro de un mensaje:
+ *  - si el usuario ya es contacto, abre su chat existente (lo crea si no hay);
+ *  - si no lo es, ofrece añadirlo como contacto (opción flotante).
+ * El id solo se usa internamente; nunca se muestra.
+ */
+export async function manejar_click_mencion(ev, id, nombre_sugerido = "") {
+    if (!id) return;
+    // No hacer nada al pulsar tu propia mención.
+    if (id.toString() === ID_USUARIO_MONGO?.toString()) return;
+
+    const contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO().catch(() => []);
+    const contacto = (contactos || []).find(c =>
+        (typeof c === "string" ? c : c?.id?.toString()) === id.toString()
+    );
+
+    if (contacto) {
+        // Mostrar la vista de contactos (marca su botón como seleccionado) y abrir
+        // el chat del contacto, igual que al pulsarlo en la lista de contactos.
+        await cambiar_vista_panel("contactos");
+        await abrir_chat_por_contacto(contacto.id || id, contacto.apodo || "", contacto.chat_id || "");
+    } else {
+        mostrar_opcion_anadir_contacto(ev, id, nombre_sugerido);
+    }
 }

@@ -3,7 +3,7 @@ import { optimizar_ventana } from '../global/optimizar_ventana.js';
 optimizar_ventana()
 // ─── IMPORTS DE COMPONENTES Y UTILIDADES ──────────────────────────────────
 import { desplegar_menu_añadir_chat, set_callback_actualizar_listas } from './ui/añadir_chats_usuarios.js'
-import { mostrar_datos_chat_usuarios, iniciar_sistema_hover_urls } from './ui/chat.js'
+import { mostrar_datos_chat_usuarios, iniciar_sistema_hover_urls, manejar_click_mencion } from './ui/chat.js'
 import { Todos_Los_Eventos_Funciones_Ajustes, aplicar_ajuste_hilos } from './ui/ajustes.js'
 
 // ─── IMPORTS DE MÓDULOS REFACTORIZADOS (NUEVA ARQUITECTURA) ───────────────
@@ -27,7 +27,11 @@ import {
     manejar_input_escribiendo,
     enviar_mensaje_chat,
     manejar_solicitud_chat,
-    mostrar_menu_contextual_mensaje
+    mostrar_menu_contextual_mensaje,
+    dropdown_menciones_activo,
+    navegar_dropdown_menciones,
+    seleccionar_candidato_activo,
+    cerrar_dropdown_menciones
 } from './ui/mensajes_eventos.js'
 document.getElementsByClassName
 import {
@@ -35,7 +39,7 @@ import {
 } from './ui/buzon_eventos.js'
 
 import { manejar_descarga_archivo } from './ui/descarga_archivos.js'
-import { toggle_historial_descargas, mensaje_bienvenida_usuario } from './ui/navegacion_vistas.js'
+import { toggle_historial_descargas, mensaje_bienvenida_usuario, cambiar_vista_panel, obtener_vista_actual } from './ui/navegacion_vistas.js'
 import { CARGAR_LISTA_CONTACTOS, abrir_chat_por_contacto, mostrar_menu_contextual_contacto } from './ui/gestor_contactos.js'
 import { manejar_ui_cierre_sesion } from './ui/servicios_sesion.js'
 import { limpiar_cache_iconos } from './ui/url_icono_extensiones_archivos.js'
@@ -55,40 +59,13 @@ set_callback_actualizar_listas(ACTUALIZAR_LISTAS_CHAT);
 // ==========================================
 // SELECTOR DE VISTA (Chats / Contactos)
 // ==========================================
-let vista_actual = "chats";
-
 function inicializar_selector_vista() {
     const selector = document.getElementById("selector-vista-panel");
-    const lista_chats = document.getElementById("lista-chats-componentes");
-    const lista_contactos = document.getElementById("lista-contactos-componentes");
-    const btn_añadir = document.getElementById("bt-añadir-chat");
-    const input_buscar = document.getElementById("input-buscar-chat");
-    if (!selector || !lista_chats || !lista_contactos) return;
+    if (!selector) return;
 
-    selector.addEventListener("click", async (e) => {
+    selector.addEventListener("click", (e) => {
         const btn = e.target.closest(".selector-vista-btn");
-        if (!btn) return;
-
-        const nueva_vista = btn.dataset.vista;
-        if (nueva_vista === vista_actual) return;
-
-        vista_actual = nueva_vista;
-
-        selector.querySelectorAll(".selector-vista-btn").forEach(b => b.classList.remove("activo"));
-        btn.classList.add("activo");
-
-        if (nueva_vista === "chats") {
-            lista_chats.classList.remove("ocultar-display");
-            lista_contactos.classList.add("ocultar-display");
-            if (btn_añadir) btn_añadir.style.display = "";
-            if (input_buscar) input_buscar.placeholder = "Buscar chat...";
-        } else {
-            lista_chats.classList.add("ocultar-display");
-            lista_contactos.classList.remove("ocultar-display");
-            if (btn_añadir) btn_añadir.style.display = "none";
-            if (input_buscar) input_buscar.placeholder = "Buscar contacto...";
-            await CARGAR_LISTA_CONTACTOS(input_buscar?.value.trim() || "");
-        }
+        if (btn) cambiar_vista_panel(btn.dataset.vista);
     });
 }
 
@@ -136,6 +113,13 @@ function inicializar_eventos_globales() {
     const divChatUsuario = DOM_CACHE.chat_usuario
     if (divChatUsuario) {
         divChatUsuario.addEventListener("click", (e) => {
+            const mencion = e.target.closest(".mencion-usuario")
+            if (mencion && mencion.dataset.mencionId) {
+                e.preventDefault()
+                manejar_click_mencion(e, mencion.dataset.mencionId, (mencion.textContent || "").replace(/^@~?/, ""))
+                return
+            }
+
             const btnAceptarSol = e.target.closest(".bt-solicitud-aceptar")
             if (btnAceptarSol) { e.preventDefault(); manejar_solicitud_chat(btnAceptarSol, true); return }
 
@@ -153,10 +137,19 @@ function inicializar_eventos_globales() {
             if (e.target.id === "textarea-mensaje-escritura") manejar_input_escribiendo(e.target)
         })
 
+        divChatUsuario.addEventListener("keydown", (e) => {
+            if (e.target.id !== "textarea-mensaje-escritura") return;
+            if (!dropdown_menciones_activo()) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); navegar_dropdown_menciones(1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); navegar_dropdown_menciones(-1); }
+            else if (e.key === 'Enter') { e.preventDefault(); seleccionar_candidato_activo(e.target); }
+            else if (e.key === 'Escape') { e.preventDefault(); cerrar_dropdown_menciones(); }
+        })
+
         divChatUsuario.addEventListener("keypress", (e) => {
             if (e.target.id === "textarea-mensaje-escritura" && e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault(); 
-                enviar_mensaje_chat(e.target)
+                e.preventDefault();
+                if (!dropdown_menciones_activo()) enviar_mensaje_chat(e.target);
             }
         })
     }
@@ -254,7 +247,7 @@ async function preparar_interfaz_y_servicios() {
     input_buscar_chat?.addEventListener("keyup", (e) => {
         e.preventDefault()
         const valor = input_buscar_chat.value.trim()
-        if (vista_actual === "contactos") {
+        if (obtener_vista_actual() === "contactos") {
             CARGAR_LISTA_CONTACTOS(valor);
         } else if (valor !== cache_input_buscar_chat_ultimo) {
             ACTUALIZAR_LISTAS_CHAT(valor)

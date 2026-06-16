@@ -14,12 +14,14 @@ import {
     cargar_bloque_arriba,
     cargar_bloque_abajo,
     cargar_preview_imagen,
-    cargar_audio_mensaje
+    cargar_audio_mensaje,
+    resolverMencionesAsync
 } from './chat.js';
 import { HILOS_DESACTIVADOS, OCULTAR_MENSAJES_ERROR_DESCIFRADO } from './ajustes.js';
 import {
     manejar_input_escribiendo,
-    manejar_solicitud_chat
+    manejar_solicitud_chat,
+    invalidar_cache_menciones
 } from './mensajes_eventos.js';
 
 const MODELO_DATOS_NECESARIOS_CHAT = {
@@ -178,7 +180,10 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
             return chat_componente_lista_estructura_html(datos_usar)
         }))).join("")
 
-        document.getElementById("lista-chats-componentes").innerHTML = html
+        const contenedor_chats = document.getElementById("lista-chats-componentes")
+        contenedor_chats.innerHTML = html
+        marcar_chat_activo()
+        await resolver_menciones_previews(contenedor_chats)
     }
     catch (e) {
         throw e
@@ -226,12 +231,14 @@ export async function abrir_chat_item(id_chat, force = false) {
 
         limpiar_archivos_mensaje()
         destruir_virtualizacion()
-        
+        invalidar_cache_menciones()
+
         const htmlChat = await Crear_chat_html(datos_chat, id_usuario);
         DOM_CACHE.chat_usuario.innerHTML = htmlChat;
         
         // Refrescar caché de elementos dinámicos después de inyectar el HTML
         DOM_CACHE.refrescar_elementos_chat();
+        marcar_chat_activo(id_chat);
 
         const textarea = DOM_CACHE.textarea_mensaje_escritura;
         if (textarea) {
@@ -256,6 +263,40 @@ export async function abrir_chat_item(id_chat, force = false) {
             id_chat_cargando = null;
         }
     }
+}
+
+/**
+ * Resuelve los @{id} que queden en las vistas previas de "último mensaje" de una
+ * lista (chats o contactos). Esos previews se construyen de forma síncrona en
+ * chat_componente_lista_estructura_html, que no puede resolver nombres (es
+ * asíncrono), así que se hace aquí en texto plano tras pintar la lista.
+ */
+export async function resolver_menciones_previews(contenedor) {
+    if (!contenedor) return;
+    const spans = contenedor.querySelectorAll(".ultimo-mensaje-chat-lista span");
+    if (!spans.length) return;
+    const map = {};
+    let contactos = null;
+    for (const span of spans) {
+        const txt = span.textContent || "";
+        if (!txt.includes("@{")) continue;
+        if (!contactos) contactos = await window.social_usuario.OBTENER_CONTACTOS_USUARIO().catch(() => []);
+        span.textContent = await resolverMencionesAsync(txt, map, contactos, { plano: true });
+    }
+}
+
+/**
+ * Marca con la clase `chat-activo` el componente de la lista (chats o contactos)
+ * correspondiente al chat abierto, y la quita del resto. Si no se pasa id, lo
+ * toma del chat actualmente abierto. Debe re-aplicarse tras reconstruir listas.
+ */
+export function marcar_chat_activo(id_chat = null) {
+    const id = id_chat || DOM_CACHE.nav_principal_chat_usuario?.dataset.id;
+    document.querySelectorAll(".chat-componente-lista-chats.chat-activo")
+        .forEach(el => el.classList.remove("chat-activo"));
+    if (!id) return;
+    document.querySelectorAll(`.chat-componente-lista-chats[data-id="${id}"]`)
+        .forEach(el => el.classList.add("chat-activo"));
 }
 
 export async function mostrar_menu_contextual_lista_chats(e, id_chat) {
@@ -422,9 +463,12 @@ async function _preparar_datos_mensaje({ emisor, chat, mensaje = "", archivos = 
         return { html: '', fecha, id_chat_str, id_emisor, id_mensaje, mensaje, escaneres_seguridad };
     }
 
+    const mapNombres = obtener_estado_virtualizacion()?.map_nombres || {};
+    const mensaje_resuelto = await resolverMencionesAsync(mensaje, mapNombres, nombres_contactos);
+
     const html = await crear_mensaje_html({
         fecha,
-        asunto: mensaje,
+        asunto: mensaje_resuelto,
         archivos,
         propio,
         nombre_emisor,
@@ -624,7 +668,11 @@ export async function cambiar_datos_componente_lista_chats({ id_chat, data, noti
         const asunto = data?.asunto || data?.data?.asunto || (typeof data === 'string' ? data : "");
         if (asunto) {
             const elMsg = componente_lista.querySelector(".ultimo-mensaje-chat-lista span");
-            if (elMsg) elMsg.innerHTML = escapeHTML(asunto);
+            if (elMsg) {
+                const mapNombres = obtener_estado_virtualizacion()?.map_nombres || {};
+                const asunto_resuelto = await resolverMencionesAsync(asunto, mapNombres, null, { plano: true });
+                elMsg.innerHTML = escapeHTML(asunto_resuelto);
+            }
         }
 
         const fecha = data?.fecha || data?.data?.data || data?.data;
