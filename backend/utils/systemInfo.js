@@ -13,9 +13,13 @@ export async function getSystemResources() {
 
         // Get free disk space for the root partition (or APP_DATA partition)
         const fsSize = await si.fsSize();
-        // Typically, we want the partition where the app data is stored.
-        // For simplicity, we'll take the first one or the one with the most free space if / isn't clear.
-        const rootFs = fsSize.find(f => f.mount === '/') || fsSize[0];
+        // Find the partition that contains the home directory (works on Linux, macOS and Windows)
+        const homeDir = os.homedir();
+        const rootFs = fsSize
+            .filter(f => f.mount && homeDir.toLowerCase().startsWith(f.mount.toLowerCase()))
+            .sort((a, b) => b.mount.length - a.mount.length)[0]
+            || fsSize.find(f => f.mount === '/')
+            || fsSize[0];
         const freeDiskGB = (rootFs?.available || 0) / (1024 * 1024 * 1024);
 
         return { totalRamGB, freeDiskGB };
