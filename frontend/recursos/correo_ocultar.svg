@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 2L4 5v6c0 4.4 3.4 8.5 8 9.5C16.6 19.5 20 15.4 20 11V5z"/>
+  <text x="12" y="15" text-anchor="middle" font-size="8.5" font-family="sans-serif" stroke="none" fill="currentColor" font-weight="600">@</text>
+</svg>

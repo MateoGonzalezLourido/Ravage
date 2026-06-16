@@ -40,4 +40,7 @@ module.exports = {
     OBTENER_USUARIOS_SILENCIADOS: () => {
         return ipcRenderer.invoke("obtener-usuarios-silenciados")
     },
+    OBTENER_MOSTRAR_CORREO_USUARIO: () => {
+        return ipcRenderer.invoke("obtener-mostrar-correo-usuario")
+    },
 };

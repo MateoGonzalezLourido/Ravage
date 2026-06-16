@@ -241,6 +241,22 @@ async function preparar_interfaz_y_servicios() {
     document.getElementById("bt-añadir-chat")?.addEventListener("click", (e) => desplegar_menu_añadir_chat({ e, mostrar: true }))
     document.getElementById("bt-seccion-historial-archivos")?.addEventListener("click", toggle_historial_descargas)
 
+    // Inicializar botón ocultar correo
+    const btOcultarCorreo = document.getElementById("bt-toggle-ocultar-correo")
+    if (btOcultarCorreo) {
+        const mostrarCorreo = await window.cuenta_usuario.OBTENER_MOSTRAR_CORREO_USUARIO().catch(() => true)
+        _actualizar_ui_ocultar_correo(!mostrarCorreo)
+        btOcultarCorreo.addEventListener("click", async () => {
+            const res = await window.social_usuario.TOGGLE_MOSTRAR_CORREO_USUARIO().catch(() => null)
+            if (res?.success) {
+                const correoVisible = res.mostrarCorreo
+                _actualizar_ui_ocultar_correo(!correoVisible)
+                const msg = correoVisible ? "Tu correo ya no está protegido" : "Tu correo está protegido"
+                window.pushNotificacion({ prioridad: 1, texto: msg, tipo: correoVisible ? "info" : "exito" })
+            }
+        })
+    }
+
     
     
     const input_buscar_chat = DOM_CACHE.input_buscar_chat
@@ -273,6 +289,13 @@ async function preparar_interfaz_y_servicios() {
             DOM_CACHE.refrescar_elementos_chat();
         }
     });
+}
+
+function _actualizar_ui_ocultar_correo(oculto) {
+    const btn = document.getElementById("bt-toggle-ocultar-correo")
+    if (!btn) return
+    btn.classList.toggle("correo-oculto", oculto)
+    btn.title = oculto ? "Tu correo está protegido" : "Tu correo no está protegido"
 }
 
 // ==========================================

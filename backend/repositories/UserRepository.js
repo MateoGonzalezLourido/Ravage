@@ -378,7 +378,11 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
     if (cachedEntry) {
         const procesado = cachedEntry.data;
         if (!datos_usar && !esMiPropioUsuario) {
-            useCache = true;
+            // La caché es válida solo si tiene los campos del query por defecto (al menos correo).
+            // Las entradas de búsqueda solo guardan { _id, apodo } y no son válidas aquí.
+            if (cachedEntry.data.correo !== undefined) {
+                useCache = true;
+            }
         } else if (datos_usar) {
             // TTL de 5 minutos para re-verificar mostrarCorreo e invisible
             if (ahora - cachedEntry.timestamp <= 5 * 60 * 1000) {
@@ -412,7 +416,10 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
         }
     }
 
-    const datos_buscar = datos_usar || "correo apodo visible idamigo mostrarCorreo invisible";
+    let datos_buscar = datos_usar || "correo apodo visible idamigo mostrarCorreo invisible";
+    if (datos_usar && datos_usar.includes('correo') && !datos_usar.includes('mostrarCorreo')) {
+        datos_buscar = datos_usar + ' mostrarCorreo';
+    }
     const usuario = await User.findById(idStr, datos_buscar).lean();
     if (!usuario) return null;
 
@@ -444,7 +451,10 @@ export async function obtener_varios_usuarios(ids, datos_usar = null) {
 
     const id_propio = getIDMongodbUsuario()?.toString();
     const ahora = Date.now();
-    const query_datos = datos_usar ?? "correo apodo visible idamigo mostrarCorreo invisible";
+    let query_datos = datos_usar ?? "correo apodo visible idamigo mostrarCorreo invisible";
+    if (datos_usar && datos_usar.includes('correo') && !datos_usar.includes('mostrarCorreo')) {
+        query_datos = datos_usar + ' mostrarCorreo';
+    }
 
     const result = [];
     const missingIds = [];
