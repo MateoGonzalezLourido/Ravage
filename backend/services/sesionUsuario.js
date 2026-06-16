@@ -3,7 +3,7 @@ const log = createLogger('session');
 import { User } from '../models/User.js';
 import { ValidationCode, TokenVC, TokenDPC, DispositivosBloqueados } from '../models/Security.js';
 import { LoginUsuarioDB, InsertarUsuario, procesarUsuario } from '../repositories/UserRepository.js';
-import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, BuscarVC, BuscarCuentaVC, AñadirJWTDPConfianza, LimpiarJWTDPConfianza, ObtenerSesionesPorCorreo, ObtenerDPConfianzasPorCorreo, RevocarSesionPorDispositivo, RevocarDPConfianzaPorDispositivo, ObtenerInfoSesionDispositivo, ObtenerInfoDPConfianzaDispositivo } from '../repositories/SecurityRepository.js';
+import { InsertarVC, BorrarVC, InsertarCuentaVC, BorrarCuentaVC, LimpiarJWTUsuario, AñadirJWTUsuario, AñadirJWTUsuarioVC, LimpiarJWTUsuarioVC, BuscarVC, BuscarCuentaVC, AñadirJWTDPConfianza, LimpiarJWTDPConfianza, ObtenerSesionesPorCorreo, ObtenerDPConfianzasPorCorreo, RevocarSesionPorDispositivo, RevocarDPConfianzaPorDispositivo, ObtenerInfoSesionDispositivo, ObtenerInfoDPConfianzaDispositivo, BloquearDispositivo, DesbloquearDispositivo, ObtenerDPsBloqueadosPorCorreo } from '../repositories/SecurityRepository.js';
 import {
     saveSessionFile,
     clearFileSession,
@@ -21,7 +21,9 @@ import {
     ConfirmacionInicioSesion,
     AvisoDispositivoConfianzaAnadido,
     AvisoDispositivoConfianzaRevocado,
-    AvisoSesionCerrada
+    AvisoSesionCerrada,
+    AvisoDispositivoBloqueado,
+    AvisoDispositivoDesbloqueado
 } from './MENSAJERIA/Estructuras_correos.js';
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
@@ -594,9 +596,10 @@ async function obtenerGestionDispositivos(correo) {
     const deviceId = String(machineIdSync());
     const deviceHash = hashDatosSistema(deviceId);
 
-    const [sesiones, confianzas] = await Promise.all([
+    const [sesiones, confianzas, bloqueados] = await Promise.all([
         ObtenerSesionesPorCorreo(correoHash),
-        ObtenerDPConfianzasPorCorreo(correoHash)
+        ObtenerDPConfianzasPorCorreo(correoHash),
+        ObtenerDPsBloqueadosPorCorreo(correoHash)
     ]);
 
     const mapear = (doc) => {
@@ -612,9 +615,19 @@ async function obtenerGestionDispositivos(correo) {
         };
     };
 
+    const mapearBloqueado = (doc) => ({
+        id_dp_hash: doc.id_dp_hash,
+        corto: doc.id_dp_hash.slice(-8).toUpperCase(),
+        esteDispositivo: doc.id_dp_hash === deviceHash,
+        os: doc.os || null,
+        nombre: doc.nombre || null,
+        fechaBloqueado: doc.fecha_bloqueo ? new Date(doc.fecha_bloqueo).toISOString() : null
+    });
+
     return {
         sesiones: sesiones.map(mapear),
         confianzas: confianzas.map(mapear),
+        bloqueados: bloqueados.map(mapearBloqueado),
         deviceHash
     };
 }
@@ -657,6 +670,61 @@ async function revocarConfianzaDispositivo(correo, id_dp_hash) {
     return { success: true };
 }
 
+async function bloquearDispositivo(correo, id_dp_hash) {
+    const correoHash = hashDatosSistema(correo);
+
+    // Obtener info del dispositivo de sesiones o confianza antes de eliminar
+    const [infoSesion, infoConfianza] = await Promise.all([
+        ObtenerInfoSesionDispositivo(correoHash, id_dp_hash),
+        ObtenerInfoDPConfianzaDispositivo(correoHash, id_dp_hash)
+    ]);
+    const info = infoSesion || infoConfianza || {};
+
+    // Bloquear + revocar sesiones y confianza en paralelo
+    await Promise.all([
+        BloquearDispositivo(correo, correoHash, id_dp_hash, { os: info.os || null, nombre: info.nombre || null }),
+        RevocarSesionPorDispositivo(correoHash, id_dp_hash),
+        RevocarDPConfianzaPorDispositivo(correoHash, id_dp_hash)
+    ]);
+
+    // Si es el dispositivo actual, limpiar archivos locales
+    const deviceId = String(machineIdSync());
+    if (id_dp_hash === hashDatosSistema(deviceId)) {
+        await Promise.allSettled([
+            clearFileSession('sessionFile'),
+            clearFileSession('dispositivoConfianza')
+        ]);
+    }
+
+    ;(async () => {
+        const apodo = storage.getApodoSesion();
+        const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
+        const { asunto, htmlContenido } = AvisoDispositivoBloqueado({ apodo, nombre: info.nombre || null, sistemaOperativo: info.os || null, fecha });
+        enviarEmail({ correoDestino: correo, asunto, htmlContenido });
+    })();
+
+    return { success: true };
+}
+
+async function desbloquearDispositivo(correo, id_dp_hash) {
+    const correoHash = hashDatosSistema(correo);
+
+    // Obtener info antes de desbloquear para el correo
+    const doc = await ObtenerDPsBloqueadosPorCorreo(correoHash)
+        .then(list => list.find(d => d.id_dp_hash === id_dp_hash) || null);
+
+    await DesbloquearDispositivo(correoHash, id_dp_hash);
+
+    ;(async () => {
+        const apodo = storage.getApodoSesion();
+        const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
+        const { asunto, htmlContenido } = AvisoDispositivoDesbloqueado({ apodo, nombre: doc?.nombre || null, sistemaOperativo: doc?.os || null, fecha });
+        enviarEmail({ correoDestino: correo, asunto, htmlContenido });
+    })();
+
+    return { success: true };
+}
+
 async function estadoDispositivoConfianza(correo) {
     try {
         const data = await readFileSession('dispositivoConfianza').catch(() => null);
@@ -692,5 +760,7 @@ export {
     estadoDispositivoConfianza,
     obtenerGestionDispositivos,
     revocarSesionDispositivo,
-    revocarConfianzaDispositivo
+    revocarConfianzaDispositivo,
+    bloquearDispositivo,
+    desbloquearDispositivo
 };

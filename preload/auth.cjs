@@ -39,5 +39,11 @@ module.exports = {
     },
     REVOCAR_CONFIANZA_DISPOSITIVO: (id_dp_hash) => {
         return ipcRenderer.invoke('revocar-confianza-dispositivo', id_dp_hash)
+    },
+    BLOQUEAR_DISPOSITIVO: (id_dp_hash) => {
+        return ipcRenderer.invoke('bloquear-dispositivo', id_dp_hash)
+    },
+    DESBLOQUEAR_DISPOSITIVO: (id_dp_hash) => {
+        return ipcRenderer.invoke('desbloquear-dispositivo', id_dp_hash)
     }
 };

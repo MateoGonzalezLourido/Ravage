@@ -122,8 +122,8 @@ export async function AñadirJWTUsuario(correo, token = "", info = {}) {
         expira: new Date(Date.now() + ((7 * 24 * 60 * 60 * 1000) - (90 * 60 * 1000))),
         id_dp: encriptarDatosSistema(deviceId),
         id_dp_hash: idHash,
-        os: info.os || null,
-        nombre: info.nombre || null
+        os: info.os ? encriptarDatosSistema(info.os) : null,
+        nombre: info.nombre ? encriptarDatosSistema(info.nombre) : null
     });
 }
 export async function AñadirJWTUsuarioVC(correo, token = "") {
@@ -153,17 +153,25 @@ export async function AñadirJWTDPConfianza(correo, token = "", info = {}) {
         token: tokenhash,
         id_dp: encriptarDatosSistema(deviceId),
         id_dp_hash: idHash,
-        os: info.os || null,
-        nombre: info.nombre || null
+        os: info.os ? encriptarDatosSistema(info.os) : null,
+        nombre: info.nombre ? encriptarDatosSistema(info.nombre) : null
     });
 }
 
+const _descifrarInfoDispositivo = (doc) => {
+    doc.os     = doc.os     ? desencriptarDatosSistema(doc.os)     : null;
+    doc.nombre = doc.nombre ? desencriptarDatosSistema(doc.nombre) : null;
+    return doc;
+};
+
 export async function ObtenerSesionesPorCorreo(correo_hash) {
-    return await TokenSession.find({ correo_hash }).lean();
+    const docs = await TokenSession.find({ correo_hash }).lean();
+    return docs.map(_descifrarInfoDispositivo);
 }
 
 export async function ObtenerDPConfianzasPorCorreo(correo_hash) {
-    return await TokenDPC.find({ correo_hash }).lean();
+    const docs = await TokenDPC.find({ correo_hash }).lean();
+    return docs.map(_descifrarInfoDispositivo);
 }
 
 export async function RevocarSesionPorDispositivo(correo_hash, id_dp_hash) {
@@ -197,9 +205,39 @@ export async function LimpiarJWTDPConfianza(correo) {
 }
 
 export async function ObtenerInfoSesionDispositivo(correo_hash, id_dp_hash) {
-    return await TokenSession.findOne({ correo_hash, id_dp_hash }, { os: 1, nombre: 1 }).lean();
+    const doc = await TokenSession.findOne({ correo_hash, id_dp_hash }, { os: 1, nombre: 1 }).lean();
+    return doc ? _descifrarInfoDispositivo(doc) : null;
 }
 
 export async function ObtenerInfoDPConfianzaDispositivo(correo_hash, id_dp_hash) {
-    return await TokenDPC.findOne({ correo_hash, id_dp_hash }, { os: 1, nombre: 1 }).lean();
+    const doc = await TokenDPC.findOne({ correo_hash, id_dp_hash }, { os: 1, nombre: 1 }).lean();
+    return doc ? _descifrarInfoDispositivo(doc) : null;
+}
+
+export async function BloquearDispositivo(correo, correo_hash, id_dp_hash, { os = null, nombre = null } = {}) {
+    await DispositivosBloqueados.updateOne(
+        { correo_hash, id_dp_hash },
+        { $setOnInsert: {
+            correo: encriptarDatosSistema(correo),
+            correo_hash,
+            id_dp_hash,
+            os: os ? encriptarDatosSistema(os) : null,
+            nombre: nombre ? encriptarDatosSistema(nombre) : null,
+            fecha_bloqueo: new Date()
+        }},
+        { upsert: true }
+    );
+}
+
+export async function DesbloquearDispositivo(correo_hash, id_dp_hash) {
+    await DispositivosBloqueados.deleteOne({ correo_hash, id_dp_hash });
+}
+
+export async function ObtenerDPsBloqueadosPorCorreo(correo_hash) {
+    const docs = await DispositivosBloqueados.find({ correo_hash }, { id_dp_hash: 1, os: 1, nombre: 1, fecha_bloqueo: 1 }).lean();
+    return docs.map(doc => {
+        doc.os     = doc.os     ? desencriptarDatosSistema(doc.os)     : null;
+        doc.nombre = doc.nombre ? desencriptarDatosSistema(doc.nombre) : null;
+        return doc;
+    });
 }

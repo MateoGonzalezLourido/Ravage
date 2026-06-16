@@ -356,6 +356,56 @@ const AvisoSesionCerrada = ({ apodo, nombre, sistemaOperativo, fecha }) => {
     return { asunto, htmlContenido };
 };
 
+const AvisoDispositivoBloqueado = ({ apodo, nombre, sistemaOperativo, fecha }) => {
+    const asunto = "Dispositivo bloqueado en tu cuenta";
+    const htmlContenido = BaseEmailWrapper(`
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px; background-color: #1c0606; border-left: 4px solid #ef4444; border-radius: 0 8px 8px 0;">
+            <tr>
+                <td style="padding: 14px 18px;">
+                    <h2 style="color: #ef4444; font-size: 17px; margin: 0 0 5px 0; font-weight: 700;">Dispositivo bloqueado</h2>
+                    <p style="margin: 0; color: #e2e8f0; font-size: 14px;">Un dispositivo ha sido bloqueado para acceder a tu cuenta.</p>
+                </td>
+            </tr>
+        </table>
+
+        <p style="margin: 0 0 6px 0; font-size: 15px;">Hola, <strong style="color: #f8fafc;">${apodo}</strong>.</p>
+        <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8;">El siguiente dispositivo ya no podr&aacute; iniciar sesi&oacute;n en tu cuenta. Sus sesiones activas y confianza han sido eliminadas:</p>
+
+        ${_bloqueInfoDispositivo(nombre, sistemaOperativo, fecha)}
+
+        <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin: 0;">
+            Si has sido t&uacute;, puedes ignorar este mensaje.
+            <strong style="color: #ef4444;">Si no reconoces esta acci&oacute;n</strong>, tu cuenta puede estar comprometida. Cambia tu contrase&ntilde;a inmediatamente y revisa los dispositivos activos desde los ajustes.
+        </p>
+    `);
+    return { asunto, htmlContenido };
+};
+
+const AvisoDispositivoDesbloqueado = ({ apodo, nombre, sistemaOperativo, fecha }) => {
+    const asunto = "Dispositivo desbloqueado en tu cuenta";
+    const htmlContenido = BaseEmailWrapper(`
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px; background-color: #0a1628; border-left: 4px solid #06b6d4; border-radius: 0 8px 8px 0;">
+            <tr>
+                <td style="padding: 14px 18px;">
+                    <h2 style="color: #06b6d4; font-size: 17px; margin: 0 0 5px 0; font-weight: 700;">Dispositivo desbloqueado</h2>
+                    <p style="margin: 0; color: #e2e8f0; font-size: 14px;">Un dispositivo puede volver a iniciar sesi&oacute;n en tu cuenta.</p>
+                </td>
+            </tr>
+        </table>
+
+        <p style="margin: 0 0 6px 0; font-size: 15px;">Hola, <strong style="color: #f8fafc;">${apodo}</strong>.</p>
+        <p style="margin: 0 0 4px 0; font-size: 14px; color: #94a3b8;">El bloqueo del siguiente dispositivo ha sido eliminado:</p>
+
+        ${_bloqueInfoDispositivo(nombre, sistemaOperativo, fecha)}
+
+        <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin: 0;">
+            Si has sido t&uacute;, puedes ignorar este mensaje.
+            <strong style="color: #ef4444;">Si no reconoces esta acci&oacute;n</strong>, cambia tu contrase&ntilde;a inmediatamente.
+        </p>
+    `);
+    return { asunto, htmlContenido };
+};
+
 const ConfirmacionCambioApodo = ({ apodo }) => {
     const asunto = "Apodo Actualizado"
     const htmlContenido = BaseEmailWrapper(`
@@ -383,5 +433,7 @@ export {
     ConfirmacionCambioApodo,
     AvisoDispositivoConfianzaAnadido,
     AvisoDispositivoConfianzaRevocado,
-    AvisoSesionCerrada
+    AvisoSesionCerrada,
+    AvisoDispositivoBloqueado,
+    AvisoDispositivoDesbloqueado
 };

@@ -1,5 +1,5 @@
 import { ipcMain, app } from '../utils/libs.js';
-import { loginUsuario, registerUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, marcarDispositivoConfianza, revocarDispositivoConfianza, estadoDispositivoConfianza, obtenerGestionDispositivos, revocarSesionDispositivo, revocarConfianzaDispositivo } from '../services/sesionUsuario.js';
+import { loginUsuario, registerUsuario, ValidarCodeRegistroUsuario, ValidarCodeLogin, cerrarSesionUsuario, marcarDispositivoConfianza, revocarDispositivoConfianza, estadoDispositivoConfianza, obtenerGestionDispositivos, revocarSesionDispositivo, revocarConfianzaDispositivo, bloquearDispositivo, desbloquearDispositivo } from '../services/sesionUsuario.js';
 import { comprobaciones_Correo, comprobarContrasenaValidaciones, comprobar_apodo, comprobar_codigo_verificacion, comprobar_contraseña_cuenta } from '../services/validadores.js';
 import { BorrarVC, BorrarCuentaVC } from '../repositories/SecurityRepository.js';
 import { machineIdSync } from '../utils/libs.js';
@@ -292,5 +292,17 @@ export function registerSessionHandlers(mainWindow) {
         const correo = getCorreoSesion();
         if (!correo || typeof id_dp_hash !== 'string' || !/^[a-f0-9]{64}$/.test(id_dp_hash)) return { success: false };
         return await revocarConfianzaDispositivo(correo, id_dp_hash);
+    });
+
+    ipcMain.handle('bloquear-dispositivo', async (_, id_dp_hash) => {
+        const correo = getCorreoSesion();
+        if (!correo || typeof id_dp_hash !== 'string' || !/^[a-f0-9]{64}$/.test(id_dp_hash)) return { success: false };
+        return await bloquearDispositivo(correo, id_dp_hash);
+    });
+
+    ipcMain.handle('desbloquear-dispositivo', async (_, id_dp_hash) => {
+        const correo = getCorreoSesion();
+        if (!correo || typeof id_dp_hash !== 'string' || !/^[a-f0-9]{64}$/.test(id_dp_hash)) return { success: false };
+        return await desbloquearDispositivo(correo, id_dp_hash);
     });
 }

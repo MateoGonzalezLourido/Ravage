@@ -59,8 +59,8 @@ const TokenSchema = new mongoose.Schema({
     },
     id_dp: { type: EncryptedDataSchema, required: true },
     id_dp_hash: { type: String, required: true, index: true },
-    os: { type: String, default: null },
-    nombre: { type: String, default: null }
+    os: { type: EncryptedDataSchema, default: null },
+    nombre: { type: EncryptedDataSchema, default: null }
 });
 
 const TokenDPCSchema = new mongoose.Schema({
@@ -73,15 +73,18 @@ const TokenDPCSchema = new mongoose.Schema({
     },
     id_dp: { type: EncryptedDataSchema, required: true },
     id_dp_hash: { type: String, required: true, index: true },
-    os: { type: String, default: null },
-    nombre: { type: String, default: null }
+    os: { type: EncryptedDataSchema, default: null },
+    nombre: { type: EncryptedDataSchema, default: null }
 });
 
 const DPBLOQUEADOSchema = new mongoose.Schema({
     correo: { type: EncryptedDataSchema, required: true },
     correo_hash: { type: String, required: true, index: true },
-    id_dp: { type: EncryptedDataSchema, required: true },
-    id_dp_hash: { type: String, required: true, index: true }
+    id_dp: { type: EncryptedDataSchema, default: null },
+    id_dp_hash: { type: String, required: true, index: true },
+    os: { type: EncryptedDataSchema, default: null },
+    nombre: { type: EncryptedDataSchema, default: null },
+    fecha_bloqueo: { type: Date, default: Date.now }
 });
 
 // NUEVO: Auditoría de Rate Limiting por dispositivo

@@ -1002,15 +1002,20 @@ async function abrir_gestion_dispositivos(e) {
     }
 }
 
-function _renderizar_gestion_dispositivos({ sesiones, confianzas }, contenedor) {
+function _renderizar_gestion_dispositivos({ sesiones, confianzas, bloqueados = [] }, contenedor) {
     const fmt = (iso) => iso ? new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
+    // Hashes ya bloqueados para ocultarlos de la sección activa
+    const hashsBloqueados = new Set((bloqueados || []).map(b => b.id_dp_hash));
 
     // Unificar por hash: mismo dispositivo puede tener sesión activa Y confianza
     const mapaHash = new Map();
     for (const s of sesiones) {
-        mapaHash.set(s.id_dp_hash, { ...s, tieneSesion: true, tieneConfianza: false });
+        if (!hashsBloqueados.has(s.id_dp_hash))
+            mapaHash.set(s.id_dp_hash, { ...s, tieneSesion: true, tieneConfianza: false });
     }
     for (const c of confianzas) {
+        if (hashsBloqueados.has(c.id_dp_hash)) continue;
         if (mapaHash.has(c.id_dp_hash)) {
             mapaHash.get(c.id_dp_hash).tieneConfianza = true;
         } else {
@@ -1018,52 +1023,71 @@ function _renderizar_gestion_dispositivos({ sesiones, confianzas }, contenedor) 
         }
     }
 
+    let html = '';
+
+    // --- Sección activos ---
     if (mapaHash.size === 0) {
-        contenedor.innerHTML = '<span class="gestion-dp-vacio">No hay sesiones ni dispositivos de confianza registrados.</span>';
-        return;
+        html += '<span class="gestion-dp-vacio">No hay sesiones ni dispositivos de confianza activos.</span>';
+    } else {
+        html += '<div class="gestion-dp-lista">';
+        for (const d of mapaHash.values()) {
+            const badgeEste = d.esteDispositivo ? '<span class="gestion-dp-badge-este">Este dispositivo</span>' : '';
+            const claseItem = d.esteDispositivo ? 'gestion-dp-item es-este-dispositivo' : 'gestion-dp-item';
+
+            const osLine = d.os
+                ? `<div class="gestion-dp-nombre">${escapeHTML(d.os)} ${badgeEste}</div>`
+                : `<div class="gestion-dp-nombre gestion-dp-desconocido">Sistema desconocido ${badgeEste}</div>`;
+            const hwLine = d.nombre ? `<div class="gestion-dp-hw">${escapeHTML(d.nombre)}</div>` : '';
+
+            const partesFecha = [];
+            if (d.tieneSesion) partesFecha.push(`Sesión desde ${fmt(d.creadoEn)}`);
+            if (d.tieneConfianza) partesFecha.push(`De confianza desde ${fmt(d.creadoEn)}`);
+            const fechaLine = partesFecha.length ? `<div class="gestion-dp-meta">${partesFecha.join(' · ')}</div>` : '';
+
+            const btSesion = d.tieneSesion
+                ? `<button class="gestion-dp-bt gestion-dp-bt-sesion" data-tipo="sesion" data-hash="${d.id_dp_hash}" data-este="${d.esteDispositivo ? '1' : '0'}">Cerrar sesión</button>`
+                : '';
+            const btConfianza = d.tieneConfianza
+                ? `<button class="gestion-dp-bt gestion-dp-bt-confianza" data-tipo="confianza" data-hash="${d.id_dp_hash}" data-este="${d.esteDispositivo ? '1' : '0'}">Revocar confianza</button>`
+                : '';
+            const btBloquear = !d.esteDispositivo
+                ? `<button class="gestion-dp-bt gestion-dp-bt-bloquear" data-tipo="bloquear" data-hash="${d.id_dp_hash}">Bloquear</button>`
+                : '';
+
+            html += `
+            <div class="${claseItem}" data-hash="${d.id_dp_hash}">
+                <div class="gestion-dp-info">
+                    ${osLine}${hwLine}${fechaLine}
+                </div>
+                <div class="gestion-dp-acciones">${btSesion}${btConfianza}${btBloquear}</div>
+            </div>`;
+        }
+        html += '</div>';
     }
 
-    let html = '<div class="gestion-dp-lista">';
-    for (const d of mapaHash.values()) {
-        const badgeEste = d.esteDispositivo ? '<span class="gestion-dp-badge-este">Este dispositivo</span>' : '';
-        const claseItem = d.esteDispositivo ? 'gestion-dp-item es-este-dispositivo' : 'gestion-dp-item';
-
-        // SO como identificador principal — siempre disponible en registros nuevos
-        const osLine = d.os
-            ? `<div class="gestion-dp-nombre">${escapeHTML(d.os)} ${badgeEste}</div>`
-            : `<div class="gestion-dp-nombre gestion-dp-desconocido">Sistema desconocido ${badgeEste}</div>`;
-
-        // Hardware (fabricante/modelo o CPU) — opcional
-        const hwLine = d.nombre
-            ? `<div class="gestion-dp-hw">${escapeHTML(d.nombre)}</div>`
-            : '';
-
-        // Fechas
-        const partesFecha = [];
-        if (d.tieneSesion) partesFecha.push(`Sesión desde ${fmt(d.creadoEn)}`);
-        if (d.tieneConfianza) partesFecha.push(`De confianza desde ${fmt(d.creadoEn)}`);
-        const fechaLine = partesFecha.length
-            ? `<div class="gestion-dp-meta">${partesFecha.join(' · ')}</div>`
-            : '';
-
-        const btSesion = d.tieneSesion
-            ? `<button class="gestion-dp-bt gestion-dp-bt-sesion" data-tipo="sesion" data-hash="${d.id_dp_hash}" data-este="${d.esteDispositivo ? '1' : '0'}">Cerrar sesión</button>`
-            : '';
-        const btConfianza = d.tieneConfianza
-            ? `<button class="gestion-dp-bt gestion-dp-bt-confianza" data-tipo="confianza" data-hash="${d.id_dp_hash}" data-este="${d.esteDispositivo ? '1' : '0'}">Revocar confianza</button>`
-            : '';
-
-        html += `
-        <div class="${claseItem}" data-hash="${d.id_dp_hash}">
-            <div class="gestion-dp-info">
-                ${osLine}
-                ${hwLine}
-                ${fechaLine}
-            </div>
-            <div class="gestion-dp-acciones">${btSesion}${btConfianza}</div>
-        </div>`;
+    // --- Sección bloqueados ---
+    if (bloqueados && bloqueados.length > 0) {
+        html += '<div class="gestion-dp-seccion-titulo">Dispositivos bloqueados</div>';
+        html += '<div class="gestion-dp-lista gestion-dp-lista-bloqueados">';
+        for (const b of bloqueados) {
+            const osLine = b.os
+                ? `<div class="gestion-dp-nombre">${escapeHTML(b.os)}</div>`
+                : `<div class="gestion-dp-nombre gestion-dp-desconocido">Sistema desconocido</div>`;
+            const hwLine = b.nombre ? `<div class="gestion-dp-hw">${escapeHTML(b.nombre)}</div>` : '';
+            const fechaLine = b.fechaBloqueado ? `<div class="gestion-dp-meta">Bloqueado el ${fmt(b.fechaBloqueado)}</div>` : '';
+            html += `
+            <div class="gestion-dp-item gestion-dp-item-bloqueado" data-hash="${b.id_dp_hash}">
+                <div class="gestion-dp-info">
+                    ${osLine}${hwLine}${fechaLine}
+                </div>
+                <div class="gestion-dp-acciones">
+                    <button class="gestion-dp-bt gestion-dp-bt-desbloquear" data-tipo="desbloquear" data-hash="${b.id_dp_hash}">Desbloquear</button>
+                </div>
+            </div>`;
+        }
+        html += '</div>';
     }
-    html += '</div>';
+
     contenedor.innerHTML = html;
 
     contenedor.querySelectorAll('.gestion-dp-bt').forEach(btn => {
@@ -1079,25 +1103,48 @@ function _renderizar_gestion_dispositivos({ sesiones, confianzas }, contenedor) 
                 let res;
                 if (tipo === 'sesion') {
                     res = await window.sesion_usuario.REVOCAR_SESION_DISPOSITIVO(hash);
-                } else {
+                } else if (tipo === 'confianza') {
                     res = await window.sesion_usuario.REVOCAR_CONFIANZA_DISPOSITIVO(hash);
+                } else if (tipo === 'bloquear') {
+                    res = await window.sesion_usuario.BLOQUEAR_DISPOSITIVO(hash);
+                } else if (tipo === 'desbloquear') {
+                    res = await window.sesion_usuario.DESBLOQUEAR_DISPOSITIVO(hash);
                 }
 
                 if (res?.success) {
-                    btn.remove();
-                    // Si ya no quedan botones en el item, verificar si el item tiene algo
-                    const item = contenedor.querySelector(`[data-hash="${hash}"]`);
-                    const btsRestantes = item?.querySelectorAll('.gestion-dp-bt');
-                    if (!btsRestantes || btsRestantes.length === 0) item?.remove();
-
-                    if (tipo === 'sesion') {
-                        window.pushNotificacion({ prioridad: 1, texto: 'Sesión cerrada correctamente', tipo: 'exito' });
+                    if (tipo === 'bloquear') {
+                        // Quitar el item activo y recargar para mostrar en bloqueados
+                        const item = contenedor.querySelector(`[data-hash="${hash}"]`);
+                        item?.remove();
+                        window.pushNotificacion({ prioridad: 1, texto: 'Dispositivo bloqueado. No podrá iniciar sesión.', tipo: 'exito' });
+                        // Recargar el modal completo para reflejar el nuevo bloqueado
+                        const data = await window.sesion_usuario.OBTENER_GESTION_DISPOSITIVOS();
+                        if (data) _renderizar_gestion_dispositivos(data, contenedor);
+                    } else if (tipo === 'desbloquear') {
+                        const item = contenedor.querySelector(`.gestion-dp-lista-bloqueados [data-hash="${hash}"]`);
+                        item?.remove();
+                        window.pushNotificacion({ prioridad: 1, texto: 'Dispositivo desbloqueado', tipo: 'exito' });
+                        // Limpiar sección si quedó vacía
+                        const lista = contenedor.querySelector('.gestion-dp-lista-bloqueados');
+                        if (lista && lista.children.length === 0) {
+                            lista.previousElementSibling?.remove();
+                            lista.remove();
+                        }
                     } else {
-                        window.pushNotificacion({ prioridad: 1, texto: 'Confianza revocada correctamente', tipo: 'exito' });
-                        if (esteDispositivo) _actualizar_ui_dispositivo_confianza(false);
+                        btn.remove();
+                        const item = contenedor.querySelector(`.gestion-dp-lista [data-hash="${hash}"]`);
+                        const btsRestantes = item?.querySelectorAll('.gestion-dp-bt');
+                        if (!btsRestantes || btsRestantes.length === 0) item?.remove();
+
+                        if (tipo === 'sesion') {
+                            window.pushNotificacion({ prioridad: 1, texto: 'Sesión cerrada correctamente', tipo: 'exito' });
+                        } else {
+                            window.pushNotificacion({ prioridad: 1, texto: 'Confianza revocada correctamente', tipo: 'exito' });
+                            if (esteDispositivo) _actualizar_ui_dispositivo_confianza(false);
+                        }
                     }
                 } else {
-                    window.pushNotificacion({ prioridad: 3, texto: 'Error al revocar', tipo: 'error' });
+                    window.pushNotificacion({ prioridad: 3, texto: 'Error al realizar la acción', tipo: 'error' });
                     btn.disabled = false;
                     btn.textContent = textoOriginal;
                 }
