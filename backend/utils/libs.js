@@ -130,7 +130,7 @@ export const express = lazy('express');
 export const mongoose = lazy('mongoose');
 export const validator = lazy('validator');
 export const si = lazy('systeminformation');
-const bcrypt = lazy('bcrypt');
+const argon2 = lazy('argon2');
 const jwt = lazy('jsonwebtoken');
 const mongodb = lazy('mongodb');
 const socketio = lazy('socket.io');
@@ -140,8 +140,9 @@ export const Server = new Proxy(function() {}, {
     apply: (target, thisArg, args) => require('socket.io').Server(...args)
 });
 
-export const hash = (...args) => bcrypt.hash(...args);
-export const compare = (...args) => bcrypt.compare(...args);
+// Argon2id — OWASP recomendado. Parámetros por defecto del módulo: m=65536, t=3, p=4
+export const hash = (password) => argon2.hash(password, { type: argon2.argon2id });
+export const compare = (password, storedHash) => argon2.verify(storedHash, password);
 export const sign = (...args) => jwt.sign(...args);
 export const verify = (...args) => jwt.verify(...args);
 export const machineIdSync = (...args) => require('node-machine-id').machineIdSync(...args);

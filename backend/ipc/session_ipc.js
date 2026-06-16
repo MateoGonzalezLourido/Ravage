@@ -208,7 +208,7 @@ export function registerSessionHandlers(mainWindow) {
 
             // Guardar nuevo PIN
             if (newPin) {
-                const pinHash = await hash(newPin, 10); // 10 salt rounds es suficiente para un PIN
+                const pinHash = await hash(newPin);
                 await saveSecurityPinFile({ correo, pinHash });
                 return { ok: true };
             } else {

@@ -86,7 +86,7 @@ async function permitirCambioContraseñaUsuario(contraseña = null) {
 
     const apodo = getApodoSesion();
     const code_generado = String(generarCodigoVerificacion());
-    const hashed_ValidationCode = await hash(code_generado, saltos_code);
+    const hashed_ValidationCode = await hash(code_generado);
     const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "contraseña" });
     
     const deviceId = String(machineIdSync());
@@ -152,7 +152,7 @@ async function permitirCambioCorreoUsuario(correo = null) {
 
     const apodo = getApodoSesion()
     const code_generado = String(generarCodigoVerificacion())
-    const hashed_ValidationCode = await hash(code_generado, saltos_code)
+    const hashed_ValidationCode = await hash(code_generado)
     const { asunto, htmlContenido } = CodigoCambiarDatosCuenta({ apodo: apodo, codigo: code_generado, tipo: "correo" })
     
     const deviceId = String(machineIdSync());
@@ -253,7 +253,7 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     }
     //crear nueva cuenta de usuario
     if (tipo === "contraseña") {
-        const contraseña_hashed = await hash(data, saltos_contraseña)
+        const contraseña_hashed = await hash(data)
         const nuevoUsuario = await cambiarContraseñaUsuario(contraseña_hashed);
         if (!nuevoUsuario) {//error
             return { success: false, message: "Fallo al cambiar contraseña" }

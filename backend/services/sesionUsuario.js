@@ -39,7 +39,6 @@ import {
     comprobaciones_Correo,
     comprobar_codigo_verificacion
 } from './validadores.js'
-const saltos_contraseña = Number(process.env.SALTOS_ENCRIPTAR_CONTRASENA)
 
 async function infoDispositivo() {
     try {
@@ -179,7 +178,7 @@ async function registerUsuario(mainWindow, { apodo = "Usuario", correo = null, p
     ; (async () => {
         try {
             const [pass_hashed, keys] = await Promise.all([
-                hash(passwordStr, saltos_contraseña),
+                hash(passwordStr),
                 generarLlavesRSA()
             ]);
 

@@ -12,7 +12,7 @@ Este documento describe el flujo completo de autenticación en Ravage: registro,
 2. La app valida el formato de los tres campos (sin tocar la DB aún).
 3. Se comprueba en DB que el correo no esté ya registrado (`correo_hash`).
 4. Si pasa, en background se ejecutan en paralelo:
-   - **Hash de contraseña** con bcrypt (coste configurado por variable de entorno `SALTOS_ENCRIPTAR_CONTRASENA`).
+   - **Hash de contraseña** con Argon2id (ver `Docs/Services/seguridad/HASHING_CONTRASENAS.md`).
    - **Generación de par de claves RSA** para cifrado E2EE.
 5. Se genera un código de verificación numérico aleatorio y se guarda en la colección `validationcodes` cifrado, vinculado al correo y al dispositivo.
 6. Se envía el código por correo. El usuario tiene **10 minutos** y **5 intentos** para introducirlo.
