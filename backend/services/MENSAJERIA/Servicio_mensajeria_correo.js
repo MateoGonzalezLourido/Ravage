@@ -2,6 +2,12 @@
 import { createLogger } from '../../utils/logger.js';
 const log = createLogger('mensajeria');
 import { randomInt } from '../../utils/libs.js';
+import { getAjustesAppFile } from '../controladorArchivos.js';
+
+async function correoPermitido(clave) {
+    const val = await getAjustesAppFile(clave).catch(() => true);
+    return val !== false;
+}
 
 function generarCodigoVerificacion() {//generar codigo 6 digitos que se utilizara para verificar
     const codigo_verificacion = randomInt(100000, 1000000)
@@ -41,4 +47,4 @@ async function enviarEmail({ correoDestino = null, asunto = "Sin asunto", htmlCo
     }
 }
 
-export { enviarEmail, generarCodigoVerificacion };
+export { enviarEmail, generarCodigoVerificacion, correoPermitido };

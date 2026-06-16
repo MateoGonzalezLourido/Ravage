@@ -22,7 +22,8 @@ import {
 } from './MENSAJERIA/Estructuras_correos.js';
 import {
     generarCodigoVerificacion,
-    enviarEmail
+    enviarEmail,
+    correoPermitido
 } from './MENSAJERIA/Servicio_mensajeria_correo.js';
 import {
     comprobaciones_Correo,
@@ -303,8 +304,11 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
         asunto = "Confirmación Cambio Datos Cuenta"
         htmlContenido = ""
     }
-    enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido })
-    //limpiar datos 
+    const claveCorreo = tipo === 'contraseña' ? 'CORREO_CAMBIO_CONTRASEÑA' : tipo === 'correo' ? 'CORREO_CAMBIO_CORREO' : tipo === 'apodo' ? 'CORREO_CAMBIO_APODO' : null;
+    if (!claveCorreo || await correoPermitido(claveCorreo)) {
+        enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
+    }
+    //limpiar datos
     if (tipo != "apodo") {
         BorrarDatosCuentaVC(correo, code)
         contraseña_hashed = null;

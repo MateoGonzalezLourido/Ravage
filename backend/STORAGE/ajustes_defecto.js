@@ -20,6 +20,8 @@ export const AJUSTES_APP_DEFAULT = {
     NOTI_OS_MENSAJE_GRUPAL: true,
     NOTI_OS_DESCARGA_INDIVIDUAL: true,
     NOTI_OS_DESCARGA_GRUPAL: true,
+    NOTI_OS_MENSAJE_FIJADO: true,
+    NOTI_OS_GRUPO_PERSONAL: true,
 
     // Configuración por defecto de Escáneres de Seguridad(0:desactivado,1:aviso,3:aviso+formateo)
     ESCANER_ESTEGANOGRAFIA: 1,
@@ -32,5 +34,13 @@ export const AJUSTES_APP_DEFAULT = {
     ESCANER_DIRECCIONES_IP: 0,
     ESCANER_HOMOGLIFOS: 1,
     // 0 = automático (calculado por la CPU)
-    NUM_WORKERS: 0
+    NUM_WORKERS: 0,
+    // Notificaciones por correo (los códigos de verificación nunca se desactivan)
+    CORREO_INICIO_SESION: true,
+    CORREO_CAMBIO_CONTRASEÑA: true,
+    CORREO_CAMBIO_CORREO: true,
+    CORREO_CAMBIO_APODO: true,
+    CORREO_DISPOSITIVO_CONFIANZA: true,
+    CORREO_SESION_CERRADA: true,
+    CORREO_DISPOSITIVO_BLOQUEADO: true
 };

@@ -228,10 +228,16 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             );
         })().catch(e => log.error(e));
 
+        const _mencionesMatch = asunto ? [...asunto.matchAll(/@\{([a-f0-9]{24})\}/g)].map(m => m[1]) : [];
         Añadir_Entrada_Buzon_Usuario({
             ids: chat.usuarios,
             tipo: 0,
-            data: { chat: chat._id?.toHexString(), id_mensaje: nuevoMensaje._id?.toHexString(), emisor: id_emisor }
+            data: {
+                chat: chat._id?.toHexString(),
+                id_mensaje: nuevoMensaje._id?.toHexString(),
+                emisor: id_emisor,
+                ...(_mencionesMatch.length > 0 ? { menciones: _mencionesMatch } : {})
+            }
         }).catch(e => log.error(e));
 
         // Preparar respuesta para el emisor con datos completos
@@ -525,6 +531,12 @@ export async function FIJAR_MENSAJE(id_chat, id_mensaje) {
         );
         chat.msfijado = new mongoose.Types.ObjectId(id_mensaje_str);
         setChatEnCacheRaw(chat).catch(e => log.error(e));
+
+        Añadir_Entrada_Buzon_Usuario({
+            ids: chat.usuarios,
+            tipo: 8,
+            data: { chat: id_chat_str, id_mensaje: id_mensaje_str, emisor: id_propio.toString() }
+        }).catch(e => log.error(e));
 
         log.info({ id_mensaje_str, id_chat_str }, '[FIJAR_MENSAJE] Mensaje fijado');
         return { success: true };

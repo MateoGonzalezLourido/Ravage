@@ -65,6 +65,9 @@ export async function hacer_cambios_buzon(entrada) {
     else if (tp === 4) {//expulsar usuario
         return await Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado)
     }
+    else if (tp === 8) {//mensaje fijado
+        return await Cambio_buzonApi_mensaje_fijado(entrada, esta_silenciado)
+    }
     return null;
 }
 
@@ -209,6 +212,35 @@ async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
     await Actualizar_render_chat({ emisor: entrada.data.emisor, chat: entrada.data.chat, fecha: entrada.data.data, especial: 1, data: entrada.data })
     return "REFRESCAR_LISTA";
 }
+async function Cambio_buzonApi_mensaje_fijado(entrada, esta_silenciado) {
+    const id_chat = entrada.data?.chat;
+    const id_mensaje = entrada.data?.id_mensaje;
+    const chatNombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: id_chat });
+
+    if (!esta_silenciado) {
+        window.pushNotificacion({
+            prioridad: 0,
+            texto: `Mensaje fijado${chatNombre ? `\n${chatNombre}` : ''}`,
+            tipo: 'info'
+        });
+    }
+
+    // Si el chat está abierto, actualizar el banner sin recargar
+    if (id_mensaje && document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(id_chat)}`)) {
+        const banner = document.getElementById('banner-mensaje-fijado');
+        const txtNode = document.getElementById('texto-mensaje-fijado');
+        if (banner && txtNode) {
+            banner.dataset.id = id_mensaje;
+            try {
+                const res = await window.chats.OBTENER_DATOS_MENSAJE(id_chat, id_mensaje);
+                if (res) txtNode.textContent = res.contenido?.[0]?.asunto || 'Mensaje fijado';
+            } catch {}
+        }
+    }
+
+    return null;
+}
+
 async function Cambio_buzonApi_usuario_añadido(entrada, esta_silenciado) {
     const añadidoId = entrada.data.añadido;
     const isMe = await Es_usuario_Sesion(añadidoId);

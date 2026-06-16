@@ -1099,3 +1099,43 @@
     color: #475569;
     padding: 8px 0;
 }
+
+/* ── Sección notificaciones ───────────────────────────────────────────────── */
+#cuerpo-ajustes-noti {
+    gap: 4px;
+}
+
+#cuerpo-ajustes-noti .titulo-ajustes {
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+
+#cuerpo-ajustes-noti .titulo-ajustes:first-child {
+    margin-top: 0;
+}
+
+#cuerpo-ajustes-noti label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+#cuerpo-ajustes-noti label:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+#cuerpo-ajustes-noti label span {
+    font-size: 13px;
+    color: #cbd5e1;
+    flex: 1;
+}
+
+#cuerpo-ajustes-noti label input[type="checkbox"] {
+    flex-shrink: 0;
+    margin-left: auto;
+}

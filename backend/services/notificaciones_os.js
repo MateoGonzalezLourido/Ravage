@@ -1,5 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 import { ElectronNotification } from '../utils/libs.js';
+import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 const log = createLogger('noti-os');
 
 /**
@@ -67,31 +68,65 @@ export function procesarNotificacionOSEntrada({ entrada, ajustes, mainWindow, on
     if (tp === 0) {
         const esGrupal = data.esGrupal || false;
         const clave = esGrupal ? 'NOTI_OS_MENSAJE_GRUPAL' : 'NOTI_OS_MENSAJE_INDIVIDUAL';
-        if (!ajustes[clave]) return;
+
+        const miId = getIDMongodbUsuario()?.toString();
+        const esMencionado = miId && Array.isArray(data.menciones) && data.menciones.includes(miId);
+
+        if (!ajustes[clave] && !esMencionado) return;
 
         const nombreRemitente = data.apodo_emisor || data.emisor || 'Alguien';
         const nombreChat = data.nombre_chat || (esGrupal ? 'Grupo' : null);
         const titulo = nombreChat ? `${nombreRemitente} — ${nombreChat}` : nombreRemitente;
-        const cuerpo  = data.preview || data.asunto || 'Nuevo mensaje';
+        const cuerpo  = esMencionado && !ajustes[clave] ? 'Te han mencionado' : (data.preview || data.asunto || 'Nuevo mensaje');
         enviarNotificacionOS(titulo, cuerpo, onClickCb);
         return;
     }
 
     // ── TIPO 1/3: Unirse / añadido a grupo ───────────────────────────────────
     if (tp === 1 || tp === 3) {
-        if (!ajustes.NOTI_OS_MENSAJE_GRUPAL) return;
-        const accion = tp === 1 ? 'Te has unido a un grupo' : 'Te han añadido a un grupo';
+        const miId = getIDMongodbUsuario()?.toString();
+        const esParaMi = miId && (
+            (data.añadido && data.añadido.toString() === miId) ||
+            (Array.isArray(data.usuarios) && data.usuarios.map(u => u.toString()).includes(miId))
+        );
+        if (!esParaMi) return;
+        if (!ajustes.NOTI_OS_GRUPO_PERSONAL) return;
         const nombreChat = data.nombre_chat || '';
-        enviarNotificacionOS('Ravage', nombreChat ? `${accion}: ${nombreChat}` : accion, onClickCb);
+        enviarNotificacionOS('Ravage', nombreChat ? `Te han añadido al grupo: ${nombreChat}` : 'Te han añadido a un grupo', onClickCb);
         return;
     }
 
     // ── TIPO 4: Expulsión ─────────────────────────────────────────────────────
     if (tp === 4) {
-        if (!ajustes.NOTI_OS_MENSAJE_GRUPAL) return;
+        const miId = getIDMongodbUsuario()?.toString();
+        const esParaMi = miId && data.expulsado && data.expulsado.toString() === miId;
+        if (!esParaMi) return;
+        if (!ajustes.NOTI_OS_GRUPO_PERSONAL) return;
         const nombreChat = data.nombre_chat || '';
         enviarNotificacionOS('Ravage', nombreChat ? `Has sido expulsado de: ${nombreChat}` : 'Has sido expulsado de un grupo', onClickCb);
         return;
     }
     // tipo 2 (crear grupo): notificación menor, no se envía al OS
+
+    // ── TIPO 8: Mensaje fijado ────────────────────────────────────────────────
+    if (tp === 8) {
+        if (!ajustes.NOTI_OS_MENSAJE_FIJADO) return;
+        enviarNotificacionOS('Ravage', 'Se ha fijado un mensaje en el grupo', onClickCb);
+        return;
+    }
+}
+
+/**
+ * Notificación OS cuando se completa una descarga de archivo.
+ */
+export function procesarNotificacionOSDescarga({ nombre, esGrupal, ajustes, mainWindow }) {
+    try {
+        const ventanaFocused = mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused();
+        if (ventanaFocused) return;
+    } catch {
+        return;
+    }
+    const clave = esGrupal ? 'NOTI_OS_DESCARGA_GRUPAL' : 'NOTI_OS_DESCARGA_INDIVIDUAL';
+    if (!ajustes[clave]) return;
+    enviarNotificacionOS('Ravage — Descarga completa', nombre || 'Archivo descargado');
 }

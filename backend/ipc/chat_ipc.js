@@ -3,7 +3,8 @@ const log = createLogger('chat-ipc');
 import { ipcMain, dialog } from '../utils/libs.js';
 import {
     setListaChats,
-    getIDMongodbUsuario
+    getIDMongodbUsuario,
+    getListaChats
 } from '../STORAGE/Variables_sesion.js';
 import {
     obtener_datos_chats,
@@ -37,6 +38,8 @@ import { Revisar_Buzon_Usuario } from '../repositories/BuzonRepository.js';
 import { crearCacheChatActivo, obtenerCacheChatActivo } from '../STORAGE/CACHE/_cache_chat_activo.js';
 import { iniciarBuzon } from '../services/buzonAPI.js';
 import { comprobar_mensaje, comprobar_nombre_archivo } from '../services/validadores.js';
+import { procesarNotificacionOSDescarga } from '../services/notificaciones_os.js';
+import { getAjustesAppFile } from '../services/controladorArchivos.js';
 const authorizedPaths = new Set();
 
 export function registerChatHandlers(mainWindow, socket) {
@@ -104,7 +107,14 @@ export function registerChatHandlers(mainWindow, socket) {
     ipcMain.handle("descargar-archivo", async (_, id, nombre, iv, tag, id_chat, ratchet_info, emisor_id) => {
         const result = await DESCARGAR_ARCHIVO(id, nombre, iv, tag, id_chat, ratchet_info, emisor_id)
         if (result && mainWindow) {
-            mainWindow.webContents.send("notificar-render", { texto: `Descarga completa: ${nombre}`, tipo: "success" })
+            mainWindow.webContents.send("notificar-render", { texto: `Descarga completa: ${nombre}`, tipo: "success" });
+            ;(async () => {
+                try {
+                    const ajustes = await getAjustesAppFile();
+                    const esGrupal = getListaChats()?.find(c => c.id === id_chat)?.grupo ?? false;
+                    procesarNotificacionOSDescarga({ nombre, esGrupal, ajustes: ajustes || {}, mainWindow });
+                } catch {}
+            })();
         }
         return result
     })

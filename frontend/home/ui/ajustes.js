@@ -919,6 +919,8 @@ async function cargar_ajustes_cache() {
         { id: "check-noti-os-msg-grupal",         key: "NOTI_OS_MENSAJE_GRUPAL" },
         { id: "check-noti-os-descarga-individual",key: "NOTI_OS_DESCARGA_INDIVIDUAL" },
         { id: "check-noti-os-descarga-grupal",    key: "NOTI_OS_DESCARGA_GRUPAL" },
+        { id: "check-noti-os-mensaje-fijado",     key: "NOTI_OS_MENSAJE_FIJADO" },
+        { id: "check-noti-os-grupo-personal",     key: "NOTI_OS_GRUPO_PERSONAL" },
     ];
     for (const { id, key } of notiChecks) {
         const el = document.getElementById(id);
@@ -941,6 +943,21 @@ async function cargar_ajustes_cache() {
     if (checkOcultarError) {
         checkOcultarError.checked = ajustes.OCULTAR_MENSAJES_ERROR_DESCIFRADO || false;
         OCULTAR_MENSAJES_ERROR_DESCIFRADO = checkOcultarError.checked;
+    }
+
+    // Notificaciones por correo
+    const correoChecks = [
+        { id: "check-correo-inicio-sesion",          key: "CORREO_INICIO_SESION" },
+        { id: "check-correo-cambio-contraseña",      key: "CORREO_CAMBIO_CONTRASEÑA" },
+        { id: "check-correo-cambio-correo",          key: "CORREO_CAMBIO_CORREO" },
+        { id: "check-correo-cambio-apodo",           key: "CORREO_CAMBIO_APODO" },
+        { id: "check-correo-dispositivo-confianza",  key: "CORREO_DISPOSITIVO_CONFIANZA" },
+        { id: "check-correo-sesion-cerrada",         key: "CORREO_SESION_CERRADA" },
+        { id: "check-correo-dispositivo-bloqueado",  key: "CORREO_DISPOSITIVO_BLOQUEADO" },
+    ];
+    for (const { id, key } of correoChecks) {
+        const el = document.getElementById(id);
+        if (el) el.checked = ajustes[key] !== false;
     }
 
     // Escaneres de seguridad del usuario
@@ -1280,6 +1297,8 @@ function setup_cache_listeners() {
         { id: "check-noti-os-msg-grupal",          key: "NOTI_OS_MENSAJE_GRUPAL" },
         { id: "check-noti-os-descarga-individual", key: "NOTI_OS_DESCARGA_INDIVIDUAL" },
         { id: "check-noti-os-descarga-grupal",     key: "NOTI_OS_DESCARGA_GRUPAL" },
+        { id: "check-noti-os-mensaje-fijado",      key: "NOTI_OS_MENSAJE_FIJADO" },
+        { id: "check-noti-os-grupo-personal",      key: "NOTI_OS_GRUPO_PERSONAL" },
     ];
     for (const { id, key } of notiChecks) {
         document.getElementById(id)?.addEventListener("change", async (e) => {
@@ -1328,6 +1347,24 @@ function setup_cache_listeners() {
             e.target.value = "";
         }
     });
+
+    // Notificaciones por correo
+    const correoCheckIds = [
+        { id: "check-correo-inicio-sesion",          key: "CORREO_INICIO_SESION" },
+        { id: "check-correo-cambio-contraseña",      key: "CORREO_CAMBIO_CONTRASEÑA" },
+        { id: "check-correo-cambio-correo",          key: "CORREO_CAMBIO_CORREO" },
+        { id: "check-correo-cambio-apodo",           key: "CORREO_CAMBIO_APODO" },
+        { id: "check-correo-dispositivo-confianza",  key: "CORREO_DISPOSITIVO_CONFIANZA" },
+        { id: "check-correo-sesion-cerrada",         key: "CORREO_SESION_CERRADA" },
+        { id: "check-correo-dispositivo-bloqueado",  key: "CORREO_DISPOSITIVO_BLOQUEADO" },
+    ];
+    for (const { id, key } of correoCheckIds) {
+        document.getElementById(id)?.addEventListener("change", async (e) => {
+            const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {};
+            ajustes[key] = e.target.checked;
+            await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
+        });
+    }
 
     // Escaneres de seguridad del usuario (delegacion)
     document.getElementById("ajustes-escaneres-usuario")?.addEventListener("click", async (e) => {

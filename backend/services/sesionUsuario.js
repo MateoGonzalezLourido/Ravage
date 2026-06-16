@@ -13,7 +13,7 @@ import {
     limpiarArchivosCompleto,
     saveIdentityFile
 } from './controladorArchivos.js';
-import { enviarEmail, generarCodigoVerificacion } from './MENSAJERIA/Servicio_mensajeria_correo.js';
+import { enviarEmail, generarCodigoVerificacion, correoPermitido } from './MENSAJERIA/Servicio_mensajeria_correo.js';
 import {
     ValidarCorreoEstructura,
     ConfirmacionCuentaCreadaEstructura,
@@ -444,11 +444,10 @@ async function ValidarCodeLogin({ correo, code }) {
 
     await asegurarIdentidadLocal();
 
-    ; (async () => {
-        //mandar correo confirmando inicio de sesion (no bloqueante)
+    ;(async () => {
+        if (!await correoPermitido('CORREO_INICIO_SESION')) return;
         const { asunto, htmlContenido } = ConfirmacionInicioSesion();
-        enviarEmail({ correoDestino: correo, asunto: asunto, htmlContenido: htmlContenido });
-
+        enviarEmail({ correoDestino: correo, asunto, htmlContenido });
     })()
     return { success: true };
 }
@@ -568,6 +567,7 @@ async function marcarDispositivoConfianza(correo) {
         AñadirJWTDPConfianza(correo, token, info)
     ]);
     ;(async () => {
+        if (!await correoPermitido('CORREO_DISPOSITIVO_CONFIANZA')) return;
         const apodo = storage.getApodoSesion();
         const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
         const { asunto, htmlContenido } = AvisoDispositivoConfianzaAnadido({ apodo, nombre: info.nombre, sistemaOperativo: info.os, fecha });
@@ -583,6 +583,7 @@ async function revocarDispositivoConfianza(correo) {
         clearFileSession('dispositivoConfianza')
     ]);
     ;(async () => {
+        if (!await correoPermitido('CORREO_DISPOSITIVO_CONFIANZA')) return;
         const apodo = storage.getApodoSesion();
         const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
         const { asunto, htmlContenido } = AvisoDispositivoConfianzaRevocado({ apodo, nombre: info.nombre, sistemaOperativo: info.os, fecha });
@@ -643,6 +644,7 @@ async function revocarSesionDispositivo(correo, id_dp_hash) {
         await clearFileSession('sessionFile').catch(() => {});
     }
     ;(async () => {
+        if (!await correoPermitido('CORREO_SESION_CERRADA')) return;
         const apodo = storage.getApodoSesion();
         const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
         const { asunto, htmlContenido } = AvisoSesionCerrada({ apodo, nombre: docInfo?.nombre || null, sistemaOperativo: docInfo?.os || null, fecha });
@@ -662,6 +664,7 @@ async function revocarConfianzaDispositivo(correo, id_dp_hash) {
         await clearFileSession('dispositivoConfianza').catch(() => {});
     }
     ;(async () => {
+        if (!await correoPermitido('CORREO_DISPOSITIVO_CONFIANZA')) return;
         const apodo = storage.getApodoSesion();
         const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
         const { asunto, htmlContenido } = AvisoDispositivoConfianzaRevocado({ apodo, nombre: docInfo?.nombre || null, sistemaOperativo: docInfo?.os || null, fecha });
@@ -697,6 +700,7 @@ async function bloquearDispositivo(correo, id_dp_hash) {
     }
 
     ;(async () => {
+        if (!await correoPermitido('CORREO_DISPOSITIVO_BLOQUEADO')) return;
         const apodo = storage.getApodoSesion();
         const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
         const { asunto, htmlContenido } = AvisoDispositivoBloqueado({ apodo, nombre: info.nombre || null, sistemaOperativo: info.os || null, fecha });
@@ -716,6 +720,7 @@ async function desbloquearDispositivo(correo, id_dp_hash) {
     await DesbloquearDispositivo(correoHash, id_dp_hash);
 
     ;(async () => {
+        if (!await correoPermitido('CORREO_DISPOSITIVO_BLOQUEADO')) return;
         const apodo = storage.getApodoSesion();
         const fecha = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
         const { asunto, htmlContenido } = AvisoDispositivoDesbloqueado({ apodo, nombre: doc?.nombre || null, sistemaOperativo: doc?.os || null, fecha });
