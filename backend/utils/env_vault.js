@@ -5,7 +5,6 @@
  *   1. Al arrancar (después de app.whenReady): detecta .env en env/
  *      → los cifra con safeStorage y los borra del disco
  *   2. Carga las variables desde el baúl cifrado a process.env
- *   3. Expone exportarEnvADescargas() para regenerar los .env en Descargas
  *
  * Almacenamiento: <userData>/env_vault/<nombre>.enc  (Buffer cifrado por el SO)
  * Backend safeStorage: libsecret (Linux) · DPAPI (Windows) · Keychain (macOS)
@@ -64,30 +63,37 @@ function listarVault() {
  * @returns {boolean} true si migró al menos un archivo
  */
 function migrarEnvAlBaul() {
-    const archivos = listarEnvSrc();
+    const archivos = listarEnvSrc().filter(({ ruta }) => {
+        try { return fs.statSync(ruta).size > 0; } catch { return false; }
+    });
     if (archivos.length === 0) return false;
 
     if (!safeStorage.isEncryptionAvailable()) {
-        console.warn('[EnvVault] safeStorage no disponible en este sistema, manteniendo .env en disco');
+        console.warn('[EnvVault] safeStorage no disponible — los .env permanecen en disco sin cifrar. Instala gnome-keyring o kwallet para protegerlos.');
         return false;
     }
 
     const vaultDir = getVaultDir();
     fs.mkdirSync(vaultDir, { recursive: true });
 
+    let migrados = 0;
     for (const { nombre, ruta } of archivos) {
         try {
             const contenido = fs.readFileSync(ruta, 'utf-8');
             const cifrado = safeStorage.encryptString(contenido);
-            fs.writeFileSync(path.join(vaultDir, nombre + '.enc'), cifrado);
+            const destino = path.join(vaultDir, nombre + '.enc');
+            fs.writeFileSync(destino, cifrado);
+            // Solo borra el original si el .enc se escribió correctamente
+            fs.accessSync(destino, fs.constants.R_OK);
             fs.unlinkSync(ruta);
-            console.log(`[EnvVault] Migrado al baúl y eliminado: ${nombre}`);
+            migrados++;
+            console.log(`[EnvVault] Migrado y eliminado del disco: ${nombre}`);
         } catch (err) {
-            console.error(`[EnvVault] Error migrando ${nombre}:`, err.message);
+            console.error(`[EnvVault] Fallo migrando ${nombre} — el archivo original se mantiene en disco:`, err.message);
         }
     }
 
-    return true;
+    return migrados > 0;
 }
 
 /**
@@ -100,10 +106,11 @@ function cargarDesdeVaul() {
     if (archivos.length === 0) return false;
 
     if (!safeStorage.isEncryptionAvailable()) {
-        console.warn('[EnvVault] safeStorage no disponible, no se pueden descifrar las variables');
+        console.warn('[EnvVault] safeStorage no disponible — no se pueden leer los .enc del baúl.');
         return false;
     }
 
+    let cargados = 0;
     for (const { nombre, ruta } of archivos) {
         try {
             const cifrado = fs.readFileSync(ruta);
@@ -112,13 +119,14 @@ function cargarDesdeVaul() {
             for (const [key, value] of Object.entries(vars)) {
                 process.env[key] = value;
             }
+            cargados++;
             console.log(`[EnvVault] Cargado desde baúl: ${nombre}`);
         } catch (err) {
             console.error(`[EnvVault] Error descifrando ${nombre}:`, err.message);
         }
     }
 
-    return true;
+    return cargados > 0;
 }
 
 /**
@@ -128,35 +136,4 @@ function cargarDesdeVaul() {
 export async function inicializarVault() {
     migrarEnvAlBaul();
     cargarDesdeVaul();
-}
-
-/**
- * Descifra todos los archivos del baúl y los escribe en <Descargas>/Ravage-env/.
- * @returns {{ ok: boolean, ruta?: string, error?: string }}
- */
-export function exportarEnvADescargas() {
-    const archivos = listarVault();
-    if (archivos.length === 0) return { ok: false, error: 'El baúl está vacío' };
-
-    if (!safeStorage.isEncryptionAvailable()) {
-        return { ok: false, error: 'safeStorage no disponible en este sistema' };
-    }
-
-    const destino = path.join(app.getPath('downloads'), 'Ravage-env');
-
-    try {
-        fs.mkdirSync(destino, { recursive: true });
-
-        for (const { nombre, ruta } of archivos) {
-            const cifrado = fs.readFileSync(ruta);
-            const contenido = safeStorage.decryptString(cifrado);
-            fs.writeFileSync(path.join(destino, nombre), contenido, { encoding: 'utf-8', mode: 0o600 });
-        }
-
-        console.log(`[EnvVault] Archivos exportados a: ${destino}`);
-        return { ok: true, ruta: destino };
-    } catch (err) {
-        console.error('[EnvVault] Error exportando:', err.message);
-        return { ok: false, error: err.message };
-    }
 }

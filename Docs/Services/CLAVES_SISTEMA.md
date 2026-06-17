@@ -8,7 +8,7 @@ Ravage maneja varios tipos de claves criptográficas con propósitos distintos. 
 
 | Clave | Origen | Formato en memoria | Formato en reposo | Propósito |
 |---|---|---|---|---|
-| `secretKey` (usuario) | `randomBytes(32)` al registrar | `Buffer` | `BinData` en MongoDB | Cifra archivos locales del usuario (ajustes, historial, etc.) |
+| `secretKey` (usuario) | `randomBytes(32)` al registrar | `Buffer` | `EncryptedDataSchema` en MongoDB (cifrado con `INTERNAL_ENCRYPTION_KEY`) | Cifra archivos locales del usuario (ajustes, historial, etc.) |
 | `SECRET_KEY_COKKIE` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra archivos locales de sesión y configuración de la app |
 | `SECRET_KEY_PRIVATE` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra el archivo de identidad E2EE (clave privada RSA) en disco |
 | `INTERNAL_ENCRYPTION_KEY` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra datos sensibles almacenados en MongoDB (buzón, etc.) |
@@ -21,9 +21,11 @@ Ravage maneja varios tipos de claves criptográficas con propósitos distintos. 
 
 ### Origen y formato
 
-Generada al registrar el usuario con `randomBytes(32)` (32 bytes, 256 bits). Se almacena directamente como `Buffer` en MongoDB (campo `secretKey` del schema `User`, tipo Mongoose `Buffer` → MongoDB `BinData`).
+Generada al registrar el usuario con `randomBytes(32)` (32 bytes, 256 bits). Se almacena **cifrada** en MongoDB como `EncryptedDataSchema` usando `INTERNAL_ENCRYPTION_KEY` + AES-256-GCM. El hex del buffer es el plaintext cifrado.
 
-Antes se almacenaba como cadena hexadecimal (64 chars). El cambio a `Buffer` elimina la conversión `Buffer.from(key, "hex")` en cada uso y reduce el tamaño en DB a la mitad.
+Al cargar en sesión, `desencriptarDatosSistema(dt.secretKey)` devuelve el hex → `Buffer.from(hex, 'hex')` → Buffer de 32 bytes que se pone en memoria con `setSecretKEY(buffer)`.
+
+Esto significa que comprometer MongoDB sin tener también la `INTERNAL_ENCRYPTION_KEY` (almacenada en el vault del SO) no es suficiente para obtener las claves de cifrado de los usuarios.
 
 ### Ciclo de vida
 
@@ -138,7 +140,7 @@ Para descifrar: receptor hace `ECDH(privKey, ephPub)` → misma wrapping key →
 
 | Clave | Algoritmo de cifrado en reposo | Algoritmo de uso |
 |---|---|---|
-| `secretKey` usuario | — (en MongoDB, protegido por acceso a la DB) | AES-256-GCM (cifra archivos locales) |
+| `secretKey` usuario | AES-256-GCM con `INTERNAL_ENCRYPTION_KEY` (en MongoDB) | AES-256-GCM (cifra archivos locales) |
 | `SECRET_KEY_COKKIE` | En `.env.secret` (protegido por vault del SO) | AES-256-GCM |
 | `SECRET_KEY_PRIVATE` | En `.env.secret` (protegido por vault del SO) | AES-256-GCM |
 | `INTERNAL_ENCRYPTION_KEY` | En `.env.secret` | AES-256-GCM (cifra datos en MongoDB) |

@@ -28,7 +28,7 @@ import {
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, compare, createHash, machineIdSync, os, si } from '../utils/libs.js';
-import { generarLlavesX25519, hashDatosSistema, getIdentity } from './cryptoService.js';
+import { generarLlavesX25519, hashDatosSistema, getIdentity, desencriptarDatosSistema } from './cryptoService.js';
 
 import { clearCacheUsuarios, setUsuarioEnCache } from '../repositories/UserRepository.js';
 import { clearCacheArchivosDescargados } from '../STORAGE/CACHE/_cache_archivos_descargados.js';
@@ -87,7 +87,7 @@ function ACTUALIZAR_DATOS_LOGIN({ data, limpiar = false, id_maquina = null }) {
     storage.setUsuariosSilence(lp ? dt.users_silence : []);
     storage.setUsuariosBloqueados(lp ? dt.users_bloq : []);
     storage.setIdDispositivo(lp ? (id_maquina ? id_maquina : machineIdSync()) : null)
-    storage.setSecretKEY(lp ? dt.secretKey : null)
+    storage.setSecretKEY(lp ? (dt.secretKey ? Buffer.from(desencriptarDatosSistema(dt.secretKey), 'hex') : null) : null)
     storage.setListaChats(lp ? dt.chats : []);
     storage.setListaContactos(lp ? dt.contactos : []);
     storage.setIDAmigo(lp ? dt.idamigo : false)

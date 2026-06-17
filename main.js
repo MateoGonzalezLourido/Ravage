@@ -354,11 +354,8 @@ if (!gotTheLock) {
 
     app.whenReady().then(async () => {
         // Migrar .env al baúl seguro del SO (si los hay) y cargar vars desde él
-        const { inicializarVault, exportarEnvADescargas } = await import('./backend/utils/env_vault.js');
+        const { inicializarVault } = await import('./backend/utils/env_vault.js');
         await inicializarVault();
-
-        // Handler IPC para exportar los .env desde el baúl a Descargas del usuario
-        ipcMain.handle('vault:exportar-env', async () => exportarEnvADescargas());
 
         const pServer = import('./backend/servidores/serverLocalHost.js');
         const pDb = import("./backend/db/mongo.js");

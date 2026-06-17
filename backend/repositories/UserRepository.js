@@ -140,7 +140,7 @@ export async function InsertarUsuario({ apodo = "Usuario", contrasena, correo, s
             correo: encriptarDatosSistema(correo),
             correo_hash: correoHash,
             contrasena: contrasena,
-            secretKey: sKey,
+            secretKey: encriptarDatosSistema(sKey.toString('hex')),
             idamigo: encriptarDatosSistema(idAmigo),
             idamigo_hash: idamigoHash,
             publicKey: publicKey
@@ -352,7 +352,7 @@ export async function ActualizarSecretKeyUsuario(actualizar = true) {
     if (!actualizar) return key;
     try {
         const correoHash = hashDatosSistema(getCorreoSesion());
-        const r = await User.updateOne({ correo_hash: correoHash }, { $set: { secretKey: key } });
+        const r = await User.updateOne({ correo_hash: correoHash }, { $set: { secretKey: encriptarDatosSistema(key.toString('hex')) } });
         if (r.matchedCount === 0) return false;
 
         await _syncCache(correoHash);
