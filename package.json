@@ -33,7 +33,12 @@
     "files": [
       "**/*",
       "!.env",
-      "!env/"
+      "!env/",
+      "!Docs/",
+      "!backend/tests/",
+      "!dist/",
+      "!vscode",
+      "!README.md"
     ],
     "extraResources": [
       {
