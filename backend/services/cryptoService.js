@@ -351,15 +351,26 @@ export function crearDecipherStream(key, iv, tag) {
  */
 export function ratchetChainKey(chainKeyHex) {
     const chainKey = Buffer.from(chainKeyHex, 'hex');
-    
+
     // MK = HMAC-SHA256(CK, 0x01)
     const messageKey = createHmac('sha256', chainKey).update(Buffer.from([0x01])).digest();
-    
+
     // NextCK = HMAC-SHA256(CK, 0x02)
     const nextChainKey = createHmac('sha256', chainKey).update(Buffer.from([0x02])).digest();
-    
+
     return {
         messageKey: messageKey,
         nextChainKey: nextChainKey.toString('hex')
     };
+}
+
+/**
+ * Avance rápido de cadena sin derivar la message key.
+ * Usado en los loops ratchet-forward donde solo se necesita CK.
+ */
+export function advanceChainKey(chainKeyHex) {
+    return createHmac('sha256', Buffer.from(chainKeyHex, 'hex'))
+        .update(Buffer.from([0x02]))
+        .digest()
+        .toString('hex');
 }

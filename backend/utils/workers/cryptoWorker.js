@@ -27,6 +27,10 @@ const generateKeyPairAsync = promisify(generateKeyPair);
 // Prefijo DER SPKI de 12 bytes para reconstruir una clave pública X25519 desde sus 32 bytes raw
 const _X25519_SPKI_HEADER = Buffer.from('302a300506032b656e032100', 'hex');
 
+// Cache de KeyObjects para evitar re-parsear PEM en cada operación del batch
+const _privKeyCache = new Map();
+const _pubKeyCache = new Map();
+
 // ==========================================
 // OPERACIONES DISPONIBLES
 // ==========================================
@@ -134,11 +138,10 @@ const OPERACIONES = {
                         continue;
                     }
 
-                    // Ratchet forward
+                    // Ratchet forward (solo CK, sin derivar MK en cada paso)
                     let iterations_safety = 0;
                     while (current_state.counter < m.ratchet_info.iteration && iterations_safety < 10000) {
-                        const { nextChainKey } = _ratchetChainKey(current_state.ck);
-                        current_state.ck = nextChainKey;
+                        current_state.ck = _advanceChainKey(current_state.ck);
                         current_state.counter++;
                         iterations_safety++;
                     }
@@ -211,7 +214,11 @@ const OPERACIONES = {
 // ==========================================
 
 function _cifrarConX25519(chainKeyHex, recipientPublicKeyPem) {
-    const recipientPubKeyObj = createPublicKey(recipientPublicKeyPem);
+    let recipientPubKeyObj = _pubKeyCache.get(recipientPublicKeyPem);
+    if (!recipientPubKeyObj) {
+        recipientPubKeyObj = createPublicKey(recipientPublicKeyPem);
+        _pubKeyCache.set(recipientPublicKeyPem, recipientPubKeyObj);
+    }
     const { privateKey: ephPriv, publicKey: ephPub } = generateKeyPairSync('x25519', {});
     const sharedSecret = diffieHellman({ privateKey: ephPriv, publicKey: recipientPubKeyObj });
     const wrappingKey = Buffer.from(hkdfSync('sha256', sharedSecret, Buffer.alloc(0), Buffer.from('ravage-ck-wrap'), 32));
@@ -229,7 +236,11 @@ function _descifrarConX25519(envuelta, privateKeyPem) {
     if (!envuelta || !envuelta.ephPub || !envuelta.iv || !envuelta.data || !envuelta.tag) {
         throw new Error('X25519: estructura de clave envuelta inválida');
     }
-    const privKeyObj = createPrivateKey(privateKeyPem);
+    let privKeyObj = _privKeyCache.get(privateKeyPem);
+    if (!privKeyObj) {
+        privKeyObj = createPrivateKey(privateKeyPem);
+        _privKeyCache.set(privateKeyPem, privKeyObj);
+    }
     const ephPubDer = Buffer.concat([_X25519_SPKI_HEADER, Buffer.from(envuelta.ephPub, 'hex')]);
     const ephPubKeyObj = createPublicKey({ key: ephPubDer, format: 'der', type: 'spki' });
     const sharedSecret = diffieHellman({ privateKey: privKeyObj, publicKey: ephPubKeyObj });
@@ -283,6 +294,13 @@ function _ratchetChainKey(chainKeyHex) {
         messageKey: messageKey,
         nextChainKey: nextChainKey.toString('hex')
     };
+}
+
+function _advanceChainKey(chainKeyHex) {
+    return createHmac('sha256', Buffer.from(chainKeyHex, 'hex'))
+        .update(Buffer.from([0x02]))
+        .digest()
+        .toString('hex');
 }
 
 // ==========================================

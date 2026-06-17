@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('msg-crypto');
-import { descifrarContenido, descifrarConX25519, descifrarConX25519Multi, getAllPrivateKeys, ratchetChainKey, cifrarConX25519, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
+import { descifrarContenido, descifrarConX25519, descifrarConX25519Multi, getAllPrivateKeys, ratchetChainKey, advanceChainKey, cifrarConX25519, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { getCryptoPool } from '../utils/workers/workerPool.js';
@@ -137,8 +137,7 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
 
                 let iterations_safety = 0;
                 while (local_counter < m.ratchet_info.iteration && iterations_safety < 10000) {
-                    const { nextChainKey } = ratchetChainKey(local_ck);
-                    local_ck = nextChainKey;
+                    local_ck = advanceChainKey(local_ck);
                     local_counter++;
                     iterations_safety++;
                 }
@@ -226,12 +225,13 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
 
 /**
  * Descifrado paralelo con Worker Pool.
- * Divide los mensajes entre N workers para descifrar simultáneamente.
+ * Agrupa mensajes por emisor y despacha un job por emisor al pool.
+ * Esto evita avances ratchet redundantes cuando los mensajes de un mismo
+ * emisor se repartirían entre varios workers con el esquema anterior.
  */
 async function _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data) {
     const pool = getCryptoPool();
 
-    // Serializar ratchet_keys para enviar al worker (sin métodos Mongoose)
     const ratchet_keys = chat.ratchet_keys.map(k => ({
         emisor_id: k.emisor_id.toString(),
         receptor_id: k.receptor_id.toString(),
@@ -239,44 +239,63 @@ async function _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data)
         counter: k.counter
     }));
 
-    // Preparar mensajes serializados (sin métodos Mongoose) 
-    const mensajesSerializados = mensajes.map(m => ({
-        _id: m._id?.toString?.() || m._id,
-        emisor: m.emisor?.toString?.() || m.emisor,
-        contenido: m.contenido,
-        encriptado: m.encriptado,
-        ratchet_info: m.ratchet_info,
-        data: m.data
-    }));
-
-    // Obtener systemKey para fallback de descifrado de sistema en workers
-    const systemKey = process.env.INTERNAL_ENCRYPTION_KEY || null;
-
     const allKeys = getAllPrivateKeys(identity_data);
-    const resultados = await pool.ejecutarBatch(
-        'DESCIFRAR_BATCH_MENSAJES',
-        mensajesSerializados,
-        {
-            ratchet_keys,
-            id_propio: id_propio.toString(),
-            privateKey: identity_data.primary?.privateKey,
-            privateKeys: allKeys.map(k => k.privateKey),
-            systemKey
-        }
-    );
+    const systemKey = process.env.INTERNAL_ENCRYPTION_KEY || null;
+    const datosComunes = {
+        ratchet_keys,
+        id_propio: id_propio.toString(),
+        privateKey: identity_data.primary?.privateKey,
+        privateKeys: allKeys.map(k => k.privateKey),
+        systemKey
+    };
+
+    // Agrupar índices de mensajes por emisor (orden original preservado)
+    const gruposPorEmisor = new Map();
+    for (let i = 0; i < mensajes.length; i++) {
+        const m = mensajes[i];
+        if (!(m.encriptado?.data && m.ratchet_info)) continue;
+        if (m.contenido?.length > 0 && typeof m.contenido[0].asunto === 'string') continue;
+        const emisor_id = m.emisor?.toString?.() ?? m.emisor;
+        if (!emisor_id) continue;
+        if (!gruposPorEmisor.has(emisor_id)) gruposPorEmisor.set(emisor_id, []);
+        gruposPorEmisor.get(emisor_id).push(i);
+    }
+
+    // Un job por emisor en paralelo — cada worker solo avanza un ratchet
+    const promesas = [];
+    for (const indices of gruposPorEmisor.values()) {
+        const items = indices.map(idx => {
+            const m = mensajes[idx];
+            return {
+                _id: m._id?.toString?.() || m._id,
+                emisor: m.emisor?.toString?.() || m.emisor,
+                contenido: m.contenido,
+                encriptado: m.encriptado,
+                ratchet_info: m.ratchet_info,
+                data: m.data
+            };
+        });
+        promesas.push(
+            pool.ejecutar('DESCIFRAR_BATCH_MENSAJES', { ...datosComunes, items, indiceInicio: 0 })
+                .then(res => ({ items: res.items, indices }))
+        );
+    }
+
+    const resultados = await Promise.all(promesas);
 
     // Recomponer mensajes originales con los descifrados
-    for (let i = 0; i < resultados.length; i++) {
-        if (resultados[i]) {
-            // Copiar datos descifrados al mensaje original
-            mensajes[i].contenido = resultados[i].contenido;
-            if (resultados[i].emisor) mensajes[i].emisor = resultados[i].emisor;
-            if (resultados[i].data) mensajes[i].data = resultados[i].data;
+    for (const { items, indices } of resultados) {
+        for (let i = 0; i < items.length; i++) {
+            const origIdx = indices[i];
+            if (items[i]) {
+                mensajes[origIdx].contenido = items[i].contenido;
+                if (items[i].emisor) mensajes[origIdx].emisor = items[i].emisor;
+                if (items[i].data) mensajes[origIdx].data = items[i].data;
+            }
         }
     }
 
     // NO persistir ratchet state: rompe getMessageKey para archivos antiguos.
-    // El receptor siempre re-deriva desde la clave base (coste despreciable).
     return mensajes;
 }
 
@@ -330,8 +349,7 @@ async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, ident
             let iterations_safety = 0;
             // Avanzar hasta el último mensaje + 1
             while (counter <= ratchet_info.iteration && iterations_safety < 10000) {
-                const { nextChainKey } = ratchetChainKey(ck);
-                ck = nextChainKey;
+                ck = advanceChainKey(ck);
                 counter++;
                 iterations_safety++;
             }
@@ -383,8 +401,7 @@ export async function getMessageKey(chat, emisor_id, iteration) {
 
     let iterations_safety = 0;
     while (current_counter < iteration && iterations_safety < 10000) {
-        const { nextChainKey } = ratchetChainKey(ck);
-        ck = nextChainKey;
+        ck = advanceChainKey(ck);
         current_counter++;
         iterations_safety++;
     }
