@@ -22,8 +22,8 @@
     "test": "vitest run",
     "postinstall": "electron-rebuild",
     "dist-windows": "electron-builder --win --x64",
-    "dist-linux": "electron-builder --linux --x64"
-    },
+    "dist-linux": "npm run build-preload && electron-builder --linux --x64"
+  },
   "build": {
     "appId": "com.mateo.ravage",
     "productName": "Ravage",
@@ -34,6 +34,12 @@
       "**/*",
       "!.env",
       "!env/"
+    ],
+    "extraResources": [
+      {
+        "from": "env/",
+        "to": "env/"
+      }
     ],
     "npmRebuild": false
   },
@@ -54,11 +60,11 @@
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "systeminformation": "^5.31.5",
-    "validator": "^13.15.35"
+    "validator": "^13.15.35",
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
-    "dotenv": "^17.4.2",
     "electron": "^41.1.1",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.1",

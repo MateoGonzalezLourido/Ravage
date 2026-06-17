@@ -49,8 +49,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import dotenv from 'dotenv';
-dotenv.config({ path: path.resolve(__dirname, '../../env/.env.config') });
-dotenv.config({ path: path.resolve(__dirname, '../../env/.env.secret') });
+// En producción el código corre dentro de app.asar, así que __dirname lo contiene.
+// En ese caso los archivos env/ están en process.resourcesPath (extraResources).
+const _envDir = __dirname.includes('.asar')
+  ? path.join(process.resourcesPath, 'env')
+  : path.resolve(__dirname, '../../env');
+dotenv.config({ path: path.join(_envDir, '.env.config') });
+dotenv.config({ path: path.join(_envDir, '.env.secret') });
 
 // ==========================================
 // 3. ELECTRON (Lazy & Safe)

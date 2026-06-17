@@ -162,6 +162,15 @@ async function registerAllHandlers(window, sock) {
     if (ipcHandlersRegistered) return;
     ipcHandlersRegistered = true;
 
+    // Escribe al log en userData para poder verlo sin terminal
+    const _logFile = path.join(app.getPath('userData'), 'ipc-debug.log');
+    const _log = (msg) => {
+        const line = `[${new Date().toISOString()}] ${msg}\n`;
+        console.error(line.trimEnd());
+        try { fs.appendFileSync(_logFile, line); } catch { /* */ }
+    };
+    _log(`=== registerAllHandlers inicio | resourcesPath=${process.resourcesPath} | __dirname_libs incluye asar: ${_log._asarCheck ?? 'n/a'}`);
+
     const [
         sessionRes,
         validadoresRes,
@@ -184,38 +193,38 @@ async function registerAllHandlers(window, sock) {
 
     if (sessionRes.status === 'fulfilled') {
         try { sessionRes.value.registerSessionHandlers(window); }
-        catch (e) { console.error('[IPC] Error en registerSessionHandlers:', e.message); }
-    } else console.error('[IPC] Fallo session_ipc:', sessionRes.reason);
+        catch (e) { _log(`[IPC] Error en registerSessionHandlers: ${e.stack || e.message}`); }
+    } else _log(`[IPC] Fallo session_ipc: ${sessionRes.reason?.stack || sessionRes.reason}`);
 
     if (validadoresRes.status === 'fulfilled') {
         try { validadoresRes.value.registerValidadoresHandlers(); }
-        catch (e) { console.error('[IPC] Error en registerValidadoresHandlers:', e.message); }
-    } else console.error('[IPC] Fallo validadores_ipc:', validadoresRes.reason);
+        catch (e) { _log(`[IPC] Error en registerValidadoresHandlers: ${e.stack || e.message}`); }
+    } else _log(`[IPC] Fallo validadores_ipc: ${validadoresRes.reason?.stack || validadoresRes.reason}`);
 
     if (chatRes.status === 'fulfilled') {
         try { chatRes.value.registerChatHandlers(window, sock); }
-        catch (e) { console.error('[IPC] Error en registerChatHandlers:', e.message); }
-    } else console.error('[IPC] Fallo chat_ipc:', chatRes.reason);
+        catch (e) { _log(`[IPC] Error en registerChatHandlers: ${e.stack || e.message}`); }
+    } else _log(`[IPC] Fallo chat_ipc: ${chatRes.reason?.stack || chatRes.reason}`);
 
     if (socialRes.status === 'fulfilled') {
         try { socialRes.value.registerSocialHandlers(); }
-        catch (e) { console.error('[IPC] Error en registerSocialHandlers:', e.message); }
-    } else console.error('[IPC] Fallo social_ipc:', socialRes.reason);
+        catch (e) { _log(`[IPC] Error en registerSocialHandlers: ${e.stack || e.message}`); }
+    } else _log(`[IPC] Fallo social_ipc: ${socialRes.reason?.stack || socialRes.reason}`);
 
     if (cacheArchivosRes.status === 'fulfilled') {
         try { cacheArchivosRes.value.registerCacheArchivosDescargadosHandlers(); }
-        catch (e) { console.error('[IPC] Error en registerCacheArchivosDescargadosHandlers:', e.message); }
-    } else console.error('[IPC] Fallo cache_archivos_descargados_ipc (SQLite):', cacheArchivosRes.reason?.message);
+        catch (e) { _log(`[IPC] Error en registerCacheArchivosDescargadosHandlers: ${e.stack || e.message}`); }
+    } else _log(`[IPC] Fallo cache_archivos_descargados_ipc (SQLite): ${cacheArchivosRes.reason?.stack || cacheArchivosRes.reason?.message}`);
 
     if (cachePersistentRes.status === 'fulfilled') {
         try { cachePersistentRes.value.registerCachePersistentHandlers(); }
-        catch (e) { console.error('[IPC] Error en registerCachePersistentHandlers:', e.message); }
-    } else console.error('[IPC] Fallo cache_persistent_ipc (SQLite):', cachePersistentRes.reason?.message);
+        catch (e) { _log(`[IPC] Error en registerCachePersistentHandlers: ${e.stack || e.message}`); }
+    } else _log(`[IPC] Fallo cache_persistent_ipc (SQLite): ${cachePersistentRes.reason?.stack || cachePersistentRes.reason?.message}`);
 
     if (escaneresRes.status === 'fulfilled') {
         try { escaneresRes.value.registerEscaneresAppHandlers(); }
-        catch (e) { console.error('[IPC] Error en registerEscaneresAppHandlers:', e.message); }
-    } else console.error('[IPC] Fallo escaneres_app_ipc:', escaneresRes.reason);
+        catch (e) { _log(`[IPC] Error en registerEscaneresAppHandlers: ${e.stack || e.message}`); }
+    } else _log(`[IPC] Fallo escaneres_app_ipc: ${escaneresRes.reason?.stack || escaneresRes.reason}`);
 
     if (controladorRes.status === 'fulfilled') {
         const {
