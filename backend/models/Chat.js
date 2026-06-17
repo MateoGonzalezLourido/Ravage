@@ -23,8 +23,14 @@ const ChatSchema = new mongoose.Schema({
     },
     ratchet_keys: [{
         emisor_id: mongoose.Schema.Types.ObjectId,
-        receptor_id: mongoose.Schema.Types.ObjectId, // A quien va dirigida esta copia de la clave
-        clave_envuelta: String, // ChainKey del emisor cifrada con RSA pública del receptor
+        receptor_id: mongoose.Schema.Types.ObjectId,
+        clave_envuelta: {
+            ephPub: { type: String, required: true },
+            iv:     { type: String, required: true },
+            data:   { type: String, required: true },
+            tag:    { type: String, required: true },
+            _id: false
+        },
         counter: { type: Number, default: 0 }
     }],
     escaneres_seguridad: {

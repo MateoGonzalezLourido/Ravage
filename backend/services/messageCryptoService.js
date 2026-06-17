@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('msg-crypto');
-import { descifrarContenido, descifrarConPrivada, descifrarConPrivadaMulti, getAllPrivateKeys, ratchetChainKey, cifrarConPublica, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
+import { descifrarContenido, descifrarConX25519, descifrarConX25519Multi, getAllPrivateKeys, ratchetChainKey, cifrarConX25519, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { getCryptoPool } from '../utils/workers/workerPool.js';
@@ -70,15 +70,15 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                     let ck_hex;
                     try {
                         const allKeys = getAllPrivateKeys(identity_data);
-                        const { result, isPrimary, keyId } = descifrarConPrivadaMulti(entry.clave_envuelta, allKeys);
+                        const { result, isPrimary, keyId } = descifrarConX25519Multi(entry.clave_envuelta, allKeys);
                         ck_hex = result;
                         if (!isPrimary && identity_data.primary?.publicKey) {
                             const ck_snapshot = ck_hex;
                             const pubKey = identity_data.primary.publicKey;
                             setImmediate(() => reWrapChainKey(chat._id, emisor_id, id_propio, ck_snapshot, pubKey, entry.counter).catch(() => {}));
                         }
-                    } catch (rsaErr) {
-                        throw new Error(`Error RSA: Fallo al descifrar el eslabón de la cadena. ${rsaErr.message}`);
+                    } catch (e2eErr) {
+                        throw new Error(`Error E2EE: Fallo al descifrar el eslabón de la cadena. ${e2eErr.message}`);
                     }
 
                     current_state = { ck: ck_hex, counter: entry.counter };
@@ -290,7 +290,7 @@ async function _persistirRatchetState(cache_keys, chat, identity_data) {
             { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": receptor_id },
             {
                 $set: {
-                    "ratchet_keys.$.clave_envuelta": cifrarConPublica(state.ck, identity_data.primary?.publicKey || identity_data.publicKey),
+                    "ratchet_keys.$.clave_envuelta": cifrarConX25519(state.ck, identity_data.primary?.publicKey || identity_data.publicKey),
                     "ratchet_keys.$.counter": state.counter
                 }
             }
@@ -324,7 +324,7 @@ async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, ident
 
         try {
             const allKeys = getAllPrivateKeys(identity_data);
-            let ck = descifrarConPrivadaMulti(entry.clave_envuelta, allKeys).result;
+            let ck = descifrarConX25519Multi(entry.clave_envuelta, allKeys).result;
             let counter = entry.counter;
 
             let iterations_safety = 0;
@@ -342,7 +342,7 @@ async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, ident
                 { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": id_propio },
                 {
                     $set: {
-                        "ratchet_keys.$.clave_envuelta": cifrarConPublica(ck, identity_data.primary?.publicKey || identity_data.publicKey),
+                        "ratchet_keys.$.clave_envuelta": cifrarConX25519(ck, identity_data.primary?.publicKey || identity_data.publicKey),
                         "ratchet_keys.$.counter": counter
                     }
                 }
@@ -370,7 +370,7 @@ export async function getMessageKey(chat, emisor_id, iteration) {
     if (!entry) return null;
 
     const allKeys = getAllPrivateKeys(identity_data);
-    let ck = descifrarConPrivadaMulti(entry.clave_envuelta, allKeys).result;
+    let ck = descifrarConX25519Multi(entry.clave_envuelta, allKeys).result;
     let current_counter = entry.counter;
 
     // Si el counter de la DB ya fue avanzado más allá de la iteración solicitada,
@@ -405,7 +405,7 @@ export async function getMessageKey(chat, emisor_id, iteration) {
  */
 async function reWrapChainKey(chatId, emisorId, receptorId, ck_hex, primaryPublicKey, counter) {
     try {
-        const nuevaClave = cifrarConPublica(ck_hex, primaryPublicKey);
+        const nuevaClave = cifrarConX25519(ck_hex, primaryPublicKey);
         await ChatsRavage.updateOne(
             {
                 _id: chatId,

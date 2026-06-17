@@ -13,7 +13,7 @@ Este documento describe el flujo completo de autenticación en Ravage: registro,
 3. Se comprueba en DB que el correo no esté ya registrado (`correo_hash`).
 4. Si pasa, en background se ejecutan en paralelo:
    - **Hash de contraseña** con Argon2id (ver `Docs/Services/seguridad/HASHING_CONTRASENAS.md`).
-   - **Generación de par de claves RSA** para cifrado E2EE.
+   - **Generación de par de claves X25519** para cifrado E2EE.
 5. Se genera un código de verificación numérico aleatorio y se guarda en la colección `validationcodes` cifrado, vinculado al correo y al dispositivo.
 6. Se envía el código por correo. El usuario tiene **10 minutos** y **5 intentos** para introducirlo.
 
@@ -154,7 +154,7 @@ autoLoginUsuario()
 Tras cualquier login exitoso (manual o autologin) se verifica que existe la clave privada RSA local.
 
 - Si existe → sin acción.
-- Si no existe (p.ej. primer login en un dispositivo nuevo, o archivo corrupto) → se regeneran las claves RSA automáticamente, se actualiza la clave pública en DB y se guarda la privada en el archivo local.
+- Si no existe (p.ej. primer login en un dispositivo nuevo, o archivo corrupto) → se regeneran las claves X25519 automáticamente, se actualiza la clave pública en DB y se guarda la privada en el archivo local.
 
 > **Atención**: regenerar la identidad rompe el descifrado de mensajes anteriores en todos los chats, ya que fueron cifrados con la clave pública antigua. Es un escenario de último recurso.
 
@@ -197,5 +197,5 @@ Todos los archivos se guardan cifrados en el directorio de datos de la app (fuer
 | `sessionFile` | `{ username, token }` | Login con `mantenerSesion` | Cierre de sesión / token inválido |
 | `omitirVerificacionCuentaFile` | `{ username, token }` | Tras validar código de login | Token expirado / inválido |
 | `dispositivoConfianza` | `{ username, token }` | Al marcar como de confianza | Al revocar confianza |
-| `identityFile` | Claves RSA privada + pública | Registro / regeneración | Nunca (persiste entre sesiones) |
+| `identityFile` | Claves X25519 privada + pública | Registro / regeneración | Nunca (persiste entre sesiones) |
 | `securityPin` | `{ correo, pinHash }` | Al configurar el PIN | Al borrar el PIN |

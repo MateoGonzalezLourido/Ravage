@@ -1,18 +1,18 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('crypto');
 import { getCryptoPool } from '../utils/workers/workerPool.js';
-import { 
+import {
     generateKeyPair,
-    publicEncrypt, 
-    privateDecrypt, 
-    createCipheriv, 
-    createDecipheriv, 
-    randomBytes, 
-    createHash, 
+    generateKeyPairSync,
+    createCipheriv,
+    createDecipheriv,
+    randomBytes,
+    createHash,
     createHmac,
     createPublicKey,
     createPrivateKey,
-    constants,
+    hkdfSync,
+    diffieHellman,
     gzipSync,
     gunzipSync
 } from '../utils/libs.js';
@@ -21,7 +21,7 @@ const generateKeyPairAsync = (typeof generateKeyPair === 'function') ? promisify
 let systemKey = null;
 let cachedIdentity = null;
 
-// Cache de KeyObjects parseados para evitar parsear PEM en cada operación RSA
+// Cache de KeyObjects parseados (X25519) para evitar parsear PEM en cada operación
 const _publicKeyCache = new Map();
 
 // ── Utilidades multi-clave ────────────────────────────────────────────────────
@@ -69,15 +69,15 @@ export function getAllPrivateKeys(identityData) {
 }
 
 /**
- * Intenta descifrar RSA con cada clave disponible en orden.
+ * Intenta descifrar con cada clave X25519 disponible en orden.
  * @returns {{ result: string, keyId: string, isPrimary: boolean }}
  * @throws si ninguna clave funciona
  */
-export function descifrarConPrivadaMulti(datosHex, allKeys) {
+export function descifrarConX25519Multi(envuelta, allKeys) {
     let lastErr;
     for (const keyInfo of allKeys) {
         try {
-            const result = descifrarConPrivada(datosHex, keyInfo.privateKey);
+            const result = descifrarConX25519(envuelta, keyInfo.privateKey);
             return { result, keyId: keyInfo.id, isPrimary: keyInfo.isPrimary };
         } catch (e) {
             lastErr = e;
@@ -266,70 +266,67 @@ export function descifrarContenido(cifrado, key) {
     return decrypted.toString('utf8');
 }
 
-// Generar par de llaves RSA-2048 — delegado a worker thread
-export async function generarLlavesRSA() {
-    try {
-        return await getCryptoPool().ejecutar('GENERAR_LLAVES_RSA');
-    } catch (err) {
-        log.warn({ err }, 'Worker pool falló para RSA, fallback a main thread...');
-        
-        if (generateKeyPairAsync) {
-            try {
-                return await generateKeyPairAsync('rsa', {
-                    modulusLength: 2048,
-                    publicKeyEncoding: { type: 'spki', format: 'pem' },
-                    privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
-                });
-            } catch (e) {
-                log.error({ err: e }, "Falló fallback asíncrono RSA, usando síncrono");
-            }
-        }
-        
-        const { generateKeyPairSync } = await import('../utils/libs.js');
-        return generateKeyPairSync('rsa', {
-            modulusLength: 2048,
-            publicKeyEncoding: { type: 'spki', format: 'pem' },
-            privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
-        });
+// Prefijo DER SPKI de 12 bytes para reconstruir una clave pública X25519 desde sus 32 bytes raw
+const _X25519_SPKI_HEADER = Buffer.from('302a300506032b656e032100', 'hex');
+
+/**
+ * Cifra una chain key (hex string) con la clave pública X25519 del receptor.
+ * Genera un par de claves efímero, hace ECDH, deriva una wrapping key con HKDF
+ * y cifra la chain key con AES-256-GCM.
+ * @returns {{ ephPub: string, iv: string, data: string, tag: string }}
+ */
+export function cifrarConX25519(chainKeyHex, recipientPublicKeyPem) {
+    let recipientPubKeyObj = _publicKeyCache.get(recipientPublicKeyPem);
+    if (!recipientPubKeyObj) {
+        recipientPubKeyObj = createPublicKey(recipientPublicKeyPem);
+        _publicKeyCache.set(recipientPublicKeyPem, recipientPubKeyObj);
     }
+
+    const { privateKey: ephPriv, publicKey: ephPub } = generateKeyPairSync('x25519', {});
+    const sharedSecret = diffieHellman({ privateKey: ephPriv, publicKey: recipientPubKeyObj });
+    const wrappingKey = Buffer.from(hkdfSync('sha256', sharedSecret, Buffer.alloc(0), Buffer.from('ravage-ck-wrap'), 32));
+
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', wrappingKey, iv);
+    const data = Buffer.concat([cipher.update(Buffer.from(chainKeyHex, 'utf8')), cipher.final()]);
+    const tag = cipher.getAuthTag();
+
+    const ephPubRaw = ephPub.export({ type: 'spki', format: 'der' }).slice(-32).toString('hex');
+    return {
+        ephPub: ephPubRaw,
+        iv: iv.toString('hex'),
+        data: data.toString('hex'),
+        tag: tag.toString('hex')
+    };
 }
 
 /**
- * Cifra datos con una llave pública RSA-OAEP.
- * Cachea el KeyObject parseado para evitar parsear el PEM en cada llamada.
+ * Descifra una chain key cifrada con X25519+HKDF+AES-256-GCM.
+ * @param {{ ephPub: string, iv: string, data: string, tag: string }} envuelta
+ * @returns {string} chain key en hexadecimal
  */
-export function cifrarConPublica(datos, publicKey) {
-    let keyObj = _publicKeyCache.get(publicKey);
-    if (!keyObj) {
-        keyObj = createPublicKey(publicKey);
-        _publicKeyCache.set(publicKey, keyObj);
+export function descifrarConX25519(envuelta, privateKeyPem) {
+    if (!envuelta || !envuelta.ephPub || !envuelta.iv || !envuelta.data || !envuelta.tag) {
+        throw new Error('X25519: estructura de clave envuelta inválida');
     }
-    return publicEncrypt({
-        key: keyObj,
-        padding: constants.RSA_PKCS1_OAEP_PADDING,
-        oaepHash: 'sha256'
-    }, Buffer.from(datos)).toString('hex');
-}
+    let privKeyObj = _privateKeyCache.get(privateKeyPem);
+    if (!privKeyObj) {
+        privKeyObj = createPrivateKey(privateKeyPem);
+        _privateKeyCache.set(privateKeyPem, privKeyObj);
+    }
 
-/**
- * Descifra datos con una llave privada RSA-OAEP.
- * Cachea el KeyObject parseado para evitar parsear el PEM en cada llamada.
- */
-export function descifrarConPrivada(datosHex, privateKey) {
-    if (!datosHex || typeof datosHex !== 'string') {
-        throw new Error("RSA: Ciphertext must be a hex string.");
-    }
-    let keyObj = _privateKeyCache.get(privateKey);
-    if (!keyObj) {
-        keyObj = createPrivateKey(privateKey);
-        _privateKeyCache.set(privateKey, keyObj);
-    }
-    const buffer = Buffer.from(datosHex, 'hex');
-    return privateDecrypt({
-        key: keyObj,
-        padding: constants.RSA_PKCS1_OAEP_PADDING,
-        oaepHash: 'sha256'
-    }, buffer).toString('utf8');
+    const ephPubDer = Buffer.concat([_X25519_SPKI_HEADER, Buffer.from(envuelta.ephPub, 'hex')]);
+    const ephPubKeyObj = createPublicKey({ key: ephPubDer, format: 'der', type: 'spki' });
+
+    const sharedSecret = diffieHellman({ privateKey: privKeyObj, publicKey: ephPubKeyObj });
+    const wrappingKey = Buffer.from(hkdfSync('sha256', sharedSecret, Buffer.alloc(0), Buffer.from('ravage-ck-wrap'), 32));
+
+    const decipher = createDecipheriv('aes-256-gcm', wrappingKey, Buffer.from(envuelta.iv, 'hex'));
+    decipher.setAuthTag(Buffer.from(envuelta.tag, 'hex'));
+    return Buffer.concat([
+        decipher.update(Buffer.from(envuelta.data, 'hex')),
+        decipher.final()
+    ]).toString('utf8');
 }
 
 /**

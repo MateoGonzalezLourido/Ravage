@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { 
-    encriptarDatosSistema, 
-    desencriptarDatosSistema, 
-    hashDatosSistema, 
-    generarLlavesRSA, 
-    cifrarConPublica, 
-    descifrarConPrivada,
+import {
+    encriptarDatosSistema,
+    desencriptarDatosSistema,
+    hashDatosSistema,
+    generarLlavesX25519,
+    cifrarConX25519,
+    descifrarConX25519,
     ratchetChainKey
 } from '../services/cryptoService.js';
 
@@ -64,25 +64,37 @@ describe('CryptoService Unit Tests', () => {
         });
     });
 
-    describe('RSA Operations', () => {
-        it('should encrypt with public key and decrypt with private key', async () => {
-            const { publicKey, privateKey } = await generarLlavesRSA();
-            const originalText = "Hello RSA World";
-            
-            const encryptedHex = cifrarConPublica(originalText, publicKey);
-            expect(typeof encryptedHex).toBe('string');
-            
-            const decryptedText = descifrarConPrivada(encryptedHex, privateKey);
-            expect(decryptedText).toBe(originalText);
+    describe('X25519 Key Wrapping', () => {
+        it('should wrap and unwrap a chain key', async () => {
+            const { publicKey, privateKey } = await generarLlavesX25519();
+            const chainKey = 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789';
+
+            const envuelta = cifrarConX25519(chainKey, publicKey);
+            expect(envuelta).toHaveProperty('ephPub');
+            expect(envuelta).toHaveProperty('iv');
+            expect(envuelta).toHaveProperty('data');
+            expect(envuelta).toHaveProperty('tag');
+
+            const recovered = descifrarConX25519(envuelta, privateKey);
+            expect(recovered).toBe(chainKey);
         });
 
-        it('should throw error when decrypting with wrong key or format', async () => {
-            const { publicKey } = await generarLlavesRSA();
-            const { privateKey: wrongPrivateKey } = await generarLlavesRSA();
-            
-            const encryptedHex = cifrarConPublica("Secret", publicKey);
-            
-            expect(() => descifrarConPrivada(encryptedHex, wrongPrivateKey)).toThrow();
+        it('should produce different ciphertexts for the same key (ephemeral)', async () => {
+            const { publicKey } = await generarLlavesX25519();
+            const chainKey = 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789';
+
+            const env1 = cifrarConX25519(chainKey, publicKey);
+            const env2 = cifrarConX25519(chainKey, publicKey);
+            expect(env1.ephPub).not.toBe(env2.ephPub);
+        });
+
+        it('should throw when decrypting with wrong key', async () => {
+            const { publicKey } = await generarLlavesX25519();
+            const { privateKey: wrongKey } = await generarLlavesX25519();
+            const chainKey = 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789';
+
+            const envuelta = cifrarConX25519(chainKey, publicKey);
+            expect(() => descifrarConX25519(envuelta, wrongKey)).toThrow();
         });
     });
 

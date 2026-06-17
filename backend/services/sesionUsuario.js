@@ -28,7 +28,7 @@ import {
 import { generarteToken, validateToken } from './CreadorTokens.js';
 import * as storage from '../STORAGE/Variables_sesion.js';
 import { hash, compare, createHash, machineIdSync, os, si } from '../utils/libs.js';
-import { generarLlavesRSA, hashDatosSistema, getIdentity } from './cryptoService.js';
+import { generarLlavesX25519, hashDatosSistema, getIdentity } from './cryptoService.js';
 
 import { clearCacheUsuarios, setUsuarioEnCache } from '../repositories/UserRepository.js';
 import { clearCacheArchivosDescargados } from '../STORAGE/CACHE/_cache_archivos_descargados.js';
@@ -179,7 +179,7 @@ async function registerUsuario(mainWindow, { apodo = "Usuario", correo = null, p
         try {
             const [pass_hashed, keys] = await Promise.all([
                 hash(passwordStr),
-                generarLlavesRSA()
+                generarLlavesX25519()
             ]);
 
             const code_generado = String(generarCodigoVerificacion());
@@ -518,7 +518,7 @@ async function REGENERAR_IDENTIDAD_USUARIO() {
         const id_propio = storage.getIDMongodbUsuario();
         if (!id_propio) return false;
 
-        const keys = await generarLlavesRSA();
+        const keys = await generarLlavesX25519();
 
         // Actualizar en DB y Guardar localmente en paralelo
         await Promise.all([

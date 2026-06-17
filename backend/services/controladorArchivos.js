@@ -162,16 +162,15 @@ async function _leerIdentidadLocal() {
 async function importarClavePrivada(pemContent, label = '') {
     try {
         const pem = pemContent.trim();
-        // Validar que sea una clave privada válida usando Node crypto
-        const { createPrivateKey } = await import('node:crypto');
-        createPrivateKey(pem);
+        const { createPrivateKey, createPublicKey } = await import('node:crypto');
+        const privKeyObj = createPrivateKey(pem);
+        const publicKey = createPublicKey(privKeyObj).export({ type: 'spki', format: 'pem' });
 
         const id = _fingerprint(pem);
         const current = await _leerIdentidadLocal();
 
         if (!current) {
-            // Sin identidad previa → esta clave se convierte en la principal
-            const nuevo = { primary: { id, privateKey: pem, publicKey: '', createdAt: Date.now() }, supportKeys: [] };
+            const nuevo = { primary: { id, privateKey: pem, publicKey, createdAt: Date.now() }, supportKeys: [] };
             await saveIdentityFile(nuevo);
             return { ok: true, id, tipo: 'primary' };
         }
@@ -180,7 +179,7 @@ async function importarClavePrivada(pemContent, label = '') {
         if ((current.supportKeys || []).some(k => k.id === id)) return { ok: false, error: 'Esa clave ya está en la lista de soporte' };
 
         current.supportKeys = current.supportKeys || [];
-        current.supportKeys.push({ id, privateKey: pem, addedAt: Date.now(), label });
+        current.supportKeys.push({ id, privateKey: pem, publicKey, addedAt: Date.now(), label });
         await saveIdentityFile(current);
         return { ok: true, id, tipo: 'support' };
     } catch (err) {
@@ -211,6 +210,7 @@ async function cambiarClavePrincipal(keyId) {
             current.supportKeys.unshift({
                 id: oldPrimary.id,
                 privateKey: oldPrimary.privateKey,
+                publicKey: oldPrimary.publicKey || '',
                 addedAt: oldPrimary.createdAt || Date.now(),
                 label: 'Antigua principal'
             });

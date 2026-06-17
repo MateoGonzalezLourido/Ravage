@@ -9,34 +9,29 @@
 import { parentPort } from 'node:worker_threads';
 import {
     generateKeyPair,
-    publicEncrypt,
-    privateDecrypt,
+    generateKeyPairSync,
     createCipheriv,
     createDecipheriv,
     createHmac,
-    constants
+    createPublicKey,
+    createPrivateKey,
+    hkdfSync,
+    diffieHellman,
+    randomBytes
 } from 'node:crypto';
 import { promisify } from 'node:util';
 import { gunzipSync } from 'node:zlib';
 
 const generateKeyPairAsync = promisify(generateKeyPair);
 
+// Prefijo DER SPKI de 12 bytes para reconstruir una clave pública X25519 desde sus 32 bytes raw
+const _X25519_SPKI_HEADER = Buffer.from('302a300506032b656e032100', 'hex');
+
 // ==========================================
 // OPERACIONES DISPONIBLES
 // ==========================================
 
 const OPERACIONES = {
-    /**
-     * Genera un par de claves RSA-2048
-     */
-    async GENERAR_LLAVES_RSA() {
-        return await generateKeyPairAsync('rsa', {
-            modulusLength: 2048,
-            publicKeyEncoding: { type: 'spki', format: 'pem' },
-            privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
-        });
-    },
-
     /**
      * Genera un par de claves X25519 (identidad)
      */
@@ -48,30 +43,21 @@ const OPERACIONES = {
     },
 
     /**
-     * Cifra datos con llave pública RSA-OAEP
-     * @param {object} datos - { datosStr, publicKey }
+     * Cifra una chain key con la clave pública X25519 del receptor (ECDH+HKDF+AES-GCM).
+     * @param {{ chainKeyHex: string, publicKeyPem: string }} datos
+     * @returns {{ ephPub: string, iv: string, data: string, tag: string }}
      */
-    CIFRAR_RSA({ datosStr, publicKey }) {
-        return publicEncrypt({
-            key: publicKey,
-            padding: constants.RSA_PKCS1_OAEP_PADDING,
-            oaepHash: 'sha256'
-        }, Buffer.from(datosStr)).toString('hex');
+    CIFRAR_X25519({ chainKeyHex, publicKeyPem }) {
+        return _cifrarConX25519(chainKeyHex, publicKeyPem);
     },
 
     /**
-     * Descifra datos con llave privada RSA-OAEP
-     * @param {object} datos - { datosHex, privateKey }
+     * Descifra una chain key cifrada con X25519+HKDF+AES-GCM.
+     * @param {{ envuelta: object, privateKeyPem: string }} datos
+     * @returns {string} chain key hexadecimal
      */
-    DESCIFRAR_RSA({ datosHex, privateKey }) {
-        if (!datosHex || typeof datosHex !== 'string') {
-            throw new Error("RSA: Ciphertext must be a hex string.");
-        }
-        return privateDecrypt({
-            key: privateKey,
-            padding: constants.RSA_PKCS1_OAEP_PADDING,
-            oaepHash: 'sha256'
-        }, Buffer.from(datosHex, 'hex')).toString('utf8');
+    DESCIFRAR_X25519({ envuelta, privateKeyPem }) {
+        return _descifrarConX25519(envuelta, privateKeyPem);
     },
 
     /**
@@ -115,11 +101,11 @@ const OPERACIONES = {
                             const keysToTry = (privateKeys && privateKeys.length > 0) ? privateKeys : (privateKey ? [privateKey] : []);
                             let lastErr;
                             for (const pk of keysToTry) {
-                                try { ck_hex = _descifrarConPrivada(entry.clave_envuelta, pk); break; } catch (e) { lastErr = e; }
+                                try { ck_hex = _descifrarConX25519(entry.clave_envuelta, pk); break; } catch (e) { lastErr = e; }
                             }
                             if (ck_hex === undefined) throw lastErr || new Error('Sin claves disponibles');
-                        } catch (rsaErr) {
-                            throw new Error(`Error RSA: ${rsaErr.message}`);
+                        } catch (e2eErr) {
+                            throw new Error(`Error E2EE: ${e2eErr.message}`);
                         }
 
                         current_state = { ck: ck_hex, counter: entry.counter };
@@ -224,15 +210,37 @@ const OPERACIONES = {
 // (Duplicadas intencionalmente para evitar importar módulos con dependencias de Electron)
 // ==========================================
 
-function _descifrarConPrivada(datosHex, privateKey) {
-    if (!datosHex || typeof datosHex !== 'string') {
-        throw new Error("RSA: Ciphertext must be a hex string.");
+function _cifrarConX25519(chainKeyHex, recipientPublicKeyPem) {
+    const recipientPubKeyObj = createPublicKey(recipientPublicKeyPem);
+    const { privateKey: ephPriv, publicKey: ephPub } = generateKeyPairSync('x25519', {});
+    const sharedSecret = diffieHellman({ privateKey: ephPriv, publicKey: recipientPubKeyObj });
+    const wrappingKey = Buffer.from(hkdfSync('sha256', sharedSecret, Buffer.alloc(0), Buffer.from('ravage-ck-wrap'), 32));
+
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', wrappingKey, iv);
+    const data = Buffer.concat([cipher.update(Buffer.from(chainKeyHex, 'utf8')), cipher.final()]);
+    const tag = cipher.getAuthTag();
+
+    const ephPubRaw = ephPub.export({ type: 'spki', format: 'der' }).slice(-32).toString('hex');
+    return { ephPub: ephPubRaw, iv: iv.toString('hex'), data: data.toString('hex'), tag: tag.toString('hex') };
+}
+
+function _descifrarConX25519(envuelta, privateKeyPem) {
+    if (!envuelta || !envuelta.ephPub || !envuelta.iv || !envuelta.data || !envuelta.tag) {
+        throw new Error('X25519: estructura de clave envuelta inválida');
     }
-    return privateDecrypt({
-        key: privateKey,
-        padding: constants.RSA_PKCS1_OAEP_PADDING,
-        oaepHash: 'sha256'
-    }, Buffer.from(datosHex, 'hex')).toString('utf8');
+    const privKeyObj = createPrivateKey(privateKeyPem);
+    const ephPubDer = Buffer.concat([_X25519_SPKI_HEADER, Buffer.from(envuelta.ephPub, 'hex')]);
+    const ephPubKeyObj = createPublicKey({ key: ephPubDer, format: 'der', type: 'spki' });
+    const sharedSecret = diffieHellman({ privateKey: privKeyObj, publicKey: ephPubKeyObj });
+    const wrappingKey = Buffer.from(hkdfSync('sha256', sharedSecret, Buffer.alloc(0), Buffer.from('ravage-ck-wrap'), 32));
+
+    const decipher = createDecipheriv('aes-256-gcm', wrappingKey, Buffer.from(envuelta.iv, 'hex'));
+    decipher.setAuthTag(Buffer.from(envuelta.tag, 'hex'));
+    return Buffer.concat([
+        decipher.update(Buffer.from(envuelta.data, 'hex')),
+        decipher.final()
+    ]).toString('utf8');
 }
 
 function _descifrarContenido(cifrado, key) {

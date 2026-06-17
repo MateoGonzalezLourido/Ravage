@@ -12,8 +12,8 @@ Ravage maneja varios tipos de claves criptográficas con propósitos distintos. 
 | `SECRET_KEY_COKKIE` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra archivos locales de sesión y configuración de la app |
 | `SECRET_KEY_PRIVATE` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra el archivo de identidad E2EE (clave privada RSA) en disco |
 | `INTERNAL_ENCRYPTION_KEY` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra datos sensibles almacenados en MongoDB (buzón, etc.) |
-| Chain key (ratchet E2EE) | `randomBytes(32)` al crear chat | Hex string | Hex string (RSA-wrapped en `ratchet_keys`) | Clave raíz del ratchet de mensajes por chat |
-| Clave privada RSA | Generada con `generateKeyPairSync` | PEM string | Cifrada con `SECRET_KEY_PRIVATE` en `identityFile` | Descifra chain keys y mensajes E2EE |
+| Chain key (ratchet E2EE) | `randomBytes(32)` al crear chat | Hex string | Hex string (X25519-wrapped en `ratchet_keys`) | Clave raíz del ratchet de mensajes por chat |
+| Clave privada X25519 | Generada con `generateKeyPairSync('x25519')` | PEM string | Cifrada con `SECRET_KEY_PRIVATE` en `identityFile` | Descifra chain keys E2EE (ECDH) |
 
 ---
 
@@ -83,10 +83,7 @@ Las chain keys implementan un ratchet de tipo Sender Key, similar al protocolo S
 
 ### Formato y convención
 
-Las chain keys se almacenan y transportan siempre como **cadenas hexadecimales de 64 caracteres** (representación de 32 bytes). Este convenio es intencional:
-
-- `descifrarConPrivada()` en `cryptoService.js` devuelve `.toString('utf8')`. Una cadena hex sobrevive sin corrupción a este round-trip (todos sus caracteres son ASCII imprimibles).
-- Si se almacenaran como bytes binarios, el `.toString('utf8')` los corrompería al encontrar secuencias de bytes no válidas UTF-8.
+Las chain keys se almacenan y transportan siempre como **cadenas hexadecimales de 64 caracteres** (representación de 32 bytes, todos caracteres ASCII). Esta convención es segura frente al round-trip de AES-GCM porque UTF-8 no corrompe ASCII.
 
 ### Flujo de la chain key
 
@@ -95,13 +92,13 @@ Las chain keys se almacenan y transportan siempre como **cadenas hexadecimales d
 randomBytes(32).toString('hex')       ← chain key inicial (hex, 64 chars)
       │
       ▼
-cifrarConPublica(chainKey, publicKey) ← RSA-OAEP cifra los 64 bytes UTF-8
-      │
+cifrarConX25519(chainKey, publicKey)  ← ECDH efímero + HKDF + AES-256-GCM
+      │                                 genera: { ephPub, iv, data, tag }
       ▼
-ratchet_keys[].clave_envuelta         ← almacenada cifrada en MongoDB por par emisor→receptor
+ratchet_keys[].clave_envuelta         ← subdocumento { ephPub, iv, data, tag } en MongoDB
 
 [Enviar / recibir mensaje]
-descifrarConPrivada(clave_envuelta)   ← devuelve la chain key como hex string
+descifrarConX25519(clave_envuelta, privateKey)   ← devuelve la chain key como hex string
       │
       ▼
 ratchetChainKey(chainKeyHex)
@@ -109,17 +106,31 @@ ratchetChainKey(chainKeyHex)
   └─ nextChainKey = HMAC-SHA256(Buffer.from(hex, 'hex'), 0x02)  → hex string (siguiente estado del ratchet)
 ```
 
-El `nextChainKey` vuelve a ser hex para mantener el contrato y poder pasarse a la siguiente iteración de `ratchetChainKey`.
+### Por qué X25519 en lugar de RSA-OAEP
+
+Con RSA-OAEP, comprometer una clave privada permite descifrar **todos** los `clave_envuelta` pasados almacenados en la DB. Con X25519 efímero, cada `clave_envuelta` se cifró con una clave efímera de un solo uso: comprometer la clave privada de identidad no permite descifrar mensajes anteriores (**forward secrecy** en la distribución de chain keys).
+
+### Cómo funciona el cifrado X25519
+
+Para cada par (emisor, receptor) al crear o rotar claves de chat:
+
+1. Se genera un par X25519 **efímero** (vive solo durante la operación).
+2. `ECDH(ephPriv, recipientPub)` → 32 bytes de secreto compartido.
+3. `HKDF-SHA256(sharedSecret, info='ravage-ck-wrap')` → 32 bytes de wrapping key.
+4. `AES-256-GCM(chainKeyHex, wrappingKey)` → `{ iv, data, tag }`.
+5. Se almacena `{ ephPub (raw hex 32B), iv, data, tag }` en `ratchet_keys[].clave_envuelta`.
+
+Para descifrar: receptor hace `ECDH(privKey, ephPub)` → misma wrapping key → descifra con AES-GCM.
 
 ### Archivos relevantes
 
 | Archivo | Rol |
 |---|---|
-| `ChatRepository.js` | Genera la chain key inicial y la cifra con RSA pública de cada miembro |
-| `cryptoService.js` | `ratchetChainKey`, `cifrarConPublica`, `descifrarConPrivada` |
-| `cryptoWorker.js` | Worker pool: réplica de `_ratchetChainKey` y `_descifrarConPrivada` para operaciones paralelas |
+| `ChatRepository.js` | Genera la chain key inicial y la cifra con X25519 para cada miembro |
+| `cryptoService.js` | `ratchetChainKey`, `cifrarConX25519`, `descifrarConX25519`, `descifrarConX25519Multi` |
+| `cryptoWorker.js` | Worker pool: `_cifrarConX25519`, `_descifrarConX25519`, `_ratchetChainKey` |
 | `messageCryptoService.js` | Orquesta el descifrado de mensajes usando el ratchet |
-| `Chat.js` (modelo) | `clave_envuelta: String` — la chain key cifrada con RSA |
+| `Chat.js` (modelo) | `clave_envuelta: { ephPub, iv, data, tag }` — subdocumento en MongoDB |
 
 ---
 
@@ -131,5 +142,5 @@ El `nextChainKey` vuelve a ser hex para mantener el contrato y poder pasarse a l
 | `SECRET_KEY_COKKIE` | En `.env.secret` (protegido por vault del SO) | AES-256-GCM |
 | `SECRET_KEY_PRIVATE` | En `.env.secret` (protegido por vault del SO) | AES-256-GCM |
 | `INTERNAL_ENCRYPTION_KEY` | En `.env.secret` | AES-256-GCM (cifra datos en MongoDB) |
-| Chain key | RSA-OAEP (SHA-256) con clave pública del receptor | HMAC-SHA256 (ratchet) → AES-256-GCM (mensajes) |
-| Clave privada RSA | AES-256-GCM con `SECRET_KEY_PRIVATE` | RSA-OAEP (descifrar chain keys) |
+| Chain key | X25519+HKDF+AES-256-GCM (efímero por operación) | HMAC-SHA256 (ratchet) → AES-256-GCM (mensajes) |
+| Clave privada X25519 | AES-256-GCM con `SECRET_KEY_PRIVATE` | ECDH (descifrar chain keys envueltas) |

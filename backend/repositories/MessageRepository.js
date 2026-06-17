@@ -14,8 +14,8 @@ import { setUsuarioEnCache } from './UserRepository.js';
 import { descifrarListaMensajes, getMessageKey } from '../services/messageCryptoService.js';
 import {
     cifrarContenido,
-    descifrarConPrivada,
-    cifrarConPublica,
+    descifrarConX25519,
+    cifrarConX25519,
     crearCipherStream,
     crearDecipherStream,
     encriptarDatosSistema,
@@ -66,7 +66,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         // Recibe identity_data como parámetro para no volver a pedirla
         async function intentarDescifrado(ent, id_data) {
             if (!id_data || !id_data.primary?.privateKey) throw new Error("No Identity keys found locally.");
-            return descifrarConPrivada(ent.clave_envuelta, id_data.primary.privateKey);
+            return descifrarConX25519(ent.clave_envuelta, id_data.primary.privateKey);
         }
 
         try {
@@ -181,7 +181,7 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         };
 
         // Crear mensaje y actualizar ratchet en paralelo
-        const nuevaClave = cifrarConPublica(nextChainKey, usuario.publicKey);
+        const nuevaClave = cifrarConX25519(nextChainKey, usuario.publicKey);
         const [nuevoMensaje] = await Promise.all([
             MessagesRavage.create(mensaje),
             ChatsRavage.updateOne(

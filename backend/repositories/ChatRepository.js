@@ -7,7 +7,7 @@ import { convertirObjectId } from '../utils/conversores.js';
 import { getIDMongodbUsuario, getInvisibleUsuario, setUsuariosSilence, setUsuariosBloqueados, getUsuariosSilence, getUsuariosBloqueados } from '../STORAGE/Variables_sesion.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
-import { cifrarConPublica, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
+import { cifrarConX25519, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
 
 
 const log = createLogger('chat-repo');
@@ -360,7 +360,7 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             ratchet_keys.push({
                 emisor_id: emisor._id,
                 receptor_id: receptor._id,
-                clave_envuelta: cifrarConPublica(chainKey, receptor.publicKey),
+                clave_envuelta: cifrarConX25519(chainKey, receptor.publicKey),
                 counter: 0
             });
         }
@@ -731,7 +731,7 @@ export async function rotarClavesChat(id_chat, id_emisor) {
             updates.push({
                 emisor_id: id_emisor_str,
                 receptor_id: receptor._id,
-                clave_envuelta: cifrarConPublica(newChainKey, receptor.publicKey),
+                clave_envuelta: cifrarConX25519(newChainKey, receptor.publicKey),
                 counter: 0
             });
         }
