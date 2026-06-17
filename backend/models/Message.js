@@ -11,7 +11,8 @@ const ArchivoSchema = new mongoose.Schema({
     nombre: { type: EncryptedDataSchema, default: null },
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
     iv: String,
-    tag: String
+    tag: String,
+    key_enc: { type: EncryptedDataSchema, default: null }
 }, { _id: false });
 
 const MessageSchema = new mongoose.Schema({

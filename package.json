@@ -21,7 +21,9 @@
     "start-railway": "node backend/servidores/serverRailway.js",
     "test": "vitest run",
     "postinstall": "electron-rebuild",
-    "dist-windows": "electron-builder --win --x64",
+    "dist-windows": "npm run build-preload && electron-builder install-app-deps --platform win32 --arch x64 && electron-builder --win --x64",
+    "dist-win10": "npm run build-preload && electron-builder install-app-deps --platform win32 --arch x64 && electron-builder --win --x64 --config.win.artifactName=\"\\${productName}-Win10-Setup.\\${ext}\" --config.directories.output=dist/win10",
+    "dist-win11": "npm run build-preload && electron-builder install-app-deps --platform win32 --arch x64 && electron-builder --win --x64 --config.win.artifactName=\"\\${productName}-Win11-Setup.\\${ext}\" --config.directories.output=dist/win11",
     "dist-linux": "npm run build-preload && electron-builder --linux --x64"
   },
   "build": {

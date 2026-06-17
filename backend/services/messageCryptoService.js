@@ -406,11 +406,12 @@ export async function getMessageKey(chat, emisor_id, iteration) {
 async function reWrapChainKey(chatId, emisorId, receptorId, ck_hex, primaryPublicKey, counter) {
     try {
         const nuevaClave = cifrarConX25519(ck_hex, primaryPublicKey);
+        const { mongoose } = await import('../utils/libs.js');
         await ChatsRavage.updateOne(
             {
                 _id: chatId,
-                "ratchet_keys.emisor_id": emisorId,
-                "ratchet_keys.receptor_id": receptorId
+                "ratchet_keys.emisor_id": new mongoose.Types.ObjectId(emisorId),
+                "ratchet_keys.receptor_id": new mongoose.Types.ObjectId(receptorId)
             },
             {
                 $set: {

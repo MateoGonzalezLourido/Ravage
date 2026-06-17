@@ -25,7 +25,10 @@ app.commandLine.appendSwitch('enable-async-dns');
 app.commandLine.appendSwitch('disable-background-networking');
 
 // === Features — todo agrupado para evitar conflictos ===
-app.commandLine.appendSwitch('enable-features', 'IntensiveWakeUpThrottling,VaapiVideoDecoder');
+const _enableFeatures = process.platform === 'linux'
+    ? 'IntensiveWakeUpThrottling,VaapiVideoDecoder'
+    : 'IntensiveWakeUpThrottling';
+app.commandLine.appendSwitch('enable-features', _enableFeatures);
 app.commandLine.appendSwitch('disable-features', 'TranslateUI,AutofillServerCommunication,Translate,MediaRouter,DialMediaRouteProvider,OptimizationHints');
 
 // === Chromium innecesario ===

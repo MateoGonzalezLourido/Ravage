@@ -771,17 +771,20 @@ export async function rotarClavesChat(id_chat, id_emisor) {
             if (!receptor.publicKey) continue;
 
             updates.push({
-                emisor_id: id_emisor_str,
+                emisor_id: new mongoose.Types.ObjectId(id_emisor_str),
                 receptor_id: receptor._id,
                 clave_envuelta: cifrarConX25519(newChainKey, receptor.publicKey),
                 counter: 0
             });
         }
 
-        // Reemplazar todas las entradas de este emisor en el array ratchet_keys
+        // Preservar entradas de otros emisores y reemplazar solo las del emisor rotante
+        const otras_claves = (chat.ratchet_keys || []).filter(
+            k => k.emisor_id.toString() !== id_emisor_str
+        );
         await ChatsRavage.updateOne(
             { _id: id_chat_str },
-            { $set: { ratchet_keys: updates } }
+            { $set: { ratchet_keys: [...otras_claves, ...updates] } }
         );
 
         // Actualizar cache tras rotación de claves

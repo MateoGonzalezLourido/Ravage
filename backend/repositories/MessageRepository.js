@@ -19,6 +19,7 @@ import {
     crearCipherStream,
     crearDecipherStream,
     encriptarDatosSistema,
+    desencriptarDatosSistema,
     getIdentity,
     ratchetChainKey
 } from '../services/cryptoService.js';
@@ -150,7 +151,8 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                     nombre: encriptarDatosSistema(nombreCompletoUsar),
                     id: idArchivo.toHexString(),
                     iv: iv.toString('hex'),
-                    tag: cipherStream.getAuthTag().toString('hex')
+                    tag: cipherStream.getAuthTag().toString('hex'),
+                    key_enc: encriptarDatosSistema(Buffer.from(chatKey).toString('hex'))
                 });
             }
         }
@@ -324,6 +326,25 @@ export async function obtener_mensajes_paginados(id_chat, limit = 30, cursor_id 
     }
 }
 
+/**
+ * Obtiene la clave de cifrado de un archivo desde su registro en el mensaje (system key fallback).
+ * Usada cuando el ratchet counter ya avanzó más allá de la iteración del mensaje.
+ */
+async function _getFileKeyFromMessage(id_chat, file_id) {
+    try {
+        const msg = await MessagesRavage.findOne(
+            { id_chat: new mongoose.Types.ObjectId(id_chat), "contenido.archivos.id": new mongoose.Types.ObjectId(file_id) },
+            "contenido"
+        ).lean();
+        const archivo = msg?.contenido?.[0]?.archivos?.find(a => a.id?.toString() === file_id.toString());
+        if (!archivo?.key_enc) return null;
+        const keyHex = desencriptarDatosSistema(archivo.key_enc);
+        return keyHex ? Buffer.from(keyHex, 'hex') : null;
+    } catch {
+        return null;
+    }
+}
+
 export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         log.error("ID de archivo no válido:", id);
@@ -361,10 +382,14 @@ export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null,
 
         if (ivHex && tagHex && id_chat && ratchet_info && emisor_id) {
             const chat = await ChatsRavage.findById(id_chat).lean();
-            const messageKey = await getMessageKey(chat, emisor_id, ratchet_info.iteration);
+            let fileKey = await getMessageKey(chat, emisor_id, ratchet_info.iteration);
 
-            if (messageKey) {
-                const decipherStream = crearDecipherStream(messageKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex'));
+            if (!fileKey) {
+                fileKey = await _getFileKeyFromMessage(id_chat, id);
+            }
+
+            if (fileKey) {
+                const decipherStream = crearDecipherStream(fileKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex'));
                 stream_final = downloadStream.pipe(decipherStream);
             } else {
                 log.error({ id, id_chat, iteration: ratchet_info?.iteration },
@@ -408,9 +433,12 @@ async function _obtener_archivo_base64(id, nombre, ivHex, tagHex, id_chat, ratch
         if (ivHex && tagHex && id_chat && ratchet_info && emisor_id) {
             try {
                 const chat = await ChatsRavage.findById(id_chat).lean();
-                const messageKey = await getMessageKey(chat, emisor_id, ratchet_info.iteration);
-                if (!messageKey) { resolve(null); return; }
-                stream_final = downloadStream.pipe(crearDecipherStream(messageKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex')));
+                let fileKey = await getMessageKey(chat, emisor_id, ratchet_info.iteration);
+                if (!fileKey) {
+                    fileKey = await _getFileKeyFromMessage(id_chat, id);
+                }
+                if (!fileKey) { resolve(null); return; }
+                stream_final = downloadStream.pipe(crearDecipherStream(fileKey, Buffer.from(ivHex, 'hex'), Buffer.from(tagHex, 'hex')));
             } catch { resolve(null); return; }
         }
         const chunks = [];
