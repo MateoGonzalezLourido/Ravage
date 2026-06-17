@@ -16,12 +16,24 @@ const carpetaPrincipal = '../recursos/extensionesArchivos';
 const archivoJSON = 'img_extensiones.json';
 const img_defecto = "cualquiera.svg"
 
-//ajustes cache
-const LIMITE_RAM_MB = 256//TODO: obtenerlo de ajustes usuario backend
-const TIEMPO_EXPIRACION = 10 * 60 * 1000 // 10 minutos //TODO: obtenerlo de ajustes usuario backend
+//ajustes cache (se cargan desde backend al primer uso)
+let _limite_cache = 50
+let _tiempo_expiracion = 10 * 60 * 1000
+let _ajustes_cache_cargados = false
 // Cache local al módulo para evitar IPC/Fetch innecesarios
 let _cache_local_iconos = null;
 let timer_limpieza = null
+
+async function _cargar_ajustes_cache() {
+    if (_ajustes_cache_cargados) return
+    _ajustes_cache_cargados = true
+    try {
+        const limite = await window.ajustes_app.OBTENER_AJUSTES_APP("LIMITE_CACHE_IMG_EXTENSIONES")
+        const tiempo = await window.ajustes_app.OBTENER_AJUSTES_APP("TIEMPO_EXPIRACION_CACHE_IMG_EXTENSIONES")
+        if (limite != null) _limite_cache = limite
+        if (tiempo != null) _tiempo_expiracion = tiempo
+    } catch {}
+}
 
 /**
  *@description Obtener la url del icono de una extension de archivo
@@ -32,6 +44,7 @@ export async function url_icono_extension_img(extension) {
     if (!extension || extension === "" || typeof extension !== "string") {
         return [`${carpetaPrincipal}/${img_defecto}`, false];
     }
+    await _cargar_ajustes_cache()
     const extension_usar = (extension[0] === '.' ? extension.slice(1) : extension).toLowerCase();
 
     // 1. Intentar usar cache local del módulo (el más rápido)
@@ -91,7 +104,7 @@ async function setCacheUrlImgExtensiones(cache = "c") {
         return false;
     }
 
-    const limite = LIMITE_RAM_MB;
+    const limite = _limite_cache;
 
     if (!_cache_local_iconos) _cache_local_iconos = {};
 
@@ -113,29 +126,8 @@ async function setCacheUrlImgExtensiones(cache = "c") {
         Object.assign(_cache_local_iconos, cache);
     }
 
-    // Aplicar límite de RAM de 256MB (igual que historial de archivos descargados)
-    while (_estimar_tamano_cache_mb(_cache_local_iconos) > LIMITE_RAM_MB && Object.keys(_cache_local_iconos).length > 0) {
-        const keys = Object.keys(_cache_local_iconos)
-        delete _cache_local_iconos[keys[0]]
-    }
-
     resetearTimerLimpieza()
     return true
-}
-/*
-*@description Estimar tamaño de cache en mb
-*@param {Object} data - Datos a estimar tamaño
-*@returns {number}
-*/
-function _estimar_tamano_cache_mb(data) {
-    if (!data) return 0
-    try {
-        // En Node.js (backend), Buffer.byteLength es más eficiente que TextEncoder
-        const bytes = Buffer.byteLength(JSON.stringify(data))
-        return bytes / (1024 * 1024)
-    } catch (e) {
-        return 0
-    }
 }
 /*
 *@description Obtener cache de url de imagenes de extensiones
@@ -154,7 +146,7 @@ function resetearTimerLimpieza() {
     timer_limpieza = setTimeout(() => {
         _cache_local_iconos = null
         timer_limpieza = null
-    }, TIEMPO_EXPIRACION)
+    }, _tiempo_expiracion)
 }
 
 /**

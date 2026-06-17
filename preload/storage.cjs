@@ -4,8 +4,6 @@ module.exports = {
     cache_persistente: {
 
         getUsuarioCache: (id) => ipcRenderer.invoke("get-usuario-cache", id),
-        setConfigCacheUsuarios: (config) => ipcRenderer.invoke("set-config-cache-usuarios", config),
-        clearCacheUsuarios: () => ipcRenderer.invoke("clear-cache-usuarios"),
         obtenerHistorialBusquedas: () => ipcRenderer.invoke("obtener-historial-busquedas"),
         anadirHistorialBusquedas: (id, datoUsado) => ipcRenderer.invoke("anadir-historial-busquedas", id, datoUsado),
         borrarHistorialBusquedas: (id_o_dato) => ipcRenderer.invoke("borrar-historial-busquedas", id_o_dato),

@@ -134,5 +134,5 @@ export async function clearCacheArchivosDescargados() {
 }
 
 async function obtenerLimiteCacheArchivosDescargados() {
-    return await getAjustesAppFile("LIMITE_CACHE_ARCHIVOS_DESCARGADOS");
+    return (await getAjustesAppFile("LIMITE_CACHE_ARCHIVOS_DESCARGADOS")) ?? 20;
 }

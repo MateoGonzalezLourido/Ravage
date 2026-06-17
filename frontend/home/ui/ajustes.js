@@ -249,18 +249,32 @@ async function _cargar_email_soporte() {
 }
 
 async function actualizar_datos_cuenta() {
-    const [fecha_creacion, fecha_bloqueo_apodo, fecha_bloqueo_correo, fecha_bloqueo_contraseña, es_de_confianza] = await Promise.all([
+    const [fecha_creacion, fecha_bloqueo_apodo, fecha_bloqueo_correo, fecha_bloqueo_contraseña, es_de_confianza, idamigo] = await Promise.all([
         window.cuenta_usuario.OBTENER_FECHA_CREACION_CUENTA(),
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_APODO(),
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CORREO(),
         window.cuenta_usuario.OBTENER_FECHA_BLOQUEO_CONTRASEÑA(),
-        window.sesion_usuario.ESTADO_DISPOSITIVO_CONFIANZA().catch(() => false)
+        window.sesion_usuario.ESTADO_DISPOSITIVO_CONFIANZA().catch(() => false),
+        window.cuenta_usuario.OBTENER_IDAMIGO_USUARIO().catch(() => null)
     ]);
     const apodo = await obtener_apodo_usuario();
     const correo = CORREO_USUARIO;
 
     document.getElementById("text-cuenta-apodo").innerHTML = `Apodo: <font color="#E53612">${escapeHTML(apodo)}</font>`;
     document.getElementById("text-cuenta-correo").innerHTML = `Correo electrónico: <font color="#E53612">${escapeHTML(correo)}</font>`;
+
+    const idamigoTexto = idamigo ? escapeHTML(idamigo) : '—';
+    document.getElementById("text-cuenta-idamigo").innerHTML = `ID de amigo: <font color="#E53612">${idamigoTexto}</font>`;
+    const btnCopiar = document.getElementById("bt-copiar-idamigo");
+    if (btnCopiar && idamigo) {
+        btnCopiar.onclick = async () => {
+            await navigator.clipboard.writeText(idamigo);
+            const texto = btnCopiar.textContent;
+            btnCopiar.textContent = "Copiado";
+            setTimeout(() => { btnCopiar.textContent = texto; }, 1500);
+        };
+    }
+
     document.getElementById("text-cuenta-creada-fecha").innerHTML = `*Cuenta creada el ${escapeHTML(fecha_creacion)}`;
 
     _actualizar_ui_dispositivo_confianza(es_de_confianza);
@@ -896,12 +910,6 @@ function _generar_ui_escaneres_usuario(ajustes) {
 async function cargar_ajustes_cache() {
     const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
 
-    document.getElementById("input-cache-chats-ram").value = ajustes.LIMITE_CHAT_CACHE_RAM || 1024
-    document.getElementById("input-cache-chats-disk").value = ajustes.LIMITE_CHAT_CACHE_DISK || 2048
-    document.getElementById("input-cache-usuarios-ram").value = ajustes.LIMITE_USER_CACHE_RAM || 512
-    document.getElementById("input-cache-usuarios-disk").value = ajustes.LIMITE_USER_CACHE_DISK || 1024
-    document.getElementById("check-forzar-disco").checked = ajustes.FORCE_DISK_CACHE || false
-    
     const checkHilos = document.getElementById("check-desactivar-hilos");
     if (checkHilos) {
         checkHilos.checked = ajustes.DESACTIVAR_HILOS_VISUALES || false;
@@ -1230,41 +1238,6 @@ async function marcar_dispositivo_confianza(e) {
 }
 
 function setup_cache_listeners() {
-    const inputs = [
-        { id: "#input-cache-chats-ram", key: "LIMITE_CHAT_CACHE_RAM" },
-        { id: "#input-cache-chats-disk", key: "LIMITE_CHAT_CACHE_DISK" },
-        { id: "#input-cache-usuarios-ram", key: "LIMITE_USER_CACHE_RAM" },
-        { id: "#input-cache-usuarios-disk", key: "LIMITE_USER_CACHE_DISK" }
-    ]
-
-    inputs.forEach(item => {
-        document.querySelector(item.id).addEventListener("change", async (e) => {
-            const val = parseInt(e.target.value)
-            if (isNaN(val) || val < 64) return
-
-            const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
-            ajustes[item.key] = val
-            await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes)
-
-            // Notificar al backend para actualizar config instantáneamente
-            if (item.key.includes("CHAT")) {
-                await window.cache_persistente.setConfigCacheChats({ [item.key]: val })
-            } else {
-                await window.cache_persistente.setConfigCacheUsuarios({ [item.key]: val })
-            }
-        })
-    })
-
-    document.getElementById("check-forzar-disco").addEventListener("change", async (e) => {
-        const val = e.target.checked
-        const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
-        ajustes.FORCE_DISK_CACHE = val
-        await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes)
-
-        await window.cache_persistente.setConfigCacheChats({ FORCE_DISK_CACHE: val })
-        await window.cache_persistente.setConfigCacheUsuarios({ FORCE_DISK_CACHE: val })
-    })
-
     document.getElementById("check-desactivar-hilos").addEventListener("change", async (e) => {
         const val = e.target.checked
         const ajustes = await window.ajustes_app.OBTENER_AJUSTES_APP() || {}
@@ -1280,16 +1253,6 @@ function setup_cache_listeners() {
         ajustes.DESACTIVAR_SEGUNDO_PLANO = val;
         await window.ajustes_app.GUARDAR_AJUSTES_APP(ajustes);
     });
-
-    document.getElementById("bt-limpiar-cache-chats").addEventListener("click", async () => {
-        const ok = await window.cache_persistente.clearCacheChats()
-        if (ok) window.pushNotificacion({ prioridad: 2, texto: "Caché de chats limpiada", tipo: "success" })
-    })
-
-    document.getElementById("bt-limpiar-cache-usuarios").addEventListener("click", async () => {
-        const ok = await window.cache_persistente.clearCacheUsuarios()
-        if (ok) window.pushNotificacion({ prioridad: 2, texto: "Caché de usuarios limpiada", tipo: "success" })
-    })
 
     // Listeners notificaciones OS
     const notiChecks = [

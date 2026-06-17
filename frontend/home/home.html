@@ -70,6 +70,10 @@
                     <span>Sesión: </span>
                     <button id="bt-cerrar-sesion">Cerrar Sesión</button>
                 </div>
+                <div class="label">
+                    <span id="text-cuenta-idamigo">ID de amigo: <font color="#E53612">...</font></span>
+                    <button id="bt-copiar-idamigo" title="Copiar ID de amigo">Copiar</button>
+                </div>
                 <span id="text-cuenta-creada-fecha">*Cuenta creada el xx/xx/xx</span>
                 <div class="label">
                     <span>Chats silenciados: </span>
@@ -184,61 +188,11 @@
             </div>
 
             <div class="menu-ajustes-sub ocultar-display" id="cuerpo-ajustes-general">
-                <div>
-                    <span class="titulo-ajustes">Datos del dispotivo (actuales):</span>
-                    <span id="">Ip publica: 0.0.0.0</span>
-                    <span id="">Ip privada: 0.0.0.0</span>
-                    <span id="">MAC: 00:00:00:00:00:00</span>
-                    <span>Hash: *privado*</span>
-                </div>
-                <div>
-                    <span class="titulo-ajustes">Privacidad:</span>
-                    <label for="">
-                        <span>Mostrarse conectado:</span>
-                        <input type="checkbox" id="" checked>
-                    </label>
-                </div>
                 <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
                     <span class="titulo-ajustes" style="color: #a855f7;">Seguridad:</span>
                     <div class="label-ajuste-inline">
                         <span>Bloqueo de App (Autologin):</span>
                         <button id="bt-configurar-pin-general" style="background: #a855f7; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">Configurar PIN</button>
-                    </div>
-                </div>
-                <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">
-                    <span class="titulo-ajustes">Caché de Datos:</span>
-                    <div class="label-ajuste-inline">
-                        <span>Límite RAM Chats (MB):</span>
-                        <input type="number" id="input-cache-chats-ram" min="128"
-                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
-                    </div>
-                    <div class="label-ajuste-inline">
-                        <span>Límite Disco Chats (MB):</span>
-                        <input type="number" id="input-cache-chats-disk" min="128"
-                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
-                    </div>
-                    <div class="label-ajuste-inline">
-                        <span>Límite RAM Usuarios (MB):</span>
-                        <input type="number" id="input-cache-usuarios-ram" min="64"
-                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
-                    </div>
-                    <div class="label-ajuste-inline">
-                        <span>Límite Disco Usuarios (MB):</span>
-                        <input type="number" id="input-cache-usuarios-disk" min="64"
-                            style="width: 80px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
-                    </div>
-                    <label for="check-forzar-disco"
-                        style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                        <span>Forzar Caché en Disco:</span>
-                        <input type="checkbox" id="check-forzar-disco">
-                    </label>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button id="bt-limpiar-cache-chats"
-                            style="background: #444; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Limpiar
-                            Chats</button>
-                        <button id="bt-limpiar-cache-usuarios"
-                            style="background: #444; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Limpiar
-                            Usuarios</button>
                     </div>
                 </div>
                 <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">

@@ -2228,7 +2228,6 @@ export async function mostrar_datos_chat_usuarios(e) {
 
     document.getElementById("bt-anadir-participante-chat")?.addEventListener("click", (e) => {
         e.preventDefault()
-        // TODO: Implementar el menú de añadir participante
         desplegar_menu_añadir_chat({ mostrar: true, id_chat: id_chat })
 
     })

@@ -1,5 +1,5 @@
 import { ipcMain } from '../utils/libs.js';
-import { getUsuarioDeCache, clearCacheUsuarios } from '../repositories/UserRepository.js';
+import { getUsuarioDeCache } from '../repositories/UserRepository.js';
 import { 
     obtener_historial, 
     añadir_historial, 
@@ -15,11 +15,6 @@ export function registerCachePersistentHandlers() {
     ipcMain.handle('get-usuario-cache', async (_, id_usuario) => {
         return await getUsuarioDeCache(id_usuario);
     });
-    ipcMain.handle('clear-cache-usuarios', async () => {
-        await clearCacheUsuarios();
-        return true;
-    });
-
     // Historial Busquedas Cache
     ipcMain.handle('obtener-historial-busquedas', async () => {
         return await obtener_historial();

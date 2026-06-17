@@ -99,7 +99,6 @@ async function permitirCambioContraseñaUsuario(contraseña = null) {
     return { success: true };
 }
 
-//TODO: ARREGLAR ESTE
 async function permitirCambioCorreoUsuario(correo = null) {
     if (bloquear_accion) return { success: false, bloqueador: true, message: "bloqueador de acción temporal" }
     bloquear_accion = true
@@ -141,7 +140,7 @@ async function permitirCambioCorreoUsuario(correo = null) {
 
     if (desencriptarDatosSistema(data_usuario.correo) == correo) {
         bloquear_accion = false
-        return { success: false, message: "El correo es the mismo" }
+        return { success: false, message: "El correo es el mismo" }
     }
 
     const data_usuario2 = await User.exists({ correo_hash: hashDatosSistema(correo) })
@@ -265,10 +264,10 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     }
     else if (tipo === "correo") {
         const nuevoUsuario = await cambiarCorreoUsuario(data);
-        setCorreoSesion(data)
         if (!nuevoUsuario) {//error
             return { success: false, message: "Fallo al cambiar correo" }
         }
+        setCorreoSesion(data)
         BorrarDatosCuentaVC(correo, code)//borrar codigos
         bloquear_accion = false
     }
@@ -311,7 +310,6 @@ async function ValidarCodeCambioDatosCuenta({ data, code = "", tipo = "" }) {
     //limpiar datos
     if (tipo != "apodo") {
         BorrarDatosCuentaVC(correo, code)
-        contraseña_hashed = null;
     }
     bloquear_accion = false
     return { success: true };
