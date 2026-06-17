@@ -197,7 +197,26 @@ const OPERACIONES = {
                     current_state.counter++;
 
                 } catch (err) {
-                    if (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string') {
+                    // Fallback: intentar copia de sistema antes de mostrar error
+                    let recovered = false;
+                    if (m.contenido && m.contenido.length > 0 && systemKey) {
+                        if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
+                            const decoded = _desencriptarDatosSistema(m.contenido[0].asunto, systemKey);
+                            if (decoded) {
+                                m.contenido[0].asunto = decoded;
+                                if (m.contenido[0].archivos) {
+                                    m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                                        ...a,
+                                        nombre: (a.nombre && typeof a.nombre === 'object')
+                                            ? (_desencriptarDatosSistema(a.nombre, systemKey) || a.nombre)
+                                            : a.nombre
+                                    }));
+                                }
+                                recovered = true;
+                            }
+                        }
+                    }
+                    if (!recovered && (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string')) {
                         m.contenido = [{ asunto: "[Error al descifrar: posible clave de dispositivo obsoleta]", archivos: [] }];
                     }
                 }
