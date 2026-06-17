@@ -20,7 +20,22 @@
     "debug": "electron --trace-warnings --trace-deprecation --inspect=5858 .",
     "start-railway": "node backend/servidores/serverRailway.js",
     "test": "vitest run",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-rebuild",
+    "dist-windows": "electron-builder --win --x64",
+    "dist-linux": "electron-builder --linux --x64"
+    },
+  "build": {
+    "appId": "com.mateo.ravage",
+    "productName": "Ravage",
+    "win": {
+      "target": "nsis"
+    },
+    "files": [
+      "**/*",
+      "!.env",
+      "!env/"
+    ],
+    "npmRebuild": false
   },
   "dependencies": {
     "@getbrevo/brevo": "^5.0.3",
@@ -28,7 +43,6 @@
     "better-sqlite3": "^12.9.0",
     "brevo": "^1.0.0",
     "dompurify": "^3.4.0",
-    "dotenv": "^17.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.2",
     "jsonwebtoken": "^9.0.3",
@@ -44,8 +58,10 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
+    "dotenv": "^17.4.2",
     "electron": "^41.1.1",
-    "esbuild": "^0.27.7",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.1",
     "marked": "^18.0.5",
     "standard": "^17.1.2",
     "vitest": "^4.1.2"
