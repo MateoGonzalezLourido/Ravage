@@ -176,7 +176,7 @@ export async function ACTUALIZAR_LISTAS_CHAT(filtro = "") {
         const html = (await Promise.all(lista_filtrada.map(async c => {
             const chatEx = map_grupales[c.id] || {}
             const nombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: c.id, grupal: true, contactos })
-            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre, ultimomensaje: c.ultimomensaje, silenciado: c.silenciado || false, bloqueado: c.bloqueado || false }
+            const datos_usar = { id: c.id, ultimoCambio: c.ultimoCambio, usuarios: chatEx.usuarios || [], nombre, ultimomensaje: c.ultimomensaje, silenciado: c.silenciado || false, bloqueado: c.bloqueado || false, expulsado: c.expulsado || false }
             return chat_componente_lista_estructura_html(datos_usar)
         }))).join("")
 
@@ -385,7 +385,8 @@ export async function refrescar_componente_lista_chats(id_chat, componente, noti
             nombre: info_chat.nombre,
             ultimomensaje: chat_usuario?.ultimomensaje,
             silenciado: chat_usuario?.silenciado || false,
-            bloqueado: chat_usuario?.bloqueado || false
+            bloqueado: chat_usuario?.bloqueado || false,
+            expulsado: chat_usuario?.expulsado || false
         }
 
         const html_nuevo = chat_componente_lista_estructura_html(datos_usar)

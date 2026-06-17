@@ -8,6 +8,7 @@ import { getIDMongodbUsuario, getInvisibleUsuario, setUsuariosSilence, setUsuari
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { descifrarListaMensajes } from '../services/messageCryptoService.js';
 import { cifrarConX25519, desencriptarDatosSistema, encriptarDatosSistema } from '../services/cryptoService.js';
+import { registrar_entrada_chat, registrar_salida_chat, filtrar_mensajes_membresia } from './membresiaRepository.js';
 
 
 const log = createLogger('chat-repo');
@@ -142,13 +143,15 @@ async function resolverNombresYBloqueos(chat, id_chat) {
     const usr = await User.findById(id_propio, "chats").lean();
     const miChatData = (usr?.chats || []).find(c => normalizeId(c.id) === id_chat_str);
 
-    if (miChatData && miChatData.bloqueado) {
-        if (miChatData.mensaje_bloqueo_id) {
-            const stopId = miChatData.mensaje_bloqueo_id.toString();
-            chat.mensajes = (chat.mensajes || []).filter(m => (m._id || m.id).toString() <= stopId);
-        }
+    if (miChatData && (miChatData.bloqueado || miChatData.expulsado)) {
         if (miChatData.nombre_bloqueo != null) chat.nombre = miChatData.nombre_bloqueo;
         if (miChatData.participantes_bloqueo?.length > 0) chat.usuarios = miChatData.participantes_bloqueo;
+        if (miChatData.expulsado) chat.expulsado = true;
+    }
+
+    // Filtrar mensajes según los periodos de membresia del usuario
+    if (chat.mensajes?.length > 0) {
+        chat.mensajes = await filtrar_mensajes_membresia(id_propio, id_chat_str, chat.mensajes);
     }
 
     const [data_con_nombre] = await resolverNombresChats([chat]);
@@ -216,8 +219,8 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         // Comprobar si el usuario tiene el chat bloqueado
         const miUsuarioConChats = await User.findById(id_propio, "chats").lean();
         const chatMiInfo = miUsuarioConChats?.chats.find(c => c.id.toString() === chatIdLimpio.toString());
-        if (chatMiInfo && chatMiInfo.bloqueado) {
-            log.warn(`[CREAR_CHAT_NUEVO] Intento de modificar chat bloqueado (${chatIdLimpio}) por el usuario ${id_propio}`);
+        if (chatMiInfo && (chatMiInfo.bloqueado || chatMiInfo.expulsado)) {
+            log.warn(`[CREAR_CHAT_NUEVO] Intento de modificar chat bloqueado/expulsado (${chatIdLimpio}) por el usuario ${id_propio}`);
             return false;
         }
 
@@ -295,9 +298,10 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(chatIdLimpio) }] }
         );
 
-        // Si algún usuario nuevo no tenía el chat en su lista, hay que añadírselo
+        // Si algún usuario nuevo no tenía el chat en su lista, añadírselo
+        // Si ya lo tenía pero estaba expulsado, resetear el flag expulsado
         for (const id_nuevo of ids_añadir) {
-            await User.updateOne(
+            const insertResult = await User.updateOne(
                 { _id: id_nuevo, "chats.id": { $ne: new mongoose.Types.ObjectId(chatIdLimpio) } },
                 {
                     $push: {
@@ -310,6 +314,21 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
                     }
                 }
             );
+            if (insertResult.matchedCount === 0) {
+                // Ya tenía el chat (re-añadido tras expulsión): limpiar estado expulsado
+                await User.updateOne(
+                    { _id: id_nuevo, "chats.id": new mongoose.Types.ObjectId(chatIdLimpio) },
+                    {
+                        $set: {
+                            "chats.$.expulsado": false,
+                            "chats.$.nombre_bloqueo": null,
+                            "chats.$.participantes_bloqueo": null,
+                            "chats.$.ultimoCambio": new Date(),
+                            "chats.$.ultimomensaje": encriptarDatosSistema("Bienvenido de nuevo al chat")
+                        }
+                    }
+                );
+            }
         }
 
         const msgEspecial = await MessagesRavage.create({
@@ -317,6 +336,11 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             emisor: id_propio,
             especial: { tipo: 0, emisor: id_propio, añadido: ids_añadir[0] }
         });
+
+        // Registrar entrada de los nuevos usuarios desde el mensaje de incorporación
+        for (const id_nuevo of ids_añadir) {
+            registrar_entrada_chat(id_nuevo, chatIdLimpio, msgEspecial._id).catch(e => log.error(e));
+        }
 
         const ids_notificar = ids_totales.filter(x => x.toString() !== id_propio.toString());
         Añadir_Entrada_Buzon_Usuario({
@@ -397,6 +421,11 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
             await AÑADIR_CONTACTO(ids[0], ""); // Añadir sin apodo definido para usar el global
         }
 
+        // Registrar membresia inicial de todos los miembros (entro: null = desde el inicio)
+        for (const id_miembro of ids_totales) {
+            registrar_entrada_chat(id_miembro, datos_chat._id, null).catch(e => log.error(e));
+        }
+
         Añadir_Entrada_Buzon_Usuario({
             ids: ids_totales.filter(id => id.toString() !== id_propio.toString()),
             tipo: 2,
@@ -450,11 +479,24 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
             { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }] }
         );
 
-        // Quitarle el chat al usuario expulsado
+        // Congelar el chat para el usuario expulsado (snapshot del momento de expulsión)
+        const ultimoMsg = await MessagesRavage.findOne({ id_chat: new mongoose.Types.ObjectId(id_chat_str) })
+            .sort({ data: -1 })
+            .select('_id')
+            .lean();
         await User.updateOne(
-            { _id: id_usuario },
-            { $pull: { chats: { id: new mongoose.Types.ObjectId(id_chat) } } }
+            { _id: id_usuario, "chats.id": new mongoose.Types.ObjectId(id_chat) },
+            {
+                $set: {
+                    "chats.$.expulsado": true,
+                    "chats.$.nombre_bloqueo": chat.nombre ?? null,
+                    "chats.$.participantes_bloqueo": chat.usuarios ?? null
+                }
+            }
         );
+
+        // Registrar salida en membresia (cierra el bloque activo del usuario)
+        registrar_salida_chat(id_usuario, id_chat_str, ultimoMsg?._id ?? null).catch(e => log.error(e));
 
         const msgExpulsion = await MessagesRavage.create({
             id_chat: id_chat,
@@ -813,6 +855,7 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
         let nombre_bloqueo = null;
         let participantes_bloqueo = null;
 
+        let chatActual = null;
         if (newBlocked) {
             const ultimoMsg = await MessagesRavage.findOne({ id_chat: new mongoose.Types.ObjectId(id_chat_str) })
                 .sort({ data: -1 })
@@ -821,12 +864,26 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
             if (ultimoMsg) mensaje_bloqueo_id = ultimoMsg._id;
 
             // Snapshot del estado actual del chat
-            const chatActual = await ChatsRavage.findById(id_chat_str, "nombre usuarios").lean();
+            chatActual = await ChatsRavage.findById(id_chat_str, "nombre usuarios").lean();
             if (chatActual) {
                 nombre_bloqueo = chatActual.nombre || null;
                 participantes_bloqueo = chatActual.usuarios || null;
             }
+
+            // Cerrar bloque de membresia
+            registrar_salida_chat(id_propio, id_chat_str, mensaje_bloqueo_id).catch(e => log.error(e));
+        } else {
+            // Al desbloquear: abrir nuevo bloque solo si el usuario sigue en el chat.
+            // Se usa un ObjectId generado ahora como punto de corte: solo mensajes
+            // creados DESPUÉS del desbloqueo serán visibles en este nuevo periodo.
+            chatActual = await ChatsRavage.findById(id_chat_str, "usuarios").lean();
+            const sigueEnChat = chatActual?.usuarios?.some(u => u.toString() === id_propio.toString());
+            if (sigueEnChat) {
+                const puntoDesbloqueo = new mongoose.Types.ObjectId();
+                registrar_entrada_chat(id_propio, id_chat_str, puntoDesbloqueo).catch(e => log.error(e));
+            }
         }
+
         let resultado_bloque = [];
         if (newBlocked) {
             const bloqueados = getUsuariosBloqueados();
@@ -841,9 +898,9 @@ export async function BLOQUEAR_CHAT_USUARIO(id_chat) {
             {
                 $set: {
                     "chats.$[chat].bloqueado": newBlocked,
-                    "chats.$[chat].mensaje_bloqueo_id": mensaje_bloqueo_id,
-                    "chats.$[chat].nombre_bloqueo": nombre_bloqueo,
-                    "chats.$[chat].participantes_bloqueo": participantes_bloqueo,
+                    "chats.$[chat].mensaje_bloqueo_id": newBlocked ? mensaje_bloqueo_id : null,
+                    "chats.$[chat].nombre_bloqueo": newBlocked ? nombre_bloqueo : null,
+                    "chats.$[chat].participantes_bloqueo": newBlocked ? participantes_bloqueo : null,
                     users_bloqueo: resultado_bloque
                 }
             },

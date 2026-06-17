@@ -644,6 +644,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
         ${ultima_vez(datos_usar)}
         <div class="iconos-estado-chat">
             ${datos_usar.bloqueado ? '<img src="../recursos/bloqueado.png" class="icono-estado-lista icono-bloqueado" title="Chat bloqueado" loading="lazy" decoding="async">' : ''}
+            ${datos_usar.expulsado ? '<img src="../recursos/bloqueado.png" class="icono-estado-lista icono-bloqueado" title="Expulsado de este grupo" loading="lazy" decoding="async">' : ''}
             ${datos_usar.silenciado ? '<img src="../recursos/silenciar.png" class="icono-estado-lista icono-silenciado" title="Chat silenciado" loading="lazy" decoding="async">' : ''}
         </div>
     </div>`
@@ -1692,14 +1693,14 @@ export async function Crear_chat_html(datos, id_propio) {
 
     </div>
 
-    <div class="seccion-escritura-mensaje-chat" ${datos.bloqueado ? 'style="background: rgba(255,0,0,0.05);"' : ''}>
-        <div id="bt-añadir-archivo-mensaje-escritura" ${datos.bloqueado ? 'style="display:none;"' : ''}>        
+    <div class="seccion-escritura-mensaje-chat" ${(datos.bloqueado || datos.expulsado) ? 'style="background: rgba(255,0,0,0.05);"' : ''}>
+        <div id="bt-añadir-archivo-mensaje-escritura" ${(datos.bloqueado || datos.expulsado) ? 'style="display:none;"' : ''}>
             <img src="../recursos/carpeta.svg" alt="" draggable="false" loading="lazy" decoding="async">
         </div>
-        <textarea id="textarea-mensaje-escritura" 
-            placeholder="${datos.bloqueado ? 'Este chat está bloqueado' : 'Escribe un mensaje'}" 
-            maxlength="1000" 
-            ${datos.bloqueado ? 'disabled style="cursor: not-allowed; opacity: 0.7;"' : ''}></textarea>
+        <textarea id="textarea-mensaje-escritura"
+            placeholder="${datos.expulsado ? 'Has sido expulsado de este grupo' : datos.bloqueado ? 'Este chat está bloqueado' : 'Escribe un mensaje'}"
+            maxlength="1000"
+            ${(datos.bloqueado || datos.expulsado) ? 'disabled style="cursor: not-allowed; opacity: 0.7;"' : ''}></textarea>
     </div>
 `
 }

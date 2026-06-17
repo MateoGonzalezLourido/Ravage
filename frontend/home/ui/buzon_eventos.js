@@ -197,19 +197,20 @@ async function Cambio_buzonApi_expulsar_usuario(entrada, esta_silenciado) {
     const chatNombre = await Encontrar_Nombre_Chat_Usuario({ id_buscar: entrada.data.chat });
 
     if (isMe) {
-        if (document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(entrada.data.chat)}`)) {
-            DOM_CACHE.chat_usuario?.replaceChildren();
-        }
-
         if (!esta_silenciado) {
             window.pushNotificacion({ prioridad: 0, texto: `Has sido expulsado del chat ${chatNombre || ""}`, tipo: "error" });
+        }
+        // Si el chat está abierto, recargarlo para mostrar el estado congelado
+        if (document.querySelector(`#nav-principal-chat-usuario${safeIdSelector(entrada.data.chat)}`)) {
+            const { abrir_chat_item } = await import('./gestor_chats.js');
+            await abrir_chat_item(entrada.data.chat, true);
         }
     } else {
         if (!esta_silenciado) {
             window.pushNotificacion({ prioridad: 1, texto: `${nombreExpulsado} ha sido expulsado del chat ${chatNombre || ""}`, tipo: "info" });
         }
+        await Actualizar_render_chat({ emisor: entrada.data.emisor, chat: entrada.data.chat, fecha: entrada.data.data, especial: 1, data: entrada.data })
     }
-    await Actualizar_render_chat({ emisor: entrada.data.emisor, chat: entrada.data.chat, fecha: entrada.data.data, especial: 1, data: entrada.data })
     return "REFRESCAR_LISTA";
 }
 async function Cambio_buzonApi_mensaje_fijado(entrada, esta_silenciado) {
