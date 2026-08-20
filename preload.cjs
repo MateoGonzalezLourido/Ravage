@@ -49,7 +49,6 @@ contextBridge.exposeInMainWorld('validadores', validators);
 contextBridge.exposeInMainWorld('buzonAPI', mailbox);
 
 // Bloques de Caché (definidos en storage.js)
-contextBridge.exposeInMainWorld('cache_url_img_extensiones', storage.cache_url_img_extensiones);
 contextBridge.exposeInMainWorld('cache_persistente', storage.cache_persistente);
 contextBridge.exposeInMainWorld('cache_archivos_descargados', storage.cache_archivos_descargados);
 

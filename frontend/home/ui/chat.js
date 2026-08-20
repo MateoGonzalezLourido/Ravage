@@ -1,10 +1,10 @@
 import { desplegar_menu_añadir_chat } from './añadir_chats_usuarios.js'
-import { ID_USUARIO_MONGO, APODO_USUARIO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario, DOM_CACHE, guardar_cache_virtualizacion, obtener_cache_virtualizacion } from '../caches_datos.js'
+import { ID_USUARIO_MONGO, CACHE_USUARIOS_ACTIVO, obtener_apodo_usuario, DOM_CACHE, guardar_cache_virtualizacion, obtener_cache_virtualizacion } from '../caches_datos.js'
 import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
-import { scroll_fin_chat, ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js'
+import { ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js'
 import { CARGAR_LISTA_CONTACTOS, abrir_chat_por_contacto } from './gestor_contactos.js'
 import { cambiar_vista_panel } from './navegacion_vistas.js'
-import { safeIdSelector, escapeHTML } from './seguridad_ui.js';
+import { escapeHTML } from './seguridad_ui.js';
 import { HILOS_DESACTIVADOS, PREVISUALIZACION_IMAGENES, OCULTAR_MENSAJES_ERROR_DESCIFRADO } from './ajustes.js';
 
 const nombre_defecto = "~no encontrado~"

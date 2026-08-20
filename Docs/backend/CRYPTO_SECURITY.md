@@ -2,8 +2,14 @@
 
 This document covers the cryptographic core of Ravage: password hashing, at-rest
 encryption, the X25519-based E2EE key exchange, the Sender Key Ratchet, message
-decryption recovery logic, the message/file security scanners, and the worker-thread
+decryption recovery logic, the message security scanner, and the worker-thread
 infrastructure that offloads this work off the main/UI thread.
+
+> **Read §3.7 first if you care about the threat model.** Every message stores a
+> second copy of its subject — and of the AES key of every attachment — encrypted
+> with `INTERNAL_ENCRYPTION_KEY`, a build-time constant identical on every
+> installation. That is the single most important security limitation of the
+> system today and it is **not fixed**.
 
 > **Note on accuracy**: the root `README.md` describes an older scheme (bcrypt,
 > RSA-2048/OAEP key wrapping, no multi-key support, no gzip compression, no recovery
@@ -107,9 +113,38 @@ Key facts:
   and returns `null` rather than throwing — callers must null-check the result.
 
 `hashDatosSistema(datos)` is a related helper: `HMAC-SHA256` keyed with
-`process.env.HMAC_SECRET` (falls back to the system key) — this is what produces the
-`*_hash` index fields (`correo_hash`, `id_dp_hash`, etc.) mentioned in the hashing
-section above.
+`process.env.HMAC_SECRET` — this is what produces the `*_hash` index fields
+(`correo_hash`, `id_dp_hash`, etc.) mentioned in the hashing section above.
+
+**`HMAC_SECRET` fallback — known, deliberate technical debt.** If `HMAC_SECRET` is
+unset, the helper falls back to `getSystemKey()` (i.e. `INTERNAL_ENCRYPTION_KEY`),
+which breaks key separation: the same key ends up doing at-rest encryption *and*
+keying the search-index HMACs. This is **not** an oversight and **not** a silent
+fallback — the code documents the reason and emits a one-shot
+`console.warn("[Crypto] HMAC_SECRET no definida: se reutiliza INTERNAL_ENCRYPTION_KEY
+para los hashes de búsqueda (separación de claves degradada).")` the first time it
+happens (guarded by the module-level `_aviso_hmac_emitido` flag, so it can't spam the
+log on every lookup).
+
+Making `HMAC_SECRET` mandatory today would be a **breaking change**: every
+`correo_hash` / `id_dp_hash` already stored in MongoDB was computed with the system
+key, so a different secret would produce different hashes and **no existing user could
+log in** (the login lookup is `User.findOne({ correo_hash })`) — trusted devices,
+blocked devices and rate-limit audit rows keyed by `id_dp_hash` would break too.
+
+Pending migration, in this order:
+
+1. Introduce a real `HMAC_SECRET` in the env vault.
+2. Re-compute every stored `*_hash` field (`correo_hash`, `id_dp_hash`, `idamigo_hash`
+   across `User`, `TokenSession`, `TokenVC`, `TokenDPC`, `DispositivosBloqueados`,
+   `AppBlockedDevices`, `RateLimitAudit`, `ValidationCode`, `CuentaValidationCode`,
+   `DatosCuentaVC`) with the new secret — this requires decrypting the corresponding `EncryptedData` source
+   fields, which is only possible with `INTERNAL_ENCRYPTION_KEY` in hand.
+3. **Only then** make `HMAC_SECRET` fail-closed like the other keys.
+
+Until step 3 lands, treat "compromise of `INTERNAL_ENCRYPTION_KEY`" as also meaning
+"the attacker can compute `correo_hash` for any email address they guess" — i.e. the
+HMAC no longer protects the index against rainbow-table lookups of known emails.
 
 `cifrarContenido` / `descifrarContenido` are the symmetric-key equivalents used for
 E2EE message content — same AES-256-GCM + gzip scheme, but the key is a per-message
@@ -325,7 +360,8 @@ Level 3 — Outer catch-all (err) — any exception in the whole per-message blo
 
 The "system copy" being recovered here is the `desencriptarDatosSistema`-encrypted
 duplicate of `asunto`/`archivos[].nombre` that the **sender's own client** stores
-alongside the ratchet ciphertext (see §3.2 step 3) — it lets a user read their own
+alongside the ratchet ciphertext (see §3.2 step 3, and **§3.7 for why this copy is the
+system's biggest security hole**) — it lets a user read their own
 sent messages even if the ratchet state for that chat becomes desynchronized, and lets
 the recovery path show *something* readable instead of a hard failure when the E2EE
 path breaks (e.g., stale/rotated device keys). It only helps for the sender's own
@@ -362,6 +398,82 @@ Re-encrypts a chain key under the current primary public key and persists it to
 `chat.ratchet_keys` via `ChatsRavage.updateOne`. Called fire-and-forget whenever a
 message was only decryptable using a non-primary (support) key, gradually migrating a
 chat's stored ratchet keys back onto a single active identity key.
+
+It **only ever writes `clave_envuelta`** — it never `$set`s `counter`. The `counter`
+argument is used exclusively as part of the *filter*:
+
+```js
+ChatsRavage.updateOne(
+  { _id: chatId,
+    ratchet_keys: { $elemMatch: { emisor_id, receptor_id, counter } } },
+  { $set: { "ratchet_keys.$.clave_envuelta": nuevaClave } }
+);
+```
+
+Two properties follow from that shape:
+
+- **It cannot rewind the ratchet.** An earlier version wrote back the `counter` it had
+  read alongside the re-wrapped key. When `emisor_id === receptor_id === own user` (the
+  sender's own entry, see `MessageRepository.ENVIAR_MENSAJE`), that `$set` could race
+  the `$inc` that `ENVIAR_MENSAJE` performs on the *same* array entry and move the
+  counter backwards, desynchronizing it from the wrapped chain key and leaving older
+  messages permanently underivable in `getMessageKey()` (§3.5). That write is gone.
+- **It is atomic and idempotent.** If the ratchet advanced between the read and this
+  write, `ck_hex` is already stale and `$elemMatch` simply doesn't match — the update
+  is a no-op (`matchedCount === 0`, logged as `"[E2EE] Re-wrap omitido: el ratchet
+  avanzó (clave obsoleta)"`) instead of storing a wrapped key that no longer
+  corresponds to the entry's counter.
+
+> **Removed**: `_persistirRatchetState` and `_persistirRatchetStateDesdeBatch` no
+> longer exist in `messageCryptoService.js`. The receiver's ratchet state is never
+> written back to the DB (see §3.2 step 7 for the rationale); `reWrapChainKey` is now
+> the only function in this module that writes to `chat.ratchet_keys`.
+
+### 3.7 E2EE limitation — the `INTERNAL_ENCRYPTION_KEY` parallel copy (**not fixed**)
+
+The "system copy" the recovery cascade (§3.3) reads is not an artifact of the recovery
+path — it is written **for every message, unconditionally**, by
+`ENVIAR_MENSAJE` in `backend/repositories/MessageRepository.js`:
+
+```js
+contenido: [{
+    asunto: encriptarDatosSistema(asunto),        // ← plaintext subject, system key
+    archivos: contenido_archivos                  // ← each: { nombre: encriptarDatosSistema(...),
+}],                                               //           key_enc: encriptarDatosSistema(chatKey) }
+encriptado: cifrarContenido(payload, chatKey),    // ← the actual E2EE ciphertext
+```
+
+So alongside the ratchet ciphertext, every message document also carries:
+
+| Field | Encrypted with | Reveals |
+|---|---|---|
+| `contenido[0].asunto` | `INTERNAL_ENCRYPTION_KEY` | The full message text |
+| `contenido[0].archivos[].nombre` | `INTERNAL_ENCRYPTION_KEY` | Attachment filenames |
+| `contenido[0].archivos[].key_enc` | `INTERNAL_ENCRYPTION_KEY` | The AES-256-GCM key of the GridFS attachment — i.e. the file itself |
+
+`INTERNAL_ENCRYPTION_KEY` is **not** a per-user or per-device secret. It is an
+environment variable shipped with the build, so it is **the same value on every
+installation** (see `Docs/Services/CLAVES_SISTEMA.md` §1). Consequences:
+
+- **The E2EE guarantee is server-observable.** Anyone with read access to the MongoDB
+  database *and* the build's `INTERNAL_ENCRYPTION_KEY` can read every message subject
+  and decrypt every attachment, without any user's X25519 private key and without
+  touching the ratchet at all. The X25519 + Sender-Key-Ratchet machinery documented in
+  §2/§3 protects only the `encriptado` field, which is redundant with a copy stored
+  next to it under a shared key.
+- **It is not just the sender's own messages.** The copy is written by the sender for
+  *every* message, in every chat, group chats included.
+- The recovery cascade's usefulness (§3.3) is a *consequence* of this weakness, not a
+  justification for it: what makes "read your own history after losing the ratchet
+  state" work is precisely what makes the ciphertext readable to whoever holds the
+  shared key.
+
+**Status: unfixed.** Any claim elsewhere in the docs (or in the root `README.md`) that
+Ravage provides end-to-end encryption should be read with this caveat attached. A real
+fix means dropping the `contenido[0]` system copy entirely and either (a) accepting
+that a desynchronized ratchet loses history, or (b) storing the sender's copy sealed to
+the *sender's own X25519 public key* instead of a global symmetric key, and deriving
+attachment keys from the ratchet rather than storing `key_enc`.
 
 ---
 
@@ -484,13 +596,18 @@ which is async (network call) — this is why it, along with the other flagged
 `ESCANERES_ASYNC` entries, is run through `escanerWorker.js`'s
 `ejecutar_escaneres`/`ESCANER_MULTI_ASYNC` path rather than inline.
 
-### 5.2 `backend/services/seguridad/escanerArchivos.js` — empty / unimplemented
+### 5.2 File scanning — does not exist
 
-This file exists (added in commit `159294e`, *"creado sistema escaneres seguridad"*)
-but is **completely empty** (0 bytes, 0 lines) in the current codebase. There is no
-file-content scanner implemented today — only the message-text scanner
-(`escanerMensaje.js`) is functional. Anything documenting file-scanning behavior should
-be treated as aspirational/future work, not current functionality.
+There is **no file-content scanner in Ravage**, and there never was one. An empty
+0-byte placeholder, `backend/services/seguridad/escanerArchivos.js`, used to sit in
+this directory (added by commit `159294e`, *"creado sistema escaneres seguridad"*); it
+has since been **deleted**, so `backend/services/seguridad/` now contains exactly one
+file: `escanerMensaje.js`.
+
+Attachments are streamed straight through AES-256-GCM into GridFS
+(`MessageRepository.js`) with no inspection of their contents at any point. Any
+documentation that mentions file scanning is describing something that has never been
+implemented — treat it as future work, not as a missing/disabled feature.
 
 ---
 
@@ -575,8 +692,10 @@ Cross-checked from `Docs/Services/seguridad/SOCKETIO_AUTH.md`; not part of
 `cryptoService.js` but uses the same "ephemeral random secret" pattern.
 
 - **Local dev server** (`serverLocalHost.js`): generates a random 64-hex-char secret at
-  startup (`randomBytes(32).toString('hex')`), different every run, exposed via
-  `getSocketSecret()`. A Socket.IO `io.use()` middleware rejects any connection whose
+  startup (`randomBytes(32).toString('hex')`), different every run, kept in the
+  module-private `_socketSecret` variable. (It used to be exported as
+  `getSocketSecret()`; that export had no consumers and has been removed — the secret
+  is now only read inside this module.) A Socket.IO `io.use()` middleware rejects any connection whose
   `socket.handshake.auth.token` doesn't match exactly.
 - **Production server** (`serverRailway.js`): reads the secret from the `SOCKET_SECRET`
   env var. **Fails closed** — if unset, the server starts but rejects every connection.
@@ -615,4 +734,5 @@ that description and the current code:
 | `EncryptedData` schema: `{data, iv, tag}` | Actual schema also includes a `compressed: boolean` flag — payloads are gzip-compressed before AES-256-GCM encryption |
 | No mention of decrypt-failure recovery | A **3-level recovery cascade** exists (stale-counter fast path → system-copy fallback on AES failure → outer catch-all fallback), added specifically to handle corrupted/desynchronized ratchet state and stale device keys, implemented identically in both the main thread (`messageCryptoService.js`) and the worker (`cryptoWorker.js`) |
 | No mention of worker-thread offloading for crypto/scanning | Both X25519/ratchet batch decryption and message scanning run through dedicated `worker_threads` pools (`workerPool.js`) with crash recovery, idle teardown, and CPU-aware sizing |
-| No mention of a file-content scanner | `escanerArchivos.js` exists as a stub file but is **completely empty** — no file scanning is implemented, only message-text scanning (`escanerMensaje.js`) |
+| No mention of a file-content scanner | **No file scanning exists.** The empty `escanerArchivos.js` placeholder has been deleted; `backend/services/seguridad/` holds only `escanerMensaje.js` (message-text scanning) |
+| E2EE described as absolute | Every message also stores its subject, its attachment filenames and each attachment's AES key encrypted with the build-wide `INTERNAL_ENCRYPTION_KEY` (§3.7) — anyone holding that key plus DB access can read messages and files without any user's private key. **Unfixed.** |

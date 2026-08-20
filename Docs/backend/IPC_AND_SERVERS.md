@@ -1,6 +1,6 @@
 # IPC Channels and Servers
 
-This document covers two things: the IPC channel surface registered under `backend/ipc/`, and the two Express + Socket.IO server templates under `backend/servidores/`. It also briefly covers `backend/utils/systemInfo.js`, whose only current consumer is the cache layer documented in `Docs/backend/CACHE_SYSTEM.md`.
+This document covers two things: the IPC channel surface registered under `backend/ipc/`, and the two Express + Socket.IO server templates under `backend/servidores/`.
 
 All IPC handler-registration functions are wired up from `main.js` (around lines 195-230), each behind its own `try/catch` so one failing module does not prevent the others from registering.
 
@@ -24,7 +24,7 @@ Full flow detail (login, registration, device trust, security PIN, rate limiting
 | `cerrar-sesion-usuario` | `handle` | Logs out and relaunches the app |
 | `obtener-apodo-sesion` / `obtener-correo-usuario` / `obtener-id-mongodb-usuario` / `obtener-idamigo-usuario` | `handle` | Read in-memory session values (see `Variables_sesion.js`) |
 | `comprobar-contraseña-cuenta` | `handle` | Verifies the current account password (e.g. before a sensitive change) |
-| `permitir-cambio-datos-cuenta` | `handle` | Starts a cooldown-gated change flow for `contraseña`/`correo`/`apodo` |
+| `permitir-cambio-datos-cuenta` | `handle` | Starts a cooldown-gated change flow for `contraseña`/`correo`/`apodo`. Signature: `(data, tipo, contraseña_actual = null)` — the fourth argument was added when password changes started requiring re-authentication: for `tipo === "contraseña"` it is forwarded to `permitirCambioContraseñaUsuario(data, contraseña_actual)`, which compares it against the stored hash and **rejects the change if it is missing or wrong**. It is ignored for `correo`/`apodo`. |
 | `cambiar-datos-usuario` | `handle` | Confirms a profile-data change with its verification code |
 | `obtener-fecha-creacion-cuenta` / `obtener-fecha-bloqueo-apodo` / `obtener-fecha-bloqueo-correo` / `obtener-fecha-bloqueo-contraseña` | `handle` | Read account-age / cooldown-remaining values |
 | `obtener-invisible-usuario` / `obtener-mostrar-correo-usuario` | `handle` | Read privacy toggles |
@@ -42,8 +42,8 @@ Full flow detail (login, registration, device trust, security PIN, rate limiting
 | `obtener-datos-chat-unico-usuario` | `id, datos_buscar` | Fetches one chat's data | chat object |
 | `crear-chat-nuevo` | `ids, nombre, id_chat, solicitudAceptada` | Creates a chat (1:1 or group); validates `nombre` via `comprobar_nombre_archivo` | result of `CREAR_CHAT_NUEVO` |
 | `responder-solicitud-añadir` | `id_chat, id_mensaje, aceptar` | Accepts/rejects a group-join request | — |
-| `seleccionar-archivos` | — | Opens a native multi-file picker; every returned path is added to an in-memory `authorizedPaths` allowlist | `string[]` (file paths) |
-| `enviar-mensaje` | `{asunto, archivos, id_chat, id_emisor}` | Sends a message; rejects any attached file path not present in `authorizedPaths` (prevents arbitrary filesystem reads from a compromised renderer); validates `asunto` via `comprobar_mensaje` | result of `ENVIAR_MENSAJE` |
+| `seleccionar-archivos` | — | Opens a native multi-file picker; every returned path is added to an in-memory `authorizedPaths` allowlist (a `Set` bounded by `MAX_AUTHORIZED_PATHS = 500`, oldest entry dropped first) | `string[]` (file paths) |
+| `enviar-mensaje` | `{asunto, archivos, id_chat, id_emisor}` | Sends a message; rejects any attached file path not present in `authorizedPaths` (prevents arbitrary filesystem reads from a compromised renderer); validates `asunto` via `comprobar_mensaje`. Authorizations are **single-use**: paths are removed from the allowlist after a successful send, and kept on failure so the user can retry | result of `ENVIAR_MENSAJE` |
 | `descargar-archivo` | `id, nombre, iv, tag, id_chat, ratchet_info, emisor_id` | Downloads + decrypts an attachment; on success shows a renderer toast and fires an OS notification via `procesarNotificacionOSDescarga` | boolean/result |
 | `obtener-preview-imagen` | same as above | Fetches an image preview | preview data |
 | `obtener-audio-mensaje` | same as above | Fetches an audio attachment | audio data |
@@ -192,7 +192,7 @@ The same regex is passed as `cors.origin` to the Socket.IO server constructor, s
 _socketSecret = randomBytes(32).toString('hex');   // 64 hex chars
 ```
 
-Any Socket.IO connection whose `socket.handshake.auth.token` doesn't match this exact value is rejected in the `io.use(...)` middleware. Full detail in `Docs/Services/seguridad/SOCKETIO_AUTH.md`.
+Any Socket.IO connection whose `socket.handshake.auth.token` doesn't match this exact value is rejected in the `io.use(...)` middleware. `_socketSecret` is module-private: the former `getSocketSecret()` export had no consumers and has been removed, so the file now exports only `startServer`, `stopServer` and `io`. Full detail in `Docs/Services/seguridad/SOCKETIO_AUTH.md`.
 
 **HTTPS:** the file contains a commented-out template for serving over HTTPS with local certificates (`https.createServer(httpsOptions, app)`, reading `key.pem`/`cert.pem` from `backend/certs/`). It is inactive by default — the live code path uses `http.createServer(app)`.
 
@@ -244,28 +244,3 @@ socket.on("disconnect", () => { /* log */ });
 ```
 
 Clients join a Socket.IO room named after their own user id; the mailbox service (`buzonAPI.js`) later emits to that room via `io.to(userId).emit(...)`.
-
----
-
-## 3. `backend/utils/systemInfo.js`
-
-Detects system RAM and free disk space (via the `systeminformation` package, exposed lazily as `si` from `utils/libs.js`) and turns that into a recommended cache strategy.
-
-```js
-export async function getSystemResources() // { totalRamGB, freeDiskGB }
-export async function getRecommendedCacheStrategy() // { type: 'ram' | 'disk', sizeMB }
-```
-
-`getSystemResources()` reads `si.mem()` for total RAM and `si.fsSize()` for disk, picking the filesystem mount that best matches `os.homedir()` (falling back to `/` or the first entry). On any error it falls back to `os.totalmem()` for RAM and `0` for free disk.
-
-`getRecommendedCacheStrategy()` thresholds (unchanged from what `Docs/Services/SERVIDORES.md`-adjacent docs and the root README describe — verified against the current source):
-
-| Total RAM | Strategy | Size |
-|---|---|---|
-| ≥ 31 GB (~32 GB) | `ram` | 4096 MB |
-| ≥ 15 GB (~16 GB) | `ram` | 2048 MB |
-| ≥ 7 GB (~8 GB) | `ram` | 1024 MB |
-| < 7 GB and free disk > 50 GB | `disk` | 2048 MB |
-| otherwise | `ram` | 256 MB (minimal fallback) |
-
-**Current usage note:** as of this writing, `getRecommendedCacheStrategy()` and `getSystemResources()` have no callers anywhere in `backend/` — a repo-wide search finds only their own definitions in `systemInfo.js`. The adaptive RAM/disk cache-strategy selection this function was built for is not wired into the current caching code (see `Docs/backend/CACHE_SYSTEM.md`, which now uses SQLite-backed caches with fixed limits instead of a resource-adaptive Map). This module appears to be present for future use rather than actively driving today's cache configuration — flag this if you're relying on the root README's claim of an active "adaptive cache system."

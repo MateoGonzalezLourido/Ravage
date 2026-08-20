@@ -54,7 +54,6 @@ This way, frontend code (running in the renderer, e.g. `frontend/home/renderer.j
 | `ajustes_app` | `app_settings.cjs` | App settings, identity/PIN management, worker count |
 | `validadores` | `validators.cjs` | Input validation (email, nickname, password, etc.) |
 | `buzonAPI` | `mailbox.cjs` | Real-time mailbox (Socket.io-backed notifications) |
-| `cache_url_img_extensiones` | `storage.cjs` (`storage.cache_url_img_extensiones`) | **Not implemented** — see note below |
 | `cache_persistente` | `storage.cjs` (`storage.cache_persistente`) | User-cache and search-history persistence |
 | `cache_archivos_descargados` | `storage.cjs` (`storage.cache_archivos_descargados`) | Downloaded-files cache management |
 | `escaneres_seguridad_app` | `security.cjs` | Content security scanners (XSS, zalgo, malicious URLs, etc.) |
@@ -62,7 +61,7 @@ This way, frontend code (running in the renderer, e.g. `frontend/home/renderer.j
 | `avisos_ui` | `avisos.cjs` | One-way backend→renderer notices (loading icon, logout, RAM cleanup) |
 | `opciones_dev` | `opciones_dev.cjs` | `isDev` flag for developer-only UI/behavior |
 
-> **Code-verified quirk:** `preload.cjs` line 52 does `contextBridge.exposeInMainWorld('cache_url_img_extensiones', storage.cache_url_img_extensiones)`, but `preload/storage.cjs` only exports `cache_persistente` and `cache_archivos_descargados` — there is no `cache_url_img_extensiones` key in that module. As a result, `window.cache_url_img_extensiones` currently resolves to `undefined` at runtime. No frontend code references this global (file-extension icons are instead served by a plain IPC call in `preload/utils.cjs`-adjacent code, see `frontend/home/ui/url_icono_extensiones_archivos.js`), so this is dead/broken wiring rather than an active bug, but it should either be removed from `preload.cjs` or implemented in `storage.cjs`.
+> **Removed:** `preload.cjs` used to also expose a `window.cache_url_img_extensiones` global from a `storage.cache_url_img_extensiones` key that `preload/storage.cjs` never defined, so it resolved to `undefined` at runtime. That `exposeInMainWorld` line has been deleted. File-extension icons are resolved entirely in the renderer by `frontend/home/ui/url_icono_extensiones_archivos.js`, from the JSON manifests under `frontend/recursos/extensionesArchivos`.
 
 ---
 
@@ -154,7 +153,7 @@ Every function below is a thin wrapper: it either calls `ipcRenderer.invoke(chan
 | `OBTENER_ID_MONGODB_USUARIO()` | Gets the current user's MongoDB `_id` |
 | `OBTENER_IDAMIGO_USUARIO()` | Gets the current user's shareable friend ID |
 | `COMPROBAR_CONTRASEÑA({ contraseña })` | Verifies the given password against the account |
-| `PERMITIR_CAMBIO_DATOS_CUENTA({ data, tipo })` | Requests permission/starts the flow to change an account field |
+| `PERMITIR_CAMBIO_DATOS_CUENTA({ data, tipo, contraseña_actual })` | Requests permission/starts the flow to change an account field. Invokes `"permitir-cambio-datos-cuenta"` with `(data, tipo, contraseña_actual)`; `data` and `contraseña_actual` both default to `null`. `contraseña_actual` is required for `tipo: "contraseña"` — the backend re-verifies it against the stored hash and rejects the change if it is missing or wrong |
 | `CAMBIAR_DATOS_CUENTA(contraseña, code, tipo)` | Confirms and applies an account data change (email/password/nickname) |
 | `OBTENER_FECHA_CREACION_CUENTA()` | Gets the account creation date |
 | `OBTENER_FECHA_BLOQUEO_APODO()` | Gets the date until which the nickname is locked from further changes |
@@ -283,8 +282,6 @@ Not present in the old Spanish doc — documented here from the code.
 | `setCacheArchivosDescargados(cache)` | Overwrites the downloaded-files cache index |
 | `setLimiteCacheArchivosDescargados(limite)` | Sets the max size/count limit for the downloads cache |
 | `clearCacheArchivosDescargados()` | Clears the downloaded-files cache |
-
-> Note: `preload.cjs` also tries to expose a third key, `storage.cache_url_img_extensiones`, as `window.cache_url_img_extensiones` — but `storage.cjs` does not define that key (see quirk note in §2).
 
 ### `security.cjs` → `window.escaneres_seguridad_app`
 

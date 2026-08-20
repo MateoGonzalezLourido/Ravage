@@ -14,10 +14,10 @@
 | Doc | What it covers |
 |---|---|
 | [backend/DATA_LAYER.md](./backend/DATA_LAYER.md) | MongoDB connection, all Mongoose models & their encrypted fields, all repositories, and the local SQLite (`better-sqlite3`) database |
-| [backend/CRYPTO_SECURITY.md](./backend/CRYPTO_SECURITY.md) | Password hashing (Argon2id), at-rest encryption, X25519 E2EE key exchange & Double Ratchet, message/file scanners, crypto/scanner worker threads |
+| [backend/CRYPTO_SECURITY.md](./backend/CRYPTO_SECURITY.md) | Password hashing (Argon2id), at-rest encryption, X25519 E2EE key exchange & Double Ratchet, the message scanner, crypto/scanner worker threads |
 | [backend/SESSION_AUTH.md](./backend/SESSION_AUTH.md) | Registration, email verification, trusted-device auto-login, manual login, JWT issuance, rate limiting, logout |
 | [backend/MESSAGING.md](./backend/MESSAGING.md) | Mailbox/push notifications (Change Streams + Socket.IO), transactional email, local encrypted file storage, profile/validation logic, URL previews |
-| [backend/IPC_AND_SERVERS.md](./backend/IPC_AND_SERVERS.md) | Every IPC channel registered under `backend/ipc/`, the local dev server vs. the Railway production server, `systemInfo.js` |
+| [backend/IPC_AND_SERVERS.md](./backend/IPC_AND_SERVERS.md) | Every IPC channel registered under `backend/ipc/`, the local dev server vs. the Railway production server |
 | [backend/CACHE_SYSTEM.md](./backend/CACHE_SYSTEM.md) | The current (SQLite + TTL-based) cache layer — supersedes the old LFU/disk-minification design described in the root README |
 
 ## Frontend
@@ -46,8 +46,8 @@ These were written earlier and were used as verified source material for the Eng
 
 - **Password hashing**: Argon2id, not bcrypt.
 - **E2EE key exchange**: X25519 ECDH + HKDF (Double Ratchet), not RSA-2048/OAEP.
-- **Cache system**: rewritten around embedded SQLite with TTL/size eviction; the old RAM/disk LFU design and its adaptive-strategy selector (`systemInfo.js`) are gone or unused.
+- **Cache system**: rewritten around embedded SQLite with TTL/size eviction and fixed limits; the old RAM/disk LFU design is gone, and the adaptive-strategy selector that went with it (`backend/utils/systemInfo.js`) has been deleted from the codebase — it had no callers.
 - **Secrets storage**: no longer a plaintext root `.env` — an OS-native encrypted vault (`backend/utils/env_vault.js`, Electron `safeStorage`) now holds secrets.
-- **New subsystems not in the README at all**: worker-thread pools for crypto/content scanning, message/file/URL security scanners, a multi-level decrypt-failure recovery cascade.
+- **New subsystems not in the README at all**: worker-thread pools for crypto/content scanning, the message/URL security scanner (there is no file-content scanner), a multi-level decrypt-failure recovery cascade.
 
 A full engineering-quality review (bugs, security issues, dead code) is intentionally kept out of this `Docs/` tree — see `/home/paraguayo33/Documentos/depuracion-ravage/` for that (Spanish, for internal use).

@@ -25,11 +25,9 @@ Al arrancar el servidor se genera un token efímero aleatorio de 64 caracteres h
 _socketSecret = randomBytes(32).toString('hex');
 ```
 
-Este token es **distinto en cada ejecución** de la app. Se expone internamente mediante:
-
-```js
-export function getSocketSecret() { return _socketSecret; }
-```
+Este token es **distinto en cada ejecución** de la app y `_socketSecret` es privado al módulo:
+no se exporta. (Existió un `getSocketSecret()` exportado, pero se eliminó al no tener ningún
+consumidor; el token solo se compara dentro del propio middleware.)
 
 El middleware de Socket.IO rechaza cualquier conexión que no presente el token exacto:
 
@@ -102,7 +100,7 @@ socket.emit("identificar", userId);  // socket === io (instancia del servidor)
 
 | Archivo | Rol |
 |---|---|
-| `backend/servidores/serverLocalHost.js` | Genera el token efímero al arrancar; expone `getSocketSecret()` |
+| `backend/servidores/serverLocalHost.js` | Genera el token efímero al arrancar; lo mantiene privado al módulo |
 | `backend/servidores/serverRailway.js` | Lee `SOCKET_SECRET` de env; mismo middleware |
 | `backend/ipc/chat_ipc.js` | Arranca el buzón vía `iniciarBuzon(io, mainWindow)`; ya no emite el userId a todos |
 | `backend/services/buzonAPI.js` | Usa `io.to(userId).emit(...)` para entregar notificaciones a la sala del usuario |

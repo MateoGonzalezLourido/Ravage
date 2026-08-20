@@ -26,11 +26,10 @@ Functionally, the app provides:
 - End-to-end encrypted text messaging between users, using a Sender-Key-Ratchet-style protocol.
 - Encrypted, streamed file transfer (chunked, not buffered fully in memory) stored in MongoDB GridFS.
 - Multi-factor login (password + emailed verification code) with device trust/blocking.
-- A local, encrypted, adaptive multi-level cache (in-memory + `better-sqlite3` on disk) to keep the UI
-  responsive without re-fetching everything from MongoDB.
+- A local, encrypted, multi-level cache (in-memory + `better-sqlite3` on disk) with fixed size/TTL limits,
+  to keep the UI responsive without re-fetching everything from MongoDB.
 - Real-time push notifications via MongoDB Change Streams + Socket.IO.
-- Content security scanners for messages and files (URL/homoglyph/zalgo/XSS checks, file scanning) before
-  they reach the UI or disk.
+- Content security scanners for message text (URL/homoglyph/zalgo/XSS checks) before it reaches the UI.
 
 ## 2. Verified vs. outdated claims (README vs. current code)
 
@@ -41,7 +40,7 @@ Functionally, the app provides:
 | Local structured cache | In-memory Map + minified JSON files on disk | Same idea plus a **`better-sqlite3`** persistent cache database (`backend/STORAGE/CACHE/database.js`, `cache.db`) for downloaded-file history and search history |
 | CPU-heavy work | Not mentioned | Dedicated **worker-thread pools** for crypto (`cryptoWorker.js`) and content scanning (`escanerWorker.js`), managed by `backend/utils/workers/workerPool.js` |
 | Rate limiting | Not mentioned | Both an **Express** global rate limiter (`express-rate-limit`) on the local/Railway servers and an **in-memory IPC rate limiter** (`backend/utils/rateLimiter.js`) guarding auth-sensitive IPC calls |
-| Security scanners | Not mentioned | `backend/services/seguridad/escanerArchivos.js` and `escanerMensaje.js` — URL reputation (Google Safe Browsing), homoglyph/zalgo detection, XSS sanitization (DOMPurify) |
+| Security scanners | Not mentioned | `backend/services/seguridad/escanerMensaje.js` — URL reputation (Google Safe Browsing), homoglyph/zalgo detection, XSS sanitization (DOMPurify). There is **no** file-content scanner: the former empty `escanerArchivos.js` stub has been deleted |
 | Env var handling | Plain `.env` in project root | **Encrypted OS-native vault** (`backend/utils/env_vault.js`, Electron `safeStorage`) — see `Docs/architecture/BUILD_AND_ENVIRONMENT.md` |
 | Chat membership model | Not detailed | Dedicated `MembresiaChat` model/repository tracking per-user join/leave points in a chat, used to filter which messages a user can see |
 
@@ -131,13 +130,18 @@ Key points:
 
 1. **Env vault first.** `inicializarVault()` (`backend/utils/env_vault.js`) runs before anything else so
    that `process.env` is populated (from the encrypted vault, or by migrating plaintext `.env` files into
-   it) before the server or DB connection code reads any secrets.
+   it) before the server or DB connection code reads any secrets. The `env/` directory it migrates from is
+   located through `backend/utils/rutas_recursos.js` (`resolverDirEnv()`), so it works both in development
+   and inside a packaged (asar) build.
 2. **Server before DB, both before the window.** The local Express/Socket.IO server
    (`backend/servidores/serverLocalHost.js`) is started, then MongoDB is connected
    (`backend/db/mongo.js`), then an auto-login attempt is made by reading the encrypted local session file
    (`backend/services/sesionUsuario.js` → `autoLoginUsuario()`), and only then is the `BrowserWindow`
    created — loading either `frontend/home/home.html` (if auto-login succeeded) or
    `frontend/sesion-log/sesion.html` (login/register screen) otherwise.
+   `connectDB()` propagates connection errors instead of swallowing them: `main.js` catches them and shows
+   a "Sin conexión al servidor" dialog with Retry/Quit buttons; if the user quits, no window is created and
+   no auto-login is attempted.
 3. **IPC handlers are registered before `loadFile()`** inside `createMainWindowHome`, specifically to avoid
    a race where the renderer's first `ipcRenderer.invoke` calls fire before `ipcMain.handle` listeners
    exist. Handler registration dynamically imports each `backend/ipc/*.js` module in parallel
@@ -251,8 +255,7 @@ Key points:
 | `previsualizacion_url.js` | Link preview fetching for shared URLs. |
 | `MENSAJERIA/Servicio_mensajeria_correo.js` | Sends transactional email via the Brevo API. |
 | `MENSAJERIA/Estructuras_correos.js` | HTML email templates. |
-| `seguridad/escanerArchivos.js` | File-content security scanning before storage/delivery. |
-| `seguridad/escanerMensaje.js` | Message-content scanning (URLs, homoglyphs, zalgo text, XSS). |
+| `seguridad/escanerMensaje.js` | Message-content scanning (URLs, homoglyphs, zalgo text, XSS). The only scanner in the project — file-content scanning does not exist. |
 
 ### `backend/ipc/` — one `register*Handlers()` per domain, called from `main.js`
 
@@ -291,9 +294,9 @@ Key points:
 |---|---|
 | `libs.js` | Central, lazily-loaded hub for Node/Electron/npm imports used across the backend. |
 | `env_vault.js` | OS-native (`safeStorage`) encrypted vault for `.env` secrets — see `Docs/architecture/BUILD_AND_ENVIRONMENT.md`. |
+| `rutas_recursos.js` | Dependency-free resolver for packaged resources (`dentroDeAsar()`, `resolverExtraResource()`, `resolverDirEnv()`); maps `env/` to `process.resourcesPath/env` inside an asar build and to the project tree in development. |
 | `logger.js` | Pino structured logger factory (`createLogger(moduleName)`). |
 | `rateLimiter.js` | In-memory IPC-layer rate limiter (sliding window per device hash). |
-| `systemInfo.js` | Detects RAM/disk via `systeminformation`, recommends a cache strategy. |
 | `conversores.js` | Type-conversion utility helpers. |
 | `workers/workerPool.js` | Manages worker-thread pools for crypto and scanning work, sized from CPU count / user override. |
 | `workers/cryptoWorker.js` | Worker-thread implementation of heavy crypto operations (e.g. key generation). |
@@ -317,7 +320,7 @@ Key points:
 | `user.cjs` | `window.cuenta_usuario` | Account/profile data operations. |
 | `social.cjs` | `window.social_usuario` | Contacts, blocking, search. |
 | `chat.cjs` | `window.chats` | Messaging and chat/file management. |
-| `storage.cjs` | `window.cache_url_img_extensiones`, `window.cache_persistente`, `window.cache_archivos_descargados` | Cache bridges. |
+| `storage.cjs` | `window.cache_persistente`, `window.cache_archivos_descargados` | Cache bridges. |
 | `app_settings.cjs` | `window.ajustes_app` | App settings read/write. |
 | `validators.cjs` | `window.validadores` | Input validation calls. |
 | `mailbox.cjs` | `window.buzonAPI` | Real-time notification/mailbox bridge. |

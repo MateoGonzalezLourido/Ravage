@@ -6,10 +6,7 @@ import { User } from '../models/User.js';
 import { mongoose, GridFSBucket, ObjectId, fs, randomBytes } from '../utils/libs.js';
 import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
-import { readFileSession } from '../services/controladorArchivos.js';
 import { normalizeId } from './ChatRepository.js';
-import { procesarUsuario } from './UserRepository.js';
-import { setUsuarioEnCache } from './UserRepository.js';
 
 import { descifrarListaMensajes, getMessageKey } from '../services/messageCryptoService.js';
 import {

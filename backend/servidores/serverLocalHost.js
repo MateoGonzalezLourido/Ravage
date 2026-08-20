@@ -7,7 +7,6 @@ let appServer;
 let io;
 let _socketSecret = null;
 
-export function getSocketSecret() { return _socketSecret; }
 
 /**
  * Inicia el servidor optimizado para desarrollo local.

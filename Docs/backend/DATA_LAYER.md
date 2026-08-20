@@ -94,7 +94,7 @@ Indexes: `correo_hash` (unique), `idamigo_hash` (unique). No TTL indexes on `Use
 
 No explicit indexes or TTL defined in this model.
 
-### 3.3 `Message.js` → collections `messages` (`MessagesRavage`) and `archivos` (`ArchivosRavage`)
+### 3.3 `Message.js` → collection `messages` (`MessagesRavage`)
 
 `MessageSchema`:
 
@@ -114,7 +114,7 @@ Indexes on `MessagesRavage`:
 - `{ id_chat: 1, data: -1 }` — chat timeline queries.
 - `{ data: 1 }, { expireAfterSeconds: 365 * 24 * 60 * 60 }` — **TTL index**: messages auto-expire 365 days after their `data` timestamp.
 
-`ArchivoSchemaGridfs` (separate model `ArchivosRavage`, collection `archivos`): `filename` (`EncryptedDataSchema`), `gridfsId`, `size`, `mimetype`, `uploadedAt`. Index on `filename`. Note: this model appears to overlap with GridFS's own `fs.files`/`fs.chunks` collections created by `GridFSBucket` (bucket name `ArchivosChats`, used directly in `MessageRepository.js`); no code in `MessageRepository.js` was found writing to `ArchivosRavage` — it looks unused/dead in the current send/download flow, which talks to `GridFSBucket` directly instead.
+`Message.js` defines **only** `MessagesRavage`. The old `ArchivoSchemaGridfs` / `ArchivosRavage` model (collection `archivos`) has been **deleted**: nothing ever wrote to it, since it duplicated GridFS's own `fs.files`/`fs.chunks` bookkeeping. Attachments live exclusively in GridFS, written and read through `GridFSBucket` (bucket name `ArchivosChats`) from `MessageRepository.js`; the per-message pointers to those blobs are the `ArchivoSchema` entries embedded in `contenido[].archivos` described above.
 
 ### 3.4 `Buzon.js` → collection `buzon`, model `BuzonUsuarios`
 
@@ -136,7 +136,7 @@ Index: `{ updatedAt: 1 }, { expireAfterSeconds: 60*60*24*90 }` — **TTL index**
 | `DatosCuentaVC` (`datoscuentavc`) | Validation codes tagged with a `tipo` (lowercased) for account-data changes. | `expira` TTL, 10 min |
 | `TokenSession` (`tksession`) | Active login/session tokens per device (`token` hash, `os`, `nombre` encrypted). | `expira` TTL, 90 min |
 | `TokenVC` (`tokenvcv`) | Verification-flow tokens (same `TokenSchema` shape as `TokenSession`, different collection/model). | `expira` TTL, 90 min |
-| `TokenDPC` (`tokendpc`) | "Trusted device" tokens — no `expira` field at all (`TokenDPCSchema` omits it), so these persist until explicitly revoked. | none |
+| `TokenDPC` (`tokendpc`) | "Trusted device" tokens. `TokenDPCSchema` now carries an `expira` field (`default: () => new Date()`, i.e. the start of the document's lifetime, same semantics as `TokenSchema.expira`). | `expira` TTL, 365 days — matches the maximum validity of the trusted-device JWT; before this index the collection grew without bound |
 | `DispositivosBloqueados` (`dpbloqueado`) | Devices blocked for a given account (`correo_hash` + `id_dp_hash`), with `fecha_bloqueo`. | none |
 | `RateLimitAudit` (`ratelimitaudit`) | Daily infraction counter per device (`id_dp_hash` + `fecha`), unique on the pair. | none (accumulates; not TTL'd) |
 | `AppBlockedDevices` (`appblockeddevices`) | Devices permanently blocked app-wide after 5 daily infractions, `id_dp_hash` unique. | none — permanent |
@@ -195,7 +195,7 @@ Repositories are the only layer that talks to Mongoose models directly on the wr
 
 ### 5.1 `UserRepository.js`
 
-Central place for account data, session login, contacts, blocking/muting, and a **session-scoped in-memory cache** (`session_cache_usuarios`, a plain `Map`) with its own TTL/size eviction (`REVISAR_LIMPIEZA_CACHE_SESION`: 15 min TTL, 50 MB cap) — this cache is part of the family documented in `CACHE_SYSTEM.md`, only described here as context for how repository reads short-circuit DB access.
+Central place for account data, session login, contacts, blocking/muting, and a **session-scoped in-memory cache** (`session_cache_usuarios`, a plain `Map`) with its own TTL/size eviction (`REVISAR_LIMPIEZA_CACHE_SESION`: 15 min TTL sweep, 50 MB cap; reads additionally require an entry younger than 5 min when a specific field list is requested) — this cache is part of the family documented in `CACHE_SYSTEM.md`, only described here as context for how repository reads short-circuit DB access. Entries are **not** consumed on read: a cache hit returns a copy and leaves the entry in place, so two consecutive reads of the same user don't hit Mongo twice.
 
 Key exports:
 
@@ -220,7 +220,7 @@ Owns chat lifecycle (create/expand/expel/admin roles), the E2EE ratchet key mate
 
 | Function | Purpose |
 |---|---|
-| `obtener_datos_chats({data, grupales, mensajes})` | Bulk-loads chats by id list, optionally attaching the last 30 messages per chat (decrypted via `descifrarListaMensajes`), then resolves display names. |
+| `obtener_datos_chats({data, grupales, mensajes})` | Bulk-loads chats by id list, optionally attaching the last 30 messages per chat, then resolves display names. Messages are fetched with a **single** `MessagesRavage.find({id_chat: {$in: [...]}})` sorted by `data: -1` and grouped in memory (capping each chat at 30) — the previous per-chat `find()` loop (an N+1 query) is gone. Decryption still happens per chat, since each needs its own key, but in batches of `CONCURRENCIA_DESCIFRADO = 5` so the crypto worker pool isn't saturated. |
 | `obtener_datos_chat_unico(id_chat, datos_buscar)` | Single-chat read with dynamic field projection; supports a virtual `nmensajes` field (a separate `countDocuments`); applies the block/expulsion "frozen snapshot" from the caller's `User.chats` entry; filters messages via `filtrar_mensajes_membresia`; strips `ratchet_keys` before returning. |
 | `CREAR_CHAT_NUEVO(ids, nombre, id_chat, solicitudAceptada)` | Two modes: **add to existing chat** (may generate a pending-request special message for 2-person chats instead of adding directly, unless `solicitudAceptada`) or **create new chat** (builds the full `ratchet_keys` matrix — one Sender Key per member, wrapped per-recipient with `cifrarConX25519`), pushes the chat into each member's `User.chats`, registers initial membership via `registrar_entrada_chat`, and notifies via `Añadir_Entrada_Buzon_Usuario`. |
 | `expulsar_usuario_chat` | Removes a user from `chat.usuarios` (admin-only), freezes their view (`nombre_bloqueo`, `participantes_bloqueo`, `expulsado: true` on their `User.chats` entry), closes their membership window via `registrar_salida_chat`. |
@@ -231,7 +231,6 @@ Owns chat lifecycle (create/expand/expel/admin roles), the E2EE ratchet key mate
 | `SILENCIAR_CHAT_USUARIO` / `BLOQUEAR_CHAT_USUARIO` | Toggle per-chat mute/block on the caller's `User.chats` entry; blocking snapshots the chat (name/participants) and closes/reopens a `MembresiaChat` window so messages sent while blocked stay hidden. |
 | `LIMPIAR_MENSAJES_CHAT` / `GESTIONAR_ELIMINAR_CHAT` | Wipe all messages in a chat, or fully delete the chat for the caller (falls back to "just clear messages" if the other party is a saved contact, to avoid destroying a contact's shared chat). |
 | `ACTUALIZAR_DATOS_CHAT` | Admin-only update of `nombre`/`descripcion` (encrypted) and `escaneres_seguridad`. |
-| `setChatEnCacheRaw` | Currently a **no-op** — comment says "cache_chats has been removed" — retained only so callers don't need to change; effectively dead code. |
 
 ### 5.3 `MessageRepository.js`
 

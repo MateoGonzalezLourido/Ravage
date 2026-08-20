@@ -270,7 +270,7 @@ All handlers are registered inside `registerSessionHandlers(mainWindow)`.
 | `cerrar-sesion-usuario` | `handle` | `cerrarSesionUsuario` + app relaunch |
 | `obtener-apodo-sesion`, `obtener-correo-usuario`, `obtener-id-mongodb-usuario`, `obtener-idamigo-usuario`, `obtener-fecha-creacion-cuenta`, `obtener-fecha-bloqueo-apodo`, `obtener-fecha-bloqueo-correo`, `obtener-fecha-bloqueo-contraseña`, `obtener-invisible-usuario`, `obtener-mostrar-correo-usuario` | `handle` | Read-only accessors into `STORAGE/Variables_sesion.js` in-memory state |
 | `comprobar-contraseña-cuenta` | `handle` | `comprobar_contraseña_cuenta` (validadores.js) — Argon2 compare against the current session's password |
-| `permitir-cambio-datos-cuenta` | `handle` | Dispatches to `permitirCambioContraseñaUsuario` / `permitirCambioCorreoUsuario` / `permitirCambioApodoUsuario` (see `Docs/backend/MESSAGING.md` §4 for `Usuario.js`) |
+| `permitir-cambio-datos-cuenta` | `handle` | `(_, data, tipo, contraseña_actual = null)` — dispatches to `permitirCambioContraseñaUsuario(data, contraseña_actual)` / `permitirCambioCorreoUsuario(data)` / `permitirCambioApodoUsuario(data)`. The 4th argument is only used by the password branch (see §12) |
 | `cambiar-datos-usuario` | `handle` | `ValidarCodeCambioDatosCuenta` |
 | `configurar-pin-seguridad`, `verificar-pin-seguridad`, `tiene-pin-seguridad` | `handle` | Local app-lock PIN, hashed with Argon2 (`hash`/`compare`), stored via `saveSecurityPinFile`/`readFileSession('securityPin')`. Independent of account auth. |
 | `marcar-dispositivo-confianza`, `revocar-dispositivo-confianza`, `estado-dispositivo-confianza`, `obtener-gestion-dispositivos`, `revocar-sesion-dispositivo`, `revocar-confianza-dispositivo`, `bloquear-dispositivo`, `desbloquear-dispositivo` | `handle` | Device management (§9). The `*-dispositivo` handlers that take an `id_dp_hash` argument validate it is a 64-char lowercase hex string before calling the service function. |
@@ -292,6 +292,92 @@ Handled by `backend/services/controladorArchivos.js` (full detail in `Docs/backe
 | `securityPin` | `{ correo, pinHash }` | `SECRET_KEY_COKKIE` |
 
 All are AES-256-GCM, gzip-compressed before encryption (`CifrarDatosArchivos`).
+
+---
+
+## 12. Account-data changes — `backend/services/Usuario.js`
+
+The password/email/nickname change flow is documented in full in
+`Docs/backend/MESSAGING.md` §4. Summarized here because it is an authentication path.
+
+### Password change now requires the current password
+
+`permitirCambioContraseñaUsuario(contraseña = null, contraseña_actual = null)`.
+
+Previously the only thing standing between an attacker with an unlocked device and a
+new account password was the emailed 6-digit code — and that code is also surfaced in
+the OS notification of the incoming mail, so possession of an unlocked, logged-in
+device was often enough. The current password is now mandatory. Full chain:
+
+```
+frontend/home/home.html      #form-cambio-contraseña → new input #cambio-pass-actual
+        │
+frontend/home/ui/ajustes.js  reads it, sends it along with the new password
+        │
+preload/user.cjs             PERMITIR_CAMBIO_DATOS_CUENTA({ data, tipo, contraseña_actual })
+        │
+IPC "permitir-cambio-datos-cuenta" (backend/ipc/session_ipc.js)
+        │    (_, data, tipo, contraseña_actual = null)  ← 4th argument, new
+        ▼
+Usuario.permitirCambioContraseñaUsuario(contraseña, contraseña_actual)
+```
+
+Checks performed, in order, once a new password is supplied:
+
+1. `comprobarContrasenaValidaciones(contraseña)` — format.
+2. `exp_bloq_contrasena` cool-down not expired → reject.
+3. `contraseña_actual` missing → `"Debes introducir tu contraseña actual"`.
+4. `compare(contraseña_actual, data_usuario.contrasena)` (Argon2id) fails →
+   `"La contraseña actual no es correcta"`.
+5. New password identical to the current one → reject.
+6. Only then is the 6-digit code generated, Argon2-hashed, stored and emailed.
+
+Called with **no arguments** the function is still a pure eligibility check (cool-down
+only) and does not require the current password. The email and nickname branches are
+unchanged and take no `contraseña_actual`.
+
+### Verification-code attempts are stored in the DB, not in memory
+
+The module-level `intentos_codigo_validacion` counter is **gone**. Remaining attempts
+now live encrypted inside the `DatosCuentaVC` document's own `data` field — the same
+pattern `sesionUsuario.js` already used for `ValidationCode`:
+
+| Helper | Role |
+|---|---|
+| `InsertarCodigoCambioDatos({correo, code, id, tipo})` | Inserts the code and seeds `data: encriptarDatosSistema({ intentos: 5 })` |
+| `leerDatosVC(code_db)` | Decrypts `data`; defaults to `n_intentos_codigo_validacion = 5` for legacy documents with no `data` |
+| `guardarDatosVC(code_db._id, parsedData)` | Re-encrypts and persists the decremented counter |
+
+`ValidarCodeCambioDatosCuenta` decrements on each wrong code and, **when the attempts
+run out, deletes the code from the database** (`BorrarDatosCuentaVC`) instead of merely
+refusing it. The counter therefore survives an app restart and is per-code rather than
+shared process-wide across all three change types.
+
+### `BorrarDatosCuentaVC` receives the hashed code
+
+`ValidarCodeCambioDatosCuenta` captures `code_hash_db = code_db.code` (the Argon2 hash
+as stored) right after the lookup and passes **that** to every `BorrarDatosCuentaVC`
+call. It previously passed the user-supplied plaintext code, which never matched the
+stored value, so used/exhausted codes were never actually deleted.
+
+### `bloquear_accion` is reset in `finally`
+
+All four exported functions (`permitirCambioContraseñaUsuario`,
+`permitirCambioCorreoUsuario`, `permitirCambioApodoUsuario`,
+`ValidarCodeCambioDatosCuenta`) now wrap their body in `try { … } finally {
+bloquear_accion = false }`. Before this, a single DB error left the module-level lock
+stuck at `true`, blocking password, email *and* nickname changes for the rest of the
+process lifetime — recoverable only by restarting the app.
+
+### Change-confirmation emails were blank; fixed
+
+`ValidarCodeCambioDatosCuenta` used to destructure the confirmation templates as
+`const { asunto2, htmlContenido2 } = ConfirmacionCambioContraseña(...)`, keys the
+templates never return, so `enviarEmail` fell back to its own defaults
+(`asunto: "Sin asunto"`, empty body). It is now
+`({ asunto, htmlContenido } = ConfirmacionCambioContraseña({ apodo }))`, with a
+generic `"Confirmación Cambio Datos Cuenta"` subject as the fallback branch.
+Password/email/nickname confirmation emails render correctly again.
 
 ---
 

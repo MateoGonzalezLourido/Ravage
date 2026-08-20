@@ -91,15 +91,15 @@ There is no frequency counter anywhere in this module — access frequency (LFU)
 
 Unlike the README's claim of encrypted disk persistence with minification, this cache is **pure RAM** — there is no `saveCacheChatsFile()`/`saveCacheUsersFile()` equivalent, no minified on-disk JSON shape (`{i, n, u, f, t}`), and no debounce timer writing it to disk. It is rebuilt from MongoDB on demand as entries are queried, and is entirely lost on app restart.
 
-### 3.4 Read/consume semantics — cache entries are one-shot on the "full profile" path
+### 3.4 Read semantics — hits are non-destructive, the TTL alone governs lifetime
 
 `obtener_datos_usuario(id, datos_usar)`: checks the cache first. A hit is only used if:
 - called with no `datos_usar` and the cached entry isn't the caller's own profile → requires the cached entry to already include `correo` (entries stored from a lightweight search only have `{_id, apodo}` and are rejected here), **or**
 - called with a specific `datos_usar` field list → requires the cache entry to be **fresher than 5 minutes** and to already contain every requested field (`_faltan_datos` check); otherwise it's a forced miss.
 
-On a hit, the entry is **deleted from the backend cache** (`session_cache_usuarios.delete(idStr)`) before being returned — the assumption is that the renderer's own frontend-side active cache now owns it. A miss triggers a `User.findById(...).lean()` query, and the result is written back into the cache with a fresh timestamp.
+On a hit, a **shallow copy** of the entry is returned and the entry **stays in the cache** — it used to be deleted on first read (`session_cache_usuarios.delete(idStr)`), on the assumption that the renderer's own active cache took ownership, which made two consecutive reads of the same user hit Mongo twice. Its lifetime is now governed solely by the TTLs described above: 5 minutes of freshness for field-list reads, and the 15-minute sweep in `REVISAR_LIMPIEZA_CACHE_SESION()`. A miss triggers a `User.findById(...).lean()` query, and the result is written back into the cache with a fresh timestamp.
 
-`obtener_varios_usuarios(ids, datos_usar)` does the same per-id, in bulk: chunks any cache-missing ids into batches of 50 for the Mongo query (`CHUNK_SIZE = 50`), then repopulates the cache for exactly the ids that were fetched from DB.
+`obtener_varios_usuarios(ids, datos_usar)` does the same per-id, in bulk (hit resolution factored out into `_resolver_cache_hit()`, same non-destructive semantics): chunks any cache-missing ids into batches of 50 for the Mongo query (`CHUNK_SIZE = 50`), then repopulates the cache for exactly the ids that were fetched from DB.
 
 `GUARDAR_USUARIOS_EN_PERSISTENTE(usuarios)` (exposed via the `guardar-varios-usuarios-externos` IPC channel) lets the renderer hand a batch of users back into this cache when it evicts its own active-chat UI cache — it strips the redundant string `id` field and converts `_id` back to a Mongo `ObjectId` to save RAM before storing.
 
@@ -200,9 +200,9 @@ There is no debounce timer anywhere in the current cache code.
 
 ---
 
-## 8. RAM vs. disk strategy selection — not currently wired up
+## 8. RAM vs. disk strategy selection — does not exist
 
-`backend/utils/systemInfo.js` still exports `getRecommendedCacheStrategy()`, which maps total system RAM to a `{type: 'ram'|'disk', sizeMB}` recommendation (thresholds unchanged: ≥31GB→4096MB RAM, ≥15GB→2048MB RAM, ≥7GB→1024MB RAM, <7GB & >50GB free disk→2048MB disk, else 256MB RAM fallback — see `Docs/backend/IPC_AND_SERVERS.md` §3 for the full table). However, as of this codebase, **no code in `backend/` calls this function** — none of the cache modules described in this document (§3-§6) consult it. The current caches use fixed limits (50 MB for the user cache, 256 MB estimated for the downloaded-files cache, fixed row counts elsewhere) regardless of the host machine's resources. The adaptive-strategy machinery exists but is currently dormant.
+The README's "adaptive cache system" (pick a RAM or disk strategy and a size from the host's total RAM / free disk) has no implementation. The module that used to hold the thresholds, `backend/utils/systemInfo.js`, exported `getSystemResources()` and `getRecommendedCacheStrategy()` but had **no callers anywhere in `backend/`**, and has since been **deleted from the repo**. The caches described in this document (§3-§6) use fixed limits (50 MB for the user cache, 256 MB estimated for the downloaded-files cache, fixed row counts elsewhere) regardless of the host machine's resources, and no code path consults system resources to size them.
 
 ---
 
@@ -217,7 +217,7 @@ The README's example of remapping long keys to single letters before writing to 
 Brief, since these are general utility modules rather than cache-specific:
 
 - **`conversores.js`** exports `convertirObjectId(v)`, a recursive normalizer that turns MongoDB/Mongoose `ObjectId`s (including IPC-serialized buffer-shaped objects, which lose their prototype crossing the `contextBridge`) into plain strings, deep-walking arrays and objects, and mirroring any `_id` it converts into a sibling `id` field. Used throughout the repository layer (including the cache read paths in `UserRepository.js`, via `_getID`) to normalize ids coming back from the renderer over IPC.
-- **`libs.js`** is the project's centralized, mostly-lazy import hub (see its own header comment). Relevant to the cache layer specifically: it re-exports `gzipSync`/`gunzipSync` (used by `_cache_archivos_descargados.js`, §6) and lazily loads `systeminformation` as `si` (used by `systemInfo.js`, §8) and `better-sqlite3` is imported directly by `database.js` rather than through this hub.
+- **`libs.js`** is the project's centralized, mostly-lazy import hub (see its own header comment). Relevant to the cache layer specifically: it re-exports `gzipSync`/`gunzipSync` (used by `_cache_archivos_descargados.js`, §6). It still lazily loads `systeminformation` as `si`, but no longer for the cache layer — its only consumer today is `sesionUsuario.js`, for device information. `better-sqlite3` is imported directly by `database.js` rather than through this hub.
 
 ---
 
@@ -225,4 +225,3 @@ Brief, since these are general utility modules rather than cache-specific:
 
 - SQLite schema, tables, and query layer: `Docs/backend/DATA_LAYER.md`.
 - Full IPC channel list for all cache-related channels: `Docs/backend/IPC_AND_SERVERS.md` §1.6-1.7.
-- `systemInfo.js` resource detection: `Docs/backend/IPC_AND_SERVERS.md` §3.

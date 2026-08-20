@@ -1,7 +1,6 @@
 import { mongoose, createHash, randomBytes, compare } from '../utils/libs.js';
 import { createLogger } from '../utils/logger.js';
 import { User } from '../models/User.js';
-import { ChatsRavage } from '../models/Chat.js';
 import { TokenSession } from '../models/Security.js';
 import { validateToken } from '../services/CreadorTokens.js';
 import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } from '../services/cryptoService.js';

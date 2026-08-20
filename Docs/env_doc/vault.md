@@ -15,6 +15,7 @@ El objetivo es que **las credenciales nunca queden en disco en texto plano** tra
 | `env/.env.secret` | Variables sensibles (MongoDB, claves, API keys). Se consume una sola vez. |
 | `env/.env.config` | Configuración interna de la app. Se consume una sola vez. |
 | `backend/utils/env_vault.js` | Lógica del vault: migración, cifrado y carga. |
+| `backend/utils/rutas_recursos.js` | Resuelve dónde está el directorio `env/` según el entorno (`resolverDirEnv()`). |
 | `<userData>/env_vault/*.enc` | Archivos cifrados persistentes. Los gestiona el vault, no tocar a mano. |
 
 Los archivos `.example` en `Docs/env_doc/` sirven de plantilla y **nunca** son procesados por el vault (se ignoran por extensión).
@@ -58,6 +59,29 @@ Ambas funciones son invocadas por `inicializarVault()` dentro de `app.whenReady(
 | macOS | Keychain |
 
 Si el llavero no está disponible (p. ej. entorno headless sin gnome-keyring), el vault muestra un aviso y **no migra ni carga**. Los `.env` originales permanecen en disco sin cifrar.
+
+---
+
+## Dónde busca el vault los `.env`
+
+`env_vault.js` ya no resuelve la ruta a mano (`path.resolve(__dirname, '../../env')`), sino que delega en
+`resolverDirEnv()` de `backend/utils/rutas_recursos.js`:
+
+| Entorno | Directorio `env/` |
+|---|---|
+| Desarrollo (código en el árbol del proyecto) | `<proyecto>/env` |
+| Producción (código dentro de `app.asar`) | `process.resourcesPath/env`, es decir `<instalación>/resources/env` |
+
+El motivo: `env/` se empaqueta como `extraResources` en `package.json`, así que electron-builder lo copia
+**fuera** del asar. Resolverlo relativo al código daba `.../app.asar/env`, una ruta que nunca existe.
+
+> **Fallo corregido.** Con la resolución antigua, en una build empaquetada el vault no encontraba ningún
+> `.env`: no migraba, no cifraba y —lo importante— no borraba los originales. Las credenciales se quedaban
+> en claro dentro de `resources/env/` durante toda la vida de la instalación. Con `resolverDirEnv()` el flujo
+> de migración funciona igual en desarrollo y en producción.
+
+Al arrancar, el vault registra en consola la ruta que está usando:
+`[EnvVault] Buscando .env en: <ruta>`.
 
 ---
 
@@ -105,7 +129,7 @@ Si necesitas cambiar una variable:
 
 ## Comportamiento ante errores
 
-- Si el cifrado de un archivo falla, el original **no se borra** y se registra el error en consola con prefijo `[EnvVault]`.
+- Si el cifrado de un archivo falla, el original **no se borra** y se registra el error en consola con prefijo `[EnvVault]`, avisando explícitamente de que ese archivo *sigue en claro* y en qué ruta. Si el código de error es `EACCES`/`EPERM`/`EROFS` se añade la pista de que el directorio de instalación no tiene permiso de escritura.
 - Si el descifrado de un `.enc` falla, ese archivo se omite y el resto se sigue cargando.
 - Los errores no detienen el arranque de la app; el proceso continúa con las variables que sí se pudieron cargar.
 

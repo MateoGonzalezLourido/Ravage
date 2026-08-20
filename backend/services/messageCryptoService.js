@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger.js';
 const log = createLogger('msg-crypto');
-import { descifrarContenido, descifrarConX25519, descifrarConX25519Multi, getAllPrivateKeys, ratchetChainKey, advanceChainKey, cifrarConX25519, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
+import { descifrarContenido, descifrarConX25519Multi, getAllPrivateKeys, ratchetChainKey, advanceChainKey, cifrarConX25519, desencriptarDatosSistema, getIdentity } from './cryptoService.js';
 import { getIDMongodbUsuario } from '../STORAGE/Variables_sesion.js';
 import { ChatsRavage } from '../models/Chat.js';
 import { getCryptoPool } from '../utils/workers/workerPool.js';

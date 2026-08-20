@@ -1,5 +1,10 @@
 # Documentación del Preload Script en RAVAGE
 
+> **Nota.** Este documento es el resumen histórico (en español) del sistema de preload y cubre solo el
+> *porqué* del bundle y las buenas prácticas. La referencia completa y verificada contra el código —
+> todos los módulos, cada función expuesta y su canal IPC — está en
+> [`Docs/frontend/PRELOAD.md`](./frontend/PRELOAD.md). Ante cualquier discrepancia, manda ese documento.
+
 El script de **preload** es el puente principal entre el `frontend` (proceso de renderizado) y el `backend` (proceso principal de Electron). Su función es exponer APIs limitadas y seguras al navegador mediante el uso de `contextBridge`.
 
 ## 1. Estructura del Preload
@@ -15,6 +20,10 @@ Para mantener el código organizado y escalable, las funcionalidades del preload
 - `validators.cjs`: Validaciones de datos (correo, apodo, contraseñas).
 - `mailbox.cjs`: Notificaciones y buzón en tiempo real (Socket.io).
 - `utils.cjs`: Utilidades generales (ej. previsualización de URLs).
+- `social.cjs`: Contactos, bloqueos/silenciados y búsqueda de usuarios externos.
+- `app_settings.cjs`: Ajustes de la app, claves de identidad, PIN y número de workers.
+- `avisos.cjs`: Escuchadores de eventos backend → renderer (sentido único).
+- `opciones_dev.cjs`: Bandera `isDev` para el modo desarrollador.
 
 ## 2. Definición del Puente (`preload.cjs`)
 

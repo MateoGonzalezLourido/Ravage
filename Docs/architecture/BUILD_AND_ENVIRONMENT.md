@@ -52,7 +52,7 @@
 | `node-machine-id` | Generates a stable per-device hardware ID, used for device trust/blocking and rate-limit keys. |
 | `pino`, `pino-pretty` | Structured JSON logging (`backend/utils/logger.js`); `pino-pretty` formats it for readable console output. |
 | `socket.io`, `socket.io-client` | Real-time transport for mailbox/notification push. |
-| `systeminformation` | Detects system RAM/disk to pick an adaptive cache strategy (`backend/utils/systemInfo.js`). |
+| `systeminformation` | Collects device information (used by `backend/services/sesionUsuario.js` for device identification/trust). Lazily loaded as `si` in `backend/utils/libs.js`. The old adaptive cache-strategy selector that also used it (`backend/utils/systemInfo.js`) has been deleted — it had no callers. |
 | `validator` | String validation helpers used by `backend/services/validadores.js`. |
 | `dotenv` | Loads `.env`-style files; used as part of the env vault's plaintext-migration path. |
 
@@ -88,12 +88,17 @@
 
 - **Target**: Windows builds use the `nsis` installer target; `dist-linux` uses electron-builder's default
   Linux target set (no explicit `linux.target` override in this config).
-- **Excluded from the packaged app**: any plaintext `.env`, the `env/` directory itself, `Docs/`,
-  `backend/tests/`, `dist/`, the VS Code config, and `README.md`. This keeps secrets, tests, and
-  documentation out of the shipped bundle.
-- **`extraResources`**: the (empty-of-secrets) `env/` directory structure is still copied into the packaged
-  app's resources so that the vault migration path (`env_vault.js`) has a directory to look for on
-  first run of the packaged app.
+- **Excluded from the asar bundle** (`files`): any plaintext `.env`, the `env/` directory, `Docs/`,
+  `backend/tests/`, `dist/`, the VS Code config, and `README.md`. This keeps tests and documentation out of
+  the shipped code bundle. Note this only excludes `env/` from *inside* `app.asar` — it is still shipped
+  separately via `extraResources`, see below.
+- **`extraResources`**: `env/` is copied into the packaged app **outside** the asar archive, at
+  `<install-dir>/resources/env/`. Because the app code itself lives inside `app.asar`, a path resolved
+  relative to the source tree would point at `.../app.asar/env`, which never exists. That is what
+  `backend/utils/rutas_recursos.js` fixes: `resolverDirEnv()` returns `path.join(process.resourcesPath, 'env')`
+  when the module is running from inside an asar bundle, and the project-tree path otherwise, so the vault
+  finds (and, crucially, *deletes*) the plaintext `.env` files on first run of a packaged build too —
+  see §4.2.
 - **`npmRebuild: false`**: electron-builder is told *not* to run its own native-module rebuild step, since
   `postinstall` already ran `electron-rebuild` and the `dist-*` scripts explicitly call
   `electron-builder install-app-deps` for the Windows builds.
@@ -211,6 +216,14 @@ app.whenReady()
   succeeds.
 - **Loading** (`cargarDesdeVaul`): decrypted vault contents take priority over anything previously loaded
   by `dotenv`.
+- **Where the plaintext `.env` files are looked for**: `env_vault.js` no longer hardcodes
+  `path.resolve(__dirname, '../../env')`. It delegates to `resolverDirEnv()` in
+  `backend/utils/rutas_recursos.js`, which returns `<project>/env` in development and
+  `process.resourcesPath/env` when the code is running from inside `app.asar` (see §2.4). The startup log
+  line `[EnvVault] Buscando .env en: <ruta>` prints the directory actually used.
+  *Previously* this resolution was wrong in packaged builds: the vault looked inside the asar, never found
+  the files, never migrated them and never deleted them — so the credentials stayed in cleartext in
+  `resources/env/` for the whole life of the installation. That is fixed.
 - **Vault location**: `<userData>/env_vault/<original-filename>.enc`, where `<userData>` is
   `app.getPath('userData')` — typically `~/.config/Ravage/env_vault/` (Linux), `%APPDATA%\Ravage\env_vault\`
   (Windows), or `~/Library/Application Support/Ravage/env_vault/` (macOS).
@@ -239,6 +252,7 @@ app.whenReady()
 | `GOOGLE_SAFE_BROWSING_API_KEY` | API key for Google Safe Browsing, used by the message/URL security scanner to flag malicious links. |
 | `SOCKET_SECRET` | Shared secret used to authenticate Socket.IO connections in production; generate with `openssl rand -hex 32`. |
 | `CLIENT_URL` | Allowed CORS origin(s) for the Railway production server — a single URL or comma-separated list. |
+| `HMAC_SECRET` | **Optional.** Key for the deterministic search hashes (`correo_hash`, `id_dp_hash`) produced by `hashDatosSistema()` in `backend/services/cryptoService.js`. Not present in `.env.secret.example`. If unset, the function falls back to the system key (`INTERNAL_ENCRYPTION_KEY`) and logs a one-time `console.warn`. The fallback is **deliberate**: every `*_hash` already stored in the database was computed that way, so making the variable mandatory would lock existing users out. Setting it on an existing installation requires recomputing those hashes first — see the migration note in the source. |
 
 Secure hex keys can be generated with:
 
@@ -324,9 +338,10 @@ npm run dist-linux     # Linux x64 build
 
 The Windows scripts additionally run `electron-builder install-app-deps` to ensure native modules are
 installed/rebuilt for the target platform/arch before packaging. Packaged output excludes `.env`, `env/`,
-`Docs/`, `backend/tests/`, `dist/`, VS Code config, and `README.md` (see the `files` exclusion list in
-§2.4); the `env/` directory structure itself is still shipped as an `extraResources` entry so the vault has
-somewhere to look for plaintext files on a fresh install.
+`Docs/`, `backend/tests/`, `dist/`, VS Code config, and `README.md` from the asar bundle (see the `files`
+exclusion list in §2.4); the `env/` directory is shipped separately as an `extraResources` entry, landing at
+`resources/env/` next to the asar, which is exactly where `resolverDirEnv()` looks for plaintext `.env`
+files on a fresh install.
 
 ---
 

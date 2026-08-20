@@ -195,10 +195,14 @@ Handles password/email/nickname change requests, each gated behind an email veri
 
 A single module-level `bloquear_accion` boolean guards all four exported functions — a second concurrent call to any of `permitirCambioContraseñaUsuario` / `permitirCambioCorreoUsuario` / `permitirCambioApodoUsuario` / `ValidarCodeCambioDatosCuenta` while one is in flight returns `{ success: false, bloqueador: true }` rather than queuing. This is process-wide, not per-user — there is exactly one Electron renderer's worth of concurrency to worry about, so this is sufficient here but would not be safe in a multi-connection server context.
 
-### `permitirCambioContraseñaUsuario(contraseña?)`
+All four functions now release the lock in a `finally` block (`try { … } finally { bloquear_accion = false }`). Previously an early `return` on a DB error skipped the reset and left the flag stuck at `true`, blocking password, email **and** nickname changes for the remaining lifetime of the process — only an app restart cleared it.
+
+### `permitirCambioContraseñaUsuario(contraseña?, contraseña_actual?)`
 
 - Called with no argument: pure eligibility check — looks up `exp_bloq_contrasena` on the `User` document and reports whether the cool-down window has passed.
-- Called with a new password: validates format, checks the cool-down, confirms the new password differs from the current one (`compare` via Argon2), then generates a 6-digit code, `Argon2`-... actually hashes the code with `hash()` (Argon2id) before storing (`InsertarDatosCuentaVC`), and emails it via `CodigoCambiarDatosCuenta`. Always sent (no toggle).
+- Called with a new password: validates format, checks the cool-down, **requires and verifies the user's current password**, confirms the new password differs from the current one (`compare` via Argon2), then generates a 6-digit code, hashes it with `hash()` (Argon2id) before storing (`InsertarCodigoCambioDatos`), and emails it via `CodigoCambiarDatosCuenta`. Always sent (no toggle).
+
+The `contraseña_actual` requirement is new: a missing value returns `"Debes introducir tu contraseña actual"` and a wrong one `"La contraseña actual no es correcta"`, both before any code is issued. It arrives from the renderer through the new `#cambio-pass-actual` input → `PERMITIR_CAMBIO_DATOS_CUENTA({data, tipo, contraseña_actual})` in `preload/user.cjs` → the 4th argument of the `permitir-cambio-datos-cuenta` IPC handler. See `Docs/backend/SESSION_AUTH.md` §12 for the full chain. Email and nickname changes are unaffected and take no `contraseña_actual`.
 
 ### `permitirCambioCorreoUsuario(correo?)`
 
@@ -210,12 +214,22 @@ Same eligibility-check shape, but nickname changes **do not send a verification 
 
 ### `ValidarCodeCambioDatosCuenta({ data, code, tipo })`
 
-1. For `tipo !== "apodo"`: decrement a shared `intentos_codigo_validacion` counter (module-level, reset to 5 each time a new code is issued), validate code format, fetch the most recent `DatosCuentaVC` record for that `correo_hash` + `tipo`, verify it belongs to this device (`deviceId === desencriptarDatosSistema(code_db.id_dp)`, tolerant of a blank stored device id), and `compare()` the submitted code against the stored Argon2 hash.
+1. For `tipo !== "apodo"`: validate code format, fetch the most recent `DatosCuentaVC` record for that `correo_hash` + `tipo` (sorted by `expira`), read the remaining attempts out of the record itself, verify it belongs to this device (`deviceId === desencriptarDatosSistema(code_db.id_dp)`, tolerant of a blank stored device id), and `compare()` the submitted code against the stored Argon2 hash. A wrong code decrements the stored attempt counter; reaching zero **deletes the code** from the DB.
 2. Applies the change: `cambiarContraseñaUsuario` / `cambiarCorreoUsuario` / `cambiarApodoUsuario` (repository functions, outside this doc's scope) — and for password changes, immediately calls `cerrarSesionUsuario(correo)` afterward (forces logout so the user re-authenticates with the new password).
 3. Sends the matching confirmation email (`CORREO_CAMBIO_CONTRASEÑA` / `CORREO_CAMBIO_CORREO` / `CORREO_CAMBIO_APODO`), subject to that setting.
 4. Deletes the used verification code(s) via `BorrarDatosCuentaVC`.
 
-**Known bug**: step 3's email lookup destructures `const { asunto2, htmlContenido2 } = ConfirmacionCambioContraseña(...)` (and the same pattern for `ConfirmacionCambioCorreo`/`ConfirmacionCambioApodo`), but those template functions (in `Estructuras_correos.js`) `return { asunto, htmlContenido }` — no `asunto2`/`htmlContenido2` keys exist. `asunto`/`htmlContenido` end up `undefined`, so `enviarEmail` is called with `asunto: "Sin asunto"` and `htmlContenido: ""` (the function's own defaults) for password/email/nickname change confirmations. The email still sends (Brevo doesn't reject an empty body), it's just blank/generic instead of using the intended template. This is a real defect in the current code, not a documentation error.
+#### Attempt counting lives in the DB
+
+The module-level `intentos_codigo_validacion` variable is gone. Remaining attempts are stored **encrypted inside the `DatosCuentaVC` document's own `data` field**, exactly as `sesionUsuario.js` already did for `ValidationCode`. Three helpers implement it: `InsertarCodigoCambioDatos()` (inserts the code and seeds `data: encriptarDatosSistema({ intentos: 5 })`), `leerDatosVC()` (decrypts it, defaulting to `n_intentos_codigo_validacion = 5` for legacy records without `data`) and `guardarDatosVC()` (re-encrypts and persists the decrement). The counter now survives an app restart and is scoped per issued code rather than shared across all three change types.
+
+#### `BorrarDatosCuentaVC` takes the hashed code
+
+The function captures `code_hash_db = code_db.code` — the Argon2 hash exactly as stored — right after the lookup and passes that to every `BorrarDatosCuentaVC(correo, code_hash_db)` call. It used to be given the user-typed plaintext code, which never matched the stored hash, so no code was ever actually deleted.
+
+#### Fixed: blank change-confirmation emails
+
+Step 3 previously destructured `const { asunto2, htmlContenido2 } = ConfirmacionCambioContraseña(...)` (same pattern for `ConfirmacionCambioCorreo`/`ConfirmacionCambioApodo`), but those templates `return { asunto, htmlContenido }` — no `asunto2`/`htmlContenido2` keys exist — so `enviarEmail` received `undefined` for both and fell back to its own defaults (`asunto: "Sin asunto"`, empty body). Every password/email/nickname confirmation email went out blank. The code now uses `({ asunto, htmlContenido } = ConfirmacionCambio…({ apodo }))`, with a generic `"Confirmación Cambio Datos Cuenta"` subject as the fallback branch. **This defect is fixed** — the entry in *Corrections* below is kept for historical context only.
 
 ---
 
@@ -258,7 +272,7 @@ Returns `{ titulo, descripcion, imagen, urlActiva }` or `null`.
 
 **Against `Docs/Services/NOTIFICACIONES.md`:**
 - No factual corrections found — its description of `buzonAPI.js` (Change Stream filtering, `sentIds` dedup, `optimizar_cola_entradas_buzon`, `filtrar_entradas_ipc`, the fire-and-forget email pattern, and the `correoPermitido` fail-open behavior) matches the current source exactly.
-- Extended: this document adds the `Usuario.js` email-template destructuring bug (§4), which the notification doc doesn't cover since it's scoped to the notification settings matrix, not template wiring correctness.
+- Extended: this document previously reported a `Usuario.js` email-template destructuring bug (`{asunto2, htmlContenido2}`) that made every change-confirmation email arrive blank. **That bug has since been fixed in the code** (§4); the notification doc never covered it, being scoped to the settings matrix rather than template wiring.
 
 **Against `Docs/Services/CLAVES_SISTEMA.md`:**
 - No factual corrections found for the portions relevant to this scope (§3's `SECRET_KEY_COKKIE`/`SECRET_KEY_PRIVATE` key-selection table matches `controladorArchivos.js` exactly, including the identity-file migration key fallback).
