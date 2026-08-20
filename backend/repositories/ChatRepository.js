@@ -46,30 +46,37 @@ export async function obtener_datos_chats({ data = [], grupales = null, mensajes
             ).lean();
             log.info({ loaded: data_obtenida.length }, "Chats obtenidos desde MongoDB");
 
-            for (let chat of data_obtenida) {
-                if (mensajes) {
-                    chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).limit(30).lean();
-                    await descifrarListaMensajes(chat.mensajes, chat);
+            if (mensajes) {
+                // Una sola consulta para los mensajes de todos los chats en vez de
+                // un find() secuencial por chat (N+1). El descifrado sí se hace por
+                // chat —necesita la clave de cada uno— pero con concurrencia acotada
+                // para no saturar el pool de workers de cripto.
+                const mensajes_todos = await MessagesRavage.find({ id_chat: { $in: data_obtenida.map(c => c._id) } })
+                    .sort({ data: -1 })
+                    .lean();
+
+                const por_chat = new Map();
+                for (const m of mensajes_todos) {
+                    const clave = normalizeId(m.id_chat);
+                    const lista = por_chat.get(clave);
+                    // mensajes_todos viene ordenado por fecha desc: cortamos en 30 por
+                    // chat para conservar el mismo límite que tenía la consulta por chat.
+                    if (lista === undefined) por_chat.set(clave, [m]);
+                    else if (lista.length < 30) lista.push(m);
                 }
-                await setChatEnCacheRaw(chat);
-                result.push(chat);
-            }
-        }
+                for (const chat of data_obtenida) {
+                    chat.mensajes = por_chat.get(normalizeId(chat._id)) || [];
+                }
 
-        // Para los que vinieron de cache, si se piden mensajes y no los tienen (o solo tienen IDs), hay que cargarlos
-        for (let i = 0; i < result.length; i++) {
-            let chat = result[i];
-            const tieneMensajesFull = chat.mensajes && Array.isArray(chat.mensajes) && chat.mensajes.length > 0 && typeof chat.mensajes[0] === 'object';
-
-            if (mensajes && !tieneMensajesFull) {
-                // El cache solo tiene IDs o nada. Cargar de DB.
-                chat.mensajes = await MessagesRavage.find({ id_chat: chat._id }).sort({ data: -1 }).limit(30).lean();
-                await descifrarListaMensajes(chat.mensajes, chat);
-                // No actualizamos cache aquí porque ya tenemos la meta-info y no queremos guardar contenido
-            } else if (!mensajes && tieneMensajesFull) {
-                // Se pidieron sin mensajes pero el cache los tiene (no debería pasar con el nuevo setChatEnCacheRaw)
-                chat.mensajes = [];
+                const CONCURRENCIA_DESCIFRADO = 5;
+                for (let i = 0; i < data_obtenida.length; i += CONCURRENCIA_DESCIFRADO) {
+                    const lote = data_obtenida.slice(i, i + CONCURRENCIA_DESCIFRADO);
+                    await Promise.all(lote.map(chat => descifrarListaMensajes(chat.mensajes, chat)));
+                }
             }
+
+            // El orden de `result` sigue el de data_obtenida, igual que antes.
+            for (const chat of data_obtenida) result.push(chat);
         }
 
         const data_con_nombres = await resolverNombresChats(result);

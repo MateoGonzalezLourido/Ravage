@@ -299,77 +299,6 @@ async function _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data)
     return mensajes;
 }
 
-/**
- * Persiste los avances del ratchet en la DB (modo secuencial).
- */
-async function _persistirRatchetState(cache_keys, chat, identity_data) {
-    for (const [key, state] of Object.entries(cache_keys)) {
-        const [emisor_id, receptor_id] = key.split('_');
-        await ChatsRavage.updateOne(
-            { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": receptor_id },
-            {
-                $set: {
-                    "ratchet_keys.$.clave_envuelta": cifrarConX25519(state.ck, identity_data.primary?.publicKey || identity_data.publicKey),
-                    "ratchet_keys.$.counter": state.counter
-                }
-            }
-        ).catch(e => log.error({ err: e }, "[E2EE] Fallo persistiendo ratchet state"));
-    }
-}
-
-/**
- * Persiste ratchet state después de batch paralelo.
- * Recalcula el estado final basándose en el último mensaje procesado de cada emisor.
- */
-async function _persistirRatchetStateDesdeBatch(mensajes, chat, id_propio, identity_data) {
-    // Encontrar el último mensaje de cada emisor para saber el counter final
-    const ultimosPorEmisor = {};
-    for (const m of mensajes) {
-        if (m.ratchet_info && m.emisor) {
-            const emisor_id = m.emisor.toString();
-            if (!ultimosPorEmisor[emisor_id] || m.ratchet_info.iteration > ultimosPorEmisor[emisor_id].iteration) {
-                ultimosPorEmisor[emisor_id] = m.ratchet_info;
-            }
-        }
-    }
-
-    // Para cada emisor, avanzar desde la clave base hasta el último counter + 1
-    for (const [emisor_id, ratchet_info] of Object.entries(ultimosPorEmisor)) {
-        const entry = chat.ratchet_keys.find(k =>
-            k.emisor_id.toString() === emisor_id &&
-            k.receptor_id.toString() === id_propio.toString()
-        );
-        if (!entry) continue;
-
-        try {
-            const allKeys = getAllPrivateKeys(identity_data);
-            let ck = descifrarConX25519Multi(entry.clave_envuelta, allKeys).result;
-            let counter = entry.counter;
-
-            let iterations_safety = 0;
-            // Avanzar hasta el último mensaje + 1
-            while (counter <= ratchet_info.iteration && iterations_safety < 10000) {
-                ck = advanceChainKey(ck);
-                counter++;
-                iterations_safety++;
-            }
-
-            if (iterations_safety >= 10000) throw new Error("Ratchet safety limit exceeded in batch persistence");
-
-            await ChatsRavage.updateOne(
-                { _id: chat._id, "ratchet_keys.emisor_id": emisor_id, "ratchet_keys.receptor_id": id_propio },
-                {
-                    $set: {
-                        "ratchet_keys.$.clave_envuelta": cifrarConX25519(ck, identity_data.primary?.publicKey || identity_data.publicKey),
-                        "ratchet_keys.$.counter": counter
-                    }
-                }
-            ).catch(e => log.error({ err: e }, "[E2EE] Fallo persistiendo ratchet state (batch)"));
-        } catch (err) {
-            log.error({ err, emisor_id }, "[E2EE] Fallo recalculando ratchet final para batch");
-        }
-    }
-}
 
 /**
  * Deriva una clave de mensaje específica avanzando el ratchet.
@@ -424,20 +353,37 @@ async function reWrapChainKey(chatId, emisorId, receptorId, ck_hex, primaryPubli
     try {
         const nuevaClave = cifrarConX25519(ck_hex, primaryPublicKey);
         const { mongoose } = await import('../utils/libs.js');
-        await ChatsRavage.updateOne(
+
+        // El re-wrap SOLO cambia el envoltorio de la chain key: nunca toca el counter.
+        // Escribir el counter leído previamente (con $set) lo haría retroceder si
+        // ENVIAR_MENSAJE hizo su $inc sobre la MISMA entrada mientras esto estaba en
+        // vuelo (pasa cuando emisor_id === receptor_id === usuario propio, ver
+        // MessageRepository.ENVIAR_MENSAJE), desincronizando el contador de la clave
+        // envuelta y dejando mensajes antiguos irrecuperables en getMessageKey.
+        //
+        // Además, la condición sobre `counter` hace la operación atómica e idempotente:
+        // si el ratchet avanzó entre la lectura y esta escritura, `ck_hex` ya está
+        // obsoleto y la actualización simplemente no encaja (no-op) en vez de guardar
+        // una clave envuelta que no corresponde al counter actual.
+        const res = await ChatsRavage.updateOne(
             {
                 _id: chatId,
-                "ratchet_keys.emisor_id": new mongoose.Types.ObjectId(emisorId),
-                "ratchet_keys.receptor_id": new mongoose.Types.ObjectId(receptorId)
-            },
-            {
-                $set: {
-                    "ratchet_keys.$.clave_envuelta": nuevaClave,
-                    "ratchet_keys.$.counter": counter
+                ratchet_keys: {
+                    $elemMatch: {
+                        emisor_id: new mongoose.Types.ObjectId(emisorId),
+                        receptor_id: new mongoose.Types.ObjectId(receptorId),
+                        counter: counter
+                    }
                 }
-            }
+            },
+            { $set: { "ratchet_keys.$.clave_envuelta": nuevaClave } }
         );
-        log.info({ chatId, emisorId }, '[E2EE] Chain key re-wrapped con clave principal');
+
+        if (res?.matchedCount === 0) {
+            log.info({ chatId, emisorId, counter }, '[E2EE] Re-wrap omitido: el ratchet avanzó (clave obsoleta)');
+        } else {
+            log.info({ chatId, emisorId }, '[E2EE] Chain key re-wrapped con clave principal');
+        }
     } catch (err) {
         log.warn({ err, chatId, emisorId }, '[E2EE] Fallo re-wrapping chain key');
     }
