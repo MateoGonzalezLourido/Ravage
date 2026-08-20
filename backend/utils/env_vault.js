@@ -12,14 +12,16 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { app, safeStorage } from './libs.js';
+import { resolverDirEnv } from './rutas_recursos.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Directorio del proyecto donde se espera encontrar los .env originales
-const ENV_SRC_DIR = path.resolve(__dirname, '../../env');
+// Directorio donde se espera encontrar los .env originales.
+// En desarrollo es <proyecto>/env; en producción el código corre dentro de
+// app.asar y env/ se copia a process.resourcesPath vía extraResources, así que
+// la resolución la centraliza rutas_recursos.js (mismo criterio que libs.js).
+function getEnvSrcDir() {
+    return resolverDirEnv();
+}
 
 function getVaultDir() {
     return path.join(app.getPath('userData'), 'env_vault');
@@ -42,10 +44,11 @@ function parseEnvContent(content) {
 
 // Devuelve los .env encontrados en env/
 function listarEnvSrc() {
-    if (!fs.existsSync(ENV_SRC_DIR)) return [];
-    return fs.readdirSync(ENV_SRC_DIR)
+    const dirEnv = getEnvSrcDir();
+    if (!fs.existsSync(dirEnv)) return [];
+    return fs.readdirSync(dirEnv)
         .filter(f => f.startsWith('.env') && !f.endsWith('.example'))
-        .map(f => ({ nombre: f, ruta: path.join(ENV_SRC_DIR, f) }));
+        .map(f => ({ nombre: f, ruta: path.join(dirEnv, f) }));
 }
 
 // Devuelve los .enc del baúl
@@ -89,7 +92,12 @@ function migrarEnvAlBaul() {
             migrados++;
             console.log(`[EnvVault] Migrado y eliminado del disco: ${nombre}`);
         } catch (err) {
-            console.error(`[EnvVault] Fallo migrando ${nombre} — el archivo original se mantiene en disco:`, err.message);
+            const soloLectura = ['EACCES', 'EPERM', 'EROFS'].includes(err.code);
+            console.error(
+                `[EnvVault] Fallo migrando ${nombre} — el archivo original SIGUE EN CLARO en ${ruta}:`,
+                err.message,
+                soloLectura ? '(directorio de instalación sin permiso de escritura)' : ''
+            );
         }
     }
 
@@ -134,6 +142,7 @@ function cargarDesdeVaul() {
  * Migra si hay .env en disco, luego carga desde el baúl.
  */
 export async function inicializarVault() {
+    console.log(`[EnvVault] Buscando .env en: ${getEnvSrcDir()}`);
     migrarEnvAlBaul();
     cargarDesdeVaul();
 }

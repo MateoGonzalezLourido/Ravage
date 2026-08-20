@@ -404,9 +404,6 @@ export async function obtener_datos_usuario(id, datos_usar = null) {
 
         // REVISIÓN: Si piden campos que no tenemos en caché, forzar consulta a DB
         if (!_faltan_datos(procesado, datos_usar)) {
-            // Al entregarlo, lo eliminamos de la caché persistente (ahora vivirá en la activa del frontend)
-            session_cache_usuarios.delete(idStr);
-
             if (!esMiPropioUsuario && procesado.mostrarCorreo === false) {
                 const sinCorreo = { ...procesado };
                 delete sinCorreo.correo;
@@ -466,7 +463,6 @@ export async function obtener_varios_usuarios(ids, datos_usar = null) {
 
         if (hit) {
             log.debug({ id: idStr }, "Caché sesión: HIT múltiple");
-            session_cache_usuarios.delete(idStr);
             result.push(_filtrar_correo(hit, idStr, id_propio));
         } else {
             missingIds.push(nId);

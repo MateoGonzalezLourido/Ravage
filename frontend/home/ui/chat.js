@@ -4,7 +4,7 @@ import { url_icono_extension_img } from './url_icono_extensiones_archivos.js'
 import { scroll_fin_chat, ACTUALIZAR_LISTAS_CHAT } from './gestor_chats.js'
 import { CARGAR_LISTA_CONTACTOS, abrir_chat_por_contacto } from './gestor_contactos.js'
 import { cambiar_vista_panel } from './navegacion_vistas.js'
-import { safeIdSelector } from './seguridad_ui.js';
+import { safeIdSelector, escapeHTML } from './seguridad_ui.js';
 import { HILOS_DESACTIVADOS, PREVISUALIZACION_IMAGENES, OCULTAR_MENSAJES_ERROR_DESCIFRADO } from './ajustes.js';
 
 const nombre_defecto = "~no encontrado~"
@@ -655,13 +655,7 @@ export const chat_componente_lista_estructura_html = (datos_usar) => {
 * @function: crear el html de un mensaje, las partes estan fuera y dentro de la funcion principal
  */
 
-const escapeHTML = (str) => {
-    if (str == null) return '';
-    return String(str).replace(/[&<>"'`]/g, c => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;',
-        '"': '&quot;', "'": '&#39;', '`': '&#96;'
-    })[c]);
-};
+// escapeHTML se importa de seguridad_ui.js (única implementación de la app).
 
 // Token canónico de una mención dentro de un mensaje almacenado/transmitido.
 // El id NUNCA se muestra al usuario: siempre se resuelve al apodo correspondiente.
@@ -763,13 +757,12 @@ const parsearMarkdown = (texto) => {
         return escapeHTML(texto);
     }
 };
-// Post-proceso para forzar seguridad en links
-DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-    if (node.tagName === 'A') {
-        node.setAttribute('target', '_blank');
-        node.setAttribute('rel', 'noopener noreferrer');
-    }
-});
+// Nota: aquí había un hook 'afterSanitizeAttributes' que forzaba target/rel en <a>.
+// Era código muerto: sanitizarTexto no incluye 'a' en ALLOWED_TAGS (los links de
+// markdown se convierten en <span class="url-mensaje" data-url>), y en la ruta SVG
+// tampoco disparaba (el tagName de un <a> en namespace SVG es minúscula, no 'A').
+// Si algún día se permiten enlaces reales hay que añadir href a ALLOWED_ATTR con
+// un ALLOWED_URI_REGEXP restrictivo, no solo reintroducir el hook.
 const emisor_mensaje = (propio) =>
     propio ? "soy-emisor" : "soy-receptor";
 

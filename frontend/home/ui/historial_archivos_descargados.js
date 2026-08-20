@@ -86,10 +86,10 @@ export async function crear_chat_historial_archivos_descargados() {
             for (const archivo of chat.archivos) {
                 html.push(`
                 <div class="archivo-historial-wrap">
-                    <div class="archivo-historial-item" data-id-archivo="${archivo.id_archivo}" data-id-chat="${chat.id_chat}">
+                    <div class="archivo-historial-item" data-id-archivo="${escapeHTML(archivo.id_archivo)}" data-id-chat="${escapeHTML(chat.id_chat)}">
                         <div class="archivo-info-historial">
                             <div class="archivo-info-historial-avatar">
-                                <img src="${archivo.url_img}" alt="" class="img-historial-archivo" data-fallback="../recursos/extensionesArchivos/cualquiera.svg" loading="lazy" decoding="async">
+                                <img src="${escapeHTML(archivo.url_img)}" alt="" class="img-historial-archivo" data-fallback="../recursos/extensionesArchivos/cualquiera.svg" loading="lazy" decoding="async">
 
                             </div>
                             <div class="archivo-info-historial-details">

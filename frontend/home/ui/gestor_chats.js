@@ -249,15 +249,6 @@ export async function abrir_chat_item(id_chat, force = false) {
         cerrar_paneles_al_abrir_chat()
         registrar_scroll_usuario()
 
-
-        const chatContainer = DOM_CACHE.cuerpo_mensajes_chat;
-        chatContainer?.addEventListener("click", (pulsado) => {
-            pulsado.currentTarget.querySelector(".asunto-svg")?.addEventListener("click", (el) => {
-                el.stopPropagation()
-                navigator.clipboard.writeText(el.currentTarget.querySelector('svg').outerHTML);
-            })
-        })
-
     } finally {
         if (id_chat_cargando === id_chat) {
             id_chat_cargando = null;

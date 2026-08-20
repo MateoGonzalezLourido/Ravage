@@ -33,22 +33,3 @@ export async function getSystemResources() {
     }
 }
 
-/**
- * Recommends a cache strategy based on system resources.
- * @returns {Promise<{type: 'ram' | 'disk', sizeMB: number}>}
- */
-export async function getRecommendedCacheStrategy() {
-    const { totalRamGB, freeDiskGB } = await getSystemResources();
-
-    if (totalRamGB >= 31) { // 32GB approx
-        return { type: 'ram', sizeMB: 4096 };
-    } else if (totalRamGB >= 15) { // 16GB approx
-        return { type: 'ram', sizeMB: 2048 };
-    } else if (totalRamGB >= 7) { // 8GB approx
-        return { type: 'ram', sizeMB: 1024 };
-    } else if (freeDiskGB > 50) {
-        return { type: 'disk', sizeMB: 2048 }; // 2GB disk cache
-    }
-
-    return { type: 'ram', sizeMB: 256 }; // Minimal fallback
-}

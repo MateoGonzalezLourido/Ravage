@@ -350,9 +350,16 @@ async function funcion_cambiar_contraseña(e) {
         const form = document.getElementById("form-cambio-contraseña");
         const submitHandler = async (ev) => {
             ev.preventDefault();
+            const pass_actual = document.getElementById("cambio-pass-actual").value;
             const pass = document.getElementById("cambio-pass").value;
             const confirm = document.getElementById("cambio-pass-confirm").value;
             const errorTextId = "#text-error-form-causa-cambio-contraseña";
+
+            if (!pass_actual) {
+                document.getElementById("cambio-pass-actual").classList.add("estrada-menu-registro-login-incorrecto");
+                return mostrarErrorForm(errorTextId, "*Introduce tu contraseña actual*");
+            }
+            document.getElementById("cambio-pass-actual").classList.remove("estrada-menu-registro-login-incorrecto");
 
             if (pass !== confirm) {
                 document.getElementById("cambio-pass-confirm").classList.add("estrada-menu-registro-login-incorrecto");
@@ -366,7 +373,11 @@ async function funcion_cambiar_contraseña(e) {
             if (pass.includes(" ")) return mostrarErrorForm(errorTextId, "*No puedes usar espacios*");
             if (pass.length > 30) return mostrarErrorForm(errorTextId, "*Longitud contraseña <=30*");
 
-            const check = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: pass, tipo: "contraseña" });
+            const check = await window.cuenta_usuario.PERMITIR_CAMBIO_DATOS_CUENTA({ data: pass, tipo: "contraseña", contraseña_actual: pass_actual });
+            if (!check?.success) {
+                document.getElementById("cambio-pass-actual").value = "";
+                return mostrarErrorForm(errorTextId, `*${check?.message || "No se pudo iniciar el cambio"}*`);
+            }
             if (check?.success) {
                 form.removeEventListener("submit", submitHandler);
                 DOM_CACHE.menu_cambiar_datos_cuenta?.classList.replace("flex-display", "ocultar-display");

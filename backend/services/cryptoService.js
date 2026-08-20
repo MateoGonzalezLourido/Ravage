@@ -188,9 +188,24 @@ export function desencriptarDatosSistema(encriptado) {
 /**
  * Genera un HMAC SHA-256 para búsquedas deterministas de forma segura frente a fuerza bruta.
  */
+let _aviso_hmac_emitido = false;
+
 export function hashDatosSistema(datos) {
     if (!datos) return null;
-    const secret = process.env.HMAC_SECRET || getSystemKey();
+    let secret = process.env.HMAC_SECRET;
+    if (!secret) {
+        // ATENCIÓN — separación de claves rota, pero NO se puede convertir en error:
+        // todos los hashes deterministas ya almacenados (correo_hash, id_dp_hash...)
+        // se calcularon con la clave de sistema. Exigir HMAC_SECRET aquí cambiaría el
+        // hash de cada correo y ningún usuario existente podría volver a iniciar sesión.
+        // Migración pendiente: recalcular los *_hash de la BD con una HMAC_SECRET
+        // propia y solo entonces hacerla obligatoria. Ver Docs/backend/CRYPTO_SECURITY.md.
+        if (!_aviso_hmac_emitido) {
+            _aviso_hmac_emitido = true;
+            console.warn("[Crypto] HMAC_SECRET no definida: se reutiliza INTERNAL_ENCRYPTION_KEY para los hashes de búsqueda (separación de claves degradada).");
+        }
+        secret = getSystemKey();
+    }
     return createHmac("sha256", secret).update(String(datos)).digest("hex");
 }
 

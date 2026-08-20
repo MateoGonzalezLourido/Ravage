@@ -7,7 +7,7 @@ import { mongoose, GridFSBucket, ObjectId, fs, randomBytes } from '../utils/libs
 import { convertirObjectId } from '../utils/conversores.js';
 import { Añadir_Entrada_Buzon_Usuario } from './BuzonRepository.js';
 import { readFileSession } from '../services/controladorArchivos.js';
-import { setChatEnCacheRaw, normalizeId } from './ChatRepository.js';
+import { normalizeId } from './ChatRepository.js';
 import { procesarUsuario } from './UserRepository.js';
 import { setUsuarioEnCache } from './UserRepository.js';
 
@@ -204,7 +204,6 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             target_entry.clave_envuelta = nuevaClave;
             target_entry.counter += 1;
         }
-        setChatEnCacheRaw(chat).catch(e => log.error(e));
 
         // Rotación automática si el contador es muy alto (fire and forget)
         const ROTATION_THRESHOLD = 100;
@@ -521,7 +520,6 @@ export async function ELIMINAR_MENSAJE(id_chat, id_mensaje) {
                 { $set: { msfijado: null } }
             );
             chat.msfijado = null;
-            setChatEnCacheRaw(chat).catch(e => log.error(e));
         }
 
         log.info({ id_mensaje_str, id_chat_str }, '[ELIMINAR_MENSAJE] Mensaje eliminado');
@@ -558,7 +556,6 @@ export async function FIJAR_MENSAJE(id_chat, id_mensaje) {
             { $set: { msfijado: new mongoose.Types.ObjectId(id_mensaje_str) } }
         );
         chat.msfijado = new mongoose.Types.ObjectId(id_mensaje_str);
-        setChatEnCacheRaw(chat).catch(e => log.error(e));
 
         Añadir_Entrada_Buzon_Usuario({
             ids: chat.usuarios,
@@ -593,7 +590,6 @@ export async function DESFIJAR_MENSAJE(id_chat) {
             { $set: { msfijado: null } }
         );
         chat.msfijado = null;
-        setChatEnCacheRaw(chat).catch(e => log.error(e));
 
         log.info({ id_chat_str }, '[DESFIJAR_MENSAJE] Mensaje desfijado');
         return { success: true };
