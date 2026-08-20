@@ -2,7 +2,7 @@
 
 # 🔒 RAVAGE
 
-### Aplicación de mensajería cifrada y transferencia de archivos
+### Encrypted messaging and file transfer app
 
 [![Electron](https://img.shields.io/badge/Electron-41-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -13,21 +13,21 @@
 </div>
 
 > [!NOTE]
-> La documentación técnica completa (arquitectura, cifrado, caché, IPC, frontend, etc.) vive en [`Docs/`](./Docs/README.md), no en este README. Empieza por [`Docs/README.md`](./Docs/README.md).
+> Full technical documentation (architecture, encryption, cache, IPC, frontend, etc.) lives in [`Docs/`](./Docs/README.md), not in this README. Start at [`Docs/README.md`](./Docs/README.md).
 
-Ravage es una app de mensajería de escritorio con cifrado extremo a extremo (X25519 + Double Ratchet + AES-256-GCM), pensada como alternativa privada y autoalojada a las apps de mensajería comerciales: cada instancia corre sobre tu propia infraestructura (tu servidor, tu base de datos MongoDB).
+Ravage is a desktop messaging app with end-to-end encryption (X25519 + Double Ratchet + AES-256-GCM), designed as a private, self-hosted alternative to commercial messaging apps: each instance runs on your own infrastructure (your server, your MongoDB database).
 
-No está pensada para competir con WhatsApp/Telegram/Signal ni para gran escala: es para grupos pequeños o medianos que quieren comunicarse de forma privada sin depender de terceros. No incluye llamadas ni videollamadas, solo mensajería y transferencia de archivos cifrada.
+It isn't meant to compete with WhatsApp/Telegram/Signal or to handle large scale: it's for small to medium groups who want to communicate privately without depending on third parties. It doesn't include voice or video calls — only messaging and encrypted file transfer.
 
-## Requisitos
+## Requirements
 
-| Requisito | Versión mínima |
+| Requirement | Minimum version |
 |---|---|
 | **Node.js** | 18+ |
 | **npm** | 9+ |
-| **MongoDB** | Atlas (cloud) o instancia propia |
+| **MongoDB** | Atlas (cloud) or self-hosted instance |
 
-## Instalación
+## Installation
 
 ```bash
 git clone https://github.com/MateoGonzalezLourido/Ravage.git
@@ -35,24 +35,28 @@ cd Ravage
 npm install
 ```
 
-Configura las variables de entorno siguiendo [`Docs/architecture/BUILD_AND_ENVIRONMENT.md`](./Docs/architecture/BUILD_AND_ENVIRONMENT.md) y [`Docs/env_doc/`](./Docs/env_doc/).
+Set up your environment variables following [`Docs/architecture/BUILD_AND_ENVIRONMENT.md`](./Docs/architecture/BUILD_AND_ENVIRONMENT.md) and [`Docs/env_doc/`](./Docs/env_doc/).
 
-## Ejecución
+## Running
 
 ```bash
-npm start              # App de escritorio (Electron)
-npm run start-railway  # Servidor en modo producción (Railway)
-npm run test           # Suite de tests (Vitest)
+npm start              # Desktop app (Electron)
+npm run start-railway  # Production server mode (Railway)
+npm run test           # Test suite (Vitest)
 ```
 
-## Documentación
+## Documentation
 
-Toda la documentación técnica está en [`Docs/`](./Docs/README.md): arquitectura, cifrado, capa de datos, sesión/auth, mensajería, IPC/servidores, caché, frontend y preload.
+All technical documentation lives in [`Docs/`](./Docs/README.md): architecture, encryption, data layer, session/auth, messaging, IPC/servers, cache, frontend, and preload.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ---
 
 <div align="center">
 
-**Desarrollado por [Mateo González Lourido](https://github.com/MateoGonzalezLourido)**
+**Developed by [Mateo González Lourido](https://github.com/MateoGonzalezLourido)**
 
 </div>
