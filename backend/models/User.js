@@ -7,11 +7,27 @@ const EncryptedDataSchema = new mongoose.Schema({
     compressed: { type: Boolean, default: false }
 }, { _id: false });
 
+// Dato envuelto con la clave pública X25519 de un usuario concreto (ECDH + HKDF + AES-GCM,
+// mismo formato que `ratchet_keys.clave_envuelta` y `Message.claves_recuperacion`).
+// Solo el titular de la clave privada puede abrirlo — a diferencia de EncryptedDataSchema,
+// que usa INTERNAL_ENCRYPTION_KEY, idéntica en todas las instalaciones.
+const DatoEnvueltoSchema = new mongoose.Schema({
+    ephPub: { type: String, required: true },
+    iv: { type: String, required: true },
+    data: { type: String, required: true },
+    tag: { type: String, required: true }
+}, { _id: false });
+
 const ChatUsuarioSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.ObjectId, required: true },
     grupo: { type: Boolean, default: false },
     ultimoCambio: { type: Date, default: Date.now },
+    // Vista previa del último mensaje del chat.
+    // `ultimomensaje` (clave de sistema) es el formato HEREDADO: se sigue leyendo para no
+    // perder las vistas previas ya guardadas, pero ya no se escribe.
+    // `ultimomensaje_e2ee` lo sustituye, envuelto con la clave pública del propio usuario.
     ultimomensaje: { type: EncryptedDataSchema, default: null },
+    ultimomensaje_e2ee: { type: DatoEnvueltoSchema, default: null },
     fijado: { type: Boolean, default: false },
     silenciado: { type: Boolean, default: false },
     bloqueado: { type: Boolean, default: false },

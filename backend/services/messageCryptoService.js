@@ -43,6 +43,95 @@ export async function descifrarListaMensajes(mensajes, chat) {
 }
 
 /**
+ * Vuelca un payload ya descifrado (JSON del mensaje) sobre el objeto del mensaje.
+ * @returns {boolean} true si el payload era válido y se aplicó
+ */
+function _aplicarPayload(m, payloadJson, emisor_id) {
+    const data = JSON.parse(payloadJson);
+    if (!data || Array.isArray(data)) return false;
+    m.contenido = [{
+        asunto: data.asunto,
+        archivos: (data.archivos || []).map(a => ({
+            ...a,
+            // Los mensajes nuevos llevan el nombre en claro dentro del payload cifrado; los
+            // antiguos lo llevaban cifrado con la clave de sistema.
+            nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
+            ratchet_info: m.ratchet_info,
+            emisor_id
+        }))
+    }];
+    m.emisor = data.emisor;
+    m.data = data.data;
+    return true;
+}
+
+/**
+ * Recuperación E2EE-segura: desenvuelve la clave del mensaje desde el escrow
+ * `claves_recuperacion` con la clave privada X25519 propia y descifra el payload completo.
+ *
+ * Es la sustituta de la antigua copia cifrada con `INTERNAL_ENCRYPTION_KEY`. Funciona
+ * aunque el estado del ratchet esté desincronizado, y —a diferencia de aquella— nadie sin
+ * clave privada puede leer nada.
+ *
+ * @returns {boolean} true si se pudo recuperar el mensaje
+ */
+function _recuperarDesdeEscrow(m, allKeys, id_propio, emisor_id) {
+    const entradas = m?.claves_recuperacion;
+    if (!Array.isArray(entradas) || entradas.length === 0) return false;
+    if (!m.encriptado || !m.encriptado.data) return false;
+    if (!allKeys || allKeys.length === 0) return false;
+
+    // La entrada propia es la que debería funcionar; si no está, se prueban todas (cubre
+    // rotaciones de identidad y participantes añadidos después).
+    const propias = id_propio ? entradas.filter(e => e.usuario_id?.toString() === id_propio) : [];
+    const candidatas = propias.length > 0 ? propias : entradas;
+
+    for (const entrada of candidatas) {
+        if (!entrada?.clave) continue;
+        try {
+            const { result } = descifrarConX25519Multi(entrada.clave, allKeys);
+            if (!result) continue;
+            const payload = descifrarContenido(m.encriptado, Buffer.from(result, 'hex'));
+            if (_aplicarPayload(m, payload, emisor_id)) return true;
+        } catch { /* probar la siguiente entrada */ }
+    }
+    return false;
+}
+
+/**
+ * Recuperación heredada: lee la copia cifrada con `INTERNAL_ENCRYPTION_KEY`.
+ *
+ * Solo sirve para mensajes anteriores al escrow. Esta es la vía que rompía el E2EE (la clave
+ * es idéntica en todas las instalaciones), por eso ya no se escribe en mensajes nuevos y aquí
+ * se deja únicamente para no perder el historial existente.
+ *
+ * @returns {boolean} true si se obtuvo al menos el asunto
+ */
+function _recuperarHeredado(m, emisor_id) {
+    if (!m.contenido || m.contenido.length === 0) return false;
+    let recuperado = false;
+    if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
+        m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
+        recuperado = typeof m.contenido[0].asunto === 'string';
+    }
+    if (m.contenido[0].archivos) {
+        m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+            ...a,
+            nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
+            ratchet_info: m.ratchet_info,
+            emisor_id
+        }));
+    }
+    return recuperado;
+}
+
+/** Escrow primero (seguro), copia de sistema después (solo historial antiguo). */
+function _recuperarMensaje(m, allKeys, id_propio, emisor_id) {
+    if (_recuperarDesdeEscrow(m, allKeys, id_propio, emisor_id)) return true;
+    return _recuperarHeredado(m, emisor_id);
+}
+
+/**
  * Descifrado secuencial en main thread (modo original).
  */
 async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
@@ -88,26 +177,13 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                 const emisor_id_str = m.emisor ? m.emisor.toString() : null;
                 const es_propio = emisor_id_str === id_propio;
 
-                if (es_propio && m.contenido && m.contenido.length > 0) {
-                    const tieneAsuntoObjeto = m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object';
-                    const tieneArchivos = m.contenido[0].archivos && m.contenido[0].archivos.length > 0;
-                    if (tieneAsuntoObjeto || tieneArchivos) {
-                        try {
-                            if (tieneAsuntoObjeto) {
-                                m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
-                            }
-                            if (tieneArchivos) {
-                                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                    ...a,
-                                    nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
-                                    ratchet_info: m.ratchet_info,
-                                    emisor_id: emisor_id_str
-                                }));
-                            }
-                            continue;
-                        } catch (fErr) {
-                            log.warn({ msgId: m._id || m.id }, "Fallo fallback propio, intentando ratchet...");
-                        }
+                // Atajo para los mensajes propios: desenvolver el escrow con la clave privada
+                // es más barato que rebobinar el ratchet, y funciona igual si está desfasado.
+                if (es_propio) {
+                    try {
+                        if (_recuperarMensaje(m, getAllPrivateKeys(identity_data), id_propio, emisor_id_str)) continue;
+                    } catch (fErr) {
+                        log.warn({ msgId: m._id || m.id }, "Fallo atajo de mensaje propio, intentando ratchet...");
                     }
                 }
 
@@ -115,19 +191,7 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
                 // la clave base fue sobreescrita por una persistencia anterior.
                 // No podemos derivar la clave correcta → ir directo a fallback de sistema.
                 if (current_state.counter > m.ratchet_info.iteration) {
-                    if (m.contenido && m.contenido.length > 0) {
-                        if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object') {
-                            m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
-                        }
-                        if (m.contenido[0].archivos) {
-                            m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                ...a,
-                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
-                                ratchet_info: m.ratchet_info,
-                                emisor_id: emisor_id
-                            }));
-                        }
-                    }
+                    _recuperarMensaje(m, getAllPrivateKeys(identity_data), id_propio, emisor_id);
                     continue;
                 }
 
@@ -152,61 +216,24 @@ async function _descifrarSecuencial(mensajes, chat, id_propio, identity_data) {
 
                 try {
                     const decryptedPayload = descifrarContenido(m.encriptado, messageKey);
-                    
-                    const data = JSON.parse(decryptedPayload);
-                    if (data && !Array.isArray(data)) {
-                        m.contenido = [{
-                            asunto: data.asunto,
-                            archivos: (data.archivos || []).map(a => ({
-                                ...a,
-                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
-                                ratchet_info: m.ratchet_info,
-                                emisor_id: emisor_id
-                            }))
-                        }];
-                        m.emisor = data.emisor;
-                        m.data = data.data;
-                    }
+                    _aplicarPayload(m, decryptedPayload, emisor_id);
 
                     // Si desciframos con éxito, avanzamos el estado global para el siguiente mensaje
                     current_state.ck = nextChainKey;
                     current_state.counter = local_counter + 1;
                 } catch (aesErr) {
-                    // FALLBACK: Si falla E2EE, intentar descifrar la copia del sistema si existe
-                    if (m.contenido && m.contenido.length > 0) {
-                        if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
-                            m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
-                        }
-                        if (m.contenido[0].archivos) {
-                            m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                ...a,
-                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
-                                ratchet_info: m.ratchet_info,
-                                emisor_id: emisor_id
-                            }));
-                        }
-                    }
+                    // El ratchet no pudo derivar la clave: recurrir al escrow (o, en mensajes
+                    // antiguos, a la copia de sistema).
+                    _recuperarMensaje(m, getAllPrivateKeys(identity_data), id_propio, emisor_id);
                 }
 
             } catch (err) {
-                // FALLBACK AGRESIVO: Si el ratchet falla, intentar usar la copia de sistema
+                // El ratchet falló por completo (p. ej. no hay eslabón para este emisor):
+                // último intento por escrow, y solo después por la copia de sistema heredada.
                 try {
-                    if (m.contenido && m.contenido.length > 0) {
-                        const emisor_id = m.emisor ? m.emisor.toString() : null;
-                        if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object') {
-                            m.contenido[0].asunto = desencriptarDatosSistema(m.contenido[0].asunto);
-                        }
-                        if (m.contenido[0].archivos) {
-                            m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                ...a,
-                                nombre: (a.nombre && typeof a.nombre === 'object') ? desencriptarDatosSistema(a.nombre) : a.nombre,
-                                ratchet_info: m.ratchet_info,
-                                emisor_id: emisor_id
-                            }));
-                        }
-                    }
+                    _recuperarMensaje(m, getAllPrivateKeys(identity_data), id_propio, m.emisor ? m.emisor.toString() : null);
                 } catch (fallbackErr) {
-                    log.error({ err: fallbackErr, msgId: m._id || m.id }, "[E2EE] Fallo total incluyendo fallback");
+                    log.error({ err: fallbackErr, msgId: m._id || m.id }, "[E2EE] Fallo total incluyendo recuperación");
                 }
 
                 if (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string') {
@@ -272,6 +299,8 @@ async function _descifrarBatchParalelo(mensajes, chat, id_propio, identity_data)
                 contenido: m.contenido,
                 encriptado: m.encriptado,
                 ratchet_info: m.ratchet_info,
+                // Necesario para la recuperación vía escrow dentro del worker.
+                claves_recuperacion: m.claves_recuperacion,
                 data: m.data
             };
         });

@@ -12,6 +12,8 @@ import { descifrarListaMensajes, getMessageKey } from '../services/messageCrypto
 import {
     cifrarContenido,
     descifrarConX25519,
+    descifrarConX25519Multi,
+    getAllPrivateKeys,
     cifrarConX25519,
     crearCipherStream,
     crearDecipherStream,
@@ -21,6 +23,66 @@ import {
     ratchetChainKey
 } from '../services/cryptoService.js';
 
+
+/**
+ * Envuelve la clave de un mensaje con la clave pública X25519 de cada participante del chat.
+ *
+ * Es el sustituto E2EE-seguro de la antigua copia cifrada con `INTERNAL_ENCRYPTION_KEY`:
+ * el contenido completo del mensaje ya vive en `encriptado` (cifrado con esta misma clave),
+ * así que basta con poder recuperar la clave para reconstruirlo todo — asunto, nombres de
+ * archivo y los propios archivos de GridFS — sin depender del estado del ratchet.
+ *
+ * Un participante sin `publicKey` (cuenta antigua o identidad aún no generada) simplemente
+ * no recibe entrada: no es un error, solo significa que ese usuario no podrá usar la vía de
+ * recuperación hasta que vuelva a haber un mensaje posterior a su alta de clave.
+ *
+ * @param {Array<{_id: any, publicKey: string}>} destinatarios participantes con su clave pública
+ * @param {Buffer} chatKey messageKey derivada del ratchet para este mensaje
+ * @returns {Array<{usuario_id: any, clave: object}>}
+ */
+function construirClavesRecuperacion(destinatarios, chatKey) {
+    try {
+        const claveHex = Buffer.from(chatKey).toString('hex');
+        const claves = [];
+        for (const dest of destinatarios) {
+            if (!dest?.publicKey) {
+                log.warn({ usuario: dest?._id?.toString() }, "[E2EE] Participante sin publicKey: se omite del escrow de recuperación");
+                continue;
+            }
+            try {
+                claves.push({
+                    usuario_id: dest._id,
+                    clave: cifrarConX25519(claveHex, dest.publicKey)
+                });
+            } catch (e) {
+                // Una publicKey corrupta no debe impedir el envío del mensaje.
+                log.warn({ usuario: dest._id?.toString(), err: e.message }, "[E2EE] No se pudo envolver la clave de recuperación");
+            }
+        }
+        return claves;
+    } catch (e) {
+        log.error({ err: e }, "[E2EE] Fallo construyendo el escrow de claves de recuperación");
+        return [];
+    }
+}
+
+/**
+ * Carga los participantes de un chat junto con su clave pública X25519.
+ * El emisor ya viene cargado, así que solo se consultan los demás.
+ * @returns {Promise<Array<{_id: any, publicKey: string}>>}
+ */
+async function obtenerDestinatariosConClave(chat, emisor) {
+    const participantes = (chat.usuarios || []).map(u => u.toString());
+    if (participantes.length === 0) return [];
+
+    const emisor_id_str = emisor._id.toString();
+    const otros_ids = participantes.filter(id => id !== emisor_id_str);
+    const otros = otros_ids.length > 0
+        ? await User.find({ _id: { $in: otros_ids } }, "publicKey").lean()
+        : [];
+
+    return [{ _id: emisor._id, publicKey: emisor.publicKey }, ...otros];
+}
 
 export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_emisor }) {
     try {
@@ -144,12 +206,14 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
                         .on("finish", resolve);
                 });
 
+                // El nombre va en claro AQUÍ porque este array se serializa dentro de
+                // `payload` → `encriptado` (cifrado con chatKey). La copia que se guarda
+                // suelta en `contenido[0]` se construye aparte, sin nombre ni clave.
                 contenido_archivos.push({
-                    nombre: encriptarDatosSistema(nombreCompletoUsar),
+                    nombre: nombreCompletoUsar,
                     id: idArchivo.toHexString(),
                     iv: iv.toString('hex'),
-                    tag: cipherStream.getAuthTag().toString('hex'),
-                    key_enc: encriptarDatosSistema(Buffer.from(chatKey).toString('hex'))
+                    tag: cipherStream.getAuthTag().toString('hex')
                 });
             }
         }
@@ -164,14 +228,25 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
         });
         const encriptado = cifrarContenido(payload, chatKey);
 
+        // Escrow de la clave del mensaje: una copia envuelta con la clave pública X25519 de
+        // cada participante. Reemplaza al antiguo `key_enc`/`asunto` cifrados con
+        // INTERNAL_ENCRYPTION_KEY, que era la misma clave en todas las instalaciones y por
+        // tanto rompía el E2EE. Permite recuperar el mensaje (y sus archivos) cuando el
+        // ratchet se desincroniza, sin que nadie sin clave privada pueda leerlo.
+        const destinatarios = await obtenerDestinatariosConClave(chat, usuario);
+        const claves_recuperacion = construirClavesRecuperacion(destinatarios, chatKey);
+
         const mensaje = {
             id_chat: new mongoose.Types.ObjectId(id_chat),
             emisor: new mongoose.Types.ObjectId(id_emisor),
+            // Índice no secreto: solo los punteros a GridFS (id/iv/tag) que hacen falta para
+            // localizar y descifrar el stream una vez se tiene la clave. Ni asunto ni nombres.
             contenido: [{
-                asunto: encriptarDatosSistema(asunto),
-                archivos: contenido_archivos
+                asunto: null,
+                archivos: contenido_archivos.map(a => ({ id: a.id, iv: a.iv, tag: a.tag }))
             }],
             encriptado: encriptado,
+            claves_recuperacion,
             data: data_mensaje,
             ratchet_info: {
                 iteration: iteration,
@@ -211,19 +286,45 @@ export async function ENVIAR_MENSAJE({ asunto = "", archivos = [], id_chat, id_e
             })();
         }
 
-        // Actualizar ultimoCambio y ultimomensaje de todos los usuarios del chat (fire and forget)
+        // Actualizar ultimoCambio y la vista previa del último mensaje (fire and forget).
+        //
+        // La vista previa se envuelve con la clave pública de CADA usuario, no con
+        // INTERNAL_ENCRYPTION_KEY: vive en el documento de cada uno, así que cada cual la abre
+        // con su propia clave privada. Antes iba con la clave maestra —la misma en todas las
+        // instalaciones—, de modo que quien la extrajese podía leer el último mensaje de todos
+        // los chats de todos los usuarios. Se limpia el campo heredado al escribir el nuevo
+        // para no dejar atrás una copia legible con la clave maestra.
         (async () => {
-            const ids_afectados = chat.usuarios || [];
-            await User.updateMany(
-                { _id: { $in: ids_afectados } },
-                {
-                    $set: {
-                        "chats.$[chat].ultimoCambio": new Date(),
-                        "chats.$[chat].ultimomensaje": encriptarDatosSistema(asunto)
+            const ahora = new Date();
+            const filtroChat = [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }];
+
+            const operaciones = destinatarios.map(dest => {
+                // Sin asunto (mensaje de solo archivos) no hay vista previa: se anulan ambos
+                // campos, igual que hacía `encriptarDatosSistema(asunto)`, que devolvía null.
+                const set = {
+                    "chats.$[chat].ultimoCambio": ahora,
+                    "chats.$[chat].ultimomensaje": null,
+                    "chats.$[chat].ultimomensaje_e2ee": null
+                };
+                if (asunto) {
+                    try {
+                        if (dest.publicKey) {
+                            set["chats.$[chat].ultimomensaje_e2ee"] = cifrarConX25519(asunto, dest.publicKey);
+                        }
+                    } catch (e) {
+                        log.warn({ usuario: dest._id?.toString(), err: e.message }, "[E2EE] No se pudo envolver la vista previa del último mensaje");
                     }
-                },
-                { arrayFilters: [{ "chat.id": new mongoose.Types.ObjectId(id_chat) }] }
-            );
+                }
+                return {
+                    updateOne: {
+                        filter: { _id: dest._id },
+                        update: { $set: set },
+                        arrayFilters: filtroChat
+                    }
+                };
+            });
+
+            if (operaciones.length > 0) await User.bulkWrite(operaciones);
         })().catch(e => log.error(e));
 
         const _mencionesMatch = asunto ? [...asunto.matchAll(/@\{([a-f0-9]{24})\}/g)].map(m => m[1]) : [];
@@ -323,22 +424,63 @@ export async function obtener_mensajes_paginados(id_chat, limit = 30, cursor_id 
 }
 
 /**
- * Obtiene la clave de cifrado de un archivo desde su registro en el mensaje (system key fallback).
+ * Obtiene la clave de cifrado de un archivo desde su registro en el mensaje.
  * Usada cuando el ratchet counter ya avanzó más allá de la iteración del mensaje.
+ *
+ * Vía preferente: el escrow `claves_recuperacion`, que solo se desenvuelve con la clave
+ * privada X25519 del propio usuario. Si el mensaje es anterior al escrow, se recurre al
+ * `key_enc` heredado (cifrado con INTERNAL_ENCRYPTION_KEY) para no romper los archivos ya
+ * subidos — ese camino es el que rompía el E2EE y no se escribe en mensajes nuevos.
  */
 async function _getFileKeyFromMessage(id_chat, file_id) {
     try {
         const msg = await MessagesRavage.findOne(
             { id_chat: new mongoose.Types.ObjectId(id_chat), "contenido.archivos.id": new mongoose.Types.ObjectId(file_id) },
-            "contenido"
+            "contenido claves_recuperacion"
         ).lean();
+        if (!msg) return null;
+
+        const clave_escrow = await _desenvolverClaveRecuperacion(msg);
+        if (clave_escrow) return clave_escrow;
+
         const archivo = msg?.contenido?.[0]?.archivos?.find(a => a.id?.toString() === file_id.toString());
         if (!archivo?.key_enc) return null;
+        log.warn({ id_chat }, "[E2EE] Archivo recuperado por la vía heredada (key_enc con clave de sistema)");
         const keyHex = desencriptarDatosSistema(archivo.key_enc);
         return keyHex ? Buffer.from(keyHex, 'hex') : null;
     } catch {
         return null;
     }
+}
+
+/**
+ * Desenvuelve la clave de un mensaje desde su escrow `claves_recuperacion` usando las claves
+ * privadas locales del usuario. Devuelve `null` si el mensaje no tiene escrow o si ninguna
+ * clave local sirve (p. ej. el usuario no era participante cuando se envió).
+ */
+async function _desenvolverClaveRecuperacion(msg) {
+    const entradas = msg?.claves_recuperacion;
+    if (!Array.isArray(entradas) || entradas.length === 0) return null;
+
+    const { getIDMongodbUsuario } = await import('../STORAGE/Variables_sesion.js');
+    const id_propio = getIDMongodbUsuario()?.toString();
+    // Se prueba primero la entrada propia; si no está (o falla), se intenta el resto con
+    // todas las claves locales, que cubre el caso de haber rotado la identidad.
+    const propia = id_propio ? entradas.filter(e => e.usuario_id?.toString() === id_propio) : [];
+    const candidatas = [...propia, ...entradas.filter(e => !propia.includes(e))];
+
+    const identity_data = await getIdentity();
+    const allKeys = getAllPrivateKeys(identity_data);
+    if (!allKeys || allKeys.length === 0) return null;
+
+    for (const entrada of candidatas) {
+        if (!entrada?.clave) continue;
+        try {
+            const { result } = descifrarConX25519Multi(entrada.clave, allKeys);
+            if (result) return Buffer.from(result, 'hex');
+        } catch { /* probar la siguiente */ }
+    }
+    return null;
 }
 
 export async function DESCARGAR_ARCHIVO(id, nombre, ivHex = null, tagHex = null, id_chat = null, ratchet_info = null, emisor_id = null) {
@@ -496,15 +638,21 @@ export async function ELIMINAR_MENSAJE(id_chat, id_mensaje) {
             }
         }
 
-        // Marcar mensaje como borrado (limpiar contenido)
+        // Marcar mensaje como borrado (limpiar contenido).
+        // Aquí sí se usa la clave de sistema: el texto es una constante pública idéntica para
+        // todos los mensajes borrados, así que no revela nada, y debe poder leerlo cualquier
+        // participante aunque su escrow ya no exista.
         const asunto_encriptado = encriptarDatosSistema("Este mensaje ha sido eliminado");
-        
+
         await MessagesRavage.updateOne(
             { _id: new mongoose.Types.ObjectId(id_mensaje_str) },
             {
                 $set: {
                     contenido: [{ asunto: asunto_encriptado, archivos: [] }],
                     encriptado: null,
+                    // El escrow apuntaba al contenido que acabamos de destruir: dejarlo sería
+                    // guardar claves que ya no abren nada.
+                    claves_recuperacion: [],
                     especial: { borrado: true }
                 }
             }

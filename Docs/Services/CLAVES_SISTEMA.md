@@ -11,7 +11,7 @@ Ravage maneja varios tipos de claves criptográficas con propósitos distintos. 
 | `secretKey` (usuario) | `randomBytes(32)` al registrar | `Buffer` | `EncryptedDataSchema` en MongoDB (cifrado con `INTERNAL_ENCRYPTION_KEY`) | Cifra archivos locales del usuario (ajustes, historial, etc.) |
 | `SECRET_KEY_COKKIE` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra archivos locales de sesión y configuración de la app |
 | `SECRET_KEY_PRIVATE` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra el archivo de identidad E2EE (claves privadas X25519) en disco |
-| `INTERNAL_ENCRYPTION_KEY` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra datos sensibles almacenados en MongoDB (buzón, `asunto` y `key_enc` de los mensajes, etc.) y, si falta `HMAC_SECRET`, keyea también los `*_hash` |
+| `INTERNAL_ENCRYPTION_KEY` | Variable de entorno (hex) | `Buffer` | `.env.secret` | Cifra datos sensibles almacenados en MongoDB (buzón, correos, apodos, etc.). Ya **no** cifra el contenido de los mensajes, sus adjuntos ni la vista previa del chat: eso pasó al envoltorio X25519 por usuario (§6). Si falta `HMAC_SECRET`, keyea también los `*_hash` |
 | `HMAC_SECRET` | Variable de entorno | `String` | `.env.secret` | Keyea los HMAC-SHA256 de búsqueda (`correo_hash`, `id_dp_hash`, `idamigo_hash`). **Opcional**: si no está definida cae a `INTERNAL_ENCRYPTION_KEY` — ver §3.1 |
 | Chain key (ratchet E2EE) | `randomBytes(32)` al crear chat | Hex string | Hex string (X25519-wrapped en `ratchet_keys`) | Clave raíz del ratchet de mensajes por chat |
 | Clave privada X25519 | Generada con `generateKeyPairSync('x25519')` | PEM string | Cifrada con `SECRET_KEY_PRIVATE` en `identityFile` | Descifra chain keys E2EE (ECDH) |
@@ -230,29 +230,43 @@ simplemente no encaja (no-op, `matchedCount === 0`).
 
 ---
 
-## 6. Limitación conocida: la copia paralela bajo `INTERNAL_ENCRYPTION_KEY`
+## 6. Escrow de claves por participante (sustituye a la copia bajo `INTERNAL_ENCRYPTION_KEY`)
 
 `INTERNAL_ENCRYPTION_KEY` **no es una clave por usuario ni por dispositivo**: es una
-variable de entorno que viaja con la build, o sea que tiene el **mismo valor en todas
-las instalaciones**. Y `ENVIAR_MENSAJE` (`backend/repositories/MessageRepository.js`)
-guarda, junto al ciphertext E2EE (`encriptado`), una segunda copia de los datos cifrada
-con esa clave, en **todos** los mensajes de **todos** los chats:
+variable de entorno que viaja con la build, o sea que tiene el **mismo valor en todas las
+instalaciones**. Durante un tiempo `ENVIAR_MENSAJE` guardaba, junto al ciphertext E2EE,
+una segunda copia del asunto, de los nombres de adjunto y de la clave AES de cada archivo
+cifrada con esa clave — de modo que quien la extrajese de una sola instalación podía leer
+los mensajes y los archivos de todos los usuarios sin ninguna clave privada.
 
-| Campo | Cifrado con | Expone |
+Esa copia ya no se escribe. En su lugar, cada mensaje lleva un **escrow**
+(`claves_recuperacion`) con la clave del mensaje envuelta con la clave pública X25519 de
+cada participante, usando la misma construcción ECDH → HKDF(`ravage-ck-wrap`) →
+AES-256-GCM que `ratchet_keys.clave_envuelta` (§4):
+
+| Campo | Protegido con | Quién puede abrirlo |
 |---|---|---|
-| `contenido[0].asunto` | `INTERNAL_ENCRYPTION_KEY` | El texto completo del mensaje |
-| `contenido[0].archivos[].nombre` | `INTERNAL_ENCRYPTION_KEY` | Los nombres de los adjuntos |
-| `contenido[0].archivos[].key_enc` | `INTERNAL_ENCRYPTION_KEY` | La clave AES-256-GCM del adjunto en GridFS, es decir, el archivo entero |
+| `encriptado` | `messageKey` del ratchet | Quien pueda derivarla o desenvolverla del escrow |
+| `claves_recuperacion[].clave` | Clave pública X25519 del participante | Solo ese participante, con su clave privada |
+| `contenido[0].archivos[]` | Sin cifrar: solo `id`, `iv`, `tag` | Punteros a GridFS; no revelan contenido ni nombre |
 
-Consecuencia: quien tenga acceso de lectura a MongoDB **y** la
-`INTERNAL_ENCRYPTION_KEY` de la build puede leer todos los mensajes y descifrar todos
-los adjuntos sin la clave privada X25519 de nadie y sin tocar el ratchet. Todo el
-aparato X25519 + Sender Key Ratchet de §4 protege únicamente el campo `encriptado`, que
-convive con una copia legible bajo una clave compartida.
+El asunto y los nombres de archivo viven únicamente dentro de `encriptado`. La cascada de
+recuperación sigue funcionando igual (desenvuelve el escrow y descifra el payload entero),
+pero ahora sin ningún secreto compartido: la clave maestra no abre nada.
 
-Esa copia es también lo que permite la cascada de recuperación al descifrar (leer tu
-propio historial tras perder el estado del ratchet), pero eso es una consecuencia de la
-debilidad, no una justificación.
+Verificado en `backend/tests/escrowRecuperacion.test.js`.
 
-**Estado: sin arreglar.** Es la limitación de seguridad más importante del sistema hoy.
-Detalle completo y posibles arreglos en `Docs/backend/CRYPTO_SECURITY.md` §3.7.
+**Compatibilidad**: los mensajes anteriores conservan la copia antigua y se siguen leyendo
+por la vía heredada, que ya solo se usa para leer. Nunca se vuelve a escribir.
+
+**La vista previa de la lista de chats también está cubierta**: `User.chats[].ultimomensaje`
+guardaba el asunto del último mensaje con `INTERNAL_ENCRYPTION_KEY`. Ahora se escribe en
+`ultimomensaje_e2ee`, envuelto con la clave pública del **propio** usuario (el campo vive en
+su documento, así que cada cual abre el suyo). La lectura sigue siendo síncrona gracias a
+`getIdentityCached()`, un accesor no asíncrono a la identidad ya cargada en memoria, lo que
+evita tener que volver asíncrona `procesarUsuario()` y sus 10 llamadores.
+
+Los avisos de sistema de `ChatRepository.js` ("Usuario expulsado", "Chat recién creado"…)
+siguen usando la clave de sistema: son constantes públicas y no revelan nada, pero al
+escribirlas se anula también `ultimomensaje_e2ee` para que la vista previa no se quede
+mostrando un mensaje anterior. Detalle en `Docs/backend/CRYPTO_SECURITY.md` §3.7.

@@ -118,6 +118,20 @@ export async function getIdentity() {
 }
 
 /**
+ * Devuelve la identidad ya cargada en memoria, sin tocar disco, o `null` si aún no lo está.
+ *
+ * Existe para los caminos SÍNCRONOS que necesitan desenvolver algo con X25519 (las
+ * primitivas de descifrado sí son síncronas; lo único asíncrono es leer el archivo de
+ * identidad). `asegurarIdentidadLocal()` llena esta caché en los tres flujos de inicio de
+ * sesión, así que para cuando se leen datos de usuario ya está caliente.
+ *
+ * Quien la use debe tolerar el `null`: significa "todavía no hay sesión", no un error.
+ */
+export function getIdentityCached() {
+    return cachedIdentity;
+}
+
+/**
  * Actualiza la identidad en cache.
  */
 export function setCachedIdentity(data) {

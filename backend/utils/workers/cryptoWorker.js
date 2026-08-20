@@ -78,6 +78,77 @@ const OPERACIONES = {
      * @param {string} [datos.systemKey] - Llave de sistema (hex) para fallback
      */
     DESCIFRAR_BATCH_MENSAJES({ items, indiceInicio, ratchet_keys, id_propio, privateKey, privateKeys, systemKey }) {
+        const keysDisponibles = (privateKeys && privateKeys.length > 0) ? privateKeys : (privateKey ? [privateKey] : []);
+
+        // Vuelca un payload ya descifrado sobre el mensaje.
+        const aplicarPayload = (m, payloadJson, emisor_id) => {
+            const data = JSON.parse(payloadJson);
+            if (!data || Array.isArray(data)) return false;
+            m.contenido = [{
+                asunto: data.asunto,
+                archivos: (data.archivos || []).map(a => ({
+                    ...a,
+                    nombre: (a.nombre && typeof a.nombre === 'object' && systemKey)
+                        ? _desencriptarDatosSistema(a.nombre, systemKey)
+                        : a.nombre,
+                    ratchet_info: m.ratchet_info,
+                    emisor_id
+                }))
+            }];
+            m.emisor = data.emisor;
+            m.data = data.data;
+            return true;
+        };
+
+        // Recuperación E2EE-segura vía el escrow `claves_recuperacion` (espejo de
+        // _recuperarDesdeEscrow en messageCryptoService.js). Sustituye a la copia cifrada
+        // con la clave de sistema, que era legible por cualquiera con esa clave.
+        const recuperarDesdeEscrow = (m, emisor_id) => {
+            const entradas = m?.claves_recuperacion;
+            if (!Array.isArray(entradas) || entradas.length === 0) return false;
+            if (!m.encriptado || !m.encriptado.data || keysDisponibles.length === 0) return false;
+
+            const propias = id_propio ? entradas.filter(e => e.usuario_id?.toString() === id_propio) : [];
+            const candidatas = propias.length > 0 ? propias : entradas;
+
+            for (const entrada of candidatas) {
+                if (!entrada?.clave) continue;
+                for (const pk of keysDisponibles) {
+                    try {
+                        const claveHex = _descifrarConX25519(entrada.clave, pk);
+                        if (!claveHex) continue;
+                        const payload = _descifrarContenido(m.encriptado, Buffer.from(claveHex, 'hex'));
+                        if (aplicarPayload(m, payload, emisor_id)) return true;
+                    } catch { /* siguiente clave */ }
+                }
+            }
+            return false;
+        };
+
+        // Recuperación heredada (copia cifrada con la clave de sistema): solo mensajes antiguos.
+        const recuperarHeredado = (m, emisor_id) => {
+            if (!m.contenido || m.contenido.length === 0 || !systemKey) return false;
+            let recuperado = false;
+            if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
+                const decoded = _desencriptarDatosSistema(m.contenido[0].asunto, systemKey);
+                if (decoded) { m.contenido[0].asunto = decoded; recuperado = true; }
+            }
+            if (m.contenido[0].archivos) {
+                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
+                    ...a,
+                    nombre: (a.nombre && typeof a.nombre === 'object')
+                        ? (_desencriptarDatosSistema(a.nombre, systemKey) || a.nombre)
+                        : a.nombre,
+                    ratchet_info: m.ratchet_info,
+                    emisor_id
+                }));
+            }
+            return recuperado;
+        };
+
+        const recuperarMensaje = (m, emisor_id) =>
+            recuperarDesdeEscrow(m, emisor_id) || recuperarHeredado(m, emisor_id);
+
         // Cache de chain keys para este batch
         const cache_keys = {};
 
@@ -120,21 +191,7 @@ const OPERACIONES = {
                     // la clave base fue sobreescrita y no se puede derivar la correcta.
                     // Usar fallback de sistema directamente.
                     if (current_state.counter > m.ratchet_info.iteration) {
-                        if (m.contenido && m.contenido.length > 0 && systemKey) {
-                            if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
-                                m.contenido[0].asunto = _desencriptarDatosSistema(m.contenido[0].asunto, systemKey);
-                            }
-                            if (m.contenido[0].archivos) {
-                                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                    ...a,
-                                    nombre: (a.nombre && typeof a.nombre === 'object')
-                                        ? _desencriptarDatosSistema(a.nombre, systemKey)
-                                        : a.nombre,
-                                    ratchet_info: m.ratchet_info,
-                                    emisor_id: emisor_id
-                                }));
-                            }
-                        }
+                        recuperarMensaje(m, emisor_id);
                         continue;
                     }
 
@@ -154,41 +211,11 @@ const OPERACIONES = {
 
                     try {
                         const decryptedPayload = _descifrarContenido(m.encriptado, messageKey);
-                        const data = JSON.parse(decryptedPayload);
-
-                        if (data && !Array.isArray(data)) {
-                            m.contenido = [{
-                                asunto: data.asunto,
-                                archivos: (data.archivos || []).map(a => ({
-                                    ...a,
-                                    nombre: (a.nombre && typeof a.nombre === 'object' && systemKey) 
-                                        ? _desencriptarDatosSistema(a.nombre, systemKey) 
-                                        : a.nombre,
-                                    ratchet_info: m.ratchet_info,
-                                    emisor_id: emisor_id
-                                }))
-                            }];
-                            m.emisor = data.emisor;
-                            m.data = data.data;
-                        }
+                        aplicarPayload(m, decryptedPayload, emisor_id);
                     } catch (aesErr) {
-                        // Fallback: Copias de sistema
-                        if (m.contenido && m.contenido.length > 0 && systemKey) {
-                            if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
-                                m.contenido[0].asunto = _desencriptarDatosSistema(m.contenido[0].asunto, systemKey);
-                            }
-                            if (m.contenido[0].archivos) {
-                                m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                    ...a,
-                                    nombre: (a.nombre && typeof a.nombre === 'object')
-                                        ? _desencriptarDatosSistema(a.nombre, systemKey)
-                                        : a.nombre,
-                                    ratchet_info: m.ratchet_info,
-                                    emisor_id: emisor_id
-                                }));
-                            }
-                        } else {
-                            throw new Error(`AES-GCM: Sin systemKey o copia. ${aesErr.message}`);
+                        // Escrow primero; copia de sistema solo para mensajes antiguos.
+                        if (!recuperarMensaje(m, emisor_id)) {
+                            throw new Error(`AES-GCM: sin escrow ni copia recuperable. ${aesErr.message}`);
                         }
                     }
 
@@ -197,25 +224,12 @@ const OPERACIONES = {
                     current_state.counter++;
 
                 } catch (err) {
-                    // Fallback: intentar copia de sistema antes de mostrar error
+                    // Último intento: escrow y, para historial antiguo, copia de sistema.
                     let recovered = false;
-                    if (m.contenido && m.contenido.length > 0 && systemKey) {
-                        if (m.contenido[0].asunto && typeof m.contenido[0].asunto === 'object' && m.contenido[0].asunto.data) {
-                            const decoded = _desencriptarDatosSistema(m.contenido[0].asunto, systemKey);
-                            if (decoded) {
-                                m.contenido[0].asunto = decoded;
-                                if (m.contenido[0].archivos) {
-                                    m.contenido[0].archivos = m.contenido[0].archivos.map(a => ({
-                                        ...a,
-                                        nombre: (a.nombre && typeof a.nombre === 'object')
-                                            ? (_desencriptarDatosSistema(a.nombre, systemKey) || a.nombre)
-                                            : a.nombre
-                                    }));
-                                }
-                                recovered = true;
-                            }
-                        }
-                    }
+                    try {
+                        recovered = recuperarMensaje(m, m.emisor ? m.emisor.toString() : null);
+                    } catch { /* se marca como no descifrable abajo */ }
+
                     if (!recovered && (!m.contenido || m.contenido.length === 0 || typeof m.contenido[0].asunto !== 'string')) {
                         m.contenido = [{ asunto: "[Error al descifrar: posible clave de dispositivo obsoleta]", archivos: [] }];
                     }

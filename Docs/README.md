@@ -1,6 +1,6 @@
 # Ravage — Documentation Index
 
-> **Note on the root `README.md`.** The repository's top-level `README.md` describes an older version of the app (bcrypt, RSA-2048 key exchange, a RAM/disk LFU cache, etc.) and has drifted significantly from the current implementation. The documents below were written by reading and verifying the actual current source code, and each one calls out the specific places where the old README (or an older internal doc) no longer matches reality. Treat this `Docs/` tree — not the root README — as the source of truth for how the app works today.
+> **Note.** The documents below were written by reading and verifying the actual source code. The root `README.md` used to describe a much older version of the app (bcrypt, RSA-2048 key exchange, a RAM/disk LFU cache, a fixed port 3000, JWT rotation); it has since been rewritten and no longer makes those claims. Several documents in this tree still carry "the root README says X" warnings — those refer to that historical version, not to the README as it stands today.
 
 ## Start here
 
@@ -14,7 +14,7 @@
 | Doc | What it covers |
 |---|---|
 | [backend/DATA_LAYER.md](./backend/DATA_LAYER.md) | MongoDB connection, all Mongoose models & their encrypted fields, all repositories, and the local SQLite (`better-sqlite3`) database |
-| [backend/CRYPTO_SECURITY.md](./backend/CRYPTO_SECURITY.md) | Password hashing (Argon2id), at-rest encryption, X25519 E2EE key exchange & Double Ratchet, the message scanner, crypto/scanner worker threads |
+| [backend/CRYPTO_SECURITY.md](./backend/CRYPTO_SECURITY.md) | Password hashing (Argon2id), at-rest encryption, X25519 E2EE key exchange & the Sender Key ratchet, the per-participant key escrow, the message scanner, crypto/scanner worker threads |
 | [backend/SESSION_AUTH.md](./backend/SESSION_AUTH.md) | Registration, email verification, trusted-device auto-login, manual login, JWT issuance, rate limiting, logout |
 | [backend/MESSAGING.md](./backend/MESSAGING.md) | Mailbox/push notifications (Change Streams + Socket.IO), transactional email, local encrypted file storage, profile/validation logic, URL previews |
 | [backend/IPC_AND_SERVERS.md](./backend/IPC_AND_SERVERS.md) | Every IPC channel registered under `backend/ipc/`, the local dev server vs. the Railway production server |
@@ -42,12 +42,12 @@ These were written earlier and were used as verified source material for the Eng
 - [PRELOAD.md](./PRELOAD.md) *(superseded by `frontend/PRELOAD.md` above, kept for history)*
 - [env_doc/env.md](./env_doc/env.md), [env_doc/vault.md](./env_doc/vault.md)
 
-## Biggest gaps found between the old root `README.md` and the current app
+## How the current app differs from its earlier design
 
 - **Password hashing**: Argon2id, not bcrypt.
-- **E2EE key exchange**: X25519 ECDH + HKDF (Double Ratchet), not RSA-2048/OAEP.
+- **E2EE key exchange**: X25519 ECDH + HKDF, not RSA-2048/OAEP. The per-message ratchet is a **Sender Key** chain (HMAC-SHA256 with 0x01/0x02 constants), not a full Double Ratchet — there is no per-message DH step.
 - **Cache system**: rewritten around embedded SQLite with TTL/size eviction and fixed limits; the old RAM/disk LFU design is gone, and the adaptive-strategy selector that went with it (`backend/utils/systemInfo.js`) has been deleted from the codebase — it had no callers.
 - **Secrets storage**: no longer a plaintext root `.env` — an OS-native encrypted vault (`backend/utils/env_vault.js`, Electron `safeStorage`) now holds secrets.
-- **New subsystems not in the README at all**: worker-thread pools for crypto/content scanning, the message/URL security scanner (there is no file-content scanner), a multi-level decrypt-failure recovery cascade.
+- **New subsystems**: worker-thread pools for crypto/content scanning, the message/URL security scanner (there is no file-content scanner), and a multi-level decrypt-failure recovery cascade backed by a per-participant X25519 key escrow (`Message.claves_recuperacion`).
 
-A full engineering-quality review (bugs, security issues, dead code) is intentionally kept out of this `Docs/` tree — see `/home/paraguayo33/Documentos/depuracion-ravage/` for that (Spanish, for internal use).
+A full engineering-quality review (bugs, security issues, dead code) is intentionally kept out of this `Docs/` tree; it is maintained separately as an internal document (Spanish) and is not part of this repository.

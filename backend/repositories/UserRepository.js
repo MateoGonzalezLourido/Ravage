@@ -3,7 +3,7 @@ import { createLogger } from '../utils/logger.js';
 import { User } from '../models/User.js';
 import { TokenSession } from '../models/Security.js';
 import { validateToken } from '../services/CreadorTokens.js';
-import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema } from '../services/cryptoService.js';
+import { encriptarDatosSistema, desencriptarDatosSistema, hashDatosSistema, getIdentityCached, getAllPrivateKeys, descifrarConX25519Multi } from '../services/cryptoService.js';
 
 import {
     getCorreoSesion, getUsuariosBloqueados, getUsuariosSilence, setUsuariosBloqueados, setUsuariosSilence,
@@ -26,6 +26,37 @@ const _syncCache = async (correoHash) => {
     const user = await User.findOne({ correo_hash: correoHash }).lean();
     if (user) await setUsuarioEnCache(procesarUsuario(user));
 };
+
+/**
+ * Descifra la vista previa del último mensaje de un chat.
+ *
+ * Formato actual: `ultimomensaje_e2ee`, envuelto con la clave pública X25519 del propio
+ * usuario — solo él puede abrirlo. El desenvuelto es síncrono; lo único asíncrono sería
+ * leer la identidad de disco, así que se usa la copia ya cacheada en memoria
+ * (`getIdentityCached()`), que los tres flujos de login dejan caliente antes de que se
+ * pidan datos de usuario. Si aún no lo está, se devuelve "" en vez de bloquear.
+ *
+ * Formato heredado: `ultimomensaje` cifrado con INTERNAL_ENCRYPTION_KEY. Se sigue leyendo
+ * para no perder las vistas previas ya guardadas, pero ya no se escribe.
+ */
+function _descifrarUltimoMensaje(chat) {
+    if (chat.ultimomensaje_e2ee) {
+        try {
+            const identidad = getIdentityCached();
+            const allKeys = identidad ? getAllPrivateKeys(identidad) : [];
+            if (allKeys.length > 0) {
+                const { result } = descifrarConX25519Multi(chat.ultimomensaje_e2ee, allKeys);
+                if (typeof result === 'string') return result;
+            }
+        } catch { /* cae al formato heredado */ }
+    }
+    if (chat.ultimomensaje) {
+        try {
+            return desencriptarDatosSistema(chat.ultimomensaje) || "";
+        } catch { /* ignorar */ }
+    }
+    return "";
+}
 
 export function procesarUsuario(usuario) {
     if (!usuario) return null;
@@ -54,7 +85,9 @@ export function procesarUsuario(usuario) {
         result.chats = result.chats.map(chat => ({
             ...chat,
             id: chat.id ? chat.id.toString() : (chat._id ? chat._id.toString() : null),
-            ultimomensaje: chat.ultimomensaje ? desencriptarDatosSistema(chat.ultimomensaje) : ""
+            ultimomensaje: _descifrarUltimoMensaje(chat),
+            // No exponer los campos cifrados al resto de la app (ni al renderer).
+            ultimomensaje_e2ee: undefined
         }));
     }
 

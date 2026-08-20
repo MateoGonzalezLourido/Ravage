@@ -5,11 +5,12 @@ encryption, the X25519-based E2EE key exchange, the Sender Key Ratchet, message
 decryption recovery logic, the message security scanner, and the worker-thread
 infrastructure that offloads this work off the main/UI thread.
 
-> **Read §3.7 first if you care about the threat model.** Every message stores a
-> second copy of its subject — and of the AES key of every attachment — encrypted
-> with `INTERNAL_ENCRYPTION_KEY`, a build-time constant identical on every
-> installation. That is the single most important security limitation of the
-> system today and it is **not fixed**.
+> **Read §3.7 for the threat model.** Messages used to store a second copy of their
+> subject — and of the AES key of every attachment — under `INTERNAL_ENCRYPTION_KEY`, a
+> build-time constant identical on every installation. That copy is **gone**: the message
+> key is now escrowed per participant with X25519, so recovery works without any shared
+> secret. The chat-list preview (`User.chats[].ultimomensaje`) was the last instance of the
+> same weakness and is now wrapped per user as well — see the end of §3.7.
 
 > **Note on accuracy**: the root `README.md` describes an older scheme (bcrypt,
 > RSA-2048/OAEP key wrapping, no multi-key support, no gzip compression, no recovery
@@ -358,16 +359,19 @@ Level 3 — Outer catch-all (err) — any exception in the whole per-message blo
                           dispositivo obsoleta]", archivos: [] }]
 ```
 
-The "system copy" being recovered here is the `desencriptarDatosSistema`-encrypted
-duplicate of `asunto`/`archivos[].nombre` that the **sender's own client** stores
-alongside the ratchet ciphertext (see §3.2 step 3, and **§3.7 for why this copy is the
-system's biggest security hole**) — it lets a user read their own
-sent messages even if the ratchet state for that chat becomes desynchronized, and lets
-the recovery path show *something* readable instead of a hard failure when the E2EE
-path breaks (e.g., stale/rotated device keys). It only helps for the sender's own
-messages, not for messages from other people whose system copy the local user has no
-key for — hence the generic `"posible clave de dispositivo obsoleta"` (possibly
-obsolete device key) final fallback text for everything else.
+What the recovery step reads depends on the age of the message (see §3.7):
+
+- **Messages written with the escrow** — the normal case now. The step unwraps
+  `claves_recuperacion` with the local X25519 private key to recover the message key, then
+  decrypts `encriptado` in full. It works for **any** participant's messages, not just the
+  reader's own, and needs no shared secret.
+- **Legacy messages** — those predating the escrow still carry the
+  `desencriptarDatosSistema`-encrypted duplicate of `asunto`/`archivos[].nombre`, which is
+  read only as a fallback and only helps for messages whose system copy the local
+  installation can decrypt.
+
+If neither path yields anything, the generic `"posible clave de dispositivo obsoleta"`
+(possibly obsolete device key) text is shown.
 
 ### 3.4 Parallel batch decryption (`_descifrarBatchParalelo`)
 
@@ -429,51 +433,78 @@ Two properties follow from that shape:
 > written back to the DB (see §3.2 step 7 for the rationale); `reWrapChainKey` is now
 > the only function in this module that writes to `chat.ratchet_keys`.
 
-### 3.7 E2EE limitation — the `INTERNAL_ENCRYPTION_KEY` parallel copy (**not fixed**)
+### 3.7 Per-participant key escrow — how the recovery copy is protected (**fixed**)
 
-The "system copy" the recovery cascade (§3.3) reads is not an artifact of the recovery
-path — it is written **for every message, unconditionally**, by
-`ENVIAR_MENSAJE` in `backend/repositories/MessageRepository.js`:
+Historically every message also stored a "system copy" of its subject, its attachment
+filenames and each attachment's AES key, all encrypted with `INTERNAL_ENCRYPTION_KEY`.
+Because that key is an environment variable shipped with the build — **the same value on
+every installation** — anyone holding it plus DB read access could read every message and
+decrypt every attachment without any user's private key. The E2EE guarantee was, in
+practice, server-observable.
+
+That copy no longer exists. `ENVIAR_MENSAJE` now writes:
 
 ```js
 contenido: [{
-    asunto: encriptarDatosSistema(asunto),        // ← plaintext subject, system key
-    archivos: contenido_archivos                  // ← each: { nombre: encriptarDatosSistema(...),
-}],                                               //           key_enc: encriptarDatosSistema(chatKey) }
-encriptado: cifrarContenido(payload, chatKey),    // ← the actual E2EE ciphertext
+    asunto: null,                                     // ← no plaintext-equivalent copy
+    archivos: [{ id, iv, tag }]                       // ← non-secret GridFS pointers only
+}],
+encriptado: cifrarContenido(payload, chatKey),        // ← subject + filenames live in here
+claves_recuperacion: [                                // ← escrow, one entry per participant
+    { usuario_id, clave: cifrarConX25519(chatKey, publicKey) }
+]
 ```
 
-So alongside the ratchet ciphertext, every message document also carries:
+The full payload (`asunto`, `archivos[].nombre`, `emisor`, `data`) is inside `encriptado`,
+sealed under the ratchet's `messageKey`. `claves_recuperacion` stores that same key wrapped
+to each participant's X25519 public key, using the identical
+ECDH → HKDF(`ravage-ck-wrap`) → AES-256-GCM construction as `ratchet_keys.clave_envuelta`
+(§2.3). Recovery therefore no longer needs a shared secret:
 
-| Field | Encrypted with | Reveals |
-|---|---|---|
-| `contenido[0].asunto` | `INTERNAL_ENCRYPTION_KEY` | The full message text |
-| `contenido[0].archivos[].nombre` | `INTERNAL_ENCRYPTION_KEY` | Attachment filenames |
-| `contenido[0].archivos[].key_enc` | `INTERNAL_ENCRYPTION_KEY` | The AES-256-GCM key of the GridFS attachment — i.e. the file itself |
+| Situation | What happens |
+|---|---|
+| Ratchet is healthy | Normal path: derive `messageKey` from the chain, decrypt `encriptado`. |
+| Ratchet desynchronized (`counter > iteration`, missing link, AES failure) | Unwrap `claves_recuperacion` with the local X25519 private key → `messageKey` → decrypt `encriptado`. Same result, no shared key. |
+| Attachment download after the counter moved on | `_getFileKeyFromMessage()` unwraps the escrow to recover the file's AES key. |
+| Holder of `INTERNAL_ENCRYPTION_KEY` + DB access | **Nothing.** The escrow is sealed to X25519 public keys; the master key opens neither it nor `encriptado`. |
 
-`INTERNAL_ENCRYPTION_KEY` is **not** a per-user or per-device secret. It is an
-environment variable shipped with the build, so it is **the same value on every
-installation** (see `Docs/Services/CLAVES_SISTEMA.md` §1). Consequences:
+Covered by `backend/tests/escrowRecuperacion.test.js`, which asserts that each participant
+recovers subject and filenames, and that neither `INTERNAL_ENCRYPTION_KEY` nor a
+non-participant's key can.
 
-- **The E2EE guarantee is server-observable.** Anyone with read access to the MongoDB
-  database *and* the build's `INTERNAL_ENCRYPTION_KEY` can read every message subject
-  and decrypt every attachment, without any user's X25519 private key and without
-  touching the ratchet at all. The X25519 + Sender-Key-Ratchet machinery documented in
-  §2/§3 protects only the `encriptado` field, which is redundant with a copy stored
-  next to it under a shared key.
-- **It is not just the sender's own messages.** The copy is written by the sender for
-  *every* message, in every chat, group chats included.
-- The recovery cascade's usefulness (§3.3) is a *consequence* of this weakness, not a
-  justification for it: what makes "read your own history after losing the ratchet
-  state" work is precisely what makes the ciphertext readable to whoever holds the
-  shared key.
+**Backward compatibility.** Messages written before this change still carry the old
+system-encrypted `contenido[0]`, so the readers (`_recuperarHeredado()` in
+`messageCryptoService.js`, its mirror in `cryptoWorker.js`, and the `key_enc` branch of
+`_getFileKeyFromMessage()`) keep that path *for reading only*. It is never written again.
+Old messages retain the old weakness; new ones do not.
 
-**Status: unfixed.** Any claim elsewhere in the docs (or in the root `README.md`) that
-Ravage provides end-to-end encryption should be read with this caveat attached. A real
-fix means dropping the `contenido[0]` system copy entirely and either (a) accepting
-that a desynchronized ratchet loses history, or (b) storing the sender's copy sealed to
-the *sender's own X25519 public key* instead of a global symmetric key, and deriving
-attachment keys from the ratchet rather than storing `key_enc`.
+**The chat-list preview is covered too.** `ENVIAR_MENSAJE` used to write the subject to
+each participant's `User.chats[].ultimomensaje` with `encriptarDatosSistema()`, which leaked
+the latest subject of every chat to a master-key holder. It now writes
+`ultimomensaje_e2ee`, wrapped with **that user's own** X25519 public key — the field lives in
+their own document, so each user unwraps their own copy. The single `updateMany` became a
+`bulkWrite` with one operation per recipient, reusing the same public keys already loaded for
+the escrow.
+
+Reading it stays synchronous: `descifrarConX25519` is itself synchronous, so
+`_descifrarUltimoMensaje()` in `UserRepository.js` uses `getIdentityCached()` — a non-async
+accessor for the in-memory identity that `asegurarIdentidadLocal()` populates in all three
+login flows before any user data is read. This avoids turning `procesarUsuario()` (10 call
+sites) async. If the cache is somehow cold it returns `""` rather than blocking.
+
+Two details worth knowing:
+
+- **Empty subject.** A file-only message has no subject, and mongoose rejects `data: ""` on a
+  `required` String. Both preview fields are set to `null` in that case, matching the old
+  behaviour (`encriptarDatosSistema` returned `null` for falsy input).
+- **System notices.** `ChatRepository.js` writes fixed public strings ("Usuario expulsado",
+  "Chat recién creado", …) to the legacy field. Those are constants and leak nothing, but each
+  now also nulls `ultimomensaje_e2ee` — otherwise the reader would prefer a stale wrapped
+  subject over the newer notice.
+
+Two other uses of the master key in the message path are deliberate and harmless: reading
+legacy documents, and the deletion tombstone (`"Este mensaje ha sido eliminado"`), which is
+a public constant identical for every deleted message.
 
 ---
 
@@ -735,4 +766,4 @@ that description and the current code:
 | No mention of decrypt-failure recovery | A **3-level recovery cascade** exists (stale-counter fast path → system-copy fallback on AES failure → outer catch-all fallback), added specifically to handle corrupted/desynchronized ratchet state and stale device keys, implemented identically in both the main thread (`messageCryptoService.js`) and the worker (`cryptoWorker.js`) |
 | No mention of worker-thread offloading for crypto/scanning | Both X25519/ratchet batch decryption and message scanning run through dedicated `worker_threads` pools (`workerPool.js`) with crash recovery, idle teardown, and CPU-aware sizing |
 | No mention of a file-content scanner | **No file scanning exists.** The empty `escanerArchivos.js` placeholder has been deleted; `backend/services/seguridad/` holds only `escanerMensaje.js` (message-text scanning) |
-| E2EE described as absolute | Every message also stores its subject, its attachment filenames and each attachment's AES key encrypted with the build-wide `INTERNAL_ENCRYPTION_KEY` (§3.7) — anyone holding that key plus DB access can read messages and files without any user's private key. **Unfixed.** |
+| E2EE described as absolute | Message subjects, attachment filenames, attachment keys and the chat-list preview used to be stored under the build-wide `INTERNAL_ENCRYPTION_KEY`; they are now wrapped per participant with X25519 (§3.7). Legacy documents keep the old copy, read-only. |
