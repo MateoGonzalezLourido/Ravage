@@ -16,8 +16,8 @@ module.exports = {
     COMPROBAR_CONTRASEÑA: ({ contraseña }) => {
         return ipcRenderer.invoke("comprobar-contraseña-cuenta", contraseña)
     },
-    PERMITIR_CAMBIO_DATOS_CUENTA: ({ data = null, tipo }) => {
-        return ipcRenderer.invoke("permitir-cambio-datos-cuenta", data, tipo)
+    PERMITIR_CAMBIO_DATOS_CUENTA: ({ data = null, tipo, contraseña_actual = null }) => {
+        return ipcRenderer.invoke("permitir-cambio-datos-cuenta", data, tipo, contraseña_actual)
     },
     CAMBIAR_DATOS_CUENTA: (contraseña, code, tipo) => {
         return ipcRenderer.invoke("cambiar-datos-usuario", contraseña, code, tipo)

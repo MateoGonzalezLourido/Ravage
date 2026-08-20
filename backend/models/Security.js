@@ -71,6 +71,14 @@ const TokenDPCSchema = new mongoose.Schema({
         required: true,
         default: ""
     },
+    // Misma semántica que TokenSchema.expira: marca el inicio de la ventana de
+    // vida del documento; el índice TTL de abajo lo borra pasados 365 días, que
+    // es la validez máxima del JWT de dispositivo de confianza. Sin esto la
+    // colección crecía indefinidamente con dispositivos caducados/abandonados.
+    expira: {
+        type: Date,
+        default: () => new Date()
+    },
     id_dp: { type: EncryptedDataSchema, required: true },
     id_dp_hash: { type: String, required: true, index: true },
     os: { type: EncryptedDataSchema, default: null },
@@ -104,6 +112,7 @@ const AppBlockedDevicesSchema = new mongoose.Schema({
 TokenSchema.index({ expira: 1 }, { expireAfterSeconds: 90 * 60 });
 ValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });
 DatosCuentaValidationCodeSchema.index({ expira: 1 }, { expireAfterSeconds: 10 * 60 });
+TokenDPCSchema.index({ expira: 1 }, { expireAfterSeconds: 365 * 24 * 60 * 60 });
 RateLimitAuditSchema.index({ id_dp_hash: 1, fecha: 1 }, { unique: true });
 
 export const ValidationCode = mongoose.model("ValidationCodes", ValidationCodeSchema, "validationcodes");

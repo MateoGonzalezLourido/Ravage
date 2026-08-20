@@ -7,17 +7,23 @@ async function connectDB() {
     if (mongoose.connection.readyState === 1) return;
     
     //configruacion de la conexion a db
-    await mongoose.connect(process.env.URI_MONGODB, {
-        tls: true,
-        tlsInsecure: false,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-        maxPoolSize: 10,
-        minPoolSize: 1,
-        connectTimeoutMS: 5000
-    })
-    .then(() => log.info("Conectado a MongoDB Atlas"))
-    .catch((err) => log.error({ err }, "Error de conexión a MongoDB"));
+    try {
+        await mongoose.connect(process.env.URI_MONGODB, {
+            tls: true,
+            tlsInsecure: false,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+            maxPoolSize: 10,
+            minPoolSize: 1,
+            connectTimeoutMS: 5000
+        });
+        log.info("Conectado a MongoDB Atlas");
+    } catch (err) {
+        // Se registra aquí para tener traza del motivo real, pero el error
+        // se propaga: quien llama debe decidir si la app puede arrancar o no.
+        log.error({ err }, "Error de conexión a MongoDB");
+        throw err;
+    }
 }
 async function closeDB() {
     //esta cerrado ya ?

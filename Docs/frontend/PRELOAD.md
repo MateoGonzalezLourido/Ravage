@@ -224,7 +224,6 @@ Not present in the old Spanish doc — documented here from the code.
 |---|---|
 | `OBTENER_AJUSTES_APP(nombre)` | Reads app settings, optionally filtered to one setting name |
 | `GUARDAR_AJUSTES_APP(data)` | Persists app settings |
-| `EXPORTAR_ENV_A_DESCARGAS()` | Exports the vault's `.env` file to the Downloads folder |
 | `EXPORTAR_CLAVE_PRIVADA()` | Exports the user's E2EE private identity key |
 | `IMPORTAR_CLAVE_PRIVADA_ARCHIVO()` | Imports a private identity key from a file (adds it as a support key) |
 | `LISTAR_CLAVES_IDENTIDAD()` | Lists the identity keys currently registered for the account |

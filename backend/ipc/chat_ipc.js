@@ -40,7 +40,21 @@ import { iniciarBuzon } from '../services/buzonAPI.js';
 import { comprobar_mensaje, comprobar_nombre_archivo } from '../services/validadores.js';
 import { procesarNotificacionOSDescarga } from '../services/notificaciones_os.js';
 import { getAjustesAppFile } from '../services/controladorArchivos.js';
+// Rutas que el usuario ha autorizado explícitamente vía el diálogo de archivos.
+// Se limpian tras un envío correcto (ver "enviar-mensaje"); el tope es solo una
+// red de seguridad para que el Set no crezca sin límite en sesiones muy largas
+// si algún flujo selecciona archivos que nunca llegan a enviarse.
+const MAX_AUTHORIZED_PATHS = 500;
 const authorizedPaths = new Set();
+
+function autorizarRuta(p) {
+    // Set conserva orden de inserción: el primer elemento es el más antiguo (FIFO).
+    if (authorizedPaths.size >= MAX_AUTHORIZED_PATHS) {
+        const masAntigua = authorizedPaths.values().next().value;
+        if (masAntigua !== undefined) authorizedPaths.delete(masAntigua);
+    }
+    authorizedPaths.add(p);
+}
 
 export function registerChatHandlers(mainWindow, socket) {
     ipcMain.handle("obtener-chats-usuario", async () => {
@@ -86,7 +100,7 @@ export function registerChatHandlers(mainWindow, socket) {
         const { filePaths } = await dialog.showOpenDialog(mainWindow, {
             properties: ["openFile", "multiSelections"]
         })
-        filePaths.forEach(p => authorizedPaths.add(p))
+        filePaths.forEach(p => autorizarRuta(p))
         return filePaths
     })
 
@@ -101,7 +115,13 @@ export function registerChatHandlers(mainWindow, socket) {
         if (asunto && !comprobar_mensaje(asunto).success) {
             throw new Error("Contenido de mensaje no válido");
         }
-        return await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
+        const resultado = await ENVIAR_MENSAJE({ asunto, archivos, id_chat, id_emisor })
+        // Consumir la autorización solo si el envío fue bien: si falla, el frontend
+        // restaura los adjuntos en el borrador y el reintento debe seguir siendo válido.
+        if (resultado) {
+            for (const arc of archivos) authorizedPaths.delete(arc.ruta)
+        }
+        return resultado
     })
 
     ipcMain.handle("descargar-archivo", async (_, id, nombre, iv, tag, id_chat, ratchet_info, emisor_id) => {

@@ -7,9 +7,6 @@ module.exports = {
     GUARDAR_AJUSTES_APP: (data) => {
         return ipcRenderer.invoke("guardar-ajustes-app", data)
     },
-    EXPORTAR_ENV_A_DESCARGAS: () => {
-        return ipcRenderer.invoke("vault:exportar-env")
-    },
     EXPORTAR_CLAVE_PRIVADA: () => {
         return ipcRenderer.invoke("exportar-clave-privada")
     },

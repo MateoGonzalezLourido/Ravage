@@ -64,6 +64,14 @@ if (process.env.MODO_DEBUG === "true") {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Log persistente en userData: permite ver los fallos sin tener una terminal.
+const _logFile = () => path.join(app.getPath('userData'), 'ipc-debug.log');
+const _log = (msg) => {
+    const line = `[${new Date().toISOString()}] ${msg}\n`;
+    console.error(line.trimEnd());
+    try { fs.appendFileSync(_logFile(), line); } catch { /* */ }
+};
+
 let socket;
 let mainWindow;
 let ipcHandlersRegistered = false;
@@ -165,13 +173,6 @@ async function registerAllHandlers(window, sock) {
     if (ipcHandlersRegistered) return;
     ipcHandlersRegistered = true;
 
-    // Escribe al log en userData para poder verlo sin terminal
-    const _logFile = path.join(app.getPath('userData'), 'ipc-debug.log');
-    const _log = (msg) => {
-        const line = `[${new Date().toISOString()}] ${msg}\n`;
-        console.error(line.trimEnd());
-        try { fs.appendFileSync(_logFile, line); } catch { /* */ }
-    };
     _log(`=== registerAllHandlers inicio | resourcesPath=${process.resourcesPath} | __dirname_libs incluye asar: ${_log._asarCheck ?? 'n/a'}`);
 
     const [
@@ -377,7 +378,31 @@ if (!gotTheLock) {
         const [{ startServer }, { connectDB }] = await Promise.all([pServer, pDb]);
 
         socket = await startServer();
-        await connectDB();
+
+        // Sin base de datos la app no puede funcionar: se informa al usuario en
+        // vez de arrancar a medias y fallar de forma confusa en cada operación.
+        while (true) {
+            try {
+                await connectDB();
+                break;
+            } catch (err) {
+                _log(`[DB] Sin conexión al servidor: ${err?.stack || err?.message || err}`);
+                const { response } = await dialog.showMessageBox({
+                    type: 'error',
+                    title: 'RAVAGE',
+                    message: 'Sin conexión al servidor',
+                    detail: 'No se ha podido conectar con el servidor de Ravage. Comprueba tu conexión a internet e inténtalo de nuevo.',
+                    buttons: ['Reintentar', 'Salir'],
+                    defaultId: 0,
+                    cancelId: 1
+                });
+                if (response !== 0) {
+                    isQuitting = true;
+                    app.quit();
+                    return;
+                }
+            }
+        }
 
         const [{ autoLoginUsuario }, { setMainWindow }] = await Promise.all([pSesion, pStorage]);
 
@@ -448,16 +473,18 @@ app.on('browser-window-focus', () => {
 });
 //detectores para crash
 process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    if (mainWindow) {
+    // Dejar traza en el log persistente antes que nada: el proceso sigue vivo
+    // pero en un estado potencialmente corrupto, así que este puede ser el
+    // último registro útil.
+    _log(`[Crash] Uncaught Exception: ${error?.stack || error?.message || error}`);
+    if (process.env.MODO_DEBUG === "true" && mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.openDevTools(); // mostrar DevTools
-        console.error('HTML del error:', mainWindow.webContents.getHTML());
     }
 });
 
 process.on('unhandledRejection', (reason) => {
-    console.error('Unhandled Rejection:', reason);
-    if (mainWindow) {
+    _log(`[Crash] Unhandled Rejection: ${reason?.stack || reason?.message || reason}`);
+    if (process.env.MODO_DEBUG === "true" && mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.openDevTools();
     }
 });

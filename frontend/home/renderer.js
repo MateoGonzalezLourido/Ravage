@@ -33,7 +33,6 @@ import {
     seleccionar_candidato_activo,
     cerrar_dropdown_menciones
 } from './ui/mensajes_eventos.js'
-document.getElementsByClassName
 import {
     inicializar_buzon_notificaciones
 } from './ui/buzon_eventos.js'
@@ -149,7 +148,11 @@ function inicializar_eventos_globales() {
         divChatUsuario.addEventListener("keypress", (e) => {
             if (e.target.id === "textarea-mensaje-escritura" && e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (!dropdown_menciones_activo()) enviar_mensaje_chat(e.target);
+                if (!dropdown_menciones_activo()) {
+                    enviar_mensaje_chat(e.target).catch((err) => {
+                        console.error("Error no controlado al enviar el mensaje:", err);
+                    });
+                }
             }
         })
     }

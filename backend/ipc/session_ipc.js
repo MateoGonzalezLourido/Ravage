@@ -157,8 +157,8 @@ export function registerSessionHandlers(mainWindow) {
         return await comprobar_contraseña_cuenta(contraseña)
     })
 
-    ipcMain.handle("permitir-cambio-datos-cuenta", async (_, data, tipo) => {
-        if (tipo === "contraseña") return await permitirCambioContraseñaUsuario(data)
+    ipcMain.handle("permitir-cambio-datos-cuenta", async (_, data, tipo, contraseña_actual = null) => {
+        if (tipo === "contraseña") return await permitirCambioContraseñaUsuario(data, contraseña_actual)
         if (tipo === "correo") return await permitirCambioCorreoUsuario(data)
         if (tipo === "apodo") return await permitirCambioApodoUsuario(data)
     })

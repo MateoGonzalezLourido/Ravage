@@ -19,13 +19,6 @@ export function normalizeId(id) {
     return (res && typeof res === 'object') ? (res.id || res._id || res.toString()) : res.toString();
 }
 
-/**
- * Helper para normalizar el chat antes de guardarlo en cache (sin contenido de mensajes).
- */
-export async function setChatEnCacheRaw(chat) {
-    // No-op: cache_chats has been removed
-}
-
 export async function obtener_datos_chats({ data = [], grupales = null, mensajes = true }) {
     try {
         const chatIds = [...new Set(
@@ -283,7 +276,6 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
 
         // Actualizar cache después de mutación
         const updatedChat = await ChatsRavage.findById(chatIdLimpio).lean();
-        if (updatedChat) await setChatEnCacheRaw(updatedChat);
 
         // Actualizar a los usuarios existentes (y nuevos) en su lista de chats (User.chats)
         const ids_totales = [...chat.usuarios, ...ids_añadir];
@@ -433,7 +425,6 @@ export async function CREAR_CHAT_NUEVO(ids = null, nombre = "", id_chat = null, 
         }).catch(e => log.error(e));
 
         // Actualizar cache con el nuevo chat
-        await setChatEnCacheRaw(datos_chat.toObject());
 
         return convertirObjectId(datos_chat.toObject());
     } catch (e) {
@@ -465,7 +456,6 @@ export async function expulsar_usuario_chat(id_usuario, id_chat) {
 
         // Actualizar cache
         const updatedChat = await ChatsRavage.findById(id_chat).lean();
-        if (updatedChat) await setChatEnCacheRaw(updatedChat);
 
         // Actualizar a los demás usuarios para que vean "Usuario expulsado"
         await User.updateMany(
@@ -700,7 +690,6 @@ export async function HACER_ADMIN_CHAT(id_chat, id_usuario) {
 
         // Actualizar cache
         const updatedChat = await ChatsRavage.findById(id_chat).lean();
-        if (updatedChat) await setChatEnCacheRaw(updatedChat);
 
         // Notificar a todos por buzón (ej: actualización silenciosa o notificación)
         // Tipo 5: actualizar chat info silencioso o mensaje al buzón (reciclo tipo 5 para actualizar app u organizo otro o dejo sin notificacion global)
@@ -736,7 +725,6 @@ export async function QUITAR_ADMIN_CHAT(id_chat, id_usuario) {
 
         // Actualizar cache
         const updatedChat = await ChatsRavage.findById(id_chat).lean();
-        if (updatedChat) await setChatEnCacheRaw(updatedChat);
 
         Añadir_Entrada_Buzon_Usuario({
             ids: chat.usuarios.filter(u => u.toString() !== id_propio.toString()),
@@ -789,7 +777,6 @@ export async function rotarClavesChat(id_chat, id_emisor) {
 
         // Actualizar cache tras rotación de claves
         const updatedChat = await ChatsRavage.findById(id_chat_str).lean();
-        if (updatedChat) await setChatEnCacheRaw(updatedChat);
 
         return true;
     } catch (e) {
@@ -1028,7 +1015,6 @@ export async function ACTUALIZAR_DATOS_CHAT(id_chat, { nombre, descripcion, esca
         await ChatsRavage.updateOne({ _id: id_chat_str }, { $set: update });
 
         const updatedChat = await ChatsRavage.findById(id_chat_str).lean();
-        if (updatedChat) await setChatEnCacheRaw(updatedChat);
 
         return { success: true };
     } catch (e) {
