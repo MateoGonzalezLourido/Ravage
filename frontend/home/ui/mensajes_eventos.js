@@ -1,6 +1,7 @@
 import { Actualizar_render_chat, ACTUALIZAR_LISTAS_CHAT, abrir_chat_item, cambiar_datos_componente_lista_chats, INCREMENTAR_MENSAJES_CACHE_ACTIVA } from './gestor_chats.js'
 import { ID_USUARIO_MONGO, CACHE_USUARIOS_ACTIVO } from '../caches_datos.js'
-import { obtener_archivos_mensaje, limpiar_archivos_mensaje, cerrar_ventana_archivos } from './manejador_archivos.js'
+import { obtener_archivos_mensaje, limpiar_archivos_mensaje, cerrar_ventana_archivos, actualizar_html_lista_archivos } from './manejador_archivos.js'
+import { establecer_cache_archivos_adjuntos } from '../caches_datos.js'
 
 // Accede a _virt de chat.js sin importarlo directamente (evita ciclo mensajes_eventos→chat→gestor_chats→mensajes_eventos)
 function _get_virt() { return window.__ravage_get_virt?.() ?? null; }
@@ -33,7 +34,7 @@ function _resolver_nombre_local(id, map_nombres) {
 
 async function _obtener_participantes() {
     const virt = _get_virt();
-    console.log('[MENCIONES] _get_virt() =', virt ? { id_chat: virt.id_chat, usuarios: virt.datos_chat?.usuarios, map_nombres: virt.map_nombres } : null);
+    if (window.opciones_dev?.isDev) console.log('[MENCIONES] _get_virt() =', virt ? { id_chat: virt.id_chat, usuarios: virt.datos_chat?.usuarios, map_nombres: virt.map_nombres } : null);
     if (!virt) return [];
 
     // Invalidar caché si cambiamos de chat
@@ -246,10 +247,10 @@ export async function manejar_input_escribiendo(textarea) {
         _suprimir_siguiente = false;
     } else {
         const mencion = _detectar_mencion(textarea);
-        console.log('[MENCIONES] input. mencion detectada =', mencion);
+        if (window.opciones_dev?.isDev) console.log('[MENCIONES] input. mencion detectada =', mencion);
         if (mencion) {
             const todos = await _obtener_participantes();
-            console.log('[MENCIONES] participantes obtenidos =', todos);
+            if (window.opciones_dev?.isDev) console.log('[MENCIONES] participantes obtenidos =', todos);
             // Re-detectar tras el await por si el usuario siguió escribiendo
             const mencion_actual = _detectar_mencion(textarea);
             if (mencion_actual) {
@@ -257,7 +258,7 @@ export async function manejar_input_escribiendo(textarea) {
                 const filtrados = mencion_actual.consulta
                     ? todos.filter(p => p.nombre.toLowerCase().includes(lower)).slice(0, 8)
                     : todos.slice(0, 8);
-                console.log('[MENCIONES] filtrados =', filtrados, '→ mostrando dropdown');
+                if (window.opciones_dev?.isDev) console.log('[MENCIONES] filtrados =', filtrados, '→ mostrando dropdown');
                 _mostrar_dropdown(textarea, filtrados, mencion_actual);
             } else {
                 _cerrar_dropdown();
@@ -285,6 +286,10 @@ export async function manejar_input_escribiendo(textarea) {
 
 
 export async function enviar_mensaje_chat(textarea) {
+    // Texto tal y como lo escribió el usuario (con los apodos visibles, no los
+    // ids canónicos): es lo que hay que devolverle al textarea si el envío falla.
+    const texto_original = textarea.value
+    const menciones_borrador_previas = [..._menciones_borrador]
     let mensaje = textarea.value.trim()
     // Sustituir los apodos visibles de las menciones por su id canónico @{id}
     // antes de validar/enviar (cada receptor lo resolverá con su propio apodo).
@@ -313,19 +318,52 @@ export async function enviar_mensaje_chat(textarea) {
     textarea.style.height = "35px" // Reset altura a la base de CSS (35px)
     cerrar_ventana_archivos()
 
-    const result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: copia_archivos, id_chat: id_chat, id_emisor: id_usuario })
-    if (result && result.success && result.mensaje) {
-        const respuesta = result.mensaje;
-        await Actualizar_render_chat({
-            emisor: respuesta.emisor,
-            chat: id_chat,
-            mensaje: respuesta.contenido?.[0]?.asunto || "",
-            archivos: respuesta.contenido?.[0]?.archivos || [],
-            fecha: respuesta.data,
-            id_mensaje: result.id_mensaje
-        })
-        await cambiar_datos_componente_lista_chats({ id_chat, data: {asunto:mensaje,data:new Date().toISOString(),emisor:id_usuario} })
-        INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, 1);
+    let result = null
+    try {
+        result = await window.chats.ENVIAR_MENSAJE({ asunto: mensaje, archivos: copia_archivos, id_chat: id_chat, id_emisor: id_usuario })
+    } catch (err) {
+        console.error("Fallo al enviar el mensaje:", err)
+        restaurar_borrador_fallido({ textarea, texto_original, copia_archivos, menciones_borrador_previas })
+        window.pushNotificacion({ PRIORIDAD: 3, texto: "No se pudo enviar el mensaje. Se ha restaurado el borrador.", tipo: "error" })
+        return
+    }
+
+    if (!result || !result.success || !result.mensaje) {
+        restaurar_borrador_fallido({ textarea, texto_original, copia_archivos, menciones_borrador_previas })
+        window.pushNotificacion({ PRIORIDAD: 3, texto: result?.message || "No se pudo enviar el mensaje. Se ha restaurado el borrador.", tipo: "error" })
+        return
+    }
+
+    const respuesta = result.mensaje;
+    await Actualizar_render_chat({
+        emisor: respuesta.emisor,
+        chat: id_chat,
+        mensaje: respuesta.contenido?.[0]?.asunto || "",
+        archivos: respuesta.contenido?.[0]?.archivos || [],
+        fecha: respuesta.data,
+        id_mensaje: result.id_mensaje
+    })
+    await cambiar_datos_componente_lista_chats({ id_chat, data: {asunto:mensaje,data:new Date().toISOString(),emisor:id_usuario} })
+    INCREMENTAR_MENSAJES_CACHE_ACTIVA(id_chat, 1);
+}
+
+/**
+ * Devuelve al usuario el borrador que se había limpiado de forma optimista.
+ * Si mientras tanto ya ha escrito algo nuevo, NO se pisa su texto: el mensaje
+ * fallido se antepone separado por un salto de línea para no perderlo.
+ */
+function restaurar_borrador_fallido({ textarea, texto_original, copia_archivos, menciones_borrador_previas }) {
+    if (textarea) {
+        textarea.value = textarea.value.trim()
+            ? `${texto_original}\n${textarea.value}`
+            : texto_original
+        textarea.style.height = "auto"
+        textarea.style.height = `${Math.max(textarea.scrollHeight, 35)}px`
+    }
+    _menciones_borrador = menciones_borrador_previas
+    if (copia_archivos.length > 0) {
+        establecer_cache_archivos_adjuntos(copia_archivos)
+        actualizar_html_lista_archivos()
     }
 }
 
